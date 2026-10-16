@@ -14,6 +14,12 @@ row against runtime behavior before any safeguard PASS.
 | Web search queries for coupons | find codes | F06 | provider web-search tool (Anthropic / OpenAI) | provider terms | provider account |
 | Optional autofill profile (should, opt-in) | fill forms on approval | S08 | Keychain | until removed | Delete all data |
 
+Provider calls (T005, `src/providers/`): requests go directly from the
+extension to `api.anthropic.com/v1/messages` or `api.openai.com/v1/responses`
+with the user's key in a header only (never in the body). Error messages shown
+to the user never include provider response bodies. No new recipient beyond the
+vendors above.
+
 Not collected: analytics, crash telemetry, advertising IDs, cookies set by
 AssistAnt. Any addition needs a new row and owner approval first.
 
