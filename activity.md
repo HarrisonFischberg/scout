@@ -493,3 +493,4 @@ $ npm run build -> built extension to .../apple/Extension/Resources
   `xcodebuild test -project apple/AssistAnt.xcodeproj -scheme "AssistAnt (macOS)" -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO`;
   also rebuild both app schemes to confirm the handler change compiles.
 - Next task: T005 (provider layer, JS only) or T008 (snapshot builder).
+- T002b iOS: owner enabled AssistAnt in Simulator Settings → Apps → Safari → Extensions and reports the popup opened from Safari's page menu. Screenshot `ralph/evidence/T002b-ios-extension-enabled.png` shows "Allow Extension" on (the popup itself was not captured). Observed: the extension icon is a generic placeholder; real icon needed (safeguard 19 / brand).
