@@ -271,3 +271,10 @@ Error opening log file (/Users/harrison/Library/Logs/CoreSimulator/CoreSimulator
   is down). The iOS scheme also reports a macOS platform mismatch, a separate
   project-config issue to check once a Simulator runtime is available. No status
   row changed.
+
+- Turn 5 of 5 (same goal run): final fallback record. Goal NOT met. No
+  dependency-ready `pending` task exists; T002 stays `blocked` (launch-blockers
+  9, 10). No status row changed; no task finished. Turn 4 found a second
+  possible issue: the iOS scheme reports a macOS platform mismatch for
+  AssistAnt.app (see turn 4 output). Unverified until a Simulator runtime is
+  available. Owner action on T002 is the only unblock. Stopped at 5 of 5.
