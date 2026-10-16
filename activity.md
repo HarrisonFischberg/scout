@@ -774,3 +774,30 @@ $ npm test -- cost
 
 - Popup rendering of the new status text not exercised in a browser (WebKit blocked, blocker 12); logic is covered by unit tests.
 - Next task: T015 (settings; depends on T004, T007).
+
+## 2026-10-15 - T015 settings: needs supervised check
+
+- Task: T015 (lowest-numbered pending; T004 and T007 satisfied). Status `in progress`, then `needs supervised check`.
+- Files: `src/settings/settings.ts`, `tests/unit/settings.test.ts`, `tests/e2e/settings.spec.ts` (new); `src/popup.ts`, `src/popup.html` (S08 panel behind a Settings button), `src/browser.d.ts` (storage, permissions.getAll/remove); `prd.md`, `docs/data-inventory.md`, `docs/launch-blockers.md`.
+- Design: `Settings` {provider, model, retention off|7|30, default 7} in `browser.storage.local` key `settings`; malformed stored values fall back to defaults. Popup prefers the chosen provider, falls back to any provider with a Keychain key (fallback uses that provider's default model). Chat Q&A text is saved only when retention is not off; pruned on load and on append; max 200. Per-site access lists granted origins (minus the two API hosts) with a per-origin Remove. Delete all data asks for confirm (focus on Cancel), then deletes both Keychain items, clears `storage.local`, removes granted origins; each step runs even if another fails and failures are named in the status line.
+- Limits, honest: agent runs and coupon runs are not saved to history. The host-app (SwiftUI) settings screen is not built; settings live in the popup only. Model field is free text, not validated against a model list. API key still never touches `storage.local`.
+- Results, real output:
+
+```
+$ npx tsc -p tsconfig.json -> No errors found
+$ npx tsc -p tsconfig.lint.json -> No errors found
+$ npm run build -> built extension to .../apple/Extension/Resources
+$ npm test
+ Test Files  12 passed (12)
+      Tests  107 passed (107)
+$ npm test -- settings
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+$ npm run e2e -- settings --global-timeout=60000
+Timed out waiting 60s for the teardown for test suite to run
+  3 did not run
+```
+
+- e2e not exercised: WebKit launch blocked in the sandbox (blocker 12); `tests/e2e/settings.spec.ts` has never run in a browser. Retention expiry and Delete-all logic are covered by unit tests with fake storage.
+- Supervised check: outside the sandbox, `npm run build && npm run e2e -- settings`. `xcodebuild test` unchanged by this task (no Swift edits).
+- Next task: T016 (draft privacy policy + terms; depends on T015).

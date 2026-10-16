@@ -9,7 +9,8 @@ row against runtime behavior before any safeguard PASS.
 | Provider + model choice | route requests | S03 / S08 | `browser.storage.local` | until changed | Delete all data |
 | Page content snapshot (text, structure; password and card fields redacted) | answer questions, plan agent actions | content script on user request only | sent to Anthropic or OpenAI (user's own account) | provider's retention under user's account terms | provider-side: user's provider account; local: not stored beyond conversation |
 | Screenshots of visible tab (if used by agent) | visual grounding | agent step, user-started run | sent to chosen provider | same as above | same as above |
-| Chat messages + agent run logs | show history | S04/S05 | `browser.storage.local` | user setting: off / 7 days / 30 days (default 7) | auto-expiry + Delete all data |
+| Chat messages (question + answer text, T015; agent run logs and coupon runs are NOT saved) | keep a retention-limited history | S04 after a successful answer | `browser.storage.local` key `history` | user setting: off / 7 days / 30 days (default 7); expired entries pruned on popup open; max 200 entries | auto-expiry + S08 Delete all data |
+| Granted site origins (per-site access, T015) | read pages the user chose | browser permission prompt | Safari permission store (not AssistAnt storage); listed in S08 | until removed | S08 Remove / Delete all data |
 | Coupon codes + cart totals | compare savings | F06 | local run log; codes sent to provider | as run log | as run log |
 | Web search queries for coupons | find codes | F06 | provider web-search tool (Anthropic / OpenAI) | provider terms | provider account |
 | Optional autofill profile (should, opt-in) | fill forms on approval | S08 | Keychain | until removed | Delete all data |
