@@ -112,3 +112,72 @@ describe("runTurn", () => {
     expect(result).toEqual({ ok: false, error: "Stopped.", partial: "" });
   });
 });
+
+describe("markdown formatting (T029)", () => {
+  const types = (nodes: ReturnType<typeof parseInline>) => nodes.map((n) => n.type);
+
+  it("renders the Fox News case: *title* is italic, not literal asterisks", () => {
+    const out = parseInline("Summary (from *3 children, teacher killed in Oregon school shooting | Fox News*)");
+    expect(types(out)).toEqual(["text", "em", "text"]);
+    expect(JSON.stringify(out)).not.toContain('"*');
+  });
+
+  it("handles bold, italic, bold italic, underscores, and strike", () => {
+    expect(types(parseInline("**b** *i* ***bi*** __b__ _i_ ~~s~~"))).toEqual([
+      "strong", "text", "em", "text", "strong", "text", "strong", "text", "em", "text", "del",
+    ]);
+  });
+
+  it("leaves math, snake_case, and stray stars alone", () => {
+    expect(parseInline("2 * 3 * 4")).toEqual([{ type: "text", text: "2 * 3 * 4" }]);
+    expect(parseInline("call my_var_name now")).toEqual([{ type: "text", text: "call my_var_name now" }]);
+    expect(parseInline("price: $5*")).toEqual([{ type: "text", text: "price: $5*" }]);
+  });
+
+  it("parses deeper headings, quotes, rules, tables, and nested lists", () => {
+    const md = [
+      "#### Key facts",
+      "",
+      "> Police said the suspect is dead.",
+      "",
+      "---",
+      "",
+      "| Item | Price |",
+      "|---|---:|",
+      "| Jacket | $90 |",
+      "",
+      "- Victims",
+      "  - three children",
+      "  - one teacher",
+      "- Location",
+    ].join("\n");
+    const blocks = parseMarkdown(md);
+    expect(blocks.map((b) => b.type)).toEqual(["heading", "quote", "rule", "table", "list"]);
+    const table = blocks[3];
+    expect(table?.type === "table" && table.rows.length).toBe(1);
+    const list = blocks[4];
+    expect(list?.type === "list" && list.items.length).toBe(2);
+    expect(list?.type === "list" && list.items[0]?.sub?.items.length).toBe(2);
+  });
+
+  it("keeps link safety inside emphasis", () => {
+    const out = parseInline("*see [x](javascript:alert(1))*");
+    expect(JSON.stringify(out)).not.toContain("javascript");
+  });
+});
+
+describe("links with parentheses", () => {
+  it("keeps Wikipedia-style URLs whole", () => {
+    const out = parseInline("[Pluto](https://en.wikipedia.org/wiki/Pluto_(dwarf_planet)) next");
+    expect(out[0]).toEqual({ type: "link", href: "https://en.wikipedia.org/wiki/Pluto_(dwarf_planet)", children: [{ type: "text", text: "Pluto" }] });
+  });
+});
+
+describe("answer formatting rules (T029)", () => {
+  it("are part of the chat system prompt and forbid title labels", async () => {
+    const { SYSTEM_PROMPT, FORMAT_RULES } = await import("../../src/chat/prompt");
+    expect(SYSTEM_PROMPT).toContain(FORMAT_RULES);
+    expect(FORMAT_RULES).toContain("do not write labels such as 'Summary (from ...)'");
+    expect(FORMAT_RULES).toContain("attribute claims to their source");
+  });
+});

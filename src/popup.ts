@@ -4,7 +4,7 @@ import { AgentControl, runAgent, type AgentPage, type ApprovalRequest, type Step
 import type { Action, ActionResult } from "./actions/executor";
 import type { Snapshot } from "./snapshot/snapshot";
 import { CONTENT_HANDLER, type ContentRequest } from "./content-api";
-import { SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
+import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { renderMarkdown } from "./chat/markdown";
 import { runTurn } from "./chat/session";
 import { mergeTabs, resolveMentions, type TabInfo } from "./chat/tabs";
@@ -323,9 +323,24 @@ async function main(): Promise<void> {
   }
 
   // ---------- Thread ----------
+  // Stay pinned to the newest message when the thread grows or shrinks (the
+  // composer grows as you type or when Control Browser adds its chip), unless
+  // the user has scrolled up to read. Scrolls the app makes always count as
+  // "at the bottom"; only later scroll events can unpin it.
+  let atBottom = true;
+  let programmaticAt = 0;
   const scrollToEnd = (): void => {
+    atBottom = true;
+    programmaticAt = performance.now();
     thread.scrollTop = thread.scrollHeight;
   };
+  thread.addEventListener("scroll", () => {
+    if (performance.now() - programmaticAt < 150) return;
+    atBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 24;
+  });
+  new ResizeObserver(() => {
+    if (atBottom) scrollToEnd();
+  }).observe(thread);
 
   function addMessage(kind: "user" | "assistant" | "error", text: string, opts: { mode?: string } = {}): HTMLElement {
     const node = document.createElement("div");
@@ -375,12 +390,16 @@ async function main(): Promise<void> {
     history.length = 0;
     for (const e of entries) {
       const mode = e.kind === "agent" ? "Control Browser" : e.kind === "coupons" ? "Find coupons" : undefined;
-      addMessage("user", e.question === SUMMARIZE_QUESTION ? "Summarize page" : e.question, mode ? { mode } : {});
+      const isSummary = e.question === SUMMARIZE_QUESTION || LEGACY_SUMMARIZE_QUESTIONS.includes(e.question);
+      addMessage("user", isSummary ? "Summarize page" : e.question, mode ? { mode } : {});
       addMessage("assistant", e.answer);
       if (!e.kind || e.kind === "chat") history.push({ role: "user", content: e.question }, { role: "assistant", content: e.answer });
     }
     history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
     if (entries.length) trace("conversation:restored " + entries.length);
+    // Again after layout and images settle, so the newest message is in view.
+    requestAnimationFrame(scrollToEnd);
+    window.addEventListener("load", scrollToEnd, { once: true });
   }
 
   function clearThread(): void {

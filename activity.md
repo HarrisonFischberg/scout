@@ -1031,3 +1031,13 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - I first misread a 150 ms color transition in a screenshot as a WebKit `:has()` bug; it was not. Kept the script-set selected class, corrected the code comment.
 - Checks: unit 136, e2e 51 (incl. 6 new redesign tests, axe light/dark on chat + settings), lint + typecheck clean, release bundle clean, XCTest 11/11, macOS build + bundle check ok, extension re-registered. Screenshots: `ralph/evidence/popup-*.png`.
 - Not verified yet: the new popup live in Safari on the owner's Mac; live Control Browser web research; iOS layout of the new popup in the Simulator.
+
+## 2026-10-16 — Answer formatting + app icon (T029, T030)
+
+- Owner report 1: on a Fox News article the answer began `Summary (from *3 children, teacher killed in Oregon school shooting; ... | Fox News*)` with literal asterisks. Expected: clean, well-formatted answers.
+  - Cause A: renderer only handled bold, code, links. Rewrote `src/chat/markdown.ts` (still AST + createElement only): italics (`*`/`_`), bold italic, strike, h1–h6, block quotes, tables, nested lists, rules, URLs with one level of parentheses; leaves math and snake_case alone. Unit test reproduces the Fox News line.
+  - Cause B: the system prompt told the model to "name the page title you took each fact from" even for one page. Replaced with `FORMAT_RULES`: one- or two-sentence overview, 3–6 bullets, sparing bold, no title or "Summary (from ...)" labels, no emoji, about 200 words, neutral and attributed for news; titles named only across several pages. Summarize prompt reworded; old wording still recognised in saved history. Agent finish summaries follow the same style.
+  - Also fixed: restored conversations and a growing composer could hide the newest message. Thread now stays pinned unless the user scrolls up. A first version had a race (programmatic scroll events could unpin it; caught as 1-in-3 flaky e2e); fixed and confirmed 4/4 full runs.
+- Owner report 2: Command-Tab showed a blank square. Cause: `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` but no asset catalog existed. Added `apple/App/Assets.xcassets` (macOS sizes 16–1024 with icon-grid margin and shadow; iOS opaque 1024, `hasAlpha: no`), rendered from new SVGs by `scripts/render-icons.mjs`; added to both app targets (`scripts/add-app-icons.rb`). macOS bundle now has `AppIcon.icns` + `Assets.car`.
+- Checks: unit 143, e2e 54, lint + typecheck clean, release bundle clean, XCTest pass, macOS + iOS builds ok, bundle check ok, Mac extension re-registered.
+- Not verified yet: the Fox News page live with the new prompt; the icon in the owner's Command-Tab (macOS may cache the old icon until the app is relaunched).
