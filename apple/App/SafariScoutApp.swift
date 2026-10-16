@@ -12,7 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #endif
 
 @main
-struct AssistAntApp: App {
+struct SafariScoutApp: App {
     #if os(macOS)
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     #endif
@@ -38,7 +38,7 @@ struct AssistAntApp: App {
     }
 }
 
-extension AssistAntApp {
+extension SafariScoutApp {
     // UI tests pass `-UITestColorScheme dark|light` to audit both appearances.
     // DEBUG builds only; release builds always follow the system setting.
     static var forcedScheme: ColorScheme? {

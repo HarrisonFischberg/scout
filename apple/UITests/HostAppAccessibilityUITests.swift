@@ -13,7 +13,7 @@ final class HostAppAccessibilityUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["-UITestColorScheme", scheme.rawValue]
         app.launch()
-        XCTAssertTrue(app.staticTexts["Set up AssistAnt"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Set up Safari Scout"].waitForExistence(timeout: 10))
         // Prove the scheme took effect: sample the top-left background pixel.
         let png = app.screenshot().image
         let dark = Self.isDarkCorner(png)
@@ -72,6 +72,6 @@ final class HostAppAccessibilityUITests: XCTestCase {
         attachScreenshot("T006-ios-legal-sheet")
         try audit(app, "legal-sheet")
         app.buttons["Done"].tap()
-        XCTAssertTrue(app.staticTexts["Set up AssistAnt"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Set up Safari Scout"].waitForExistence(timeout: 5))
     }
 }

@@ -88,7 +88,7 @@ describe("buildReport", () => {
     r.stage("snapshot:start 1");
     r.finish("error", "Could not read the page.");
     const text = buildReport(d.runs, ENV);
-    expect(text).toContain("## AssistAnt diagnostics — Actual behavior");
+    expect(text).toContain("## Safari Scout diagnostics — Actual behavior");
     expect(text).toContain("- Run: agent (#2)");
     expect(text).toContain('- Outcome: error — "Could not read the page."');
     expect(text).toContain("- Page: 127.0.0.1");

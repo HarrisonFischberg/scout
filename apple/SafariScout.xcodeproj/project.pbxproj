@@ -15,16 +15,16 @@
 		2E0506CD04E8191BAFA1EB6F /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 42362C08488648B56DDCF27B /* popup.html */; };
 		367D49613C3152FB5982BE7F /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A44912843C812B2B1960158 /* Cocoa.framework */; };
 		37F5710F2FD7EB8858B63030 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */; };
-		3CA34DA466AB0F3599D4F3D1 /* AssistAntApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFF3A7A6FFAC4C38E60D00F /* AssistAntApp.swift */; };
+		3CA34DA466AB0F3599D4F3D1 /* SafariScoutApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFF3A7A6FFAC4C38E60D00F /* SafariScoutApp.swift */; };
 		3CD8CE5019B39AB4ADF32A7B /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A44912843C812B2B1960158 /* Cocoa.framework */; };
 		418444F5EF38AA1A10A19813 /* terms.md in Resources */ = {isa = PBXBuildFile; fileRef = 826B6B632BCAB1F014E23696 /* terms.md */; };
 		4202761E19E3D5DF570469CA /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 2EACFEFE046C585EEC22A075 /* manifest.json */; };
 		432C9AE3398D8889519FDAFD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6984060B5995FB15A70F7EB /* ContentView.swift */; };
-		44591AF1303D7DE7A9594AF2 /* AssistAntApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFF3A7A6FFAC4C38E60D00F /* AssistAntApp.swift */; };
+		44591AF1303D7DE7A9594AF2 /* SafariScoutApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFF3A7A6FFAC4C38E60D00F /* SafariScoutApp.swift */; };
 		4B8DECDD083E4E0D24B435E1 /* privacy.html in Resources */ = {isa = PBXBuildFile; fileRef = 3DE806274580B227D3995289 /* privacy.html */; };
 		523BC8C08DFDAB1AA8A16FAE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6984060B5995FB15A70F7EB /* ContentView.swift */; };
 		54402E0BD5CABDE383CC2812 /* content.js in Resources */ = {isa = PBXBuildFile; fileRef = 0E1A0E7A1B227ADF88A1B413 /* content.js */; };
-		5C75FABD416B3597CFD94F9A /* AssistAnt Extension (iOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4A2569CEA3796C446ACE0B72 /* AssistAnt Extension (iOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		5C75FABD416B3597CFD94F9A /* Safari Scout Extension (iOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4A2569CEA3796C446ACE0B72 /* Safari Scout Extension (iOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		5E298B0C50FFB7B8E4398524 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */; };
 		67689D34836E23C7D42532BB /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 42362C08488648B56DDCF27B /* popup.html */; };
 		68EFD9AC48B2EC8AACAA8530 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */; };
@@ -40,7 +40,7 @@
 		7A1C0D4E2B9F46C3A8E5D1F1 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		7A1C0D4E2B9F46C3A8E5D1F2 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		7D806FF2F407994E4D28F1CF /* terms.html in Resources */ = {isa = PBXBuildFile; fileRef = E531573CE3C35CCBA2D4399C /* terms.html */; };
-		835D2EEF9233782755B3D00F /* AssistAnt Extension (macOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5B36544F9C86B6EED546C345 /* AssistAnt Extension (macOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		835D2EEF9233782755B3D00F /* Safari Scout Extension (macOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5B36544F9C86B6EED546C345 /* Safari Scout Extension (macOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8B9A6545AF27168729CA73E8 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
 		997FBCCB476F2CD0AAAEE239 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 319A3602A9A92E9E704AEBCD /* popup.js */; };
 		A9BCE9F420000BAEE4CBCF29 /* icons in Resources */ = {isa = PBXBuildFile; fileRef = 334A0CB4A03F106FEB4E1814 /* icons */; };
@@ -64,21 +64,21 @@
 			containerPortal = 3548676990B6C22592899C12 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = A481F7D633DD264BE0FF871E;
-			remoteInfo = "AssistAnt Extension (iOS)";
+			remoteInfo = "Safari Scout Extension (iOS)";
 		};
 		BEC446359B16DCC7FCD9DA1D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 3548676990B6C22592899C12 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = B496321F9C867596A21FB981;
-			remoteInfo = "AssistAnt (iOS)";
+			remoteInfo = "Safari Scout (iOS)";
 		};
 		CB1B1B26F1AE7869A24B6BCF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 3548676990B6C22592899C12 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 9AD50A085B973E592739695A;
-			remoteInfo = "AssistAnt Extension (macOS)";
+			remoteInfo = "Safari Scout Extension (macOS)";
 		};
 /* End PBXContainerItemProxy section */
 
@@ -89,7 +89,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				835D2EEF9233782755B3D00F /* AssistAnt Extension (macOS).appex in Embed Foundation Extensions */,
+				835D2EEF9233782755B3D00F /* Safari Scout Extension (macOS).appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -100,7 +100,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				5C75FABD416B3597CFD94F9A /* AssistAnt Extension (iOS).appex in Embed Foundation Extensions */,
+				5C75FABD416B3597CFD94F9A /* Safari Scout Extension (iOS).appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -110,20 +110,20 @@
 /* Begin PBXFileReference section */
 		0E1A0E7A1B227ADF88A1B413 /* content.js */ = {isa = PBXFileReference; includeInIndex = 1; path = content.js; sourceTree = "<group>"; };
 		1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
-		1FFF3A7A6FFAC4C38E60D00F /* AssistAntApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AssistAntApp.swift; sourceTree = "<group>"; };
-		2737B9E90C2F5CB976A2DDF7 /* AssistAntTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AssistAntTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1FFF3A7A6FFAC4C38E60D00F /* SafariScoutApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafariScoutApp.swift; sourceTree = "<group>"; };
+		2737B9E90C2F5CB976A2DDF7 /* SafariScoutTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SafariScoutTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A2DD59678E293865FEF9520 /* privacy-policy.md */ = {isa = PBXFileReference; includeInIndex = 1; path = "privacy-policy.md"; sourceTree = "<group>"; };
 		2EACFEFE046C585EEC22A075 /* manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; path = manifest.json; sourceTree = "<group>"; };
 		319A3602A9A92E9E704AEBCD /* popup.js */ = {isa = PBXFileReference; includeInIndex = 1; path = popup.js; sourceTree = "<group>"; };
 		334A0CB4A03F106FEB4E1814 /* icons */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; path = icons; sourceTree = "<group>"; };
 		3DE806274580B227D3995289 /* privacy.html */ = {isa = PBXFileReference; includeInIndex = 1; path = privacy.html; sourceTree = "<group>"; };
 		42362C08488648B56DDCF27B /* popup.html */ = {isa = PBXFileReference; includeInIndex = 1; path = popup.html; sourceTree = "<group>"; };
-		49CA46C4964F64376FDFBEBA /* AssistAnt (macOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AssistAnt (macOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		4A2569CEA3796C446ACE0B72 /* AssistAnt Extension (iOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "AssistAnt Extension (iOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		49CA46C4964F64376FDFBEBA /* Safari Scout (macOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Safari Scout (macOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4A2569CEA3796C446ACE0B72 /* Safari Scout Extension (iOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Safari Scout Extension (iOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A44912843C812B2B1960158 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
-		5B36544F9C86B6EED546C345 /* AssistAnt Extension (macOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "AssistAnt Extension (macOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5B36544F9C86B6EED546C345 /* Safari Scout Extension (macOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Safari Scout Extension (macOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		67857510C6E847756D3CEA9F /* KeychainStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeychainStoreTests.swift; sourceTree = "<group>"; };
-		6BD6F66D11844DC065A72B17 /* AssistAntExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = AssistAntExtension.entitlements; sourceTree = "<group>"; };
+		6BD6F66D11844DC065A72B17 /* SafariScoutExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = SafariScoutExtension.entitlements; sourceTree = "<group>"; };
 		77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS14.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSetup.swift; sourceTree = "<group>"; };
 		7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
@@ -131,15 +131,15 @@
 		826B6B632BCAB1F014E23696 /* terms.md */ = {isa = PBXFileReference; includeInIndex = 1; path = terms.md; sourceTree = "<group>"; };
 		899B4FA63AA1A90BAC21BB4C /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9C7921F29DCF66058FC8BE1C /* background.js */ = {isa = PBXFileReference; includeInIndex = 1; path = background.js; sourceTree = "<group>"; };
-		A957567A8D34C49A032E09C6 /* AssistAnt (iOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AssistAnt (iOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A957567A8D34C49A032E09C6 /* Safari Scout (iOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Safari Scout (iOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AFB2AA781644909EFF76E9FC /* ProviderSetupTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSetupTests.swift; sourceTree = "<group>"; };
-		B208F2A517C1376FC6C7DC97 /* AssistAntUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AssistAntUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B208F2A517C1376FC6C7DC97 /* SafariScoutUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SafariScoutUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B4986E15F6D4CE7B6EBDAC66 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BA52935E29A00BF86685A3B8 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D6984060B5995FB15A70F7EB /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		D979F8F918F26FE818AFE57A /* HostAppAccessibilityUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HostAppAccessibilityUITests.swift; sourceTree = "<group>"; };
 		E531573CE3C35CCBA2D4399C /* terms.html */ = {isa = PBXFileReference; includeInIndex = 1; path = terms.html; sourceTree = "<group>"; };
-		FFE46ABD9E4B81390D9346BB /* AssistAnt.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = AssistAnt.entitlements; sourceTree = "<group>"; };
+		FFE46ABD9E4B81390D9346BB /* SafariScout.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = SafariScout.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -210,7 +210,7 @@
 				1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */,
 				7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */,
 				BA52935E29A00BF86685A3B8 /* Info.plist */,
-				6BD6F66D11844DC065A72B17 /* AssistAntExtension.entitlements */,
+				6BD6F66D11844DC065A72B17 /* SafariScoutExtension.entitlements */,
 			);
 			name = Extension;
 			path = Extension;
@@ -235,12 +235,12 @@
 		3F5C47B46FD5427DB7956208 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				49CA46C4964F64376FDFBEBA /* AssistAnt (macOS).app */,
-				5B36544F9C86B6EED546C345 /* AssistAnt Extension (macOS).appex */,
-				A957567A8D34C49A032E09C6 /* AssistAnt (iOS).app */,
-				4A2569CEA3796C446ACE0B72 /* AssistAnt Extension (iOS).appex */,
-				2737B9E90C2F5CB976A2DDF7 /* AssistAntTests.xctest */,
-				B208F2A517C1376FC6C7DC97 /* AssistAntUITests.xctest */,
+				49CA46C4964F64376FDFBEBA /* Safari Scout (macOS).app */,
+				5B36544F9C86B6EED546C345 /* Safari Scout Extension (macOS).appex */,
+				A957567A8D34C49A032E09C6 /* Safari Scout (iOS).app */,
+				4A2569CEA3796C446ACE0B72 /* Safari Scout Extension (iOS).appex */,
+				2737B9E90C2F5CB976A2DDF7 /* SafariScoutTests.xctest */,
+				B208F2A517C1376FC6C7DC97 /* SafariScoutUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -287,12 +287,12 @@
 		CA7B7D07EAF849AAB1E1577D /* App */ = {
 			isa = PBXGroup;
 			children = (
-				1FFF3A7A6FFAC4C38E60D00F /* AssistAntApp.swift */,
+				1FFF3A7A6FFAC4C38E60D00F /* SafariScoutApp.swift */,
 				D6984060B5995FB15A70F7EB /* ContentView.swift */,
 				7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */,
 				7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */,
 				899B4FA63AA1A90BAC21BB4C /* Info.plist */,
-				FFE46ABD9E4B81390D9346BB /* AssistAnt.entitlements */,
+				FFE46ABD9E4B81390D9346BB /* SafariScout.entitlements */,
 				B4986E15F6D4CE7B6EBDAC66 /* Assets.xcassets */,
 			);
 			name = App;
@@ -321,9 +321,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		03BFAAF7FE0903248A3120CA /* AssistAntTests */ = {
+		03BFAAF7FE0903248A3120CA /* SafariScoutTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = BE0524A256F24AE58186DAA4 /* Build configuration list for PBXNativeTarget "AssistAntTests" */;
+			buildConfigurationList = BE0524A256F24AE58186DAA4 /* Build configuration list for PBXNativeTarget "SafariScoutTests" */;
 			buildPhases = (
 				CCD118378AEE49BF988EDBC8 /* Sources */,
 				058BDEA611DAA58BCC35DBCE /* Frameworks */,
@@ -333,14 +333,14 @@
 			);
 			dependencies = (
 			);
-			name = AssistAntTests;
-			productName = AssistAntTests;
-			productReference = 2737B9E90C2F5CB976A2DDF7 /* AssistAntTests.xctest */;
+			name = SafariScoutTests;
+			productName = SafariScoutTests;
+			productReference = 2737B9E90C2F5CB976A2DDF7 /* SafariScoutTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		77E697E80853BA2409AF86E5 /* AssistAntUITests */ = {
+		77E697E80853BA2409AF86E5 /* SafariScoutUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = E5EFD05731C52A2EB17E4982 /* Build configuration list for PBXNativeTarget "AssistAntUITests" */;
+			buildConfigurationList = E5EFD05731C52A2EB17E4982 /* Build configuration list for PBXNativeTarget "SafariScoutUITests" */;
 			buildPhases = (
 				DC0FFCE2B7CFA1AACE81717F /* Sources */,
 				CDCA68234B913FE38DD35EF5 /* Frameworks */,
@@ -351,14 +351,14 @@
 			dependencies = (
 				ABA3018CE36D7C585A54E428 /* PBXTargetDependency */,
 			);
-			name = AssistAntUITests;
-			productName = AssistAntUITests;
-			productReference = B208F2A517C1376FC6C7DC97 /* AssistAntUITests.xctest */;
+			name = SafariScoutUITests;
+			productName = SafariScoutUITests;
+			productReference = B208F2A517C1376FC6C7DC97 /* SafariScoutUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		9AD50A085B973E592739695A /* AssistAnt Extension (macOS) */ = {
+		9AD50A085B973E592739695A /* Safari Scout Extension (macOS) */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2D1618D0E7DCB9EC8C117D97 /* Build configuration list for PBXNativeTarget "AssistAnt Extension (macOS)" */;
+			buildConfigurationList = 2D1618D0E7DCB9EC8C117D97 /* Build configuration list for PBXNativeTarget "Safari Scout Extension (macOS)" */;
 			buildPhases = (
 				DF7F4A6F12E5ADFD368EE368 /* Sources */,
 				E8BB82833BF5F5993AA6BD04 /* Frameworks */,
@@ -368,14 +368,14 @@
 			);
 			dependencies = (
 			);
-			name = "AssistAnt Extension (macOS)";
-			productName = "AssistAnt Extension (macOS)";
-			productReference = 5B36544F9C86B6EED546C345 /* AssistAnt Extension (macOS).appex */;
+			name = "Safari Scout Extension (macOS)";
+			productName = "Safari Scout Extension (macOS)";
+			productReference = 5B36544F9C86B6EED546C345 /* Safari Scout Extension (macOS).appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		9FE3739F845541AF268D6ED4 /* AssistAnt (macOS) */ = {
+		9FE3739F845541AF268D6ED4 /* Safari Scout (macOS) */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 0454B43D00B40F8A7D28E276 /* Build configuration list for PBXNativeTarget "AssistAnt (macOS)" */;
+			buildConfigurationList = 0454B43D00B40F8A7D28E276 /* Build configuration list for PBXNativeTarget "Safari Scout (macOS)" */;
 			buildPhases = (
 				C332BAE45346BA21E802912C /* Sources */,
 				5295DEEBAF205A1613076938 /* Frameworks */,
@@ -387,14 +387,14 @@
 			dependencies = (
 				93EB1ABE068C657245A6FC0A /* PBXTargetDependency */,
 			);
-			name = "AssistAnt (macOS)";
-			productName = "AssistAnt (macOS)";
-			productReference = 49CA46C4964F64376FDFBEBA /* AssistAnt (macOS).app */;
+			name = "Safari Scout (macOS)";
+			productName = "Safari Scout (macOS)";
+			productReference = 49CA46C4964F64376FDFBEBA /* Safari Scout (macOS).app */;
 			productType = "com.apple.product-type.application";
 		};
-		A481F7D633DD264BE0FF871E /* AssistAnt Extension (iOS) */ = {
+		A481F7D633DD264BE0FF871E /* Safari Scout Extension (iOS) */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AE8D3A316116FB88F868D009 /* Build configuration list for PBXNativeTarget "AssistAnt Extension (iOS)" */;
+			buildConfigurationList = AE8D3A316116FB88F868D009 /* Build configuration list for PBXNativeTarget "Safari Scout Extension (iOS)" */;
 			buildPhases = (
 				055F3733B4CC36F1FBF9B95A /* Sources */,
 				27B620B0EDB7D985C25BA89E /* Frameworks */,
@@ -404,14 +404,14 @@
 			);
 			dependencies = (
 			);
-			name = "AssistAnt Extension (iOS)";
-			productName = "AssistAnt Extension (iOS)";
-			productReference = 4A2569CEA3796C446ACE0B72 /* AssistAnt Extension (iOS).appex */;
+			name = "Safari Scout Extension (iOS)";
+			productName = "Safari Scout Extension (iOS)";
+			productReference = 4A2569CEA3796C446ACE0B72 /* Safari Scout Extension (iOS).appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		B496321F9C867596A21FB981 /* AssistAnt (iOS) */ = {
+		B496321F9C867596A21FB981 /* Safari Scout (iOS) */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AA5934108546628588C7D5C8 /* Build configuration list for PBXNativeTarget "AssistAnt (iOS)" */;
+			buildConfigurationList = AA5934108546628588C7D5C8 /* Build configuration list for PBXNativeTarget "Safari Scout (iOS)" */;
 			buildPhases = (
 				5B244354C358E5ACF887DC0C /* Sources */,
 				80F77DA4660FE3B45C8CAAFC /* Frameworks */,
@@ -423,9 +423,9 @@
 			dependencies = (
 				F0D6701D0EFBF0D3142E4749 /* PBXTargetDependency */,
 			);
-			name = "AssistAnt (iOS)";
-			productName = "AssistAnt (iOS)";
-			productReference = A957567A8D34C49A032E09C6 /* AssistAnt (iOS).app */;
+			name = "Safari Scout (iOS)";
+			productName = "Safari Scout (iOS)";
+			productReference = A957567A8D34C49A032E09C6 /* Safari Scout (iOS).app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -437,7 +437,7 @@
 				LastSwiftUpdateCheck = 1240;
 				LastUpgradeCheck = 2700;
 			};
-			buildConfigurationList = E9E0AAA0269328AE872925CC /* Build configuration list for PBXProject "AssistAnt" */;
+			buildConfigurationList = E9E0AAA0269328AE872925CC /* Build configuration list for PBXProject "SafariScout" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -450,12 +450,12 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				9FE3739F845541AF268D6ED4 /* AssistAnt (macOS) */,
-				9AD50A085B973E592739695A /* AssistAnt Extension (macOS) */,
-				B496321F9C867596A21FB981 /* AssistAnt (iOS) */,
-				A481F7D633DD264BE0FF871E /* AssistAnt Extension (iOS) */,
-				03BFAAF7FE0903248A3120CA /* AssistAntTests */,
-				77E697E80853BA2409AF86E5 /* AssistAntUITests */,
+				9FE3739F845541AF268D6ED4 /* Safari Scout (macOS) */,
+				9AD50A085B973E592739695A /* Safari Scout Extension (macOS) */,
+				B496321F9C867596A21FB981 /* Safari Scout (iOS) */,
+				A481F7D633DD264BE0FF871E /* Safari Scout Extension (iOS) */,
+				03BFAAF7FE0903248A3120CA /* SafariScoutTests */,
+				77E697E80853BA2409AF86E5 /* SafariScoutUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -541,7 +541,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				44591AF1303D7DE7A9594AF2 /* AssistAntApp.swift in Sources */,
+				44591AF1303D7DE7A9594AF2 /* SafariScoutApp.swift in Sources */,
 				432C9AE3398D8889519FDAFD /* ContentView.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1A1 /* ProviderSetup.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1A3 /* OnboardingView.swift in Sources */,
@@ -553,7 +553,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3CA34DA466AB0F3599D4F3D1 /* AssistAntApp.swift in Sources */,
+				3CA34DA466AB0F3599D4F3D1 /* SafariScoutApp.swift in Sources */,
 				523BC8C08DFDAB1AA8A16FAE /* ContentView.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1A2 /* ProviderSetup.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1A4 /* OnboardingView.swift in Sources */,
@@ -594,20 +594,20 @@
 /* Begin PBXTargetDependency section */
 		93EB1ABE068C657245A6FC0A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = "AssistAnt Extension (macOS)";
-			target = 9AD50A085B973E592739695A /* AssistAnt Extension (macOS) */;
+			name = "Safari Scout Extension (macOS)";
+			target = 9AD50A085B973E592739695A /* Safari Scout Extension (macOS) */;
 			targetProxy = CB1B1B26F1AE7869A24B6BCF /* PBXContainerItemProxy */;
 		};
 		ABA3018CE36D7C585A54E428 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = "AssistAnt (iOS)";
-			target = B496321F9C867596A21FB981 /* AssistAnt (iOS) */;
+			name = "Safari Scout (iOS)";
+			target = B496321F9C867596A21FB981 /* Safari Scout (iOS) */;
 			targetProxy = BEC446359B16DCC7FCD9DA1D /* PBXContainerItemProxy */;
 		};
 		F0D6701D0EFBF0D3142E4749 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = "AssistAnt Extension (iOS)";
-			target = A481F7D633DD264BE0FF871E /* AssistAnt Extension (iOS) */;
+			name = "Safari Scout Extension (iOS)";
+			target = A481F7D633DD264BE0FF871E /* Safari Scout Extension (iOS) */;
 			targetProxy = 414C14E09ED5EA35B05E9CA0 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -623,7 +623,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = "AssistAnt (iOS)";
+				TEST_TARGET_NAME = "Safari Scout (iOS)";
 			};
 			name = Debug;
 		};
@@ -632,7 +632,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = App/AssistAnt.entitlements;
+				CODE_SIGN_ENTITLEMENTS = App/SafariScout.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -644,7 +644,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt;
-				PRODUCT_NAME = AssistAnt;
+				PRODUCT_NAME = "Safari Scout";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -656,7 +656,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = App/AssistAnt.entitlements;
+				CODE_SIGN_ENTITLEMENTS = App/SafariScout.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -668,7 +668,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt;
-				PRODUCT_NAME = AssistAnt;
+				PRODUCT_NAME = "Safari Scout";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -706,7 +706,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt;
-				PRODUCT_NAME = AssistAnt;
+				PRODUCT_NAME = "Safari Scout";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -795,7 +795,7 @@
 				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.example.AssistAnt.shared";
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt.Extension;
-				PRODUCT_NAME = "AssistAnt Extension";
+				PRODUCT_NAME = "Safari Scout Extension";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -822,7 +822,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt;
-				PRODUCT_NAME = AssistAnt;
+				PRODUCT_NAME = "Safari Scout";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -833,7 +833,7 @@
 		A4569B48BCBD25287FD6D54C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Extension/AssistAntExtension.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Extension/SafariScoutExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -841,7 +841,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt.Extension;
-				PRODUCT_NAME = "AssistAnt Extension";
+				PRODUCT_NAME = "Safari Scout Extension";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -919,7 +919,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = "AssistAnt (iOS)";
+				TEST_TARGET_NAME = "Safari Scout (iOS)";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -937,7 +937,7 @@
 				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.example.AssistAnt.shared";
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt.Extension;
-				PRODUCT_NAME = "AssistAnt Extension";
+				PRODUCT_NAME = "Safari Scout Extension";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -948,7 +948,7 @@
 		F6106EF545596DE91E83CB61 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Extension/AssistAntExtension.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Extension/SafariScoutExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -956,7 +956,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt.Extension;
-				PRODUCT_NAME = "AssistAnt Extension";
+				PRODUCT_NAME = "Safari Scout Extension";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -966,7 +966,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0454B43D00B40F8A7D28E276 /* Build configuration list for PBXNativeTarget "AssistAnt (macOS)" */ = {
+		0454B43D00B40F8A7D28E276 /* Build configuration list for PBXNativeTarget "Safari Scout (macOS)" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4996FAFC57EC1B27925B52F4 /* Release */,
@@ -975,7 +975,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2D1618D0E7DCB9EC8C117D97 /* Build configuration list for PBXNativeTarget "AssistAnt Extension (macOS)" */ = {
+		2D1618D0E7DCB9EC8C117D97 /* Build configuration list for PBXNativeTarget "Safari Scout Extension (macOS)" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F6106EF545596DE91E83CB61 /* Release */,
@@ -984,7 +984,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		AA5934108546628588C7D5C8 /* Build configuration list for PBXNativeTarget "AssistAnt (iOS)" */ = {
+		AA5934108546628588C7D5C8 /* Build configuration list for PBXNativeTarget "Safari Scout (iOS)" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				527BAEE222024E88F068A991 /* Release */,
@@ -993,7 +993,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		AE8D3A316116FB88F868D009 /* Build configuration list for PBXNativeTarget "AssistAnt Extension (iOS)" */ = {
+		AE8D3A316116FB88F868D009 /* Build configuration list for PBXNativeTarget "Safari Scout Extension (iOS)" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				8526D03576FB6EAFE6110C0A /* Release */,
@@ -1002,7 +1002,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		BE0524A256F24AE58186DAA4 /* Build configuration list for PBXNativeTarget "AssistAntTests" */ = {
+		BE0524A256F24AE58186DAA4 /* Build configuration list for PBXNativeTarget "SafariScoutTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				5E947953E5CD404B254E4F98 /* Release */,
@@ -1011,7 +1011,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		E5EFD05731C52A2EB17E4982 /* Build configuration list for PBXNativeTarget "AssistAntUITests" */ = {
+		E5EFD05731C52A2EB17E4982 /* Build configuration list for PBXNativeTarget "SafariScoutUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C6B46B3371CAF432BF59DDC2 /* Release */,
@@ -1020,7 +1020,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		E9E0AAA0269328AE872925CC /* Build configuration list for PBXProject "AssistAnt" */ = {
+		E9E0AAA0269328AE872925CC /* Build configuration list for PBXProject "SafariScout" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C1BF8BB05CCD3C0E885017A0 /* Debug */,

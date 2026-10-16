@@ -181,8 +181,8 @@ export function deleteReportText(r: DeleteReport): string {
   if (r.remainingOrigins.length) {
     const sites = r.remainingOrigins.map((o) => o.replace(/^\*:\/\/\*?\.?/, "").replace(/\/\*$/, "")).join(", ");
     parts.push(
-      "Safari still lets AssistAnt read: " + sites + ". Remove it in Safari's extension settings: " +
-        "on iPhone, Settings > Apps > Safari > Extensions > AssistAnt; on Mac, Safari > Settings > Extensions > AssistAnt > Edit Websites.",
+      "Safari still lets Safari Scout read: " + sites + ". Remove it in Safari's extension settings: " +
+        "on iPhone, Settings > Apps > Safari > Extensions > Safari Scout; on Mac, Safari > Settings > Extensions > Safari Scout > Edit Websites.",
     );
   } else if (!r.siteAccess) {
     parts.push("Could not remove site access. Check Safari's extension settings.");

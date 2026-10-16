@@ -16,7 +16,7 @@ struct KeychainStore {
     let accessGroup: String?
 
     static var configuredAccessGroup: String? {
-        guard let group = Bundle.main.object(forInfoDictionaryKey: "AssistAntKeychainGroup") as? String,
+        guard let group = Bundle.main.object(forInfoDictionaryKey: "SafariScoutKeychainGroup") as? String,
               !group.isEmpty, !group.hasPrefix("$(") else { return nil }
         return group
     }

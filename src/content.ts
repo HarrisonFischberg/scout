@@ -10,7 +10,7 @@ import { buildSnapshot, fromElement, type SnapNode, type Snapshot } from "./snap
 import { CONTENT_HANDLER as HANDLER, type ContentRequest } from "./content-api";
 import { shopifyCartInfo, shopifyCartUpdate } from "./coupons/shopify";
 
-const FLAG = "__assistAntContent";
+const FLAG = "__safariScoutContent";
 const g = globalThis as unknown as Record<string, unknown>;
 
 if (!g[FLAG]) {

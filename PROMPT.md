@@ -1,4 +1,4 @@
-# Per-iteration instructions (assist-ant)
+# Per-iteration instructions (Safari Scout)
 
 You are one fresh iteration of a bounded build loop. Work on ONE task only.
 

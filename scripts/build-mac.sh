@@ -16,6 +16,6 @@ else
   SIGN=(CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=)
   echo "signing: ad-hoc (Safari will need Allow unsigned extensions after each restart)"
 fi
-xcodebuild -project apple/AssistAnt.xcodeproj -scheme "AssistAnt (macOS)" -derivedDataPath build/DD "${SIGN[@]}" build 2>&1 | grep -E ' error:|BUILD'
-scripts/check-extension-bundle.sh "build/DD/Build/Products/Debug/AssistAnt.app/Contents/PlugIns/AssistAnt Extension.appex"
+xcodebuild -project apple/SafariScout.xcodeproj -scheme "Safari Scout (macOS)" -derivedDataPath build/DD "${SIGN[@]}" build 2>&1 | grep -E ' error:|BUILD'
+scripts/check-extension-bundle.sh "build/DD/Build/Products/Debug/Safari Scout.app/Contents/PlugIns/Safari Scout Extension.appex"
 scripts/register-mac-extension.sh "$@"

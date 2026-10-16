@@ -20,7 +20,7 @@ async function load(page: Page, path: string): Promise<void> {
 }
 
 const send = <T>(page: Page, req: Req): Promise<T> =>
-  page.evaluate((r) => (window as unknown as { __assistAntHandle: Handler }).__assistAntHandle(r), req) as Promise<T>;
+  page.evaluate((r) => (window as unknown as { __safariScoutHandle: Handler }).__safariScoutHandle(r), req) as Promise<T>;
 
 const act = (page: Page, action: Record<string, unknown>): Promise<Result> =>
   send<Result>(page, { type: "assistant:act", action });

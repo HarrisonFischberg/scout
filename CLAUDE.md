@@ -1,6 +1,6 @@
-# assist-ant
+# Safari Scout
 
-AssistAnt: Safari (macOS + iOS) toolbar AI assistant and browser agent using the user's own Anthropic or OpenAI API key
+Safari Scout: Safari (macOS + iOS) toolbar AI assistant and browser agent using the user's own Anthropic or OpenAI API key
 
 ## Workflow
 
@@ -25,8 +25,8 @@ loop, Caveman. Verify each before claiming use: `docs/tool-environment.md`.
 | tests | `npm test` (Vitest, `tests/unit/`) |
 | types | `npm run typecheck` |
 | lint | `npm run lint` (strict `tsc -p tsconfig.lint.json`; typescript-eslint does not yet support TypeScript 7) |
-| build | `npm run build`; macOS: `xcodebuild -project apple/AssistAnt.xcodeproj -scheme "AssistAnt (macOS)" -derivedDataPath build/DD CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= build`; iOS Simulator: same with `-scheme "AssistAnt (iOS)" -destination 'generic/platform=iOS Simulator'`. Mac day to day: `scripts/build-mac.sh` (builds, signs with the Apple Development certificate if present so Safari keeps the extension across restarts, registers it, does not launch the app). Sign at least ad-hoc: unsigned builds cannot use Keychain. Xcode runs outside the loop sandbox (supervised). |
-| e2e | `npx playwright test` (WebKit; outside the sandbox; port 4317 or `E2E_PORT`). iOS UI a11y audit: `xcodebuild -project apple/AssistAnt.xcodeproj -scheme AssistAntUITests -destination 'platform=iOS Simulator,id=BBCC2295-FABD-484B-AFCE-00855F8A328B' -parallel-testing-enabled NO -collect-test-diagnostics never -derivedDataPath build/DD CODE_SIGNING_ALLOWED=NO test` |
+| build | `npm run build`; macOS: `xcodebuild -project apple/SafariScout.xcodeproj -scheme "Safari Scout (macOS)" -derivedDataPath build/DD CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= build`; iOS Simulator: same with `-scheme "Safari Scout (iOS)" -destination 'generic/platform=iOS Simulator'`. Mac day to day: `scripts/build-mac.sh` (builds, signs with the Apple Development certificate if present so Safari keeps the extension across restarts, registers it, does not launch the app). Sign at least ad-hoc: unsigned builds cannot use Keychain. Xcode runs outside the loop sandbox (supervised). |
+| e2e | `npx playwright test` (WebKit; outside the sandbox; port 4317 or `E2E_PORT`). iOS UI a11y audit: `xcodebuild -project apple/SafariScout.xcodeproj -scheme SafariScoutUITests -destination 'platform=iOS Simulator,id=BBCC2295-FABD-484B-AFCE-00855F8A328B' -parallel-testing-enabled NO -collect-test-diagnostics never -derivedDataPath build/DD CODE_SIGNING_ALLOWED=NO test` |
 
 ## Artifacts
 
@@ -41,7 +41,7 @@ Gate A (engineering complete) is not Gate B (ready for release).
 
 Debug builds have a "Copy diagnostics" button (on every error message and in
 Settings → Diagnostics). The copied text starts with
-`## AssistAnt diagnostics — Actual behavior`.
+`## Safari Scout diagnostics — Actual behavior`.
 
 When the owner pastes a report that starts with that heading:
 

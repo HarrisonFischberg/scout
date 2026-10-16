@@ -77,7 +77,7 @@ async function openPopup(page: Page, modelDelayMs = 0): Promise<{ acts: string[]
           const g = globalThis as unknown as Record<string, unknown> & {
             browser: { tabs: { sendMessage: (id: number, m: unknown) => Promise<unknown> } };
           };
-          g.__assistAntHandle = (r: unknown) => g.browser.tabs.sendMessage(1, r);
+          g.__safariScoutHandle = (r: unknown) => g.browser.tabs.sendMessage(1, r);
           return [{ result: await inj.func(...inj.args) }];
         },
       },

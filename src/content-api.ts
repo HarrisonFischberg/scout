@@ -11,4 +11,4 @@ export type ContentRequest =
   | { type: "assistant:reload" };
 
 /** Global the content script registers its handler under (isolated world). */
-export const CONTENT_HANDLER = "__assistAntHandle";
+export const CONTENT_HANDLER = "__safariScoutHandle";

@@ -28,7 +28,7 @@ Verified: 2026-10-15
 | fixing-accessibility (edit-time a11y) | yes | ibelick/ui-skills, MIT, vendored 2026-10-15 | PROVENANCE.txt present; not yet invoked |
 | web-quality-audit + siblings (evidence) | yes | addyosmani/web-quality-skills, MIT, vendored 2026-10-15 | PROVENANCE.txt present for web-quality-audit, accessibility, performance, best-practices |
 
-Note: web-quality-audit targets rendered web pages. AssistAnt's UI is extension
+Note: web-quality-audit targets rendered web pages. Safari Scout's UI is extension
 HTML (popup/panel) plus SwiftUI host app. Audits run against the extension
 pages served from a local dev harness; SwiftUI screens need Xcode Accessibility
 Inspector checks instead.
