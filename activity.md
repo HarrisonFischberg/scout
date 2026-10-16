@@ -345,3 +345,9 @@ built extension to /Users/harrison/projects/assist-ant/apple/Extension/Resources
 - Stop-hook feedback: condition not met. Agreed. No `pending` task is dependency-ready; T002 is `blocked` (launch-blockers 9, 10). No `prd.md` row changed.
 - No new command run. Nothing has changed in the sandbox since turn 2, so another build or scan would only repeat the same result.
 - Final stop: goal NOT met after 4 turns. Turn 5 not used. Owner action on T002 is the only unblock (run the Xcode builds and the Safari extension load outside the sandbox, then set T002 to `done`).
+
+## 2026-10-15 — /goal run (turn 5 of 5): goal NOT met, cap reached
+
+- Stop-hook feedback: condition not satisfied, as in turns 1–4. No dependency-ready `pending` task exists; T002 is `blocked` (launch-blockers 9, 10). No `prd.md` row changed.
+- Turn 5 used as the stop point. No new command run: nothing in the sandbox changed since turn 2.
+- Goal stopped at the 5-turn limit per PROMPT.md. Owner action on T002 is the only unblock: run the Xcode builds and the Safari extension load outside the sandbox, then set T002 to `done`. T003 then becomes the next runnable task.
