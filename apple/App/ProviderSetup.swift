@@ -16,10 +16,22 @@ enum Provider: String, CaseIterable, Identifiable {
     }
 
     // Linked from the consent sheet before anything is sent to the provider.
+    // OpenAI: the rest-of-world policy, which links to the EU/UK/CH and US
+    // versions (same link as src/settings/consent.ts).
     var privacyPolicy: URL {
         switch self {
         case .anthropic: return URL(string: "https://www.anthropic.com/legal/privacy")!
-        case .openai: return URL(string: "https://openai.com/policies/privacy-policy/")!
+        case .openai: return URL(string: "https://openai.com/policies/row-privacy-policy/")!
+        }
+    }
+
+    // The privacy policies exclude content sent through the providers'
+    // business offerings; requests with the user's own API key fall under
+    // these terms, so the sheet links both (same as src/settings/consent.ts).
+    var apiDataTerms: URL {
+        switch self {
+        case .anthropic: return URL(string: "https://www.anthropic.com/legal/commercial-terms")!
+        case .openai: return URL(string: "https://openai.com/enterprise-privacy/")!
         }
     }
 

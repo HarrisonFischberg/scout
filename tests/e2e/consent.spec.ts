@@ -103,6 +103,7 @@ test("the first request asks first, and nothing reaches Anthropic before Allow",
   await expect(dialog).toContainText("Your API key, only to sign in to Anthropic");
   await expect(dialog).not.toContainText("OpenAI");
   await expect(dialog.getByRole("link", { name: "Anthropic privacy policy" })).toHaveAttribute("href", "https://www.anthropic.com/legal/privacy");
+  await expect(dialog.getByRole("link", { name: "How Anthropic handles API data" })).toHaveAttribute("href", "https://www.anthropic.com/legal/commercial-terms");
   expect(calls.anthropic).toHaveLength(0);
   expect(await reads(page)).toBe(0);
   expect(await stored(page)).toBeUndefined();
@@ -166,7 +167,7 @@ test("keyboard: Option+Tab stays inside the dialog and reaches the link and both
     expect(where.inside, "focus left the dialog: " + where.name).toBe(true);
     seen.add(where.name);
   }
-  expect([...seen]).toEqual(expect.arrayContaining(["Anthropic privacy policy", "Allow", "Not now"]));
+  expect([...seen]).toEqual(expect.arrayContaining(["Anthropic privacy policy", "How Anthropic handles API data", "Allow", "Not now"]));
 });
 
 test("Summarize, Control Browser, and Find coupons also ask first and read nothing before Allow", async ({ page }) => {
@@ -218,7 +219,8 @@ test("consent is per provider: switching to OpenAI asks again before any OpenAI 
   const dialog = page.getByRole("dialog", { name: "Share with OpenAI?" });
   await expect(dialog).toBeVisible();
   await expect(dialog).not.toContainText("Anthropic");
-  await expect(dialog.getByRole("link", { name: "OpenAI privacy policy" })).toHaveAttribute("href", "https://openai.com/policies/privacy-policy/");
+  await expect(dialog.getByRole("link", { name: "OpenAI privacy policy" })).toHaveAttribute("href", "https://openai.com/policies/row-privacy-policy/");
+  await expect(dialog.getByRole("link", { name: "How OpenAI handles API data" })).toHaveAttribute("href", "https://openai.com/enterprise-privacy/");
   expect(calls.openai).toHaveLength(0);
 
   await dialog.getByRole("button", { name: "Allow" }).click();

@@ -20,9 +20,20 @@ export type ConsentMap = Partial<Record<Provider, ConsentRecord>>;
 
 export const PROVIDER_NAMES: Record<Provider, string> = { anthropic: "Anthropic", openai: "OpenAI" };
 
+// OpenAI: its rest-of-world policy, which opens with links to the EU/UK/CH
+// and US versions, so one link works in every market (owner, 2026-10-16).
 export const PRIVACY_POLICY: Record<Provider, string> = {
   anthropic: "https://www.anthropic.com/legal/privacy",
-  openai: "https://openai.com/policies/privacy-policy/",
+  openai: "https://openai.com/policies/row-privacy-policy/",
+};
+
+// Both privacy policies say they do not cover content sent through the
+// providers' business offerings (OpenAI names its API). Requests made with the
+// user's own API key fall under these terms instead, so both are linked
+// (checked 2026-10-16).
+export const API_TERMS: Record<Provider, string> = {
+  anthropic: "https://www.anthropic.com/legal/commercial-terms",
+  openai: "https://openai.com/enterprise-privacy/",
 };
 
 const HOSTS: Record<string, Provider> = { "api.anthropic.com": "anthropic", "api.openai.com": "openai" };
@@ -124,6 +135,8 @@ export interface ConsentText {
   items: string[];
   policyLabel: string;
   policyUrl: string;
+  termsLabel: string;
+  termsUrl: string;
   after: string;
 }
 
@@ -144,6 +157,8 @@ export function consentText(p: Provider): ConsentText {
     ],
     policyLabel: name + " privacy policy",
     policyUrl: PRIVACY_POLICY[p],
+    termsLabel: "How " + name + " handles API data",
+    termsUrl: API_TERMS[p],
     after: "Nothing is sent until you choose Allow. You can withdraw this at any time in Settings.",
   };
 }

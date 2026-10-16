@@ -785,6 +785,9 @@ async function main(): Promise<void> {
     const policy = el<HTMLAnchorElement>("consent-policy");
     policy.href = t.policyUrl;
     policy.textContent = t.policyLabel;
+    const terms = el<HTMLAnchorElement>("consent-terms");
+    terms.href = t.termsUrl;
+    terms.textContent = t.termsLabel;
     el("consent-after").textContent = t.after;
     consentDialog.showModal();
     consentTitle.focus();

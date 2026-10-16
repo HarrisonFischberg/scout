@@ -146,6 +146,7 @@ private struct ConsentSheet: View {
                     .accessibilityElement(children: .combine)
                 }
                 Link("\(name) privacy policy", destination: provider.privacyPolicy)
+                Link("How \(name) handles API data", destination: provider.apiDataTerms)
                 Text("Nothing is sent until you choose Allow. Safari asks again before Safari Scout's first request from the browser. You can withdraw this permission on this screen.")
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 24) {
