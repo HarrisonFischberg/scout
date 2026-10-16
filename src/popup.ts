@@ -6,6 +6,8 @@ import { SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { renderMarkdown } from "./chat/markdown";
 import { runTurn } from "./chat/session";
 import { mergeTabs, resolveMentions, type TabInfo } from "./chat/tabs";
+import { suggestCodes } from "./coupons/codes";
+import { runCouponSearch } from "./coupons/finder";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { createProvider, type ChatMessage } from "./providers";
 
@@ -298,6 +300,68 @@ async function main(): Promise<void> {
     question.focus();
   }
 
+  const couponsRun = el<HTMLButtonElement>("coupons-run");
+  const couponsBox = el("coupons");
+  const couponsRows = el("coupons-rows");
+  const couponsSummary = el("coupons-summary");
+  const couponsStop = el<HTMLButtonElement>("coupons-stop");
+
+  // S07: codes are tried by plain code, one at a time; the model only suggests them.
+  async function runCoupons(): Promise<void> {
+    if (controller || control) return;
+    const page = await tabAgentPage().catch(() => null);
+    if (!page) {
+      addMessage("error", "Could not reach this page. Reload it and try again.");
+      return;
+    }
+    control = new AgentControl();
+    couponsRows.replaceChildren();
+    couponsBox.hidden = false;
+    couponsSummary.textContent = "Asking the model for codes…";
+    agentRun.disabled = send.disabled = summarize.disabled = couponsRun.disabled = true;
+    status.textContent = "Finding coupons.";
+    couponsStop.focus();
+    const onStop = (): void => control?.stop();
+    couponsStop.addEventListener("click", onStop);
+    let tokens = 0;
+    try {
+      const snap = await page.snapshot();
+      const merchant = new URL(snap.url).hostname;
+      const ac = new AbortController();
+      couponsStop.addEventListener("click", () => ac.abort(), { once: true });
+      const sug = await suggestCodes(provider, settings.model, merchant, ac.signal);
+      tokens = sug.inputTokens + sug.outputTokens;
+      couponsSummary.textContent = "Trying " + sug.codes.length + " codes…";
+      const outcome = await runCouponSearch({
+        page,
+        codes: sug.codes,
+        ...(control ? { control } : {}),
+        onAttempt: (a) => {
+          const tr = document.createElement("tr");
+          for (const t of [a.code, a.total === null ? "unknown" : "$" + a.total.toFixed(2), a.note]) {
+            const td = document.createElement("td");
+            td.textContent = t;
+            tr.appendChild(td);
+          }
+          couponsRows.appendChild(tr);
+        },
+      });
+      couponsSummary.textContent =
+        outcome.status === "done" && outcome.baseline !== null
+          ? "Started at $" + outcome.baseline.toFixed(2) + ". " + outcome.message
+          : outcome.message;
+      status.textContent = "Coupons " + outcome.status + ". Tokens: " + tokens + ".";
+    } catch {
+      couponsSummary.textContent = "Could not finish the coupon search. Nothing was ordered.";
+      status.textContent = "Coupons error.";
+    }
+    couponsStop.removeEventListener("click", onStop);
+    control = null;
+    agentRun.disabled = send.disabled = summarize.disabled = couponsRun.disabled = false;
+    question.focus();
+  }
+
+  couponsRun.addEventListener("click", () => void runCoupons());
   agentRun.addEventListener("click", () => void runTask(question.value));
   agentPause.addEventListener("click", () => {
     if (!control) return;

@@ -73,6 +73,8 @@
         border-radius: 8px; border: 1px solid var(--border-control);
         background: var(--bg-surface); color: var(--text-primary);
       }
+      table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      th, td { text-align: left; padding: 4px; border-bottom: 1px solid var(--border-control); overflow-wrap: anywhere; }
       .row { display: flex; gap: 8px; flex-wrap: wrap; }
       button {
         font: inherit; min-height: 32px; padding: 4px 12px; border-radius: 8px; cursor: pointer;
@@ -115,6 +117,17 @@
           <button id="approval-deny" type="button">Don't allow</button>
         </div>
       </section>
+      <section id="coupons" class="empty" aria-labelledby="coupons-title" hidden>
+        <h2 id="coupons-title">Coupon results</h2>
+        <p id="coupons-summary" class="hint" role="status"></p>
+        <table id="coupons-table">
+          <caption class="hint">Codes tried one at a time, with the total read from the page after each.</caption>
+          <thead><tr><th scope="col">Code</th><th scope="col">Total</th><th scope="col">Result</th></tr></thead>
+          <tbody id="coupons-rows"></tbody>
+        </table>
+        <p class="hint">Codes are model suggestions, not a live web search. AssistAnt never places the order.</p>
+        <button id="coupons-stop" type="button">Stop</button>
+      </section>
       <form id="composer" hidden>
         <label for="question">Ask about this page, or describe a task</label>
         <textarea id="question" rows="3" autocomplete="off"></textarea>
@@ -127,6 +140,7 @@
           <button id="summarize" type="button">Summarize page</button>
           <button id="stop" type="button" hidden>Stop</button>
           <button id="agent-run" type="button">Do this on the page</button>
+          <button id="coupons-run" type="button">Find coupons</button>
         </div>
         <p class="hint">Press Enter to send, Shift+Enter for a new line.</p>
       </form>

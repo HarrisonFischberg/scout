@@ -726,3 +726,28 @@ Timed out waiting 60s for the test suite to run
 - Added macOS unit-test bundle `AssistAntTests` via `scripts/add-test-target.rb` (xcodeproj gem 1.21.0). `xcodebuild -project apple/AssistAnt.xcodeproj -scheme AssistAntTests -derivedDataPath build/DD test` → "Executed 8 tests, with 0 failures", TEST SUCCEEDED.
 - `grep -rnE "storage\.(local|sync)\.set" src` → no matches.
 - Statuses: T003, T004, T007, T009–T012 done. T006 still needs screenshots, Accessibility Inspector, and the shared Keychain access group (needs an Apple team ID, blocker 2/14).
+
+## 2026-10-15 - T013 coupon finder: needs supervised check
+
+- Task: T013 (lowest-numbered pending; T010 and T011 satisfied). Status `in progress`, then `needs supervised check`.
+- Files: `src/coupons/finder.ts`, `src/coupons/codes.ts`, `tests/unit/coupons.test.ts`, `tests/e2e/coupons.spec.ts` (new); `src/popup.ts` + `src/popup.html` (S07 results table, "Find coupons", Stop), `tests/fixtures/shop.html` (coupon message, order status marker); `prd.md`, `docs/launch-blockers.md`.
+- Design: the try loop is plain code, not model-driven. `runCouponSearch` finds the coupon input and an Apply button (any target the safety classifier marks payment/login/send/destructive/download is refused, so the order button is never a candidate), then per code: type, click Apply, wait, re-snapshot, parse `Total`. Saving is baseline minus total; best is the largest positive saving. The winner is re-applied and verified by a fresh read. CAPTCHA mid-run is a hard stop; Stop/Pause honored between codes. Max 10 codes. No order click exists in the code path.
+- Limit, honest: `suggestCodes` asks the model for codes. It is not a live web search (provider layer has no search tool), so codes may be stale or invented; every code is checked against the real total. UI says so. Recorded as launch-blockers 15. `claims-evidence.md` gets no "finds coupons" claim row until search exists.
+- Merchant terms and bot detection stay open (blocker 4). Fixture and tests use synthetic codes only; no merchant network calls. No new dependency or data flow (merchant hostname goes to the chosen provider, same flow as page text).
+- Results, real output:
+
+```
+$ npm test
+ Test Files  10 passed (10)
+      Tests  92 passed (92)
+$ npx tsc -p tsconfig.json -> exit 0
+$ npx tsc -p tsconfig.lint.json -> exit 0
+$ npm run build -> built extension to .../apple/Extension/Resources
+$ npm run e2e -- coupons --global-timeout=60000
+Timed out waiting 60s for the test suite to run
+  1 did not run
+```
+
+- e2e not exercised: WebKit launch blocked in the sandbox (blocker 12); `tests/e2e/coupons.spec.ts` has never run in a browser. The acceptance e2e (5 codes, 2 valid, best applied, order never clicked) is covered by the unit test `tries each code once, keeps the larger saving, never clicks order` until then.
+- Supervised check: outside the sandbox, `npm run build && npm run e2e -- coupons`.
+- Next task: T014 (cost display; depends on T005).
