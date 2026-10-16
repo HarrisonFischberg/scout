@@ -1011,3 +1011,12 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Release builds exclude it: `__ASSISTANT_DEBUG__` define + `minifySyntax` drops the code; `<!-- debug:start/end -->` block stripped from HTML. `npm run check:release` → "release bundle clean".
 - Tests: unit 131 (10 new), e2e 45 (3 new: report is Actual behavior, contains no key/page text/URL query/question by default; opt-in includes question; controls labeled). XCTest 11/11. macOS build ok, bundle check ok.
 - Workflow rule added to CLAUDE.md ("Bug reports from the owner"). Data inventory row added.
+
+## 2026-10-15 — Ant mascot for the Safari toolbar
+
+- Owner asked for a funny ant character as the toolbar element.
+- Drew original SVGs: `design/icons/ant-toolbar.svg` (head: mismatched googly eyes, curly antennae, buck-tooth grin; dark outline + violet so it reads on light and dark toolbars) and `design/icons/ant-icon.svg` (full ant waving, on a lavender tile).
+- `scripts/render-icons.mjs` renders PNGs with Playwright WebKit (no new dependency) into `src/icons/` and a light/dark preview (`build/icon-preview.png`, checked visually at 16/19/32 px).
+- Manifest: `action.default_icon` (16–64) and `icons` (48–512). Build copies `src/icons/` to Resources; Xcode folder reference added to both extension targets; bundles verified (12 PNGs each).
+- Added `scripts/register-mac-extension.sh` (unregisters Simulator copies, registers + relaunches the Mac app); run after any iOS build.
+- Checks: unit 131, e2e 45, release bundle clean, macOS + iOS builds ok.

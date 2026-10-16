@@ -1,6 +1,6 @@
 // Bundles src/ into the Safari extension Resources folder and copies static files.
 import { build } from "esbuild";
-import { copyFile, readFile, writeFile } from "node:fs/promises";
+import { copyFile, cp, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
@@ -32,6 +32,8 @@ await build({
 });
 
 await copyFile(join(src, "manifest.json"), join(out, "manifest.json"));
+// Toolbar + extension icons (rendered from design/icons by scripts/render-icons.mjs).
+await cp(join(src, "icons"), join(out, "icons"), { recursive: true });
 const popupHtml = await readFile(join(src, "popup.html"), "utf8");
 await writeFile(
   join(out, "popup.html"),

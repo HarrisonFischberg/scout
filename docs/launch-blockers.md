@@ -50,5 +50,5 @@ Never infer these from a reference app. Never invent them.
 | 16 | OpenAI default model `gpt-5` and its price are unverified against OpenAI docs; cost estimate withheld | missing fact | owner + Claude | OpenAI path, safeguard 10 | open |
 | 17 | iOS Safari cannot read background tabs, so @tab works only on macOS; disclosed in the conversation | platform limit | owner (product decision) | F04 on iOS, listing claims | open |
 | 18 | macOS Safari flows F02–F07 not driven live (only extension load) | verification | owner manual or supervised | Gate A | open |
-| 19 | App and extension icons are Xcode placeholders | asset | owner | release, safeguard 19 | open |
+| 19 | App and extension icons are Xcode placeholders | asset | owner | release, safeguard 19 | partly resolved 2026-10-15: original ant toolbar + extension icons added; host app icon (Assets.xcassets AppIcon) still a placeholder; trademark/brand check of name + mascot is the owner's |
 | 20 | Safari-granted site access cannot be revoked by the extension on iOS; Delete all data tells the user where to remove it | platform limit + legal review | owner + counsel | safeguard 20 wording | open |

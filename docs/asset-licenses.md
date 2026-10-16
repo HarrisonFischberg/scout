@@ -10,3 +10,4 @@
 
 "Publicly downloadable" is not a license.
 | @axe-core/playwright 4.14.0 (+ axe-core 4.14.0) | npm devDependency (test only, not shipped) | npm registry | MPL-2.0 | automated WCAG checks in e2e | keep license notice if redistributed; not bundled into the app | tests/e2e/a11y.spec.ts |
+| AssistAnt ant character (toolbar icon `design/icons/ant-toolbar.svg`, extension icon `design/icons/ant-icon.svg`, PNGs in `src/icons/`) | image | original artwork drawn for this project by Claude, 2026-10-15 | owned by the project owner; no third-party source, no stock or AI-image service used | all | none | Safari toolbar, Safari Settings → Extensions, iOS page menu |
