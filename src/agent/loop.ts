@@ -1,11 +1,12 @@
 // Agent loop (T010): plan, act, observe, repeat, under step and token budgets
 // with Pause and Stop. One action per step so Stop halts within one step.
 // Page text is untrusted data and reaches the model only inside a fence.
-// Sensitive-action approval is T011; the loop only runs allowlisted tools.
+// Sensitive actions (T011) wait for user approval and are denied by default.
 import type { Action, ActionResult } from "../actions/executor";
 import { fencePage } from "../chat/prompt";
 import { ProviderError } from "../providers/errors";
 import type { ChatMessage, ProviderClient, ToolSpec, Usage } from "../providers/types";
+import { classifyAction, detectCaptcha, type Classification } from "../safety/classifier";
 import type { Snapshot } from "../snapshot/snapshot";
 
 export interface AgentPage {
@@ -21,7 +22,7 @@ export interface AgentBudget {
 
 export const DEFAULT_BUDGET: AgentBudget = { maxSteps: 12, maxTokens: 100_000 };
 
-export type AgentStatus = "done" | "stopped" | "step_budget" | "token_budget" | "error";
+export type AgentStatus = "done" | "stopped" | "captcha" | "step_budget" | "token_budget" | "error";
 
 export interface StepRecord {
   index: number;
@@ -34,6 +35,13 @@ export type AgentEvent =
   | { type: "plan"; text: string }
   | { type: "step_start"; index: number }
   | { type: "step_end"; step: StepRecord };
+
+export interface ApprovalRequest {
+  action: Action;
+  /** Accessible name of the target element, when known. */
+  target: string;
+  classification: Classification;
+}
 
 export interface AgentOutcome {
   status: AgentStatus;
@@ -141,6 +149,8 @@ export interface AgentInput {
   control?: AgentControl;
   budget?: AgentBudget;
   signal?: AbortSignal;
+  /** Resolves true to allow a sensitive action. Absent means deny. */
+  approve?: (req: ApprovalRequest) => Promise<boolean>;
   onEvent?: (e: AgentEvent) => void;
 }
 
@@ -186,6 +196,10 @@ export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
       snap = await input.page.snapshot();
     } catch {
       return end("error", "Could not read the page.");
+    }
+    // CAPTCHAs are a hard stop: the agent never tries to solve or bypass one.
+    if (detectCaptcha(snap)) {
+      return end("captcha", "Stopped: the page asks for a CAPTCHA. Complete it yourself, then run the task again.");
     }
     const prefix = index === 1 ? "<user_goal>" + input.goal + "</user_goal>\n\n" : "";
     history.push({ role: "user", content: prefix + observation(snap) });
@@ -239,10 +253,30 @@ export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
       step.result = { ok: false, action: call.name, message: "Unknown tool " + call.name + ".", error: "unknown_action" };
     } else {
       step.action = action;
-      try {
-        step.result = await input.page.act(action);
-      } catch {
-        step.result = { ok: false, action: action.type, message: "Action failed.", error: "failed" };
+      const cls = classifyAction(action, snap);
+      let allowed = true;
+      if (cls.sensitive) {
+        const target = "ref" in action ? (snap.elements.find((e) => e.ref === action.ref)?.name ?? "") : "";
+        try {
+          allowed = (await input.approve?.({ action, target, classification: cls })) === true;
+        } catch {
+          allowed = false;
+        }
+        if (halted()) return end("stopped", "Stopped.");
+      }
+      if (!allowed) {
+        step.result = {
+          ok: false,
+          action: action.type,
+          message: "The user did not approve this action. Do not retry it; choose another way or finish.",
+          error: "approval_denied",
+        };
+      } else {
+        try {
+          step.result = await input.page.act(action);
+        } catch {
+          step.result = { ok: false, action: action.type, message: "Action failed.", error: "failed" };
+        }
       }
     }
     steps.push(step);
