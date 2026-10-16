@@ -37,6 +37,10 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
             "content-type": "application/json",
             "x-api-key": cfg.apiKey,
             "anthropic-version": "2023-06-01",
+            // Calls come from the extension's browser origin with the user's own
+            // key (BYOK); the API rejects browser-origin requests without this
+            // opt-in (the official SDK sends it for dangerouslyAllowBrowser).
+            "anthropic-dangerous-direct-browser-access": "true",
           },
           body: JSON.stringify(body),
           signal: req.signal,

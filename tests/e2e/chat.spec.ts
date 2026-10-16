@@ -97,3 +97,34 @@ test.describe("touch device", () => {
     await expect(page.getByLabel("Ask about this page")).not.toBeFocused();
   });
 });
+
+// T018: with OpenAI chosen but only an Anthropic key saved, the popup used
+// Anthropic without saying so. The fallback must be visible.
+test("a provider fallback is announced in the conversation", async ({ page }) => {
+  await page.addInitScript(() => {
+    (globalThis as unknown as { browser: unknown }).browser = {
+      runtime: {
+        sendMessage: async () => ({ ok: true }),
+        sendNativeMessage: async (_app: string, m: { type: string; account?: string }) =>
+          m.type === "keychain.get" && m.account === "anthropic" ? { ok: true, value: "sk-test-synthetic" } : { ok: true },
+        onMessage: { addListener() {} },
+      },
+      tabs: { query: async () => [{ id: 1 }] },
+      scripting: { executeScript: async () => [{ result: null }] },
+      storage: {
+        local: {
+          get: async () => ({ settings: { provider: "openai", model: "gpt-5", retention: "7" } }),
+          set: async () => undefined,
+          clear: async () => undefined,
+        },
+      },
+    };
+  });
+  await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
+  await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
+  await page.goto("/popup.html");
+  await expect(page.locator("#status")).toContainText("Using anthropic");
+  await expect(
+    page.getByRole("log").getByText("No OpenAI key is saved, so AssistAnt is using your Anthropic key."),
+  ).toBeVisible();
+});

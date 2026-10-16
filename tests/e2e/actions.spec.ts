@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
 // Loads the built content script (run `npm run build` first) into a fixture
-// page with a stubbed `browser` namespace, then drives it through the same
-// messages the background script will send.
+// page, then drives it through the same handler the popup calls via
+// scripting.executeScript.
 type Req = { type: "assistant:snapshot" } | { type: "assistant:act"; action: Record<string, unknown> };
 interface Snap {
   elements: Array<{ ref: string; name: string; role: string; value?: string }>;
@@ -12,21 +12,15 @@ interface Result {
   error?: string;
   message: string;
 }
-type Listener = (m: unknown) => Promise<unknown>;
+type Handler = (m: unknown) => unknown;
 
 async function load(page: Page, path: string): Promise<void> {
-  await page.addInitScript(() => {
-    const w = window as unknown as { __listener?: Listener };
-    (globalThis as unknown as { browser: unknown }).browser = {
-      runtime: { onMessage: { addListener: (fn: Listener) => (w.__listener = fn) } },
-    };
-  });
   await page.goto(path);
   await page.addScriptTag({ path: "apple/Extension/Resources/content.js" });
 }
 
 const send = <T>(page: Page, req: Req): Promise<T> =>
-  page.evaluate((r) => (window as unknown as { __listener: Listener }).__listener(r), req) as Promise<T>;
+  page.evaluate((r) => (window as unknown as { __assistAntHandle: Handler }).__assistAntHandle(r), req) as Promise<T>;
 
 const act = (page: Page, action: Record<string, unknown>): Promise<Result> =>
   send<Result>(page, { type: "assistant:act", action });

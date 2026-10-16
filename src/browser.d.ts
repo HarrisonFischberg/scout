@@ -32,7 +32,8 @@ declare const browser: {
   scripting: {
     executeScript(injection: {
       target: { tabId: number };
-      func?: () => unknown;
+      func?: (...args: never[]) => unknown;
+      args?: unknown[];
       files?: string[];
     }): Promise<Array<{ result?: unknown }>>;
   };
