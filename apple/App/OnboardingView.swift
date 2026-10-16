@@ -8,6 +8,14 @@ struct OnboardingView: View {
     // Must match PRODUCT_BUNDLE_IDENTIFIER of the extension targets.
     private let extensionBundleIdentifier = "com.example.AssistAnt.Extension"
     @StateObject private var setup = SetupViewModel()
+    @State fileprivate var showing: LegalDoc?
+
+    fileprivate enum LegalDoc: String, Identifiable {
+        case privacy, terms
+        var id: String { rawValue }
+        var title: String { self == .privacy ? "Privacy policy (draft)" : "Terms of service (draft)" }
+        var resource: String { self == .privacy ? "privacy-policy" : "terms" }
+    }
 
     var body: some View {
         ScrollView {
@@ -17,6 +25,7 @@ struct OnboardingView: View {
                     .accessibilityAddTraits(.isHeader)
                 enableSection
                 keySection
+                legalSection
             }
             .padding(24)
             .frame(maxWidth: 560, alignment: .leading)
@@ -63,6 +72,49 @@ struct OnboardingView: View {
             // Status is text, never colour alone.
             Text(setup.statusMessage)
                 .accessibilityLabel("Key status: \(setup.statusMessage)")
+        }
+    }
+}
+
+// S09: privacy policy and terms drafts. Reads docs/legal/*.md copied into the
+// app bundle (supervised step: add them to the App targets' Resources).
+private struct LegalDocView: View {
+    let title: String
+    let resource: String
+
+    private var text: String {
+        guard let url = Bundle.main.url(forResource: resource, withExtension: "md"),
+              let body = try? String(contentsOf: url, encoding: .utf8) else {
+            return "This draft is not bundled in this build."
+        }
+        return body
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("DRAFT. Not approved by legal review.").bold()
+                Text(text).textSelection(.enabled)
+            }
+            .padding(24)
+            .frame(maxWidth: 560, alignment: .leading)
+        }
+        .navigationTitle(title)
+    }
+}
+
+extension OnboardingView {
+    fileprivate var legalSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Legal (DRAFT)")
+                .font(.title2.bold())
+                .accessibilityAddTraits(.isHeader)
+            Text("Drafts awaiting legal review. Not final.")
+            Button("Privacy policy (draft)") { showing = .privacy }
+            Button("Terms of service (draft)") { showing = .terms }
+        }
+        .sheet(item: $showing) { doc in
+            LegalDocView(title: doc.title, resource: doc.resource)
         }
     }
 }
