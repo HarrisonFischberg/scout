@@ -10,4 +10,13 @@ declare const browser: {
       ): void;
     };
   };
+  tabs: {
+    query(info: { active: boolean; currentWindow: boolean }): Promise<Array<{ id?: number }>>;
+  };
+  scripting: {
+    executeScript(injection: {
+      target: { tabId: number };
+      func: () => unknown;
+    }): Promise<Array<{ result?: unknown }>>;
+  };
 };
