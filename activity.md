@@ -1192,3 +1192,12 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Checks: build, typecheck, lint ok; unit 215/215; release bundle clean; e2e 77/77 (Terminal panel; Playwright hangs inside the sandbox); signed macOS build (team KTV2G3Z883), bundle ok, registered `com.example.SafariScout.Extension` at `Scout for Safari.app`; macOS XCTest 17/17; iOS Simulator build ok; iOS XCUITest a11y audit 5/5.
 - iPhone "Hphone" (`00008150-001A79E91140401C`): `scripts/build-ios.sh` `BUILD SUCCEEDED`, bundle ok, installed `com.harrisonfischberg.SafariScout` as "Scout for Safari.app".
 - Not verified: Safari toolbar and Extensions list showing the new name on Mac and iPhone. iOS home-screen label not checked: 16 characters may be truncated under the icon.
+
+## 2026-10-16 — Listing names, iOS home-screen name, name approval
+
+- Owner decisions: App Store subtitle "AI Scout for Safari Browser" (27 of 30 characters); iOS home-screen name "Scout"; name "Scout for Safari" approved; device testing of the new name later.
+- iOS home-screen name: `apple/App/Info.plist` `CFBundleDisplayName` now reads `$(APP_DISPLAY_NAME)`, set per app target: iOS "Scout", macOS "Scout for Safari". The extension keeps "Scout for Safari" (Safari settings, toolbar). Product file names unchanged.
+- New `docs/app-store-listing.md`: app name, subtitle, home-screen name, extension name, tagline, with lengths and where each is set. Linked from CLAUDE.md artifacts.
+- Launch-blocker 21 marked resolved on the owner's report that the name is approved; App Review can only confirm it at submission.
+- Evidence: built `CFBundleDisplayName` values: Mac app "Scout for Safari", iOS app "Scout", iOS extension "Scout for Safari". Simulator home screen shows the label "Scout" untruncated. typecheck, lint ok; unit 215/215; signed macOS build registered; iOS UI a11y audit 5/5; iPhone "Hphone" install via `scripts/build-ios.sh` ok.
+- Not verified (owner testing later): the name in Safari's toolbar and Extensions list on Mac and iPhone, and on the iPhone home screen.

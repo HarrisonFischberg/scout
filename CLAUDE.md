@@ -33,7 +33,8 @@ loop, Caveman. Verify each before claiming use: `docs/tool-environment.md`.
 `prd.md`, `PROMPT.md`, `activity.md`, `replica/`, `ralph/`,
 `docs/`: `rea-findings.md`, `data-inventory.md`,
 `compliance-checklist.md` (20 safeguards), `asset-licenses.md`,
-`claims-evidence.md`, `launch-blockers.md`, `tool-environment.md`.
+`claims-evidence.md`, `launch-blockers.md`, `tool-environment.md`,
+`app-store-listing.md`.
 
 Gate A (engineering complete) is not Gate B (ready for release).
 
