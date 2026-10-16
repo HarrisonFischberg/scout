@@ -990,3 +990,9 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Provider switch: OpenAI chosen + saved, popup still used Anthropic silently. Trace: `key:openai missing`. Root cause in host app: switching the provider picker kept "Key saved to Keychain." from the other provider, so the OpenAI key looked saved but never was. Fixed: per-provider state + provider name in the message (XCTest added); popup now announces any fallback (e2e added).
 - Checks after fixes: unit 121/121, e2e 42/42, XCTest 11/11, iOS UI a11y audit TEST SUCCEEDED, macOS + iOS builds ok, both bundles contain all 7 resources.
 - Owner action: re-enter the OpenAI test key in the host app (the status now names the provider), then the OpenAI live path can be verified.
+
+## 2026-10-15 — final report
+
+- Owner chose to skip the OpenAI live path for now.
+- Refreshed stale launch blockers (3, 9, 10, 12, 13, 15) and added 16–20 from T018.
+- Wrote `docs/final-report.md`. Gate A not met; Gate B not met.
