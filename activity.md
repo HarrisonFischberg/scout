@@ -560,7 +560,7 @@ $ npm test
 $ npm run typecheck -> TypeScript: No errors found
 $ npx tsc -p tsconfig.lint.json -> exit 0
 $ npm run build -> built extension to .../apple/Extension/Resources
-$ npm run e2e -- chat -> no result: WebKit launch hung past the 150 s limit (launch-blockers 12)
+$ npm run e2e -- chat -> 5 failed, 0 passed: WebKit launch failed in sandbox (XPC 'Connection invalid', launch-blockers 12); the popup was not exercised
 ```
 
 - Supervised check: outside the sandbox, `npm run build && npm run e2e -- chat`, then load in Safari and ask a question with a test key.
