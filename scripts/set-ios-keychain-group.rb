@@ -9,7 +9,7 @@ project = Xcodeproj::Project.open(path)
   t = project.targets.find { |x| x.name == name }
   t.build_configurations.each do |c|
     c.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'iOS-Shared.entitlements'
-    c.build_settings['KEYCHAIN_GROUP'] = '$(AppIdentifierPrefix)com.example.SafariScout.shared'
+    c.build_settings['KEYCHAIN_GROUP'] = '$(AppIdentifierPrefix)com.harrisonfischberg.SafariScout.shared'
   end
 end
 project.save
