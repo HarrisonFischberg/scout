@@ -1,7 +1,22 @@
 import SwiftUI
 
+#if os(macOS)
+import AppKit
+
+// The app is only a setup screen: the extension runs inside Safari without it.
+// Closing the window quits the app, so it does not linger in the Dock or in
+// Command-Tab (the way Wipr and other Safari extensions behave).
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+}
+#endif
+
 @main
 struct AssistAntApp: App {
+    #if os(macOS)
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    #endif
+
     init() {
         #if DEBUG
         // Manual check that the extension can read what the app writes:

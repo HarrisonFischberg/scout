@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Makes Safari on this Mac see the latest Mac build of AssistAnt:
 # unregisters iOS Simulator copies that share the bundle ID (they hide the Mac
-# extension), registers the Mac app, and relaunches it.
+# extension) and registers the Mac app and its extension. It does not launch
+# the app: the extension runs inside Safari, so the app stays out of the Dock
+# and Command-Tab. Pass --open to also show the setup window.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 LSR=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
@@ -14,6 +16,7 @@ touch build/.metadata_never_index
 pkill -f 'Debug/AssistAnt.app/Contents/MacOS/AssistAnt' || true
 sleep 1
 "$LSR" -f -R "$P/Debug/AssistAnt.app"
-open "$P/Debug/AssistAnt.app"
-sleep 2
+pluginkit -a "$P/Debug/AssistAnt.app/Contents/PlugIns/AssistAnt Extension.appex"
+[ "${1:-}" = "--open" ] && open "$P/Debug/AssistAnt.app"
+sleep 1
 pluginkit -mAv -p com.apple.Safari.web-extension | grep AssistAnt | sed 's/^ *//'
