@@ -33,3 +33,5 @@ Never infer these from a reference app. Never invent them.
 - Data types and sensitive data: page content (may include personal, financial, health data the user views), API key. See `data-inventory.md`.
 - Vendors, SDKs, analytics, AI providers, processors: Anthropic, OpenAI (user-chosen). No analytics planned.
 - Retention or deletion exceptions: UNKNOWN
+
+16. OpenAI model price missing. `src/cost.ts` has no price for `gpt-5`; the UI shows tokens and "Cost estimate unavailable". Owner or supervised session: read https://developers.openai.com/api/docs/pricing, add the row with source and date to `PRICES`, and update `docs/claims-evidence.md`. Also re-check the Anthropic row before release; prices change.

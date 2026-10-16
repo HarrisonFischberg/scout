@@ -751,3 +751,26 @@ Timed out waiting 60s for the test suite to run
 - e2e not exercised: WebKit launch blocked in the sandbox (blocker 12); `tests/e2e/coupons.spec.ts` has never run in a browser. The acceptance e2e (5 codes, 2 valid, best applied, order never clicked) is covered by the unit test `tries each code once, keeps the larger saving, never clicks order` until then.
 - Supervised check: outside the sandbox, `npm run build && npm run e2e -- coupons`.
 - Next task: T014 (cost display; depends on T005).
+
+## 2026-10-15 - T014 cost display: done
+
+- Task: T014 (lowest-numbered pending; T005 satisfied). Status `in progress`, then `done`.
+- Files: `src/cost.ts`, `tests/unit/cost.test.ts` (new); `src/popup.ts` (chat, agent, coupon status lines now show tokens in/out and estimated cost); `prd.md`, `docs/claims-evidence.md`, `docs/launch-blockers.md`.
+- Design: `PRICES` table keyed by model id, per million tokens, dated 2026-10-15. Unknown model returns `null`; UI then shows tokens and "Cost estimate unavailable", never a guess. Only `claude-sonnet-5-5` ($2 in / $10 out) has a source: Anthropic pricing page, fetched this session. Cache-token pricing is not modeled (providers layer reports only input/output). gpt-5: fetch of OpenAI pricing was denied, so no price (launch-blockers 16).
+- No new dependency or data flow.
+- Results, real output:
+
+```
+$ npm test
+ Test Files  11 passed (11)
+      Tests  96 passed (96)
+$ npx tsc -p tsconfig.json -> No errors found
+$ npx tsc -p tsconfig.lint.json -> No errors found
+$ npm run build -> built extension to .../apple/Extension/Resources
+$ npm test -- cost
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+```
+
+- Popup rendering of the new status text not exercised in a browser (WebKit blocked, blocker 12); logic is covered by unit tests.
+- Next task: T015 (settings; depends on T004, T007).
