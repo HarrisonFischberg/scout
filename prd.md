@@ -58,7 +58,7 @@ intentional differences).
 
 | ID | Task | Depends on | Acceptance criteria | Verification command | Status |
 | --- | --- | --- | --- | --- | --- |
-| T001 | Visual direction via `ui-ux-pro-max`; tokens + component specs in `replica/design.md`; contrast checked | — | Light + dark tokens; every text/control pair ≥ WCAG AA per Replica contrast tool | Replica contrast checker output saved to `replica/contrast.txt` | pending |
+| T001 | Visual direction via `ui-ux-pro-max`; tokens + component specs in `replica/design.md`; contrast checked | — | Light + dark tokens; every text/control pair ≥ WCAG AA per Replica contrast tool | Replica contrast checker output saved to `replica/contrast.txt` | done |
 | T002 | Xcode multiplatform Safari extension project; esbuild TS pipeline; verify Safari API support (sidePanel, captureVisibleTab, tabs, scripting, nativeMessaging) on macOS + iOS | — | Both targets build; extension loads in Safari macOS and iOS Simulator; API support table in `docs/safari-api-support.md` | `xcodebuild -scheme "AssistAnt (macOS)" build`; `xcodebuild -scheme "AssistAnt (iOS)" -destination 'platform=iOS Simulator,name=iPhone 17' build`; `npm run build` | pending |
 | T003 | Test harness: Vitest, Playwright WebKit, local fixture site (shop, forms, injection page), lint, typecheck | T002 | `npm test`, `npm run e2e`, `npm run lint`, `npm run typecheck` all run green on a trivial test | those commands | pending |
 | T004 | Keychain bridge via native messaging (set/get/delete key) | T002 | XCTest covers set/get/delete; JS never persists key; grep finds no key in storage | `xcodebuild test`; `npm test -- keychain` | pending |
