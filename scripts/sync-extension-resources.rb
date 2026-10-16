@@ -12,6 +12,8 @@ group = existing.first.parent
 built = Dir.children(File.join(root, 'apple/Extension/Resources')).reject { |f| f.start_with?('.') }.sort
 built.each do |name|
   ref = group.files.find { |r| r.path == name } || group.new_reference(name)
+  # Directories (e.g. icons/) are copied as folder references.
+  ref.last_known_file_type = 'folder' if File.directory?(File.join(root, 'apple/Extension/Resources', name))
   targets.each do |t|
     t.add_resources([ref]) unless t.resources_build_phase.files_references.include?(ref)
   end

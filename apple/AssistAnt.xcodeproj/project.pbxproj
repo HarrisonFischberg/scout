@@ -10,6 +10,7 @@
 		133B8E56268CB0592DBD7CC3 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */; };
 		19F5593FC25FE6CABB131D2F /* privacy-policy.md in Resources */ = {isa = PBXBuildFile; fileRef = 2A2DD59678E293865FEF9520 /* privacy-policy.md */; };
 		2574AB3AD256B028946D68D4 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 2EACFEFE046C585EEC22A075 /* manifest.json */; };
+		2DCE22FAAA4B8AA6634699DB /* icons in Resources */ = {isa = PBXBuildFile; fileRef = 334A0CB4A03F106FEB4E1814 /* icons */; };
 		2E0506CD04E8191BAFA1EB6F /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 42362C08488648B56DDCF27B /* popup.html */; };
 		367D49613C3152FB5982BE7F /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A44912843C812B2B1960158 /* Cocoa.framework */; };
 		37F5710F2FD7EB8858B63030 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */; };
@@ -41,6 +42,7 @@
 		835D2EEF9233782755B3D00F /* AssistAnt Extension (macOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5B36544F9C86B6EED546C345 /* AssistAnt Extension (macOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8B9A6545AF27168729CA73E8 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
 		997FBCCB476F2CD0AAAEE239 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 319A3602A9A92E9E704AEBCD /* popup.js */; };
+		A9BCE9F420000BAEE4CBCF29 /* icons in Resources */ = {isa = PBXBuildFile; fileRef = 334A0CB4A03F106FEB4E1814 /* icons */; };
 		A9DCCCEEF09EC9973178027B /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 319A3602A9A92E9E704AEBCD /* popup.js */; };
 		B159672DCF20D4BDE70FA9BF /* terms.md in Resources */ = {isa = PBXBuildFile; fileRef = 826B6B632BCAB1F014E23696 /* terms.md */; };
 		B892ED1F69C079AFB3202BAE /* ProviderSetupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB2AA781644909EFF76E9FC /* ProviderSetupTests.swift */; };
@@ -111,6 +113,7 @@
 		2A2DD59678E293865FEF9520 /* privacy-policy.md */ = {isa = PBXFileReference; includeInIndex = 1; path = "privacy-policy.md"; sourceTree = "<group>"; };
 		2EACFEFE046C585EEC22A075 /* manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; path = manifest.json; sourceTree = "<group>"; };
 		319A3602A9A92E9E704AEBCD /* popup.js */ = {isa = PBXFileReference; includeInIndex = 1; path = popup.js; sourceTree = "<group>"; };
+		334A0CB4A03F106FEB4E1814 /* icons */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; path = icons; sourceTree = "<group>"; };
 		3DE806274580B227D3995289 /* privacy.html */ = {isa = PBXFileReference; includeInIndex = 1; path = privacy.html; sourceTree = "<group>"; };
 		42362C08488648B56DDCF27B /* popup.html */ = {isa = PBXFileReference; includeInIndex = 1; path = popup.html; sourceTree = "<group>"; };
 		49CA46C4964F64376FDFBEBA /* AssistAnt (macOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AssistAnt (macOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -262,6 +265,7 @@
 				0E1A0E7A1B227ADF88A1B413 /* content.js */,
 				3DE806274580B227D3995289 /* privacy.html */,
 				E531573CE3C35CCBA2D4399C /* terms.html */,
+				334A0CB4A03F106FEB4E1814 /* icons */,
 			);
 			name = Resources;
 			path = Resources;
@@ -464,6 +468,7 @@
 				CE59D31E55CE4ADCEC246F3A /* content.js in Resources */,
 				6EA542403783ECDEBEC6053B /* privacy.html in Resources */,
 				70FC8B3D8AC5270477A9D58C /* terms.html in Resources */,
+				A9BCE9F420000BAEE4CBCF29 /* icons in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -503,6 +508,7 @@
 				54402E0BD5CABDE383CC2812 /* content.js in Resources */,
 				4B8DECDD083E4E0D24B435E1 /* privacy.html in Resources */,
 				7D806FF2F407994E4D28F1CF /* terms.html in Resources */,
+				2DCE22FAAA4B8AA6634699DB /* icons in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
