@@ -22,6 +22,10 @@ export interface ChatRequest {
   maxTokens: number;
   /** Enable the provider's own server-side web search tool (T019). */
   webSearch?: boolean;
+  /** Max searches per request (Anthropic `max_uses`). Default 3. */
+  webSearchMaxUses?: number;
+  /** Also let the model read pages it found (Anthropic web fetch). */
+  webFetch?: boolean;
   signal?: AbortSignal;
 }
 

@@ -5,7 +5,7 @@
 | 1 | Business/legal inputs below are UNKNOWN | missing fact | owner | privacy policy, terms, App Store listing | open |
 | 2 | Apple Developer Program membership (paid) for device signing + App Store | approval (paid account) | owner | iOS device testing, TestFlight, release | open |
 | 3 | Test API keys for Anthropic and OpenAI (owner-provided, low spend limit) | missing credential | owner | live provider integration tests | partly resolved 2026-10-15: owner Anthropic test key verified live (F02–F07). OpenAI key not yet saved; OpenAI live path unverified |
-| 4 | Merchant terms: automated coupon trying may breach some retailers' terms; bot detection may block | legal review | owner + counsel | F06 release | open |
+| 4 | Merchant terms: automated coupon trying may breach some retailers' terms; bot detection may block | legal review | owner + counsel | F06 release | open. Owner product decision 2026-10-16: test as many codes as possible, guesses included ("no harm in testing"); batches of 25 with a prompt; store cart endpoint on Shopify; 250 ms pause between codes; stop on 429 / CAPTCHA. Legal review of merchant terms still required before release |
 | 5 | AI provider usage policies for agentic browsing / user age requirements | legal review | owner | safeguard 17, terms | open |
 | 6 | `/goal` and Ralph loop | tool | Claude | Phase 4 | resolved 2026-10-15 |
 | 7 | REA web capture needs a CDP browser started with approval | tool | owner | further reference capture (optional) | open |

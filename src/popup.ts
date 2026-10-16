@@ -9,7 +9,8 @@ import { renderMarkdown } from "./chat/markdown";
 import { runTurn } from "./chat/session";
 import { mergeTabs, resolveMentions, type TabInfo } from "./chat/tabs";
 import { suggestCodes } from "./coupons/codes";
-import { couponStatusText, runCouponSearch } from "./coupons/finder";
+import { originLabel } from "./coupons/candidates";
+import { BATCH_SIZE, couponStatusText, couponSummary, runCouponSearch, type BatchState, type CartApi, type CartState } from "./coupons/finder";
 import { formatRunCost } from "./cost";
 import { buildReport, describeBrowser, Diagnostics, disabledRun, type RunHandle, type RunKind } from "./diagnostics";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
@@ -165,7 +166,7 @@ async function copyDiagnostics(anchor: HTMLElement, statusNode: HTMLElement): Pr
 }
 
 // The content script is injected on demand into the active tab only.
-async function tabAgentPage(): Promise<AgentPage | null> {
+async function tabAgentPage(): Promise<(AgentPage & { cart: CartApi }) | null> {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   if (tab?.id === undefined) return null;
   current.page(tab.url);
@@ -210,6 +211,11 @@ async function tabAgentPage(): Promise<AgentPage | null> {
   return {
     snapshot: async () => (await call({ type: "assistant:snapshot" })) as Snapshot,
     act: async (action: Action) => (await call({ type: "assistant:act", action })) as ActionResult,
+    cart: {
+      info: async () => (await call({ type: "assistant:cart-info" })) as CartState | null,
+      update: async (discount: string) => (await call({ type: "assistant:cart-update", discount })) as CartState | { rateLimited: true } | null,
+      reload: async () => void (await call({ type: "assistant:reload" })),
+    },
   };
 }
 
@@ -725,7 +731,63 @@ async function main(): Promise<void> {
     control?.stop();
   });
 
-  // ---------- Coupons (S07): codes tried one at a time; the model only finds them. ----------
+  // ---------- Coupons (S07, T031): find many codes, test them in batches of 25. ----------
+  const couponsMore = el("coupons-more");
+  const couponsMoreText = el("coupons-more-text");
+  const couponsMoreYes = el<HTMLButtonElement>("coupons-more-yes");
+  const couponsMoreNo = el<HTMLButtonElement>("coupons-more-no");
+
+  function askMoreCodes(state: BatchState): Promise<boolean> {
+    return new Promise((resolve) => {
+      const next = Math.min(BATCH_SIZE, state.remaining);
+      couponsMoreText.textContent = state.best
+        ? "Tried " + state.tried + " codes. Best so far: " + state.best.code + " saves $" + (state.best.saving ?? 0).toFixed(2) +
+          ". Try " + next + " more to look for a bigger saving?"
+        : "We've tried " + state.tried + " codes and none lowered your total. Would you like to try " + next + " more?";
+      couponsMoreYes.textContent = "Try " + next + " more";
+      couponsMore.hidden = false;
+      status.textContent = "Waiting for you: try more codes?";
+      scrollToEnd();
+      couponsMoreYes.focus();
+      trace("coupons:ask-more tried=" + state.tried + " remaining=" + state.remaining);
+      const done = (ok: boolean): void => {
+        couponsMore.hidden = true;
+        couponsMoreYes.removeEventListener("click", yes);
+        couponsMoreNo.removeEventListener("click", no);
+        couponsStop.removeEventListener("click", no);
+        trace("coupons:more " + (ok ? "yes" : "no"));
+        if (ok) couponsStop.focus();
+        resolve(ok);
+      };
+      const yes = (): void => done(true);
+      const no = (): void => done(false);
+      couponsMoreYes.addEventListener("click", yes);
+      couponsMoreNo.addEventListener("click", no);
+      couponsStop.addEventListener("click", no);
+    });
+  }
+
+  function addAttemptRow(a: { code: string; total: number | null; note: string; origin: Parameters<typeof originLabel>[0]["origin"]; sourceUrl?: string }): void {
+    const tr = document.createElement("tr");
+    for (const t of [a.code, a.total === null ? "unknown" : "$" + a.total.toFixed(2), a.note]) {
+      const td = document.createElement("td");
+      td.textContent = t;
+      tr.appendChild(td);
+    }
+    const src = document.createElement("td");
+    const label = originLabel(a);
+    if (a.sourceUrl && (a.origin === "sourced" || a.origin === "unverified")) {
+      const link = document.createElement("a");
+      link.href = a.sourceUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = label;
+      src.appendChild(link);
+    } else src.textContent = label;
+    tr.appendChild(src);
+    couponsRows.appendChild(tr);
+  }
+
   async function runCoupons(): Promise<void> {
     if (controller || control || !session) return;
     const s = session;
@@ -736,15 +798,17 @@ async function main(): Promise<void> {
       current.finish("error", "Could not reach this page.");
       return;
     }
-    addMessage("user", "Find the best coupon for this cart.", { mode: "Find coupons" });
+    const ask = "Find the best coupon for this cart.";
+    addMessage("user", ask, { mode: "Find coupons" });
     control = new AgentControl();
     couponsRows.replaceChildren();
+    couponsMore.hidden = true;
     agentBox.hidden = true;
     couponsBox.hidden = false;
     couponsSummary.textContent = "Searching the web for codes…";
     send.hidden = true;
     plus.disabled = true;
-    status.textContent = "Finding coupons.";
+    status.textContent = "Finding coupons. This can take up to a minute.";
     scrollToEnd();
     couponsStop.focus();
     const onStop = (): void => control?.stop();
@@ -759,56 +823,42 @@ async function main(): Promise<void> {
       trace("coupons:search");
       const sug = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal);
       used = { inputTokens: sug.inputTokens, outputTokens: sug.outputTokens };
-      trace("coupons:sourced " + sug.codes.length + " dropped " + sug.unsourced);
-      if (sug.codes.length === 0) {
-        summary =
-          "No sourced codes found, so none were tried. AssistAnt does not guess codes." +
-          (sug.unsourced > 0 ? " " + sug.unsourced + " unverifiable suggestion(s) were dropped." : "");
-        couponsSummary.textContent = summary;
-        status.textContent = couponStatusText("no_codes") + " " + formatRunCost(s.settings.model, used);
-        current.finish("no_codes", summary, used);
-      } else {
-        couponsSummary.textContent = "Trying " + sug.codes.length + " sourced codes…";
-        const outcome = await runCouponSearch({
-          page,
-          codes: sug.codes,
-          ...(control ? { control } : {}),
-          onAttempt: (a) => {
-            trace("coupons:attempt " + (a.total === null ? "total=unknown" : "saving=" + (a.saving ?? 0).toFixed(2)));
-            const tr = document.createElement("tr");
-            for (const t of [a.code, a.total === null ? "unknown" : "$" + a.total.toFixed(2), a.note]) {
-              const td = document.createElement("td");
-              td.textContent = t;
-              tr.appendChild(td);
-            }
-            const src = document.createElement("td");
-            const link = document.createElement("a");
-            link.href = a.sourceUrl;
-            link.target = "_blank";
-            link.rel = "noopener noreferrer";
-            link.textContent = new URL(a.sourceUrl).hostname;
-            src.appendChild(link);
-            tr.appendChild(src);
-            couponsRows.appendChild(tr);
-            scrollToEnd();
-          },
-        });
-        summary =
-          outcome.status === "done" && outcome.baseline !== null
-            ? "Started at $" + outcome.baseline.toFixed(2) + ". " + outcome.message
-            : outcome.message;
-        couponsSummary.textContent = summary;
-        status.textContent = couponStatusText(outcome.status) + " " + formatRunCost(s.settings.model, used);
-        current.finish(outcome.status, outcome.message, used);
-      }
+      trace("coupons:candidates found=" + sug.found + " guessed=" + sug.guessed);
+      couponsSummary.textContent =
+        "Found " + sug.found + " code" + (sug.found === 1 ? "" : "s") + " online and " + sug.guessed + " common guesses. Testing them on your cart…";
+      const outcome = await runCouponSearch({
+        page,
+        codes: sug.codes,
+        control,
+        delayMs: 250,
+        askMore: askMoreCodes,
+        onAttempt: (a, index, total) => {
+          trace("coupons:attempt " + index + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none"));
+          couponsSummary.textContent = "Testing code " + index + " of " + total + "…";
+          addAttemptRow(a);
+          scrollToEnd();
+        },
+      });
+      trace("coupons:method " + (outcome.method ?? "none") + " status " + outcome.status);
+      summary = couponSummary(outcome);
+      couponsSummary.textContent = outcome.best
+        ? "Best: " + outcome.best.code + (outcome.applied ? " (applied)" : "")
+        : outcome.status === "done" || outcome.status === "stopped"
+          ? "No code lowered the total."
+          : outcome.message;
+      status.textContent = couponStatusText(outcome.status) + " " + formatRunCost(s.settings.model, used);
+      current.finish(outcome.status, outcome.message, used);
+      if (outcome.status === "no_form" || outcome.status === "error" || outcome.status === "no_codes") addMessage("error", summary);
+      else addMessage("assistant", summary);
     } catch {
       summary = "Could not finish the coupon search. Nothing was ordered.";
       couponsSummary.textContent = summary;
       status.textContent = couponStatusText("error");
-      current.error(summary);
+      addMessage("error", summary);
       current.finish("error", summary, used);
     }
-    await saveEntry("coupons", "Find the best coupon for this cart.", summary);
+    couponsMore.hidden = true;
+    await saveEntry("coupons", ask, summary);
     couponsStop.removeEventListener("click", onStop);
     control = null;
     send.hidden = false;

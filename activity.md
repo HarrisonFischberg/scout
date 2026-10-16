@@ -1048,3 +1048,13 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Fix: register script no longer launches the app (`--open` to show it); macOS `AppDelegate.applicationShouldTerminateAfterLastWindowClosed` returns true, so the setup window's close quits the app. `LSUIElement` not used: an app with no Dock icon would leave first-run users with a window and no menu bar.
 - Checks: macOS + iOS builds ok, XCTest pass, extension still registered with the app not running.
 - Not verified: Safari use with the app quit on the owner's Mac (expected to work: same as Wipr).
+
+## 2026-10-16 — Coupon finder v2 (T031) from owner bug report
+
+- Actual (diagnostics #23): getbeefy.co, `coupons:search` 19.6 s, `coupons:sourced 0 dropped 0`, outcome no_codes. Reference: Comet found 35 candidates (5 from influencer/affiliate pages, ~30 guesses), tested them via Shopify `/cart/update.js`, best BEEFY15 (a guess from a SimplyCodes hint) took $151.80 → $135.82.
+- Expected (owner): scan the web, find as many codes as possible, test them all; after 25 codes ask "try more?". Owner: "There is no harm in testing and attempting coupon codes." This reverses the T019 sourced-only rule; recorded as a product decision (launch-blocker 4 stays open for legal review of merchant terms).
+- Changes: `src/coupons/candidates.ts` (origins sourced/unverified/hint/pattern, store-name pattern guesses built in code, merge, labels); `src/coupons/codes.ts` (prompt covering coupon sites, influencer/affiliate, Linktree, social, Reddit, store pages; 8 searches + web fetch; HINT lines); `src/coupons/shopify.ts` + content handlers (`/cart.js`, `/cart/update.js`, reload); `src/coupons/finder.ts` (Shopify or coupon-box tester, batches of 25 with askMore, 250 ms pause, stop on 429/CAPTCHA, apply best and confirm, restore original code if nothing wins, reload cart; `couponSummary` builds a Comet-style chat answer in code); provider `webSearchMaxUses` + `webFetch` (`web_fetch_20260209`, fetched pages count as sources).
+- Popup: "Try N more / Stop here" prompt in the coupon card; table shows source or "Guess (…)" labels; summary posted to chat and history.
+- Tests: unit 149 (coupons rewritten for the new rule with the decision noted; CAPTCHA-attempt regression caught and fixed), e2e 57 incl. `cart.spec.ts` against a fake Shopify cart in `scripts/serve-fixtures.mjs` and popup batch prompts (win and no-win). Lint, typecheck, release check clean. macOS build + bundle check ok.
+- Docs: terms draft §5, data inventory (cart requests, guessed codes), claims register, intentional differences, launch-blocker 4.
+- Not verified: live run on getbeefy.co (owner to re-run Find coupons and paste diagnostics if it misbehaves).
