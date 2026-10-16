@@ -996,3 +996,9 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Owner chose to skip the OpenAI live path for now.
 - Refreshed stale launch blockers (3, 9, 10, 12, 13, 15) and added 16–20 from T018.
 - Wrote `docs/final-report.md`. Gate A not met; Gate B not met.
+
+## 2026-10-15 — macOS Safari: extension missing from Settings → Extensions
+
+- Built, signed ad-hoc, and registered (`pluginkit` listed it), but Safari did not list it.
+- Cause (most likely): LaunchServices also held the iOS Simulator build with the same bundle ID `com.example.AssistAnt`. Fix: `lsregister -u` on the Simulator copies, `touch build/.metadata_never_index` so Spotlight does not re-add them, `lsregister -f -R` on the Mac app, then the owner restarted Safari and re-allowed unsigned extensions. Owner confirms AssistAnt is now listed.
+- Note for the Mac test flow: after any iOS Simulator build, re-run the unregister step or Safari may hide the Mac extension again.
