@@ -543,3 +543,25 @@ $ plutil -lint apple/AssistAnt.xcodeproj/project.pbxproj -> OK
   `xcodebuild test -project apple/AssistAnt.xcodeproj -scheme "AssistAnt (macOS)" -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO`;
   build `"AssistAnt (iOS)"` for `generic/platform=iOS Simulator`; capture light and dark screenshots to `ralph/evidence/`.
 - Next task: T008 (snapshot builder, JS only).
+
+## 2026-10-15 - T007 popup chat (S04): needs supervised check
+
+- Task: T007 (lowest-numbered pending; T001, T005 done). Status `in progress`, then `needs supervised check`. Earlier entries named T008 next; PROMPT.md says lowest-numbered, so T007 first.
+- Files: `src/chat/{markdown,prompt,session}.ts` (new), `src/popup.ts`, `src/popup.html` (composer, log, no-key state, design tokens light/dark), `src/browser.d.ts` (tabs, scripting types), `src/manifest.json` (host_permissions for the two provider APIs), `tests/unit/chat.test.ts`, `tests/e2e/chat.spec.ts`, `prd.md`.
+- Design: popup reads the key from Keychain over the bridge (anthropic first, then openai), streams via the T005 provider, renders Markdown through an AST and `createElement`/`textContent` (no innerHTML, only http(s) links). Page text comes from `scripting.executeScript` on the active tab, fenced as `<untrusted_page_content>`, truncated at 30000 chars, forged closing tag stripped. Errors map to `ProviderError.userMessage`; Stop aborts the fetch. History is in memory only.
+- Guard test: `keychain.test.ts` bans `storage.*` in `src/*.ts`. Popup uses no extension storage, so provider/model selection and persistence wait for T015. Test not changed.
+- Open: `host_permissions` for provider hosts is unverified in Safari (needs supervised check; may prompt the user). OpenAI default model `gpt-5` is a placeholder, UNKNOWN until confirmed. Anthropic browser-origin header not added, supervised run will show if CORS blocks.
+- Results, real output:
+
+```
+$ npm test
+ Test Files  4 passed (4)
+      Tests  34 passed (34)
+$ npm run typecheck -> TypeScript: No errors found
+$ npx tsc -p tsconfig.lint.json -> exit 0
+$ npm run build -> built extension to .../apple/Extension/Resources
+$ npm run e2e -- chat -> no result: WebKit launch hung past the 150 s limit (launch-blockers 12)
+```
+
+- Supervised check: outside the sandbox, `npm run build && npm run e2e -- chat`, then load in Safari and ask a question with a test key.
+- Next task: T008 (snapshot builder, JS only).

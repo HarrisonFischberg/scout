@@ -4,12 +4,107 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AssistAnt</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg-canvas: #f5f5f7;
+        --bg-surface: #ffffff;
+        --bg-subtle: #ededf2;
+        --text-primary: #1d1d1f;
+        --text-secondary: #48484d;
+        --text-muted: #65656b;
+        --accent: #6d28d9;
+        --accent-on: #ffffff;
+        --accent-text: #6d28d9;
+        --bubble-user: #e9e3fb;
+        --bubble-user-text: #2e1065;
+        --danger: #b42318;
+        --focus-ring: #6d28d9;
+        --border-control: #8a8a90;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg-canvas: #1c1c1e;
+          --bg-surface: #2c2c2e;
+          --bg-subtle: #3a3a3d;
+          --text-primary: #f5f5f7;
+          --text-secondary: #d1d1d6;
+          --text-muted: #aeaeb2;
+          --accent: #a78bfa;
+          --accent-on: #1a102e;
+          --accent-text: #c4b5fd;
+          --bubble-user: #3b2a6b;
+          --bubble-user-text: #f3eeff;
+          --danger: #ff8a80;
+          --focus-ring: #c4b5fd;
+          --border-control: #8e8e93;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        width: 380px;
+        max-width: 100%;
+        background: var(--bg-canvas);
+        color: var(--text-primary);
+        font: 16px/1.5 -apple-system, system-ui, sans-serif;
+      }
+      main { display: flex; flex-direction: column; gap: 12px; padding: 12px; min-height: 360px; }
+      h1 { font-size: 16px; margin: 0; }
+      a { color: var(--accent-text); text-decoration: underline; }
+      #log { flex: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 420px; }
+      .msg { border-radius: 12px; padding: 8px 12px; max-width: 85%; overflow-wrap: anywhere; }
+      .msg p, .msg ul, .msg ol, .msg pre { margin: 0 0 8px; }
+      .msg > :last-child { margin-bottom: 0; }
+      .msg h3, .msg h4, .msg h5 { margin: 0 0 4px; font-size: 16px; }
+      .msg pre { overflow-x: auto; background: var(--bg-subtle); padding: 8px; border-radius: 8px; }
+      .msg.user { align-self: flex-end; background: var(--bubble-user); color: var(--bubble-user-text); }
+      .msg.assistant { align-self: flex-start; background: var(--bg-surface); }
+      .msg.error { align-self: flex-start; background: var(--bg-surface); color: var(--danger); border: 1px solid var(--danger); }
+      .hint { color: var(--text-muted); font-size: 14px; margin: 0; }
+      .empty { background: var(--bg-surface); border-radius: 12px; padding: 12px; }
+      form { display: flex; flex-direction: column; gap: 8px; }
+      label { font-size: 14px; color: var(--text-secondary); }
+      textarea {
+        font: inherit; width: 100%; min-height: 64px; resize: vertical; padding: 8px;
+        border-radius: 8px; border: 1px solid var(--border-control);
+        background: var(--bg-surface); color: var(--text-primary);
+      }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; }
+      button {
+        font: inherit; min-height: 32px; padding: 4px 12px; border-radius: 8px; cursor: pointer;
+        border: 1px solid var(--border-control); background: var(--bg-surface); color: var(--text-primary);
+      }
+      button.primary { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+      button:disabled { color: var(--text-muted); background: var(--bg-subtle); border-color: var(--bg-subtle); cursor: default; }
+      :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+      [hidden] { display: none !important; }
+      @media (prefers-reduced-motion: no-preference) { button { transition: background-color 150ms; } }
+    </style>
     <script src="popup.js" defer></script>
   </head>
   <body>
     <main>
       <h1>AssistAnt</h1>
-      <p id="status" role="status">Checking background connection…</p>
+      <p id="status" class="hint" role="status">Loading…</p>
+      <section id="no-key" class="empty" hidden>
+        <p><strong>Add an API key to start.</strong></p>
+        <p class="hint">
+          Open the AssistAnt app, choose Anthropic or OpenAI, and save your own API key.
+          The key stays in your Keychain. Page text you ask about is sent to that provider.
+        </p>
+      </section>
+      <div id="log" role="log" aria-label="Conversation" aria-live="polite" tabindex="0"></div>
+      <form id="composer" hidden>
+        <label for="question">Ask about this page</label>
+        <textarea id="question" rows="3" autocomplete="off"></textarea>
+        <div class="row">
+          <button id="send" type="submit" class="primary">Send</button>
+          <button id="summarize" type="button">Summarize page</button>
+          <button id="stop" type="button" hidden>Stop</button>
+        </div>
+        <p class="hint">Press Enter to send, Shift+Enter for a new line.</p>
+      </form>
     </main>
   </body>
 </html>
