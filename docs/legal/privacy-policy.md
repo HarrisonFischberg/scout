@@ -28,6 +28,7 @@ page content, chat messages, or usage data.
 | --- | --- | --- | --- | --- |
 | Provider API key | call your chosen provider | Keychain on your device. Not in extension storage, logs, or prompts | until you remove it | Remove key, or Delete all data |
 | Provider and model choice | route requests | extension storage on your device | until changed | Delete all data |
+| Your permission to share with each AI provider (provider, date, disclosure version) | send nothing to a provider until you allow it | extension storage on your device; the iPhone and iPad app keeps its own copy for testing your key | until you withdraw it, or the disclosure changes | Withdraw in Settings (or on the app's setup screen), or Delete all data |
 | Page content (text and structure; password and card fields redacted) | answer questions, plan agent actions | sent to the provider you chose, only when you ask. Not stored by Safari Scout beyond the conversation | provider's retention under your account terms | provider-side: your provider account |
 | Screenshots of the visible tab, if the agent uses them | visual grounding | sent to the provider you chose | provider's retention | provider-side: your provider account |
 | Chat questions and answers | optional history | extension storage on your device | your setting: off, 7 days, or 30 days (default 7). Max 200 entries | auto-expiry, or Delete all data |
@@ -43,6 +44,9 @@ version.
 
 Your chosen AI provider receives the data in section 3 under your own
 account and its terms: Anthropic (Messages API) or OpenAI (Responses API).
+Safari Scout asks for your permission once per provider before it sends
+anything to that provider, names the provider and what is sent, and links to
+its privacy policy. Nothing is sent if you choose Not now.
 Read their privacy policies; Safari Scout cannot control provider handling.
 Apple distributes the app through the App Store. Provider processors and
 sub-processors: UNKNOWN until reviewed.
@@ -57,6 +61,8 @@ content you do not want sent to your provider.
 ## 6. Your choices
 
 - Settings: choose provider, model, history retention, per-site access.
+- Sharing with AI providers: see which provider you allowed, and withdraw it.
+  After you withdraw, nothing is sent to that provider until you allow it again.
 - Delete all data: removes both Keychain keys, extension storage, and
   granted site access on this device.
 - Data held by your provider is deleted through your provider account.

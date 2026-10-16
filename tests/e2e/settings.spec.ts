@@ -8,6 +8,8 @@ async function openPopup(page: Page): Promise<void> {
     const data: Record<string, unknown> = {
       settings: { provider: "anthropic", model: "claude-sonnet-5-5", retention: "7" },
       history: [{ at: Date.now(), question: "hi", answer: "hello" }],
+      // Sharing with the providers already allowed (consent.spec.ts covers asking).
+      aiConsent: { anthropic: { at: 1, version: 1 }, openai: { at: 1, version: 1 } },
     };
     const keys: Record<string, string> = { anthropic: "sk-test-synthetic" };
     let origins = ["https://shop.test/*", "https://api.anthropic.com/*"];
@@ -135,6 +137,7 @@ test("Delete all data needs a confirm, then clears storage, Keychain, and site a
   await page.getByRole("button", { name: "Cancel" }).click();
   const untouched = await page.evaluate(() => Object.keys((globalThis as unknown as { __fake: { data: object } }).__fake.data));
   expect(untouched).toContain("settings");
+  expect(untouched).toContain("aiConsent");
   await page.getByRole("button", { name: "Delete all data" }).click();
   await page.getByRole("button", { name: "Yes, delete all data" }).click();
   await expect(page.locator("#delete-result")).toHaveText("Deleted your API keys, settings, and history from this device.");
@@ -144,6 +147,9 @@ test("Delete all data needs a confirm, then clears storage, Keychain, and site a
   });
   expect(after.data).toEqual([]);
   expect(after.keys).toEqual([]);
+  // Permission to share with AI providers goes too, so the next request asks again.
+  await expect(page.locator("#consent-list")).toContainText("Anthropic: not allowed");
+  await expect(page.locator("#consent-list")).toContainText("OpenAI: not allowed");
   expect(after.origins).toEqual(["https://api.anthropic.com/*"]);
 });
 

@@ -7,7 +7,8 @@ row against runtime behavior before any safeguard PASS.
 | --- | --- | --- | --- | --- | --- |
 | Provider API key | call the user's chosen AI provider | S03 key field | macOS/iOS Keychain (app group); never in `storage.local`, logs, or prompts | until user removes | S08 Remove key / Delete all data |
 | Provider, model, and effort choice | route requests | S03 / S08 | `browser.storage.local` | until changed | Delete all data |
-| Model list (model ids, display names, supported effort levels; no key, no usage) | fill the Settings model and effort dropdowns (2026-10-16) | read-only `GET /v1/models` to the chosen provider with the user's key in a header, when Settings opens and the cached list is over a day old, or on Refresh model list | `browser.storage.local` key `modelCache` | replaced after a day | Delete all data |
+| Permission to share with each AI provider (provider, time allowed, disclosure version; no content) | App Store Review Guideline 5.1.2(i): nothing goes to a provider before the user allows it (2026-10-16) | consent dialog (Allow) before the first request to that provider: chat, Summarize, Control Browser, Find coupons, key test, live model list; iOS host app: consent sheet before Test key | `browser.storage.local` key `aiConsent`; iOS host app `UserDefaults` keys `aiConsent.anthropic` / `aiConsent.openai` (version number only; separate from the extension, which asks again) | until withdrawn, or `CONSENT_VERSION` changes | Settings > Sharing with AI providers > Withdraw, Delete all data; iOS setup screen Withdraw permission; deleting the app |
+| Model list (model ids, display names, supported effort levels; no key, no usage) | fill the Settings model and effort dropdowns (2026-10-16) | read-only `GET /v1/models` to the chosen provider with the user's key in a header, when Settings opens and the cached list is over a day old, or on Refresh model list; only after the user allowed sharing with that provider (else the built-in list) | `browser.storage.local` key `modelCache` | replaced after a day | Delete all data |
 | Per-tab panel state (tab id, conversation id, panel open flag, timestamp; no page content) | reopen each tab's own conversation (spec Part 1, 2026-10-16) | popup on open, New chat; background worker on panel open/close | `browser.storage.local` key `tabState`; chat entries carry the conversation id | until the tab closes, or Safari restarts | tab close, Safari restart, Delete all data |
 | Page content snapshot (text, structure; password and card fields redacted) | answer questions, plan agent actions | content script on user request only | sent to Anthropic or OpenAI (user's own account) | provider's retention under user's account terms | provider-side: user's provider account; local: not stored beyond conversation |
 | Screenshots of visible tab (if used by agent) | visual grounding | agent step, user-started run | sent to chosen provider | same as above | same as above |
@@ -22,7 +23,9 @@ row against runtime behavior before any safeguard PASS.
 
 Provider calls (T005, `src/providers/`): requests go directly from the
 extension to `api.anthropic.com/v1/messages` or `api.openai.com/v1/responses`
-with the user's key in a header only (never in the body). Error messages shown
+with the user's key in a header only (never in the body). Every popup request
+to a provider API goes through `gatedFetch` (`src/settings/consent.ts`), which
+refuses it unless the user allowed sharing with that provider (2026-10-16). Error messages shown
 to the user never include provider response bodies. No new recipient beyond the
 vendors above.
 
@@ -34,7 +37,8 @@ API). Apple (App Store distribution) once released.
 
 Key test (T006, `apple/App/ProviderSetup.swift`): the host app sends one
 read-only GET to `api.anthropic.com/v1/models` or `api.openai.com/v1/models`
-with the user's key in a header, when the user presses "Test key". Nothing is
+with the user's key in a header, when the user presses "Test key", and only
+after the user chose Allow on the consent sheet for that provider. Nothing is
 logged or stored from the response; only the status code is used. The key is
 then written to Keychain on "Save key". No new recipient beyond the vendors
 above. The app sandbox gained `com.apple.security.network.client` for this.

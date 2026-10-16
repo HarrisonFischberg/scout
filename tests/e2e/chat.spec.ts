@@ -28,6 +28,8 @@ async function openPopup(page: Page, opts: { key: string | null }): Promise<{ bo
           sendNativeMessage: async () => (key ? { ok: true, value: key } : { ok: true }),
           onMessage: { addListener() {} },
         },
+        // Sharing with the provider already allowed (consent.spec.ts covers asking).
+        storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 1 }, openai: { at: 1, version: 1 } } } : {}), set: async () => undefined, clear: async () => undefined } },
         tabs: { query: async () => [{ id: 1 }] },
         scripting: { executeScript: async () => [{ result: pageData }] },
       };
@@ -115,7 +117,7 @@ test("a provider fallback is announced in the conversation", async ({ page }) =>
       scripting: { executeScript: async () => [{ result: null }] },
       storage: {
         local: {
-          get: async () => ({ settings: { provider: "openai", model: "gpt-5", retention: "7" } }),
+          get: async () => ({ settings: { provider: "openai", model: "gpt-5", retention: "7" }, aiConsent: { anthropic: { at: 1, version: 1 } } }),
           set: async () => undefined,
           clear: async () => undefined,
         },

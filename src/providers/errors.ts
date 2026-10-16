@@ -6,7 +6,8 @@ export type ProviderErrorCode =
   | "provider_unavailable"
   | "network"
   | "bad_request"
-  | "stream_error";
+  | "stream_error"
+  | "consent_required";
 
 const MESSAGES: Record<ProviderErrorCode, string> = {
   auth_invalid: "The API key was rejected. Check the key in Safari Scout settings.",
@@ -15,6 +16,7 @@ const MESSAGES: Record<ProviderErrorCode, string> = {
   network: "Could not reach the provider. Check your connection.",
   bad_request: "The provider rejected the request.",
   stream_error: "The response stream ended with an error.",
+  consent_required: "Safari Scout needs your permission before it sends anything to this provider. Nothing was sent.",
 };
 
 export class ProviderError extends Error {

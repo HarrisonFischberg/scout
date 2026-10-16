@@ -15,6 +15,14 @@ enum Provider: String, CaseIterable, Identifiable {
         }
     }
 
+    // Linked from the consent sheet before anything is sent to the provider.
+    var privacyPolicy: URL {
+        switch self {
+        case .anthropic: return URL(string: "https://www.anthropic.com/legal/privacy")!
+        case .openai: return URL(string: "https://openai.com/policies/privacy-policy/")!
+        }
+    }
+
     // Read-only model list endpoint: cheap, no tokens billed.
     fileprivate var testRequest: URL {
         switch self {
@@ -61,6 +69,28 @@ struct ProviderKeyTester: KeyTesting {
     }
 }
 
+// Permission to share with a third-party AI provider (App Store Review
+// Guideline 5.1.2(i)), asked before "Test key" sends anything to it. The app
+// keeps its own record per provider in UserDefaults. The Safari extension
+// cannot read it, so Safari asks again before its first request
+// (src/settings/consent.ts).
+final class ConsentStore {
+    /// Bump when what is shared changes, so everyone is asked again.
+    static let version = 1
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    private func key(_ provider: Provider) -> String { "aiConsent.\(provider.rawValue)" }
+
+    func has(_ provider: Provider) -> Bool { defaults.integer(forKey: key(provider)) == Self.version }
+    func grant(_ provider: Provider) { defaults.set(Self.version, forKey: key(provider)) }
+    func withdraw(_ provider: Provider) { defaults.removeObject(forKey: key(provider)) }
+    func withdrawAll() { Provider.allCases.forEach(withdraw) }
+}
+
 enum SetupState: Equatable {
     case empty
     case testing
@@ -76,7 +106,9 @@ final class SetupViewModel: ObservableObject {
         didSet {
             guard provider != oldValue else { return }
             key = ""
+            consentRequest = nil
             state = hasSavedKey(for: provider) ? .saved : .empty
+            sharingAllowed = consent.has(provider)
         }
     }
     // Editing the key invalidates an earlier test result.
@@ -92,14 +124,21 @@ final class SetupViewModel: ObservableObject {
     // Explains why a button did nothing. The buttons stay enabled (greyed-out
     // controls failed the contrast audit), so they must say what is missing.
     @Published private(set) var hint: String?
+    // Set when "Test key" needs permission first; the view shows the consent sheet.
+    @Published var consentRequest: Provider?
+    // Whether the chosen provider may receive requests (shown with a Withdraw button).
+    @Published private(set) var sharingAllowed = false
 
     private let tester: KeyTesting
     private let store: KeychainStore
+    private let consent: ConsentStore
 
-    init(tester: KeyTesting = ProviderKeyTester(), store: KeychainStore = KeychainStore()) {
+    init(tester: KeyTesting = ProviderKeyTester(), store: KeychainStore = KeychainStore(), consent: ConsentStore = ConsentStore()) {
         self.tester = tester
         self.store = store
+        self.consent = consent
         state = hasSavedKey(for: provider) ? .saved : .empty
+        sharingAllowed = consent.has(provider)
     }
 
     func hasSavedKey(for provider: Provider) -> Bool {
@@ -115,8 +154,36 @@ final class SetupViewModel: ObservableObject {
             return
         }
         guard state != .testing else { return }
+        // Nothing reaches the provider until the user allows it.
+        guard consent.has(provider) else {
+            consentRequest = provider
+            return
+        }
         state = .testing
         state = .result(await tester.test(key: trimmed, provider: provider))
+    }
+
+    // Consent sheet "Allow": remember it for this provider, then run the test.
+    func allowSharing() async {
+        guard let asked = consentRequest else { return }
+        consent.grant(asked)
+        consentRequest = nil
+        sharingAllowed = consent.has(provider)
+        if asked == provider { await testKey() }
+    }
+
+    // Consent sheet "Not now": nothing is sent or stored.
+    func declineSharing() {
+        guard let asked = consentRequest else { return }
+        consentRequest = nil
+        hint = "Nothing was sent. Safari Scout tests the key with \(asked.displayName) only after you allow sharing."
+    }
+
+    func withdrawSharing() {
+        consent.withdraw(provider)
+        sharingAllowed = false
+        if case .result = state { state = .empty }
+        hint = "Withdrawn. Safari Scout sends nothing to \(provider.displayName) from this app until you allow it again."
     }
 
     // Saves only after a valid test, then clears the in-memory field.

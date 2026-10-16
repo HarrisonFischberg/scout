@@ -85,8 +85,81 @@ struct OnboardingView: View {
             Text(setup.statusMessage)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityLabel("Key status: \(setup.statusMessage)")
+            if setup.sharingAllowed {
+                // App Store Review Guideline 5.1.2(i): the permission can be withdrawn here.
+                Text("You allowed this app to share with \(setup.provider.displayName) to test your key.")
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Withdraw permission") { setup.withdrawSharing() }
+                    .accessibilityLabel("Withdraw permission to share with \(setup.provider.displayName)")
+            }
             #endif
         }
+        #if os(iOS)
+        .sheet(item: $setup.consentRequest) { provider in
+            ConsentSheet(
+                provider: provider,
+                allow: { Task { await setup.allowSharing() } },
+                notNow: { setup.declineSharing() }
+            )
+        }
+        #endif
+    }
+}
+
+// Asked before "Test key" sends anything to the provider (App Store Review
+// Guideline 5.1.2(i)). Same disclosure as the Safari panel
+// (src/settings/consent.ts). Both buttons look alike so neither is pushed;
+// VoiceOver starts on the heading; Escape is Not now; swiping the sheet away
+// is disabled, so the choice is always explicit.
+private struct ConsentSheet: View {
+    let provider: Provider
+    let allow: () -> Void
+    let notNow: () -> Void
+    @AccessibilityFocusState private var headingFocused: Bool
+
+    private var name: String { provider.displayName }
+
+    private var items: [String] {
+        [
+            "Now, to test your key: only the key, so \(name) can check it.",
+            "Later, in Safari: your messages and the tasks you type.",
+            "When a request uses the page (questions, Summarize, Control Browser, Find coupons): the page's address, title, and text, and for Control Browser and Find coupons its links, buttons, and form fields. Password and card fields are hidden first.",
+            "Text of other tabs only when you choose them.",
+            "Your API key goes only to \(name), to sign in. Safari Scout never sends it anywhere else.",
+        ]
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Share with \(name)?")
+                    .font(.title2.bold())
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused($headingFocused)
+                Text("Safari Scout sends your requests to \(name), a third-party AI provider, using your own API key. \(name) receives:")
+                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(items, id: \.self) { item in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("•").accessibilityHidden(true)
+                        Text(item).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+                Link("\(name) privacy policy", destination: provider.privacyPolicy)
+                Text("Nothing is sent until you choose Allow. Safari asks again before Safari Scout's first request from the browser. You can withdraw this permission on this screen.")
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 24) {
+                    Button("Not now", action: notNow)
+                        .keyboardShortcut(.cancelAction)
+                    Button("Allow", action: allow)
+                }
+                .padding(.top, 4)
+            }
+            .padding(24)
+            .frame(maxWidth: 560, alignment: .leading)
+        }
+        .interactiveDismissDisabled()
+        .onAppear { headingFocused = true }
     }
 }
 

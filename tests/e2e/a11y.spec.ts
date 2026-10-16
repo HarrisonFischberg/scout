@@ -8,6 +8,8 @@ async function openPopup(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const data: Record<string, unknown> = {
       settings: { provider: "anthropic", model: "claude-sonnet-5-5", retention: "7" },
+      // OpenAI allowed, Anthropic not: Settings shows a Withdraw button and the first chat request asks.
+      aiConsent: { openai: { at: 1, version: 1 } },
     };
     (globalThis as unknown as { browser: unknown }).browser = {
       runtime: {
@@ -61,6 +63,15 @@ for (const scheme of ["light", "dark"] as const) {
       await openPopup(page);
       await page.locator("#model-pill").click();
       await expect(page.getByRole("menu", { name: "Model and effort" })).toBeVisible();
+      expect(await axe(page)).toEqual([]);
+    });
+
+    // Asked before the first request to a provider (tests/e2e/consent.spec.ts).
+    test("popup consent dialog has no WCAG 2.2 AA violations", async ({ page }) => {
+      await openPopup(page);
+      await page.getByLabel("Ask about this page").fill("Hi");
+      await page.getByLabel("Ask about this page").press("Enter");
+      await expect(page.getByRole("dialog", { name: "Share with Anthropic?" })).toBeVisible();
       expect(await axe(page)).toEqual([]);
     });
 

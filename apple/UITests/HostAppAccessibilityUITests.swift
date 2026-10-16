@@ -11,7 +11,7 @@ final class HostAppAccessibilityUITests: XCTestCase {
 
     private func launch(_ scheme: Scheme) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments += ["-UITestColorScheme", scheme.rawValue]
+        app.launchArguments += ["-UITestColorScheme", scheme.rawValue, "-UITestResetConsent", "YES"]
         app.launch()
         XCTAssertTrue(app.staticTexts["Set up Safari Scout"].waitForExistence(timeout: 10))
         // Prove the scheme took effect: sample the top-left background pixel.
@@ -62,6 +62,29 @@ final class HostAppAccessibilityUITests: XCTestCase {
         attachScreenshot("T006-ios-setup-dark")
         try audit(app, "setup-dark")
     }
+
+    // App Store Review Guideline 5.1.2(i): "Test key" first shows the consent
+    // sheet. Only "Not now" is tapped, so nothing is sent (no network here).
+    private func consentSheet(_ scheme: Scheme) throws {
+        let app = launch(scheme)
+        let field = app.secureTextFields["API key"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("sk-ant-test-synthetic-ui-0000")
+        app.buttons["Test key"].tap()
+        XCTAssertTrue(app.staticTexts["Share with Anthropic?"].waitForExistence(timeout: 5))
+        // SwiftUI may expose Link as a link or a button.
+        XCTAssertTrue(app.links["Anthropic privacy policy"].exists || app.buttons["Anthropic privacy policy"].exists)
+        attachScreenshot("consent-sheet-\(scheme.rawValue)")
+        try audit(app, "consent-\(scheme.rawValue)")
+        app.buttons["Not now"].tap()
+        XCTAssertTrue(app.staticTexts["Set up Safari Scout"].waitForExistence(timeout: 5))
+        let status = app.staticTexts["Key status: Nothing was sent. Safari Scout tests the key with Anthropic only after you allow sharing."]
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+    }
+
+    func testConsentSheetAuditLight() throws { try consentSheet(.light) }
+    func testConsentSheetAuditDark() throws { try consentSheet(.dark) }
 
     func testLegalSheetOpensAndCloses() throws {
         let app = launch(.light)

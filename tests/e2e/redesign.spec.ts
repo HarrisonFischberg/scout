@@ -53,7 +53,8 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
         },
       };
     },
-    { keys: opts.keys ?? {}, data: opts.data ?? {}, pageData: PAGE },
+    // Sharing with the providers already allowed (consent.spec.ts covers asking).
+    { keys: opts.keys ?? {}, data: { aiConsent: { anthropic: { at: 1, version: 1 }, openai: { at: 1, version: 1 } }, ...(opts.data ?? {}) }, pageData: PAGE },
   );
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
