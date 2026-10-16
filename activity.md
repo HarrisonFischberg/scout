@@ -293,3 +293,19 @@ Error opening log file (/Users/harrison/Library/Logs/CoreSimulator/CoreSimulator
   launch-blockers 9 and 10. No `prd.md` status row changed. No task files changed.
 - Turns used: 1 of 5. Stopped: the only unblock is owner action on T002 (run the Xcode builds and
   Safari extension load outside the session sandbox, then set T002 to `done`). Further turns would repeat this scan.
+
+## 2026-10-15 — /goal run (per PROMPT.md: finish one dependency-ready pending task): goal NOT met, recorded
+
+- Read PROMPT.md, prd.md, activity.md tail, docs/launch-blockers.md, docs/tool-environment.md.
+- Task scan: T001 `done`. T002 `blocked` (launch-blockers 9, 10). T003–T018 `pending`, all depend transitively on T002. No task is dependency-ready, so none set to `in progress`.
+- Re-checked the blocker (one command, real output trimmed):
+
+```
+$ xcrun simctl list runtimes
+CoreSimulatorService connection became invalid.  Simulator services will no longer be available.
+Error opening log file (/Users/harrison/Library/Logs/CoreSimulator/CoreSimulator.com.apple.CoreSimulator.simctl.log): Operation not permitted
+```
+
+- Result: blocker unchanged. No iOS Simulator runtime, no simulator services. Did not re-run `xcodebuild`: the 19:42–19:45 entries already quote the same EPERM output.
+- No `prd.md` status row changed. Blocking a pending row would misstate its cause (T002). No task files changed.
+- Turns used: 1 of 5. Stopped: the only unblock is owner action on T002 (run the Xcode builds and Safari extension load outside the session sandbox, then set T002 to `done`). Further turns would repeat this check.
