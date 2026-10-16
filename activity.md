@@ -333,3 +333,9 @@ built extension to /Users/harrison/projects/assist-ant/apple/Extension/Resources
 - This shows the esbuild pipeline works in the sandbox. It does not finish T002: its acceptance needs both Xcode targets built and the extension loaded in Safari, and both are blocked (launch-blockers 9, 10). Marking T002 `done` on the npm result alone would misstate its status. No `prd.md` row changed.
 - `git status` clean after the build (build output is untracked or ignored).
 - Turns used: 2 of 5. Stopped: the goal cannot be met without owner action on T002. Turns 3–5 would repeat the same scan.
+
+## 2026-10-15 — /goal run (turn 3 of 5): goal NOT met, recorded
+
+- Stop-hook feedback: condition not satisfied. Agreed.
+- Considered setting T003 to `blocked` so the condition would read as met. Rejected: T003's real state is "waiting on T002", which is already recorded in launch-blockers 9 and 10. Marking it `blocked` would only satisfy the hook, not reflect the work. No `prd.md` row changed.
+- Turns used: 3 of 5. Stopped: the only unblock is owner action on T002 (run the Xcode builds and the Safari extension load outside the sandbox, then set T002 to `done`). Turns 4–5 would repeat the same check.
