@@ -1058,3 +1058,9 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Tests: unit 149 (coupons rewritten for the new rule with the decision noted; CAPTCHA-attempt regression caught and fixed), e2e 57 incl. `cart.spec.ts` against a fake Shopify cart in `scripts/serve-fixtures.mjs` and popup batch prompts (win and no-win). Lint, typecheck, release check clean. macOS build + bundle check ok.
 - Docs: terms draft §5, data inventory (cart requests, guessed codes), claims register, intentional differences, launch-blocker 4.
 - Not verified: live run on getbeefy.co (owner to re-run Find coupons and paste diagnostics if it misbehaves).
+
+## 2026-10-16 — Extension vanished after quitting Safari
+
+- Cause: ad-hoc signed builds need Safari's "Allow unsigned extensions", which Safari turns off on quit, hiding the extension.
+- Fix: this Mac has an "Apple Development" certificate (team KTV2G3Z883). New `scripts/build-mac.sh` signs with it (local signing only, no provisioning, nothing sent to Apple), checks the bundle, and registers without launching the app; falls back to ad-hoc when no certificate exists. `codesign --verify --deep --strict` passes; TeamIdentifier=KTV2G3Z883 on app and extension.
+- Not verified: Safari keeping the extension across a restart on the owner's Mac.
