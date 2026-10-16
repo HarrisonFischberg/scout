@@ -102,7 +102,7 @@
       </div>
       <p id="status" class="hint" role="status">Loading…</p>
       <section id="settings" class="empty" aria-labelledby="settings-title" hidden>
-        <h2 id="settings-title">Settings</h2>
+        <h2 id="settings-title" tabindex="-1">Settings</h2>
         <form id="settings-form">
           <label for="set-provider">Provider</label>
           <select id="set-provider">
@@ -139,6 +139,7 @@
             <button id="delete-no" type="button">Cancel</button>
           </div>
         </div>
+        <p id="delete-result" role="status" aria-live="polite"></p>
       </section>
       <section id="no-key" class="empty" hidden>
         <p><strong>Add an API key to start.</strong></p>

@@ -86,7 +86,7 @@ test("Delete all data needs a confirm, then clears storage, Keychain, and site a
   expect(untouched).toContain("settings");
   await page.getByRole("button", { name: "Delete all data" }).click();
   await page.getByRole("button", { name: "Yes, delete all data" }).click();
-  await expect(page.getByText("All AssistAnt data on this device was deleted.")).toBeVisible();
+  await expect(page.locator("#delete-result")).toHaveText("Deleted your API keys, settings, and history from this device.");
   const after = await page.evaluate(() => {
     const f = (globalThis as unknown as { __fake: { data: object; keys: object; origins: string[] } }).__fake;
     return { data: Object.keys(f.data), keys: Object.keys(f.keys), origins: f.origins };
@@ -116,4 +116,13 @@ test("legal drafts open from settings by keyboard and are marked DRAFT", async (
     await expect(legal.getByRole("heading", { level: 1 })).toHaveText(heading);
     await legal.close();
   }
+});
+
+// iOS opens a <select>'s picker as soon as it gets focus (seen in T018), so
+// opening Settings must focus the heading, not the provider select.
+test("opening Settings focuses its heading, not the provider select", async ({ page }) => {
+  await openPopup(page);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("heading", { name: "Settings", level: 2 })).toBeFocused();
+  await expect(page.getByLabel("Provider")).not.toBeFocused();
 });

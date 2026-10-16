@@ -955,3 +955,14 @@ $ npx playwright test settings
 - Popup status line showed internal codes ("Coupons no_codes."). Added `couponStatusText()` + unit test.
 - Coupon totals: parser only reads "$" totals; other currencies get "Could not read a total", so "$" display is consistent. Recorded as a limitation.
 - Checks after changes: unit 115/115, e2e 38/38, lint + typecheck ok, iOS UI audit TEST SUCCEEDED.
+
+## 2026-10-15 — T018 supervised on iOS Simulator (Claude, interactive session)
+
+- Device: dedicated "AssistAnt Test iPhone" (iOS 27, BBCC2295-…), local fixture server on 127.0.0.1:4318 (stopped afterwards).
+- F01: host app setup screen captured. Enabled AssistAnt in Safari (Manage Extensions). Popup asked for per-site access; chose "Allow for One Day" for 127.0.0.1 only.
+- Popup no-key state renders with the billing disclosure (`T018-ios-safari-popup-no-key.png`).
+- F07 Delete all data: found that Safari-granted site access survives `permissions.remove` while the UI reported full success. Fixed: `deleteAllData` re-lists granted sites; `deleteReportText` names any that remain and gives the Safari Settings path; result shown next to the button (role=status). New unit tests.
+- First F07 attempt also showed "Could not delete your API keys in Keychain": cause was the unsigned simulator build (`CODE_SIGNING_ALLOWED=NO`); with ad-hoc signing (`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual`) the Keychain step succeeds. Simulator builds for manual testing must be signed.
+- Opening Settings focused the provider `<select>`, which on iOS opens the picker over the panel. Fixed: focus the Settings heading; skip auto-focus of the question field on coarse pointers. New e2e tests.
+- Checks: unit 117/117, e2e 40/40, lint + typecheck ok, iOS build ok.
+- Not done: F02–F06 (need owner test keys, blocker 3); macOS Safari flows (owner manual); key sharing between app and extension (blocker 14).
