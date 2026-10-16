@@ -6,8 +6,9 @@
 //   shopify - the store's own cart endpoint (/cart/update.js), the same one its
 //             Apply button uses, in the user's session. Fast and exact.
 //   page    - type the code in the page's coupon box, press Apply, read the total.
-// Codes are tested in batches (default 25); between batches the user is asked
-// whether to keep going.
+// Codes are tested in batches (default 25). Owner, 2026-10-16: after a batch,
+// a code that saves money is applied and the search ends; only when none does
+// is the user asked whether to find and test 25 more.
 import type { Action, ActionResult } from "../actions/executor";
 import type { AgentControl } from "../agent/loop";
 import { classifyAction, detectCaptcha } from "../safety/classifier";
@@ -74,14 +75,24 @@ export interface CouponOutcome {
   applied: boolean;
   /** Codes left untested because the user stopped between batches. */
   untested: number;
+  /** True when the user asked for more codes and none could be found. */
+  exhausted?: boolean;
   message: string;
 }
 
 export const BATCH_SIZE = 25;
 export const MAX_TOTAL = 200;
-const INPUT_NAME = /coupon|promo|discount|voucher|gift\s*card|code/i;
-const APPLY_NAME = /^(apply|redeem|add|use)\b|apply\s+(code|coupon)/i;
-const TOTAL_RE = /(?:^|[^a-z])(?:order\s+|grand\s+|new\s+)?total\b[^$\d\n]{0,20}\$\s*([\d,]+(?:\.\d{1,2})?)/gi;
+const INPUT_NAME = /coupon|promo|discount|voucher|gift\s*card|reduction|code/i;
+const STRONG_INPUT = /coupon|promo|discount|voucher|reduction/i;
+// Fields named "code" that are not coupon boxes: never type a coupon there.
+const NOT_COUPON_INPUT = /zip|postal|post\s*code|area\s*code|country\s*code|phone|verif|security|one[-\s]?time|sms|access\s*code|tracking/i;
+const TEXT_TYPES = new Set(["text", "search", ""]);
+const APPLY_NAME = /^(apply|redeem|add|use)\b|apply\s+(code|coupon|discount)/i;
+const NOT_APPLY = /\bto\s+(cart|bag|basket|wish\s*list|order)\b/i;
+// "Total" then up to one line of words (a currency code, "1 item") before the
+// amount; "Total savings" and "Total discount" are not the total.
+const TOTAL_RE =
+  /(?:^|[^a-z])(?:order\s+|grand\s+|new\s+)?total\b(?!\s*(?:savings?|saved|discounts?|off)\b)[^$\d]{0,24}?(?:\d+\s+items?\b[^$\d]{0,12}?)?\$\s*([\d,]+(?:\.\d{1,2})?)/gi;
 const STOPWORDS = new Set(["NONE", "N/A", "CODE", "CODES", "COUPON", "SORRY", "NOTE", "THE", "AND"]);
 
 /** Candidate codes from free text: one per token, upper-cased, deduped, capped. */
@@ -112,18 +123,29 @@ function isOrderLike(el: SnapElement, snap: Snapshot): boolean {
 }
 
 function findForm(snap: Snapshot): { input: SnapElement; apply: SnapElement } | null {
-  const input = snap.elements.find(
-    (e) => e.tag === "input" && !e.redacted && !e.disabled && e.type !== "password" && INPUT_NAME.test(e.name),
+  const inputs = snap.elements.filter(
+    (e) =>
+      e.tag === "input" &&
+      !e.redacted &&
+      !e.disabled &&
+      TEXT_TYPES.has(e.type ?? "text") &&
+      INPUT_NAME.test(e.name) &&
+      !NOT_COUPON_INPUT.test(e.name),
   );
+  const input = inputs.find((e) => STRONG_INPUT.test(e.name)) ?? inputs[0];
   if (!input) return null;
+  const at = snap.elements.indexOf(input);
   // Never the order button: payment, login, and similar targets are refused.
-  const apply = snap.elements.find(
+  const buttons = snap.elements.filter(
     (e) =>
       (e.tag === "button" || e.role === "button") &&
-      !e.disabled &&
       APPLY_NAME.test(e.name.trim()) &&
+      !NOT_APPLY.test(e.name) &&
       !isOrderLike(e, snap),
   );
+  // The box's own button follows it and may stay disabled until a code is
+  // typed (Shopify checkout); otherwise the nearest enabled one before it.
+  const apply = buttons.find((e) => snap.elements.indexOf(e) > at) ?? buttons.filter((e) => !e.disabled).pop();
   return apply ? { input, apply } : null;
 }
 
@@ -190,22 +212,34 @@ async function pageTester(page: CouponPage, settleMs: number): Promise<Tester | 
     return { error: "error", message: "Could not read the page." };
   }
   if (detectCaptcha(snap)) return { error: "captcha", message: "Stopped: the page asks for a CAPTCHA. Complete it yourself." };
-  const form = findForm(snap);
-  if (!form) return { error: "no_form", message: "No coupon box found on this page. Open the cart or checkout page first." };
+  if (!findForm(snap)) return { error: "no_form", message: "No coupon box found on this page. Open the cart or checkout page first." };
   const baseline = parseTotal(snap.text);
   if (baseline === null) return { error: "error", message: "Could not read a total on this page, so savings cannot be measured." };
+  // Refs last one snapshot, and the page changes after each code, so look again each time.
+  const look = async (): Promise<Snapshot | null> => {
+    try {
+      return await page.snapshot();
+    } catch {
+      return null;
+    }
+  };
   const tryCode = async (code: string): Promise<TryResult> => {
+    const before = await look();
+    if (!before) return { total: null, accepted: null, note: "Could not read the page." };
+    if (detectCaptcha(before)) return { total: null, accepted: null, captcha: true };
+    const form = findForm(before);
+    if (!form) return { total: null, accepted: null, note: "The coupon box is gone." };
     const typed = await page.act({ type: "type", ref: form.input.ref, text: code, clear: true });
     if (!typed.ok) return { total: null, accepted: null, note: "Could not type the code: " + typed.message };
-    const clicked = await page.act({ type: "click", ref: form.apply.ref });
+    // Some stores enable Apply only once a code is typed.
+    const ready = await look();
+    const now = ready ? findForm(ready) : null;
+    if (!now || now.apply.disabled) return { total: null, accepted: null, note: "The Apply button stayed disabled." };
+    const clicked = await page.act({ type: "click", ref: now.apply.ref });
     if (!clicked.ok) return { total: null, accepted: null, note: "Could not press Apply: " + clicked.message };
     await page.act({ type: "wait", ms: settleMs });
-    let after: Snapshot;
-    try {
-      after = await page.snapshot();
-    } catch {
-      return { total: null, accepted: null, note: "Could not read the page after applying." };
-    }
+    const after = await look();
+    if (!after) return { total: null, accepted: null, note: "Could not read the page after applying." };
     if (detectCaptcha(after)) return { total: null, accepted: null, captcha: true };
     const total = parseTotal(after.text);
     return total === null ? { total: null, accepted: null, note: "Total not readable after applying." } : { total, accepted: null };
@@ -225,8 +259,10 @@ async function pageTester(page: CouponPage, settleMs: number): Promise<Tester | 
 
 export interface BatchState {
   tried: number;
+  /** Codes already found and not yet tried. */
   remaining: number;
-  best?: CouponAttempt;
+  /** How many the next batch tests; when few remain, more are searched for first. */
+  next: number;
 }
 
 export interface CouponInput {
@@ -238,8 +274,13 @@ export interface CouponInput {
   /** Pause between codes, to be gentle with the store. */
   delayMs?: number;
   batchSize?: number;
-  /** Asked after each batch while codes remain; false stops. Absent: test everything. */
+  /**
+   * Asked after a batch in which no code saved money, while codes remain or
+   * more can be found; false stops. Absent: test every code given, no prompt.
+   */
   askMore?: (s: BatchState) => Promise<boolean>;
+  /** Finds codes not in `known` (new web search, more guesses). Used only after askMore says yes. */
+  findMore?: (known: string[]) => Promise<CouponCandidate[]>;
   onAttempt?: (a: CouponAttempt, index: number, total: number) => void;
 }
 
@@ -249,12 +290,15 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
   const halted = (): boolean => control?.isStopped === true || signal?.aborted === true;
 
   const codes: CouponCandidate[] = [];
-  for (const c of input.codes) {
-    const code = c.code.trim().toUpperCase();
-    if (!CODE_RE.test(code) || codes.some((x) => x.code === code)) continue;
-    codes.push({ ...c, code });
-    if (codes.length >= MAX_TOTAL) break;
-  }
+  const add = (list: CouponCandidate[]): void => {
+    for (const c of list) {
+      if (codes.length >= MAX_TOTAL) return;
+      const code = c.code.trim().toUpperCase();
+      if (!CODE_RE.test(code) || codes.some((x) => x.code === code)) continue;
+      codes.push({ ...c, code });
+    }
+  };
+  add(input.codes);
 
   const shopify = input.page.cart ? await shopifyTester(input.page.cart).catch(() => null) : null;
   const tester = shopify ?? (await pageTester(input.page, input.settleMs ?? 400));
@@ -280,7 +324,9 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
 
   const size = Math.max(1, input.batchSize ?? BATCH_SIZE);
   let stoppedEarly: CouponStatus | null = null;
-  outer: for (let i = 0; i < codes.length; ) {
+  let exhausted = false;
+  let i = 0;
+  outer: while (i < codes.length) {
     const batch = codes.slice(i, i + size);
     for (const cand of batch) {
       await control?.gate();
@@ -333,10 +379,21 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
       if (input.delayMs) await new Promise((res) => setTimeout(res, input.delayMs));
     }
     i += batch.length;
-    if (i < codes.length && input.askMore) {
-      const best = bestOf(attempts);
-      const more = await input.askMore({ tried: i, remaining: codes.length - i, ...(best ? { best } : {}) });
-      if (!more || halted()) break;
+    // A code that saves money ends the search; the best one is applied below.
+    if (bestOf(attempts)) break;
+    if (!input.askMore) continue;
+    const canFind = input.findMore !== undefined && codes.length < MAX_TOTAL;
+    if (i >= codes.length && !canFind) break;
+    const next = canFind ? size : Math.min(size, codes.length - i);
+    const more = await input.askMore({ tried: i, remaining: codes.length - i, next });
+    if (!more || halted()) break;
+    if (canFind && codes.length - i < size) {
+      add(await input.findMore!(codes.map((c) => c.code)).catch(() => []));
+      if (halted()) {
+        stoppedEarly = "stopped";
+        break;
+      }
+      if (i >= codes.length) exhausted = true;
     }
   }
 
@@ -346,7 +403,13 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
   }
   if (!best || best.total === null) {
     await tester.finish(null).catch(() => undefined);
-    return result(stoppedEarly ?? "done", stoppedEarly === "rate_limited" ? "The store asked to slow down." : "No code lowered the total.");
+    const message =
+      stoppedEarly === "rate_limited"
+        ? "The store asked to slow down."
+        : exhausted
+          ? "No code lowered the total, and no more codes were found."
+          : "No code lowered the total.";
+    return result(stoppedEarly ?? "done", message, exhausted ? { exhausted } : {});
   }
   // Apply the winner (later attempts replaced it) and confirm with a fresh read.
   const total = await tester.apply(best.code).catch(() => null);
@@ -356,6 +419,10 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
 }
 
 const money = (n: number): string => "$" + n.toFixed(2);
+const percentOff = (baseline: number, total: number): string => {
+  const p = baseline > 0 ? ((baseline - total) / baseline) * 100 : 0;
+  return p >= 1 ? Math.round(p) + "% off" : "under 1% off";
+};
 
 /** Chat summary of a run, in the same plain style as other answers. Built in code, not by the model. */
 export function couponSummary(o: CouponOutcome): string {
@@ -368,7 +435,7 @@ export function couponSummary(o: CouponOutcome): string {
   if (o.best && o.best.total !== null && o.baseline !== null) {
     const head =
       "I tested " + tested + ". **" + o.best.code + "** is the best: your total drops from **" + money(o.baseline) + "** to **" +
-      money(o.best.total) + "** (you save " + money(o.baseline - o.best.total) + ").";
+      money(o.best.total) + "** (you save " + money(o.baseline - o.best.total) + ", " + percentOff(o.baseline, o.best.total) + ").";
     lines.unshift(
       head +
         (o.applied ? " It's applied to your cart, and I didn't go to checkout." : " I couldn't re-apply it, so enter it yourself in the coupon box."),
@@ -376,7 +443,11 @@ export function couponSummary(o: CouponOutcome): string {
   } else if (o.status === "done" || o.status === "stopped") {
     lines.unshift(
       "I tested " + tested + " and none lowered your total" + (o.baseline !== null ? " of " + money(o.baseline) : "") + "." +
-        (o.untested > 0 ? " " + o.untested + " more codes were left untested." : ""),
+        (o.exhausted
+          ? " I couldn't find any more codes to try."
+          : o.untested > 0
+            ? " " + o.untested + " more codes were left untested."
+            : ""),
     );
   }
   const worked = o.attempts.filter((a) => a.saving !== null && a.saving > 0 && a.accepted !== false).sort((a, b) => (b.saving ?? 0) - (a.saving ?? 0));

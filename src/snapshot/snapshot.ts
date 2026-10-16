@@ -58,6 +58,10 @@ const BLOCK_TAGS = new Set([
 const SENSITIVE_HINT =
   /card|cc[-_ ]?(num|number|exp|csc)|cvv|cvc|csc|security[-_ ]?code|ssn|social[-_ ]?security|passw|passcode|\bpin\b|otp|one[-_ ]?time/i;
 const SENSITIVE_AUTOCOMPLETE = /cc-|current-password|new-password|one-time-code/i;
+// "Discount code or gift card" is a coupon box, not a card field. A field that
+// only says "gift card" (number, PIN) stays redacted.
+const COUPON_HINT = /discount|coupon|promo|voucher|reduction/i;
+const GIFT_CARD = /gift[-_ ]?card/gi;
 const INPUT_ROLES: Record<string, string> = {
   button: "button",
   submit: "button",
@@ -76,7 +80,7 @@ export function isSensitiveField(node: SnapNode): boolean {
   if (type === "password") return true;
   if (SENSITIVE_AUTOCOMPLETE.test(node.attrs.autocomplete ?? "")) return true;
   const hint = [node.attrs.name, node.attrs.id, node.attrs["aria-label"], node.attrs.placeholder].join(" ");
-  return SENSITIVE_HINT.test(hint);
+  return SENSITIVE_HINT.test(COUPON_HINT.test(hint) ? hint.replace(GIFT_CARD, " ") : hint);
 }
 
 function roleOf(node: SnapNode): string | null {
@@ -96,6 +100,10 @@ function roleOf(node: SnapNode): string | null {
   return null;
 }
 
+function hasControl(node: SnapNode): boolean {
+  return node.children.some((c) => c.tag !== "#text" && (roleOf(c) !== null || hasControl(c)));
+}
+
 function isHidden(node: SnapNode): boolean {
   if (node.hidden) return true;
   const a = node.attrs;
@@ -108,7 +116,18 @@ function collectText(node: SnapNode): string {
   if (SKIP_TAGS.has(node.tag) || isHidden(node)) return "";
   // Never let a sensitive field's content leak into a name.
   if (isSensitiveField(node)) return "";
-  return node.children.map(collectText).join(" ");
+  const text = node.children.map(collectText).join(" ");
+  return node.attrs["aria-label"] ? (spelledOut(node, text) ?? text) : text;
+}
+
+/**
+ * Text split into one span per character (Shopify checkout prices) carries the
+ * whole string in aria-label: "$170.00", not "$ 1 7 0 . 0 0". Null otherwise.
+ */
+function spelledOut(node: SnapNode, text: string): string | null {
+  const label = node.attrs["aria-label"];
+  if (!label || node.children.length < 2 || roleOf(node) !== null || hasControl(node)) return null;
+  return text.replace(/\s+/g, "") === label.replace(/\s+/g, "") ? label : null;
 }
 
 function squash(s: string, max: number): string {
@@ -193,6 +212,11 @@ export function buildSnapshot(root: SnapNode, opts: SnapshotOptions): Snapshot {
       if (node.tag === "button" || node.tag === "a" || node.tag === "textarea" || node.tag === "select") return;
     }
     if (sensitive) return;
+    const spelled = !role && node.attrs["aria-label"] ? spelledOut(node, node.children.map(collectText).join(" ")) : null;
+    if (spelled !== null) {
+      push(squash(spelled, maxText));
+      return;
+    }
 
     const block = BLOCK_TAGS.has(node.tag);
     if (block) push("\n");

@@ -37,8 +37,9 @@ const CODES_TURN = sse([
 async function openPopup(
   page: Page,
   opts: { pct?: Record<string, number>; codesTurn?: string } = {},
-): Promise<{ clicks: string[] }> {
+): Promise<{ clicks: string[]; asks: string[] }> {
   const clicks: string[] = [];
+  const asks: string[] = [];
   await page.exposeFunction("__recordClick", (ref: string) => clicks.push(ref));
   await page.addInitScript((pctIn: Record<string, number>) => {
     const w = window as unknown as { __recordClick: (r: string) => void };
@@ -94,26 +95,30 @@ async function openPopup(
   }, opts.pct ?? { SAVE10: 10, SAVE20: 20 });
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
-  await page.route("https://api.anthropic.com/**", (r) =>
-    r.fulfill({ status: 200, contentType: "text/event-stream", body: opts.codesTurn ?? CODES_TURN }),
-  );
+  await page.route("https://api.anthropic.com/**", (r) => {
+    asks.push(r.request().postData() ?? "");
+    return r.fulfill({ status: 200, contentType: "text/event-stream", body: opts.codesTurn ?? CODES_TURN });
+  });
   await page.goto("/popup.html");
-  return { clicks };
+  return { clicks, asks };
 }
 
 // The page path waits ~0.65 s per code (settle + polite pause), so 25 codes take ~16 s.
 const BATCH_WAIT = { timeout: 45_000 };
 
-test("coupon run tests a batch of 25, asks before more, keeps the best, never clicks order", async ({ page }) => {
+// Owner, 2026-10-16: after 25 codes, a saving means the best code is applied
+// with no prompt; no saving means "find 25 more?".
+test("coupon run tests a batch of 25, applies the best without asking, never clicks order", async ({ page }) => {
   test.setTimeout(90_000);
   const { clicks } = await openPopup(page);
   await page.getByRole("button", { name: "Find coupons" }).click();
-  // After the first 25 codes the user is asked whether to keep going.
-  await expect(page.locator("#coupons-more-text")).toHaveText(
-    "Tried 25 codes. Best so far: SAVE20 saves $20.00. Try 16 more to look for a bigger saving?",
+  const answer = page.getByRole("log").locator(".msg.assistant").last();
+  await expect(answer).toContainText(
+    "I tested 25 codes. SAVE20 is the best: your total drops from $100.00 to $80.00 (you save $20.00, 20% off).",
     BATCH_WAIT,
   );
-  await expect(page.getByRole("button", { name: "Try 16 more" })).toBeFocused();
+  await expect(answer).toContainText("It's applied to your cart, and I didn't go to checkout.");
+  await expect(page.locator("#coupons-more")).toBeHidden();
   const rows = page.locator("#coupons-rows tr");
   await expect(rows).toHaveCount(25);
   // Codes found online come first and link to their page; guesses are labeled.
@@ -127,11 +132,6 @@ test("coupon run tests a batch of 25, asks before more, keeps the best, never cl
     await expect(rows.nth(i).getByRole("link", { name: "deals.test" })).toHaveAttribute("href", "https://deals.test/codes");
   }
   await expect(rows.nth(5)).toContainText("Guess (common pattern)");
-
-  await page.getByRole("button", { name: "Stop here" }).click();
-  const answer = page.getByRole("log").locator(".msg.assistant").last();
-  await expect(answer).toContainText("I tested 25 codes. SAVE20 is the best: your total drops from $100.00 to $80.00 (you save $20.00).", BATCH_WAIT);
-  await expect(answer).toContainText("It's applied to your cart, and I didn't go to checkout.");
   // e3 is "Place order": it must never be clicked.
   expect(clicks).not.toContain("e3");
   // 25 tries plus one re-apply of the winner, all on Apply (e2).
@@ -139,16 +139,29 @@ test("coupon run tests a batch of 25, asks before more, keeps the best, never cl
   expect(new Set(clicks)).toEqual(new Set(["e2"]));
 });
 
-test("no winning code: asks whether to try more, then tests the rest", async ({ page }) => {
-  test.setTimeout(120_000);
-  await openPopup(page, { pct: {} });
+test("no winning code: asks to find 25 more, searches again without repeating codes, stops on request", async ({ page }) => {
+  test.setTimeout(150_000);
+  const { asks } = await openPopup(page, { pct: {} });
   await page.getByRole("button", { name: "Find coupons" }).click();
   await expect(page.locator("#coupons-more-text")).toHaveText(
-    "We've tried 25 codes and none lowered your total. Would you like to try 16 more?",
+    "We've tried 25 codes and none lowered your total. Would you like Safari Scout to find 25 more to test?",
     BATCH_WAIT,
   );
-  await page.getByRole("button", { name: "Try 16 more" }).click();
+  await expect(page.getByRole("button", { name: "Find 25 more" })).toBeFocused();
+  await page.getByRole("button", { name: "Find 25 more" }).click();
+  await expect(page.locator("#coupons-more-text")).toHaveText(
+    "We've tried 50 codes and none lowered your total. Would you like Safari Scout to find 25 more to test?",
+    BATCH_WAIT,
+  );
+  // The second web search names the codes already tried so it looks for others.
+  expect(asks).toHaveLength(2);
+  expect(asks[1]).toContain("Already tried, do not list these again");
+  expect(asks[1]).toContain("WELCOME5, SAVE10, FREESHIP, SAVE20, BOGUS99");
+  const rows = page.locator("#coupons-rows tr");
+  await expect(rows).toHaveCount(50);
+  const codes = await rows.locator("td:first-child").allTextContents();
+  expect(new Set(codes).size).toBe(50);
+  await page.getByRole("button", { name: "Stop here" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
-  await expect(answer).toContainText("I tested 41 codes and none lowered your total of $100.00.", BATCH_WAIT);
-  await expect(page.locator("#coupons-rows tr")).toHaveCount(41);
+  await expect(answer).toContainText("I tested 50 codes and none lowered your total of $100.00.", BATCH_WAIT);
 });

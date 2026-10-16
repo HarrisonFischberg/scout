@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Checkout (synthetic)</title>
+    <style>
+      body { display: flex; gap: 32px; font-family: system-ui, sans-serif; }
+      .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+      [role="row"] { display: flex; justify-content: space-between; gap: 16px; }
+    </style>
+  </head>
+  <body>
+    <!-- Modeled on the layout of a Shopify one-page checkout (diagnostics run #20):
+         a ZIP code field before the discount box, an Apply button that stays
+         disabled until a code is typed, and a total drawn one span per character.
+         Synthetic store and codes only: SAVE10 = 10% off, SAVE20 = 20% off. -->
+    <main>
+      <h2>Contact</h2>
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" placeholder="Email" autocomplete="shipping email" />
+      <h2>Delivery</h2>
+      <label for="zip">ZIP code</label>
+      <input id="zip" name="postalCode" type="text" placeholder="ZIP code" autocomplete="shipping postal-code" />
+      <label for="phone">Phone</label>
+      <input id="phone" name="phone" type="tel" placeholder="Phone" autocomplete="shipping tel-national" />
+      <button id="pay" type="submit" aria-label="Pay now">Pay now</button>
+      <p id="status"></p>
+    </main>
+    <aside>
+      <h2>Order summary</h2>
+      <p>1 x Synthetic dash bracket</p>
+      <form id="discount-form" onsubmit="return false">
+        <label class="sr" for="code">Discount code or gift card</label>
+        <input id="code" name="reductions" type="text" placeholder="Discount code or gift card" autocomplete="on" />
+        <button id="apply" type="submit" aria-label="Apply Discount Code" disabled>Apply</button>
+      </form>
+      <p id="message" role="status"></p>
+      <div role="table">
+        <div role="row"><div role="rowheader">Subtotal</div><div role="cell">$170.00</div></div>
+        <div role="row"><div role="rowheader">Shipping</div><div role="cell">Enter shipping address</div></div>
+        <div role="row">
+          <div role="rowheader"><strong>Total</strong></div>
+          <div role="cell"><div><abbr><span>USD</span></abbr><strong id="total"></strong></div></div>
+        </div>
+        <div role="row" id="savings-row" hidden><div role="rowheader">Total savings</div><div role="cell" id="savings"></div></div>
+      </div>
+    </aside>
+    <script>
+      const SUBTOTAL = 170;
+      const codes = { SAVE10: 10, SAVE20: 20 };
+      const input = document.getElementById("code");
+      const apply = document.getElementById("apply");
+      // One copy hidden from screen readers, one spelled out per character with the amount in aria-label.
+      function showTotal(n) {
+        const s = "$" + n.toFixed(2);
+        const spelled = s.split("").map((c) => "<span>" + c + "</span>").join("");
+        document.getElementById("total").innerHTML =
+          '<span aria-hidden="true" class="sr">' + s + '</span><span><span aria-label="' + s + '">' + spelled + "</span></span>";
+      }
+      showTotal(SUBTOTAL);
+      input.addEventListener("input", () => (apply.disabled = input.value.trim() === ""));
+      apply.addEventListener("click", () => {
+        const code = input.value.trim().toUpperCase();
+        const pct = codes[code] ?? 0;
+        const total = SUBTOTAL * (1 - pct / 100);
+        showTotal(total);
+        document.getElementById("savings-row").hidden = !pct;
+        document.getElementById("savings").textContent = "$" + (SUBTOTAL - total).toFixed(2);
+        document.getElementById("message").textContent = pct ? code + " applied." : "Enter a valid discount code or gift card.";
+        input.value = "";
+        apply.disabled = true;
+      });
+      document.getElementById("pay").addEventListener("click", () => (document.getElementById("status").textContent = "Payment submitted."));
+    </script>
+  </body>
+</html>

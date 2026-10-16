@@ -61,12 +61,16 @@ export function parseFindings(text: string, seen: Set<string>): { found: CouponC
   return { found: found.slice(0, MAX_FOUND), hints };
 }
 
+/** Most codes named back to the model as already tried, to keep the request small. */
+const MAX_EXCLUDE_LISTED = 150;
+
 export async function suggestCodes(
   provider: ProviderClient,
   model: string,
   merchant: string,
   signal?: AbortSignal,
-  opts: { webSearch?: boolean; effort?: Effort } = {},
+  /** `exclude`: codes already known; asks for different ones and adds the longer guess list. */
+  opts: { webSearch?: boolean; effort?: Effort; exclude?: string[] } = {},
 ): Promise<SuggestedCodes> {
   let text = "";
   let inputTokens = 0;
@@ -78,7 +82,16 @@ export async function suggestCodes(
     const req = {
       model,
       system: CODES_SYSTEM_PROMPT,
-      messages: [{ role: "user" as const, content: "Store website: " + merchant }],
+      messages: [
+        {
+          role: "user" as const,
+          content:
+            "Store website: " + merchant +
+            (opts.exclude?.length
+              ? "\nAlready tried, do not list these again; look for different codes: " + opts.exclude.slice(0, MAX_EXCLUDE_LISTED).join(", ")
+              : ""),
+        },
+      ],
       // Room for thinking between searches at higher effort.
       maxTokens: 8000,
       ...(opts.effort ? { effort: opts.effort } : {}),
@@ -103,8 +116,9 @@ export async function suggestCodes(
   for (const h of hints) {
     for (const code of patternCodes(merchant, [h.percent]).slice(0, 2)) hintGuesses.push({ code, origin: "hint", sourceUrl: h.url });
   }
-  const patterns: CouponCandidate[] = patternCodes(merchant, hintPercents).map((code) => ({ code, origin: "pattern" }));
-  const codes = mergeCandidates(found, hintGuesses, patterns);
+  const patterns: CouponCandidate[] = patternCodes(merchant, hintPercents, opts.exclude !== undefined).map((code) => ({ code, origin: "pattern" }));
+  const known = new Set((opts.exclude ?? []).map((c) => c.toUpperCase()));
+  const codes = mergeCandidates(found, hintGuesses, patterns).filter((c) => !known.has(c.code));
   return {
     codes,
     found: codes.filter((c) => c.origin === "sourced" || c.origin === "unverified").length,

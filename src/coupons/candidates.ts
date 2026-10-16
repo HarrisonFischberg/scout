@@ -42,9 +42,10 @@ export function brandTokens(host: string): string[] {
 
 /**
  * Common code shapes for this store, most likely first. Percentages a coupon
- * site mentions (hints) are tried before the usual ones.
+ * site mentions (hints) are tried before the usual ones. `more` appends a
+ * longer, less likely list for when the user asks to keep looking.
  */
-export function patternCodes(host: string, hintPercents: number[] = []): string[] {
+export function patternCodes(host: string, hintPercents: number[] = [], more = false): string[] {
   const brands = brandTokens(host);
   const usual = [10, 15, 20, 5, 25, 30];
   const percents = [...new Set([...hintPercents.filter((p) => p > 0 && p < 100), ...usual])];
@@ -61,6 +62,26 @@ export function patternCodes(host: string, hintPercents: number[] = []): string[
   }
   ["WELCOME", "FIRST10", "FIRST15", "TAKE10", "TAKE15", "10OFF", "15OFF", "20OFF", "NEWSLETTER", "THANKYOU", "FREESHIP", "FREESHIPPING", "SUBSCRIBE", "VIP", "SPRING", "SUMMER", "FALL", "HOLIDAY", "BLACKFRIDAY"].forEach(add);
   for (const b of brands.slice(0, 1)) ["FAM", "VIP", "LOVE", "FRIENDS", "20OFF", "10OFF"].forEach((s) => add(b + s));
+  if (!more) return out;
+  const wide = [...new Set([...percents, 12, 35, 40, 50])];
+  for (const b of brands) for (const p of wide) add(b + p);
+  for (const b of brands.slice(0, 1)) {
+    ["SAVE", "DEAL", "DEALS", "PROMO", "SALE", "NEW", "FIRST", "WELCOME", "GIFT", "CREW", "CLUB", "TEAM", "HQ", "OFF"].forEach((s) => add(b + s));
+    ["SAVE", "WELCOME", "HELLO", "LOVE", "GET"].forEach((s) => add(s + b));
+    add(b + new Date().getFullYear());
+  }
+  const words = ["TAKE", "GET", "EXTRA", "HELLO", "NEW", "FIRST", "EMAIL", "SMS", "TEXT", "SIGNUP", "APP", "THANKS", "VIP", "HOLIDAY", "CYBER", "BF"];
+  for (const p of wide) {
+    add(p + "OFF");
+    add("WELCOME" + p);
+    add("SAVE" + p);
+    for (const w of words) add(w + p);
+  }
+  [
+    "FIRSTORDER", "NEWCUSTOMER", "WELCOMEBACK", "MILITARY", "VETERAN", "VETERANS", "FIRSTRESPONDER", "STUDENT",
+    "TEACHER", "NURSE", "HEROES", "LOYALTY", "REWARDS", "FRIENDS", "FAMILY", "SITEWIDE", "FLASHSALE", "BFCM",
+    "CYBERMONDAY", "LABORDAY", "MEMORIALDAY", "JULY4", "WINTER", "SHIPFREE", "FREEGIFT", "GIFT",
+  ].forEach(add);
   return out;
 }
 
