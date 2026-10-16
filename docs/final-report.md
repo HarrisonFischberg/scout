@@ -1,6 +1,6 @@
-# AssistAnt — final status report
+# Safari Scout — final status report
 
-Date: 2026-10-15. Repository: https://github.com/HarrisonFischberg/safari-scout (private; named assist-ant until 2026-10-16).
+Date: 2026-10-15. Repository: https://github.com/HarrisonFischberg/safari-scout (private; renamed to Safari Scout on 2026-10-16).
 
 This is an engineering launch-readiness report. It is not legal advice and
 does not state that the app is legally compliant. PASS below means the stated
@@ -8,8 +8,8 @@ engineering checks passed, not legal approval.
 
 ## 1. What was built
 
-AssistAnt is a Safari Web Extension for macOS and iOS with a SwiftUI host app.
-The user brings their own Anthropic or OpenAI API key. There is no AssistAnt
+Safari Scout is a Safari Web Extension for macOS and iOS with a SwiftUI host app.
+The user brings their own Anthropic or OpenAI API key. There is no Safari Scout
 server and no analytics.
 
 - Host app: setup screen, provider + key test and save (Keychain, shared with
@@ -86,8 +86,8 @@ Totals: 6 PASS, 2 NOT APPLICABLE, 2 BLOCKED, 10 NEEDS REVIEW.
 | Unit | `npm test` | 121 passed |
 | e2e (WebKit, incl. axe) | `npx playwright test` | 42 passed |
 | Types / lint | `npm run typecheck`, `npm run lint` | clean |
-| XCTest | `xcodebuild ... -scheme AssistAntTests test` | 11 passed |
-| iOS accessibility audit | `xcodebuild ... -scheme AssistAntUITests test` | 3 passed (light, dark, legal sheet) |
+| XCTest | `xcodebuild ... -scheme SafariScoutTests test` | 11 passed |
+| iOS accessibility audit | `xcodebuild ... -scheme SafariScoutUITests test` | 3 passed (light, dark, legal sheet) |
 | Builds | macOS + iOS Simulator | succeeded; both bundles contain all 7 resources |
 | Live, iOS Simulator, Anthropic key | F02 ask, F03 summarize, F05 agent with approval, F06 coupons, F07 delete | pass |
 
@@ -137,7 +137,7 @@ background tabs on iOS (blocker 17). macOS Keychain sharing needs a team ID
 
 ## 9. External changes
 
-- Created the private GitHub repo `HarrisonFischberg/assist-ant` and pushed
+- Created the private GitHub repo (now `HarrisonFischberg/safari-scout`) and pushed
   commits to `main`. Both were approved.
 - Live calls to the Anthropic API used your test key: about $0.04 at list
   price (app estimates: $0.0014 + $0.0018 + $0.0023 + $0.03 + $0.0073). The

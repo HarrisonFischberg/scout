@@ -1,12 +1,17 @@
-// Settings (T015): provider/model, history retention, Delete all data.
+// Settings (T015): provider/model/effort, history retention, Delete all data.
 // The API key is never stored here; it lives in the Keychain (keychain.ts).
 import type { Provider } from "../keychain";
+import { EFFORTS, type Effort } from "../providers/types";
 
 export type Retention = "off" | "7" | "30";
+
+/** "default" sends no effort setting, so the model uses its own default. */
+export type EffortSetting = "default" | Effort;
 
 export interface Settings {
   provider: Provider;
   model: string;
+  effort: EffortSetting;
   retention: Retention;
 }
 
@@ -18,9 +23,11 @@ export interface HistoryEntry {
   answer: string;
   /** What produced the entry. Absent on entries saved before T025 (chat). */
   kind?: HistoryKind;
+  /** Conversation the entry belongs to (one per tab, src/panel/state.ts). Absent on entries saved before per-tab chats. */
+  conv?: string;
 }
 
-/** Storage key for the start of the current conversation ("New chat" resets it). */
+/** Start of the single conversation used before per-tab chats. Read only to migrate it (src/panel/state.ts). */
 export const CHAT_START_KEY = "chatStartedAt";
 
 // Minimal view of `browser.storage.local`, so tests can pass a fake.
@@ -38,12 +45,13 @@ export const DEFAULT_MODEL: Record<Provider, string> = {
 export const DEFAULT_SETTINGS: Settings = {
   provider: "anthropic",
   model: DEFAULT_MODEL.anthropic,
+  effort: "default",
   retention: "7",
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SETTINGS_KEY = "settings";
-const HISTORY_KEY = "history";
+export const HISTORY_KEY = "history";
 const MAX_ENTRIES = 200;
 
 function isProvider(v: unknown): v is Provider {
@@ -54,14 +62,19 @@ function isRetention(v: unknown): v is Retention {
   return v === "off" || v === "7" || v === "30";
 }
 
+function isEffortSetting(v: unknown): v is EffortSetting {
+  return v === "default" || (EFFORTS as readonly unknown[]).includes(v);
+}
+
 // Stored data is untrusted input: anything malformed falls back to the default.
 export function parseSettings(raw: unknown): Settings {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const provider = isProvider(r.provider) ? r.provider : DEFAULT_SETTINGS.provider;
   const model =
     typeof r.model === "string" && r.model.trim() ? r.model.trim() : DEFAULT_MODEL[provider];
+  const effort = isEffortSetting(r.effort) ? r.effort : DEFAULT_SETTINGS.effort;
   const retention = isRetention(r.retention) ? r.retention : DEFAULT_SETTINGS.retention;
-  return { provider, model, retention };
+  return { provider, model, effort, retention };
 }
 
 export async function loadSettings(storage: StorageArea): Promise<Settings> {
@@ -95,6 +108,7 @@ function parseHistory(raw: unknown): HistoryEntry[] {
             question: r.question,
             answer: r.answer,
             ...(r.kind === "agent" || r.kind === "coupons" || r.kind === "chat" ? { kind: r.kind } : {}),
+            ...(typeof r.conv === "string" && r.conv ? { conv: r.conv } : {}),
           },
         ]
       : [];
@@ -191,21 +205,15 @@ export function deleteReportText(r: DeleteReport): string {
   return parts.join(" ");
 }
 
-/** Entries in the current conversation: those saved since the last "New chat". */
+/** Entries in one conversation (see conversationForTab in src/panel/state.ts). */
 export async function loadConversation(
   storage: StorageArea,
   retention: Retention,
   now: number,
+  conv: string,
 ): Promise<HistoryEntry[]> {
   const all = await loadHistory(storage, retention, now);
-  const got = await storage.get(CHAT_START_KEY);
-  const start = typeof got[CHAT_START_KEY] === "number" ? (got[CHAT_START_KEY] as number) : 0;
-  return all.filter((e) => e.at >= start);
-}
-
-/** Starts a new conversation; earlier entries stay in history until they expire. */
-export async function startNewConversation(storage: StorageArea, now: number): Promise<void> {
-  await storage.set({ [CHAT_START_KEY]: now });
+  return all.filter((e) => e.conv === conv);
 }
 
 /** Removes all saved chat history. */

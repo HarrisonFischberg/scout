@@ -28,6 +28,7 @@ export function createOpenAI(cfg: ProviderConfig): ProviderClient {
         max_output_tokens: req.maxTokens,
         input: req.messages,
         tools: tools.length ? tools : undefined,
+        reasoning: req.effort ? { effort: req.effort } : undefined,
       };
       let res: Response;
       try {

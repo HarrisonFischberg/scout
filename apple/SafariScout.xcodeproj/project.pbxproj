@@ -619,7 +619,7 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAntUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScoutUITests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -643,7 +643,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout;
 				PRODUCT_NAME = "Safari Scout";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -667,7 +667,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout;
 				PRODUCT_NAME = "Safari Scout";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -682,7 +682,7 @@
 				CODE_SIGN_STYLE = Manual;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAntTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScoutTests;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
 			};
@@ -702,10 +702,10 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.example.AssistAnt.shared";
+				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.example.SafariScout.shared";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout;
 				PRODUCT_NAME = "Safari Scout";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -722,7 +722,7 @@
 				CODE_SIGN_STYLE = Manual;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAntTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScoutTests;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
 			};
@@ -792,9 +792,9 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Extension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.example.AssistAnt.shared";
+				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.example.SafariScout.shared";
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt.Extension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout.Extension;
 				PRODUCT_NAME = "Safari Scout Extension";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -818,10 +818,10 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.example.AssistAnt.shared";
+				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.example.SafariScout.shared";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout;
 				PRODUCT_NAME = "Safari Scout";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -840,7 +840,7 @@
 				INFOPLIST_FILE = Extension/Info.plist;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt.Extension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout.Extension;
 				PRODUCT_NAME = "Safari Scout Extension";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -915,7 +915,7 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAntUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScoutUITests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -934,9 +934,9 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Extension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.example.AssistAnt.shared";
+				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.example.SafariScout.shared";
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt.Extension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout.Extension;
 				PRODUCT_NAME = "Safari Scout Extension";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -955,7 +955,7 @@
 				INFOPLIST_FILE = Extension/Info.plist;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAnt.Extension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout.Extension;
 				PRODUCT_NAME = "Safari Scout Extension";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;

@@ -37,11 +37,11 @@ if (!g[FLAG]) {
   // messaging: on iOS Safari a tabs.sendMessage to this script went
   // unanswered (T018), while executeScript results arrive reliably.
   g[HANDLER] = (req: ContentRequest): Promise<unknown> | Snapshot | null => {
-    if (req.type === "assistant:snapshot") return snapshot();
-    if (req.type === "assistant:act") return executeAction(domPage(refs, window), req.action) as Promise<ActionResult>;
-    if (req.type === "assistant:cart-info") return shopifyCartInfo();
-    if (req.type === "assistant:cart-update") return shopifyCartUpdate(String(req.discount ?? ""));
-    if (req.type === "assistant:reload") {
+    if (req.type === "scout:snapshot") return snapshot();
+    if (req.type === "scout:act") return executeAction(domPage(refs, window), req.action) as Promise<ActionResult>;
+    if (req.type === "scout:cart-info") return shopifyCartInfo();
+    if (req.type === "scout:cart-update") return shopifyCartUpdate(String(req.discount ?? ""));
+    if (req.type === "scout:reload") {
       // Let the reply reach the popup first, then refresh the cart view.
       setTimeout(() => location.reload(), 50);
       return Promise.resolve(true);

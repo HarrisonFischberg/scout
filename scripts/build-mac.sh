@@ -4,11 +4,11 @@
 # so Safari keeps the extension after it quits (no "Allow unsigned
 # extensions" needed). Falls back to ad-hoc signing otherwise.
 # Local signing only: nothing is sent to Apple, no provisioning profiles.
-# Team: ASSISTANT_TEAM (default KTV2G3Z883, the team on the owner's Mac).
+# Team: SCOUT_TEAM (default KTV2G3Z883, the team on the owner's Mac).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 npm run --silent build
-TEAM="${ASSISTANT_TEAM:-KTV2G3Z883}"
+TEAM="${SCOUT_TEAM:-KTV2G3Z883}"
 if security find-identity -v -p codesigning 2>/dev/null | grep -q '"Apple Development:'; then
   SIGN=(CODE_SIGN_IDENTITY="Apple Development" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="$TEAM" PROVISIONING_PROFILE_SPECIFIER=)
   echo "signing: Apple Development (team $TEAM)"

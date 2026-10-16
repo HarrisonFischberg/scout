@@ -1,0 +1,63 @@
+Safari Scout — Part 1 of 3: Foundation
+Instructions
+You're working in the Safari Scout repo, a browser extension assistant opened from a binoculars toolbar button. Implement only this part. Parts 2 and 3 come later in separate files, so leave clean extension points for them but don't build them.
+When you're done:
+	•	Run the tests and the rename check below.
+	•	Summarize the files you changed and anything you couldn't complete.
+	•	List any platform limits you hit (see "Platform note").
+
+1. Identity and rename cleanup
+Item
+Value
+Name
+Safari Scout
+Toolbar icon
+Binoculars, monochrome, follows the light/dark theme
+Active-state icon
+Binoculars with filled lenses (used in Part 3 while the agent works)
+Tooltip / accessible name
+"Open Safari Scout" / "Close Safari Scout"
+Keyboard shortcut
+"Toggle Safari Scout" (user-configurable)
+Internal panel name
+scout-panel
+
+Tasks:
+	•	Generate the icon files at 16, 32, 48 and 128 px from safari-scout-binoculars.svg, plus the filled-lens active variant, and wire them into the manifest.
+	•	Update the manifest name, short_name, description, action title and icon paths.
+	•	If there's an app wrapper (Xcode/Safari), update its display name and bundle identifiers.
+	•	Update the README and all user-facing text.
+Rename check, which must report "rename check: clean":
+npm run check:rename
+(scripts/check-rename.sh. It replaces the first draft of this check, a one-line grep that could never pass: "assist ?ant" also matched the word "assistant", which the Anthropic and OpenAI APIs require as a message role, and the whole-word match on the old name also hit the "sk-ant-" prefix of Anthropic API keys. activity.md, the append-only history log, keeps the old name on purpose.)
+
+2. Architecture (the full picture, for context)
+[Binoculars toolbar button] ──toggle──▶ [Scout panel (web UI)]                                               │  message bridge                                               ▼                                    [Scout background worker]                                      ├─ Tool host        (Part 2)                                      ├─ Permission gate  (Parts 2–3)                                      ├─ Agent runner     (Part 3)                                      └─ Overlay control  (Part 3)                                               │                                               ▼                                    [Scout server]  model and answers (Part 2) 
+Rule for every part: all permission checks run on the device. The client never relies on the server to enforce safety.
+
+3. Toolbar button and panel
+	•	Clicking the binoculars toggles the Scout panel for the current window.
+	•	The panel remembers for each tab whether it was open and which conversation it showed, and restores both when you switch back to that tab.
+	•	The keyboard shortcut does the same as clicking the button.
+	•	The panel is disabled in private browsing, with a short explanation.
+	•	A setting hides the toolbar button completely.
+	•	Build the panel shell: a header with the name and icon, an empty conversation area, an input box (it can be inactive until Part 2), and a settings entry point.
+
+4. Message bridge (panel ↔ background worker)
+	•	Long-lived port for streaming events (progress, task state). It reconnects automatically with exponential backoff.
+	•	Request/response messages for one-off calls. Every message is { type, request_id, payload }.
+	•	Sender validation: accept only messages from Scout's own panel and content scripts. Reject anything from a web page origin.
+	•	Schema validation: validate every message before handling it. Return schema-error for anything malformed.
+	•	Standard error types: timeout, blocked-by-user, schema-error, unhandled.
+	•	Put the message types and schemas in one shared module so Parts 2 and 3 can add to it.
+
+Platform note
+Check whether the target browser supports a native side panel or sidebar. If it doesn't, use a toolbar popover or a panel inside the page, and note which one you chose.
+
+Part 1 acceptance criteria
+	•	The rename check returns nothing, and the binoculars icon appears at every size.
+	•	The binoculars button and the shortcut both toggle the panel.
+	•	Panel open/closed state and conversation are remembered per tab.
+	•	The panel doesn't work in private browsing.
+	•	Messages from web page origins are rejected, and malformed messages return schema-error.
+	•	The port reconnects after the background worker restarts.

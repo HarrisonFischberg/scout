@@ -2,7 +2,7 @@
 // and reports codes with the page each was seen on, plus "hints" where a
 // coupon site says a percentage code exists but hides it. Guesses are made
 // afterwards in plain code (candidates.ts), never by the model.
-import type { ProviderClient } from "../providers/types";
+import type { Effort, ProviderClient } from "../providers/types";
 import { mergeCandidates, normalizeCode, patternCodes, type CouponCandidate } from "./candidates";
 
 export const MAX_FOUND = 40;
@@ -64,7 +64,7 @@ export async function suggestCodes(
   model: string,
   merchant: string,
   signal?: AbortSignal,
-  opts: { webSearch?: boolean } = {},
+  opts: { webSearch?: boolean; effort?: Effort } = {},
 ): Promise<SuggestedCodes> {
   let text = "";
   let inputTokens = 0;
@@ -76,7 +76,9 @@ export async function suggestCodes(
       model,
       system: CODES_SYSTEM_PROMPT,
       messages: [{ role: "user" as const, content: "Store website: " + merchant }],
-      maxTokens: 2000,
+      // Room for thinking between searches at higher effort.
+      maxTokens: 8000,
+      ...(opts.effort ? { effort: opts.effort } : {}),
       webSearch: true,
       webSearchMaxUses: 8,
       webFetch: true,

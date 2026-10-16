@@ -35,6 +35,8 @@ async function openPopup(page: Page): Promise<void> {
       r.fulfill({ path: `apple/Extension/Resources/${f}`, contentType: f.endsWith(".js") ? "text/javascript" : "text/html" }),
     );
   }
+  // No live provider calls (Settings loads the model list).
+  await page.route("https://api.anthropic.com/**", (r) => r.fulfill({ status: 401, body: "{}" }));
   await page.goto("/popup.html");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 }

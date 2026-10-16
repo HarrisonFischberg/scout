@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseInline, parseMarkdown } from "../../src/chat/markdown";
 import { buildMessages, fencePage, PAGE_CHAR_BUDGET, SYSTEM_PROMPT } from "../../src/chat/prompt";
-import { runTurn } from "../../src/chat/session";
+import { CHAT_MAX_TOKENS, runTurn } from "../../src/chat/session";
 import { ProviderError } from "../../src/providers/errors";
 import type { ChatRequest, ProviderClient, StreamEvent } from "../../src/providers";
 
@@ -61,7 +61,22 @@ describe("prompt", () => {
     const msgs = buildMessages([{ role: "user", content: "earlier" }], "How much?", page);
     expect(msgs[0]?.content).toBe("earlier");
     expect(msgs[1]?.content).toContain("Widget costs $10.");
-    expect(msgs[1]?.content).toContain("Question: How much?");
+    expect(msgs[1]?.content).toContain("User message: How much?");
+  });
+
+  // Owner report 2026-10-16: on a stock-market page, "I want to take vitamin D"
+  // must get a normal chat answer with follow-up questions, not "the page
+  // doesn't say". The prompt must allow off-page answers and not force the page.
+  it("lets off-page messages get a normal chat answer with follow-up questions", () => {
+    expect(SYSTEM_PROMPT).toContain("You chat about anything");
+    expect(SYSTEM_PROMPT).toContain("If it is about something else, answer it like a normal chat assistant from your own knowledge");
+    expect(SYSTEM_PROMPT).toContain("do not say the page lacks the answer");
+    expect(SYSTEM_PROMPT).toContain("follow-up questions");
+    expect(SYSTEM_PROMPT).not.toContain("If the pages do not contain the answer, say so plainly.");
+    expect(SYSTEM_PROMPT).not.toContain("answers questions about the page the user is viewing");
+    const msgs = buildMessages([], "hey, I want to take vitamin D", { url: "https://stocks.test/", title: "Markets", text: "S&P 500 up 1%" });
+    expect(msgs[0]?.content).toContain("User message: hey, I want to take vitamin D");
+    expect(msgs[0]?.content).not.toContain("Question:");
   });
 });
 
@@ -110,6 +125,14 @@ describe("runTurn", () => {
       provider, model: "m", history: [], question: "q", page: null, signal: ctl.signal, onText: () => {},
     });
     expect(result).toEqual({ ok: false, error: "Stopped.", partial: "" });
+  });
+
+  it("sends the chosen effort with room for thinking, and no effort when unset", async () => {
+    const provider = fakeProvider([{ type: "done" }]);
+    await runTurn({ provider, model: "m", effort: "high", history: [], question: "q", page: null, onText: () => {} });
+    await runTurn({ provider, model: "m", history: [], question: "q", page: null, onText: () => {} });
+    expect(provider.seen[0]).toMatchObject({ effort: "high", maxTokens: CHAT_MAX_TOKENS });
+    expect(provider.seen[1]).not.toHaveProperty("effort");
   });
 });
 

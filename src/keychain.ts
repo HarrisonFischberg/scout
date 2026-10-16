@@ -43,4 +43,4 @@ export function createKeychain(send: NativeSend) {
 
 // Safari ignores the application id and routes to the containing app's extension.
 export const nativeSend: NativeSend = (message) =>
-  browser.runtime.sendNativeMessage("com.example.AssistAnt", message);
+  browser.runtime.sendNativeMessage("com.example.SafariScout", message);

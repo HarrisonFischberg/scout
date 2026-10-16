@@ -3,7 +3,7 @@ import XCTest
 // KeychainStore.swift is compiled into the test target directly, so no module import.
 // A test-only service name keeps real provider keys untouched.
 final class KeychainStoreTests: XCTestCase {
-    private let store = KeychainStore(service: "com.example.AssistAnt.tests")
+    private let store = KeychainStore(service: "com.example.SafariScout.tests")
     private let account = "anthropic"
 
     override func tearDown() {

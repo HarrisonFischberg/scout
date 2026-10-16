@@ -20,12 +20,12 @@ interface Cart {
 
 test("reads the Shopify cart and tests codes through the store's own cart endpoint", async ({ page }) => {
   await load(page);
-  const info = await call<Cart>(page, { type: "assistant:cart-info" });
+  const info = await call<Cart>(page, { type: "scout:cart-info" });
   expect(info.total).toBe(151.79);
-  const good = await call<Cart>(page, { type: "assistant:cart-update", discount: "BEEFY15" });
+  const good = await call<Cart>(page, { type: "scout:cart-update", discount: "BEEFY15" });
   expect(good.codes).toEqual([{ code: "BEEFY15", applicable: true }]);
   expect(good.total).toBe(135.81);
-  const bad = await call<Cart>(page, { type: "assistant:cart-update", discount: "NOPE10" });
+  const bad = await call<Cart>(page, { type: "scout:cart-update", discount: "NOPE10" });
   expect(bad.codes).toEqual([{ code: "NOPE10", applicable: false }]);
   expect(bad.total).toBe(151.79);
   // Checkout is never touched by these calls.
@@ -38,5 +38,5 @@ test("returns null on a store that is not Shopify", async ({ page }) => {
   await page.route("**/cart.js", (r) => r.fulfill({ status: 404, contentType: "text/html", body: "not found" }));
   await page.goto("/shop.html");
   await page.addScriptTag({ path: "apple/Extension/Resources/content.js" });
-  expect(await call(page, { type: "assistant:cart-info" })).toBeNull();
+  expect(await call(page, { type: "scout:cart-info" })).toBeNull();
 });

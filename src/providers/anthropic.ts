@@ -30,6 +30,7 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
         system: req.system,
         messages: req.messages,
         tools: tools.length ? tools : undefined,
+        output_config: req.effort ? { effort: req.effort } : undefined,
       };
       let res: Response;
       try {

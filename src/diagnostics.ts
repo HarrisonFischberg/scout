@@ -2,7 +2,7 @@
 // errors, outcome, tokens) so a failure can be pasted into a bug report as
 // "Actual behavior". Local only: kept in extension storage, never sent
 // anywhere, cleared by Delete all data. Release builds never create a
-// recorder (see __ASSISTANT_DEBUG__ in scripts/build.mjs).
+// recorder (see __SCOUT_DEBUG__ in scripts/build.mjs).
 //
 // Never recorded: API keys, page text, form values, typed agent input. The
 // user's question is recorded only when they opt in.

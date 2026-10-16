@@ -53,20 +53,70 @@ async function openPopup(page: Page): Promise<void> {
   });
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
+  // No live provider calls. A test can register its own model list after this.
+  await page.route("https://api.anthropic.com/**", (r) => r.fulfill({ status: 401, body: "{}" }));
+  await page.route("https://api.openai.com/**", (r) => r.fulfill({ status: 401, body: "{}" }));
   await page.goto("/popup.html");
 }
+
+const savedSettings = (page: Page) =>
+  page.evaluate(() => (globalThis as unknown as { __fake: { data: { settings: unknown } } }).__fake.data.settings);
 
 test("settings save as you change them and persist provider, model, and retention", async ({ page }) => {
   await openPopup(page);
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("radio", { name: "OpenAI" }).check();
+  // No OpenAI key saved: the built-in list, plus "Other model ID…".
   await expect(page.getByLabel("Model", { exact: true })).toHaveValue("gpt-5");
-  await page.getByLabel("Model", { exact: true }).fill("gpt-test-model");
-  await page.getByLabel("Model", { exact: true }).press("Tab");
+  await expect(page.locator("#model-help")).toContainText("Save your OpenAI key");
+  await page.getByLabel("Model", { exact: true }).selectOption({ label: "Other model ID…" });
+  await page.getByLabel("Model ID").fill("gpt-test-model");
+  await page.getByLabel("Model ID").press("Tab");
+  await expect(page.getByLabel("Model", { exact: true })).toHaveValue("gpt-test-model");
+  await expect(page.getByLabel("Effort", { exact: true })).toBeDisabled();
   await page.getByLabel("Keep chat history").selectOption("30");
   await expect(page.locator("#settings-saved")).toHaveText("Saved.");
-  const saved = await page.evaluate(() => (globalThis as unknown as { __fake: { data: { settings: unknown } } }).__fake.data.settings);
-  expect(saved).toEqual({ provider: "openai", model: "gpt-test-model", retention: "30" });
+  await expect.poll(() => savedSettings(page)).toEqual({ provider: "openai", model: "gpt-test-model", effort: "default", retention: "30" });
+});
+
+test("model and effort dropdowns list the key's models and save the effort", async ({ page }) => {
+  await openPopup(page);
+  // Synthetic model list in the shape of Anthropic's GET /v1/models.
+  await page.route("https://api.anthropic.com/v1/models**", (r) =>
+    r.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [
+          {
+            id: "claude-opus-5-5",
+            display_name: "Claude Opus 5.5",
+            capabilities: { effort: { supported: true, low: { supported: true }, medium: { supported: true }, high: { supported: true }, xhigh: { supported: true }, max: { supported: true } } },
+          },
+          { id: "claude-sonnet-5-5", display_name: "Claude Sonnet 5.5", capabilities: { effort: { supported: true, low: { supported: true }, medium: { supported: true }, high: { supported: true } } } },
+          { id: "claude-old-4", display_name: "Claude Old 4", capabilities: { effort: { supported: false } } },
+        ],
+        has_more: false,
+      }),
+    }),
+  );
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.locator("#model-help")).toHaveText("Models your Anthropic key can use.");
+  const model = page.getByLabel("Model", { exact: true });
+  const effort = page.getByLabel("Effort", { exact: true });
+  await expect(model.locator("option")).toHaveText(["Claude Opus 5.5", "Claude Sonnet 5.5", "Claude Old 4", "Other model ID…"]);
+  await expect(effort.locator("option")).toHaveText(["Default (model decides)", "Low", "Medium", "High"]);
+  await model.selectOption("claude-opus-5-5");
+  await effort.selectOption("max");
+  await expect.poll(() => savedSettings(page)).toEqual({ provider: "anthropic", model: "claude-opus-5-5", effort: "max", retention: "7" });
+  await page.getByRole("button", { name: "Back to chat" }).click();
+  await expect(page.locator("#model-pill")).toHaveText("Opus 5.5 · Max");
+  // A model without effort control resets the effort to Default.
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByLabel("Model", { exact: true }).selectOption("claude-old-4");
+  await expect(effort).toBeDisabled();
+  await expect(page.locator("#effort-help")).toHaveText("This model has no effort setting.");
+  await expect.poll(() => savedSettings(page)).toEqual({ provider: "anthropic", model: "claude-old-4", effort: "default", retention: "7" });
 });
 
 test("site access lists granted origins and can remove one", async ({ page }) => {
