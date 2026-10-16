@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Fake shop (synthetic)</title></head>
+<body><main><h1>Fake Shop</h1>
+<p>Subtotal: <span id="subtotal">$100.00</span></p>
+<form id="coupon-form" onsubmit="return false">
+  <label for="coupon">Coupon code</label>
+  <input id="coupon" name="coupon" type="text">
+  <button id="apply" type="button">Apply</button>
+</form>
+<p>Total: <span id="total">$100.00</span></p>
+<button id="place-order" type="button">Place order</button>
+</main>
+<script>
+  // Synthetic codes only. Two valid with different percentages.
+  const codes = { SAVE10: 10, SAVE20: 20 };
+  document.getElementById("apply").addEventListener("click", () => {
+    const pct = codes[document.getElementById("coupon").value.trim().toUpperCase()] ?? 0;
+    document.getElementById("total").textContent = "$" + (100 - pct).toFixed(2);
+  });
+</script></body></html>
