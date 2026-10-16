@@ -68,6 +68,8 @@
       .msg.assistant { align-self: flex-start; background: var(--bg-surface); }
       .msg.error { align-self: flex-start; background: var(--bg-surface); color: var(--danger); border: 1px solid var(--danger); }
       .hint { color: var(--text-muted); font-size: 14px; margin: 0; }
+      .msg.error .diag-copy { display: block; margin-top: 8px; color: var(--text-primary); }
+      #diag-text { width: 100%; min-height: 120px; font: 12px/1.4 ui-monospace, monospace; }
       .empty { background: var(--bg-surface); border-radius: 12px; padding: 12px; }
       form { display: flex; flex-direction: column; gap: 8px; }
       fieldset { border: 1px solid var(--border-control); border-radius: 8px; margin: 0; padding: 8px; }
@@ -140,6 +142,22 @@
           </div>
         </div>
         <p id="delete-result" role="status" aria-live="polite"></p>
+        <!-- debug:start (scripts/build.mjs strips this block from release builds) -->
+        <div id="diag" hidden>
+          <h3 id="diag-title">Diagnostics (debug build)</h3>
+          <p class="hint">
+            Records what the last 5 runs did, on this device only, so you can paste it into a bug report.
+            Never includes page text, API keys, or form values.
+          </p>
+          <label><input id="diag-question" type="checkbox" /> Also record the question I type</label>
+          <div class="row">
+            <button id="diag-copy" type="button">Copy diagnostics</button>
+            <button id="diag-clear" type="button">Clear diagnostics</button>
+          </div>
+          <p id="diag-status" role="status" aria-live="polite"></p>
+          <textarea id="diag-text" readonly hidden aria-label="Diagnostics report to copy"></textarea>
+        </div>
+        <!-- debug:end -->
       </section>
       <section id="no-key" class="empty" hidden>
         <p><strong>Add an API key to start.</strong></p>
