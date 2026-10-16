@@ -5,7 +5,8 @@ You are one fresh iteration of a bounded build loop. Work on ONE task only.
 1. Read `CLAUDE.md`, `prd.md`, the last 80 lines of `activity.md`, and
    `docs/launch-blockers.md`.
 2. Pick the lowest-numbered task in `prd.md` whose status is `pending` and
-   whose dependencies are all `done`. Set its status to `in progress`.
+   whose dependencies are all `done` or `needs supervised check`. Set its
+   status to `in progress`. Skip `owner` rows.
 3. Implement only that task. Follow the PRD architecture. All code is
    original: never copy from SafarAI (unlicensed) or any other source.
 4. AI providers are MOCKED. Never call api.anthropic.com or api.openai.com.
@@ -16,7 +17,11 @@ You are one fresh iteration of a bounded build loop. Work on ONE task only.
    For T001 use the `ui-ux-pro-max` skill.
 6. Run the task's verification command(s). Quote real output (trimmed) in
    `activity.md`. Never weaken or skip a test to get a pass.
-7. Update the task's status to `done` only if acceptance criteria are met.
+7. Do NOT run `xcodebuild`, `xcrun`, `swiftc`, or the Simulator: the
+   sandbox blocks them, and they run in the supervised session. If a task's
+   verification needs them, implement it, run every JS check it has, and
+   set status `needs supervised check` with the exact Xcode command to run.
+   Update the task's status to `done` only if all acceptance criteria are met.
    If blocked (missing tool, credential, Apple account, network), set
    `blocked`, and add the blocker to `docs/launch-blockers.md`.
 8. Record any new dependency in `docs/asset-licenses.md` (name, license) and

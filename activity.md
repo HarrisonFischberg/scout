@@ -431,3 +431,8 @@ Error saving log: Error Domain=NSCocoaErrorDomain Code=513 "You don't have permi
 - Headless iterations ran on the CLI default model (reported as Haiku 5.5), not a pinned model.
 - Verified T001: `replica/contrast.txt` → "34 pairs, 0 failing AA".
 - T002 rechecked outside the sandbox: `npm run build` ok; `xcodebuild ... "AssistAnt (macOS)" CODE_SIGNING_ALLOWED=NO build` → BUILD SUCCEEDED; `xcodebuild ... "AssistAnt (iOS)" -destination 'generic/platform=iOS Simulator' ... build` → BUILD SUCCEEDED. App installed and launched on the iPhone 18 Pro simulator (pid 93609), but the screenshot showed a different app in front, so it is not counted as evidence. The Safari extension load in macOS and iOS is still unverified. T002 stays blocked.
+
+## 2026-10-15 — owner decisions before run 2
+
+- T002 split: T002a (builds) done in supervised session; T002b (Safari load check) is the owner's.
+- Loop pinned to `claude-sonnet-5-5`. Xcode/XCTest/Simulator checks stay in the supervised session; loop marks those tasks `needs supervised check`.
