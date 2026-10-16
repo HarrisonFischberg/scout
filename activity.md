@@ -309,3 +309,11 @@ Error opening log file (/Users/harrison/Library/Logs/CoreSimulator/CoreSimulator
 - Result: blocker unchanged. No iOS Simulator runtime, no simulator services. Did not re-run `xcodebuild`: the 19:42–19:45 entries already quote the same EPERM output.
 - No `prd.md` status row changed. Blocking a pending row would misstate its cause (T002). No task files changed.
 - Turns used: 1 of 5. Stopped: the only unblock is owner action on T002 (run the Xcode builds and Safari extension load outside the session sandbox, then set T002 to `done`). Further turns would repeat this check.
+
+## 2026-10-15 — /goal run (turn 1 of 5, per PROMPT.md): no dependency-ready pending task (goal NOT met, recorded)
+
+- Read PROMPT.md, prd.md, activity.md tail, docs/launch-blockers.md.
+- Task scan (prd.md status column): T001 `done`. T002 `blocked` (launch-blockers 9, 10). T003–T018 `pending`. Every pending task depends on T002, directly or through T003/T004. None is dependency-ready, so none was set to `in progress`.
+- Not re-run: `xcodebuild` and `simctl`. The 2026-10-15 entries above already quote the same EPERM, simdiskimaged and no-Simulator-runtime output. Re-running cannot change the sandbox result.
+- No `prd.md` status row changed. Blocking a pending row would misstate its cause (T002). No task files changed. `git status` clean before this entry.
+- Turns used: 1 of 5. Stopped: the only unblock is owner action on T002 (run the Xcode builds and the Safari extension load outside the session sandbox, then set T002 to `done`). Further turns would repeat this scan.
