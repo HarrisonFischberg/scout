@@ -21,6 +21,16 @@ title to the fetch tool, so Apple is not a source here.
 | `storage` | 14 | 15 | settings, history (T015) | no |
 | `contextMenus` | not in BCD | not in BCD | PRD permission; no feature yet | no. Remove from manifest if Safari rejects it |
 | `activeTab` | not in BCD (permission) | not in BCD | manifest permission | no |
+| `commands` / `_execute_action` (MV3) | 15.4 | 15.4 | "Toggle Safari Scout" shortcut (Part 1) | no. MDN: changing a command's shortcut is not supported, so it is not user-configurable |
+| `action.openPopup` | 16 | 16 | reopen the panel when switching back to a tab where it was open (Part 1) | no |
+| `action.setTitle` | 15.4 | 15.4, partial | "Open / Close Safari Scout" (Part 1) | no. MDN: on iOS the title is not shown |
+| `action.setIcon` | 15.4 | 15.4 | light/dark toolbar icon swap (Part 1) | no |
+| `action` `theme_icons` | not supported | not supported | not used; the worker swaps icons on `prefers-color-scheme` | n/a |
+| `runtime.connect` / `Port` | 14 | 15 | `scout-panel` port (Part 1) | no |
+| `tabs.Tab.incognito` | 14 | 15 | panel off in Private Browsing (Part 1) | no |
+| `extension.inIncognitoContext` | 18 | 18 | second Private Browsing signal (Part 1) | no |
+| `tabs.onActivated`, `tabs.onRemoved`, `runtime.onStartup` | 14 | 15 | per-tab panel state (Part 1) | no |
+| `manifest.incognito` | 17, partial | 17, partial | not set: Safari controls it with a user setting | n/a |
 
 ## What this changes
 
@@ -31,6 +41,18 @@ title to the fetch tool, so Apple is not a source here.
   Treat the iOS result as unconfirmed until a run shows it working.
 - `contextMenus` and `activeTab` are missing from MDN BCD. They stay in the
   manifest because the PRD asks for them. Confirm at runtime.
+
+## Part 1 platform note (2026-10-16)
+
+Safari has no native side panel or sidebar (`sidePanel`, `sidebarAction`
+unsupported), so the Scout panel is the toolbar popover. Consequences:
+
+- Safari closes the popover when the user clicks the page or switches tabs.
+  The worker treats a close followed within 400 ms by a tab switch as "left
+  open" and calls `action.openPopup` when the user returns to that tab.
+- No extension API hides the toolbar button. Users remove it with View >
+  Customize Toolbar (Mac); on iPhone and iPad it sits in the page menu.
+- The toggle shortcut cannot be remapped by the user in Safari.
 
 ## Still to verify (T002 acceptance, runtime part)
 

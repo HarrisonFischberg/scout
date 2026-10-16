@@ -51,7 +51,7 @@ describe("buildMessages with extra tabs", () => {
     expect(content).toContain("Widget costs $10.");
     expect(content).toContain("Title: Reviews of Widget");
     expect(content).toContain("Rated 4.5 stars.");
-    expect(content.endsWith("Question: Is it well reviewed?")).toBe(true);
+    expect(content.endsWith("User message: Is it well reviewed?")).toBe(true);
   });
 
   it("keeps a forged closing tag in an extra tab from escaping its fence", () => {

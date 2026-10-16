@@ -5,7 +5,7 @@
 import type { Action, ActionResult } from "../actions/executor";
 import { fencePage } from "../chat/prompt";
 import { ProviderError } from "../providers/errors";
-import type { ChatMessage, ProviderClient, ToolSpec, Usage } from "../providers/types";
+import type { ChatMessage, Effort, ProviderClient, ToolSpec, Usage } from "../providers/types";
 import { classifyAction, detectCaptcha, type Classification } from "../safety/classifier";
 import type { Snapshot } from "../snapshot/snapshot";
 
@@ -187,6 +187,8 @@ const ACTION_TOOLS = new Set(["click", "type", "select", "scroll", "navigate", "
 export interface AgentInput {
   provider: ProviderClient;
   model: string;
+  /** Omitted: the model's default effort. */
+  effort?: Effort;
   goal: string;
   page: AgentPage;
   control?: AgentControl;
@@ -283,7 +285,9 @@ export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
         ...(input.webSearch ? { webSearch: true } : {}),
         messages: history,
         tools: AGENT_TOOLS,
-        maxTokens: 1024,
+        // Room for thinking before the tool call; the run's token budget still applies.
+        maxTokens: 8000,
+        ...(input.effort ? { effort: input.effort } : {}),
         signal: modelSignal,
       };
       trace("model:start " + index);

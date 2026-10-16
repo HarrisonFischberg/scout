@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   clearHistory,
   loadConversation,
-  startNewConversation,
   appendHistory,
   deleteAllData,
   deleteReportText,
@@ -38,10 +37,11 @@ const entry = (daysAgo: number, q = "q"): HistoryEntry => ({ at: NOW - daysAgo *
 
 describe("settings", () => {
   it("defaults when storage is empty or malformed", async () => {
-    expect(parseSettings(undefined)).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5", retention: "7" });
-    expect(parseSettings({ provider: "evil", model: 5, retention: "999" })).toEqual({
+    expect(parseSettings(undefined)).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5", effort: "default", retention: "7" });
+    expect(parseSettings({ provider: "evil", model: 5, effort: "turbo", retention: "999" })).toEqual({
       provider: "anthropic",
       model: "claude-sonnet-5-5",
+      effort: "default",
       retention: "7",
     });
     expect(await loadSettings(fakeStorage())).toEqual(parseSettings({}));
@@ -53,8 +53,8 @@ describe("settings", () => {
 
   it("round-trips a saved choice", async () => {
     const s = fakeStorage();
-    await saveSettings(s, { provider: "openai", model: "gpt-5", retention: "30" });
-    expect(await loadSettings(s)).toEqual({ provider: "openai", model: "gpt-5", retention: "30" });
+    await saveSettings(s, { provider: "openai", model: "gpt-5", effort: "high", retention: "30" });
+    expect(await loadSettings(s)).toEqual({ provider: "openai", model: "gpt-5", effort: "high", retention: "30" });
   });
 });
 
@@ -151,14 +151,13 @@ describe("deleteAllData", () => {
 });
 
 describe("conversation", () => {
-  it("shows only entries since New chat, keeps kinds, and clears", async () => {
+  it("shows only the entries of one conversation, keeps kinds, and clears", async () => {
     const s = fakeStorage({});
-    await appendHistory(s, "7", { at: 1000, question: "old", answer: "a", kind: "chat" });
-    await startNewConversation(s, 2000);
-    await appendHistory(s, "7", { at: 3000, question: "Fill the form", answer: "Done", kind: "agent" });
-    const conv = await loadConversation(s, "7", 4000);
-    expect(conv).toEqual([{ at: 3000, question: "Fill the form", answer: "Done", kind: "agent" }]);
+    await appendHistory(s, "7", { at: 1000, question: "other tab", answer: "a", kind: "chat", conv: "c-a" });
+    await appendHistory(s, "7", { at: 3000, question: "Fill the form", answer: "Done", kind: "agent", conv: "c-b" });
+    const conv = await loadConversation(s, "7", 4000, "c-b");
+    expect(conv).toEqual([{ at: 3000, question: "Fill the form", answer: "Done", kind: "agent", conv: "c-b" }]);
     await clearHistory(s);
-    expect(await loadConversation(s, "7", 4000)).toEqual([]);
+    expect(await loadConversation(s, "7", 4000, "c-b")).toEqual([]);
   });
 });

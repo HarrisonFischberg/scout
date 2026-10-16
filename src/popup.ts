@@ -1,5 +1,7 @@
 // Popup (S04, redesigned T021–T026): chat-first panel with a Chat / Control
 // Browser mode switch, saved conversation, and an in-popup Settings view.
+// Part 1: the Scout panel ("scout-panel"). One conversation per tab, a port to
+// the background worker while open, and no use in Private Browsing.
 import { AgentControl, runAgent, type AgentPage, type ApprovalRequest, type StepRecord } from "./agent/loop";
 import type { Action, ActionResult } from "./actions/executor";
 import type { Snapshot } from "./snapshot/snapshot";
@@ -14,8 +16,12 @@ import { BATCH_SIZE, couponStatusText, couponSummary, runCouponSearch, type Batc
 import { formatRunCost } from "./cost";
 import { buildReport, describeBrowser, Diagnostics, disabledRun, type RunHandle, type RunKind } from "./diagnostics";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
-import { createProvider, type ChatMessage, type ProviderClient } from "./providers";
+import { envelope } from "./bridge/messages";
+import { connectPanelPort, type PanelPort } from "./bridge/port";
+import { conversationForTab, startNewConversation } from "./panel/state";
+import { createProvider, type ChatMessage, type Effort, type ProviderClient } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
+import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
   appendHistory,
   clearHistory,
@@ -27,7 +33,7 @@ import {
   loadSettings,
   parseSettings,
   saveSettings,
-  startNewConversation,
+  type EffortSetting,
   type HistoryKind,
   type Settings,
   type StorageArea,
@@ -62,9 +68,10 @@ async function findKey(
       trace("key:" + provider + " error " + (err instanceof Error ? err.message : "unknown"));
     }
     if (apiKey) {
-      const model = provider === chosen.provider ? chosen.model : DEFAULT_MODEL[provider];
+      const same = provider === chosen.provider;
+      const model = same ? chosen.model : DEFAULT_MODEL[provider];
       return {
-        settings: { ...chosen, provider, model },
+        settings: { ...chosen, provider, model, effort: same ? chosen.effort : "default" },
         apiKey,
         ...(provider !== chosen.provider ? { fellBackFrom: chosen.provider } : {}),
       };
@@ -85,6 +92,25 @@ async function listTabs(): Promise<TabInfo[]> {
     );
   } catch {
     return [];
+  }
+}
+
+interface ActiveTab {
+  id?: number;
+  windowId?: number;
+  incognito: boolean;
+}
+
+async function activeTab(): Promise<ActiveTab> {
+  try {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    return {
+      ...(tab?.id !== undefined ? { id: tab.id } : {}),
+      ...(tab?.windowId !== undefined ? { windowId: tab.windowId } : {}),
+      incognito: tab?.incognito === true || browser.extension?.inIncognitoContext === true,
+    };
+  } catch {
+    return { incognito: browser.extension?.inIncognitoContext === true };
   }
 }
 
@@ -125,16 +151,16 @@ function startRun(kind: RunKind, meta: { provider?: string; model?: string; ques
 
 function trace(stage: string): void {
   current.stage(stage);
-  if (!__ASSISTANT_DEBUG__) return;
+  if (!__SCOUT_DEBUG__) return;
   void Promise.resolve()
-    .then(() => browser.runtime.sendNativeMessage("com.example.AssistAnt", { type: "debug.stage", stage }))
+    .then(() => browser.runtime.sendNativeMessage("com.example.SafariScout", { type: "debug.stage", stage }))
     .catch(() => undefined);
 }
 
 function diagnosticsReport(): string {
   return buildReport(diag?.runs ?? [], {
-    version: __ASSISTANT_VERSION__,
-    build: __ASSISTANT_DEBUG__ ? "debug" : "release",
+    version: __SCOUT_VERSION__,
+    build: __SCOUT_DEBUG__ ? "debug" : "release",
     browser: describeBrowser(navigator.userAgent),
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
@@ -209,12 +235,12 @@ async function tabAgentPage(): Promise<(AgentPage & { cart: CartApi }) | null> {
   };
 
   return {
-    snapshot: async () => (await call({ type: "assistant:snapshot" })) as Snapshot,
-    act: async (action: Action) => (await call({ type: "assistant:act", action })) as ActionResult,
+    snapshot: async () => (await call({ type: "scout:snapshot" })) as Snapshot,
+    act: async (action: Action) => (await call({ type: "scout:act", action })) as ActionResult,
     cart: {
-      info: async () => (await call({ type: "assistant:cart-info" })) as CartState | null,
-      update: async (discount: string) => (await call({ type: "assistant:cart-update", discount })) as CartState | { rateLimited: true } | null,
-      reload: async () => void (await call({ type: "assistant:reload" })),
+      info: async () => (await call({ type: "scout:cart-info" })) as CartState | null,
+      update: async (discount: string) => (await call({ type: "scout:cart-update", discount })) as CartState | { rateLimited: true } | null,
+      reload: async () => void (await call({ type: "scout:reload" })),
     },
   };
 }
@@ -244,16 +270,28 @@ type Mode = "chat" | "control";
 interface Session {
   settings: Settings;
   provider: ProviderClient;
+  /** The effort actually sent: the setting when the model supports it. */
+  effort?: Effort;
   fellBackFrom?: Provider;
 }
 
-const MODEL_LABEL: Record<string, string> = {
-  "claude-sonnet-5-5": "Sonnet 5.5",
-  "claude-opus-5-5": "Opus 5.5",
-  "claude-haiku-5-5": "Haiku 5.5",
-};
+// Display names from the provider's model list (or the built-in one), filled
+// as lists load. The pill drops the "Claude " prefix to stay short.
+const modelNames = new Map<string, string>();
+const knownModels: Record<Provider, ModelInfo[]> = { anthropic: [], openai: [] };
 
-const prettyModel = (id: string): string => MODEL_LABEL[id] ?? id;
+function rememberModels(provider: Provider, models: ModelInfo[]): void {
+  knownModels[provider] = models;
+  for (const m of models) modelNames.set(m.id, m.name);
+}
+
+const prettyModel = (id: string): string => (modelNames.get(id) ?? id).replace(/^Claude /, "");
+
+// Toggle shortcut (manifest "commands"): Control-Shift-S on Mac, Option-Shift-S
+// elsewhere. Safari opens the panel; pressing it again inside the panel closes it.
+function isToggleShortcut(e: KeyboardEvent): boolean {
+  return e.code === "KeyS" && e.shiftKey && !e.metaKey && (e.ctrlKey !== e.altKey);
+}
 
 /** Marks the label of each checked radio in a segmented control. */
 function syncSegmented(inputs: HTMLInputElement[]): void {
@@ -304,6 +342,46 @@ async function main(): Promise<void> {
   let settings = parseSettings(undefined);
   if (storage) settings = await loadSettings(storage).catch(() => settings);
 
+  document.addEventListener("keydown", (e) => {
+    if (isToggleShortcut(e)) {
+      e.preventDefault();
+      window.close();
+    }
+  });
+
+  // ---------- Private Browsing: the panel is off ----------
+  const tab = await activeTab();
+  if (tab.incognito) {
+    el("private").hidden = false;
+    el("new-chat").hidden = true;
+    el("settings-open").hidden = true;
+    status.textContent = "Safari Scout is off in Private Browsing.";
+    return;
+  }
+
+  // ---------- Per-tab conversation and the worker port ----------
+  let conv = storage ? await conversationForTab(storage, tab.id, Date.now()).catch(() => "") : "";
+  let port: PanelPort | null = null;
+  if (browser.runtime.connect && tab.id !== undefined) {
+    const tabId = tab.id;
+    try {
+      port = connectPanelPort({
+        connect: (info) => browser.runtime.connect!(info),
+        hello: () => envelope("panel.hello", { tabId, ...(tab.windowId !== undefined ? { windowId: tab.windowId } : {}) }),
+        onState: (state) => trace("port:" + state),
+      });
+    } catch {
+      port = null;
+    }
+  }
+  window.addEventListener("pagehide", () => port?.close());
+
+  // Cached or built-in model lists, so names and effort support are known
+  // before Settings is opened. No network call here.
+  for (const p of ["anthropic", "openai"] as const) {
+    rememberModels(p, (await loadModelList(storage, p, null, (i, init) => fetch(i, init), Date.now())).models);
+  }
+
   let session: Session | null = null;
   const history: ChatMessage[] = [];
   let controller: AbortController | null = null;
@@ -312,7 +390,7 @@ async function main(): Promise<void> {
   const checked = new Set<number>();
 
   // ---------- Diagnostics (debug builds only) ----------
-  if (__ASSISTANT_DEBUG__) {
+  if (__SCOUT_DEBUG__) {
     const diagBox = el("diag");
     diag = new Diagnostics(storage);
     await diag.load();
@@ -357,7 +435,7 @@ async function main(): Promise<void> {
       label.className = "mode";
       label.textContent = opts.mode;
       node.append(label, document.createTextNode(text));
-    } else if (kind === "error" && __ASSISTANT_DEBUG__) {
+    } else if (kind === "error" && __SCOUT_DEBUG__) {
       // Own element, so the message reads on its own next to the copy button.
       const span = document.createElement("span");
       span.textContent = text;
@@ -365,7 +443,7 @@ async function main(): Promise<void> {
     } else node.textContent = text;
     if (kind === "error") {
       current.error(text);
-      if (__ASSISTANT_DEBUG__) {
+      if (__SCOUT_DEBUG__) {
         const copy = document.createElement("button");
         copy.type = "button";
         copy.className = "diag-copy";
@@ -387,12 +465,14 @@ async function main(): Promise<void> {
 
   async function saveEntry(kind: HistoryKind, q: string, answer: string): Promise<void> {
     if (!storage) return;
-    await appendHistory(storage, settings.retention, { at: Date.now(), question: q, answer, kind }).catch(() => undefined);
+    // Created on first use: after Delete all data, nothing is stored until the next answer.
+    if (!conv) conv = await conversationForTab(storage, tab.id, Date.now()).catch(() => "");
+    await appendHistory(storage, settings.retention, { at: Date.now(), question: q, answer, kind, ...(conv ? { conv } : {}) }).catch(() => undefined);
   }
 
   async function restoreConversation(): Promise<void> {
-    if (!storage) return;
-    const entries = await loadConversation(storage, settings.retention, Date.now()).catch(() => []);
+    if (!storage || !conv) return;
+    const entries = await loadConversation(storage, settings.retention, Date.now(), conv).catch(() => []);
     history.length = 0;
     for (const e of entries) {
       const mode = e.kind === "agent" ? "Control Browser" : e.kind === "coupons" ? "Find coupons" : undefined;
@@ -438,17 +518,21 @@ async function main(): Promise<void> {
       updateEmpty();
       return;
     }
+    const effort = effortForId(found.settings.provider, found.settings.model, found.settings.effort, knownModels[found.settings.provider]);
     session = {
       settings: found.settings,
       provider: createProvider(found.settings.provider, { apiKey: found.apiKey, fetch: (i, init) => fetch(i, init) }),
+      ...(effort ? { effort } : {}),
       ...(found.fellBackFrom ? { fellBackFrom: found.fellBackFrom } : {}),
     };
     noKey.hidden = true;
     composer.hidden = false;
-    modelPill.textContent = prettyModel(session.settings.model);
+    const pill = prettyModel(session.settings.model) + (effort ? " · " + EFFORT_LABEL[effort] : "");
+    modelPill.textContent = pill;
     // Accessible name starts with the visible text (WCAG 2.5.3 Label in Name).
-    modelPill.setAttribute("aria-label", prettyModel(session.settings.model) + ", change model");
-    status.textContent = "Ready. Using " + session.settings.provider + " " + session.settings.model + ".";
+    modelPill.setAttribute("aria-label", pill + ", change model or effort");
+    status.textContent =
+      "Ready. Using " + session.settings.provider + " " + session.settings.model + (effort ? ", " + EFFORT_LABEL[effort].toLowerCase() + " effort" : "") + ".";
     current.finish(found.fellBackFrom ? "ready_fallback" : "ready", status.textContent);
     if (found.fellBackFrom) {
       fallbackNotice = addMessage(
@@ -587,6 +671,7 @@ async function main(): Promise<void> {
     const result = await runTurn({
       provider: s.provider,
       model: s.settings.model,
+      ...(s.effort ? { effort: s.effort } : {}),
       history,
       question: trimmed,
       page,
@@ -674,6 +759,7 @@ async function main(): Promise<void> {
       outcome = await runAgent({
         provider: s.provider,
         model: s.settings.model,
+        ...(s.effort ? { effort: s.effort } : {}),
         goal: trimmed,
         page,
         control,
@@ -821,7 +907,7 @@ async function main(): Promise<void> {
       const ac = new AbortController();
       couponsStop.addEventListener("click", () => ac.abort(), { once: true });
       trace("coupons:search");
-      const sug = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal);
+      const sug = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal, s.effort ? { effort: s.effort } : {});
       used = { inputTokens: sug.inputTokens, outputTokens: sug.outputTokens };
       trace("coupons:candidates found=" + sug.found + " guessed=" + sug.guessed);
       couponsSummary.textContent =
@@ -899,7 +985,11 @@ async function main(): Promise<void> {
   el("new-chat").addEventListener("click", () => {
     if (controller || control) return;
     clearThread();
-    if (storage) void startNewConversation(storage, Date.now());
+    if (storage) {
+      void startNewConversation(storage, tab.id, Date.now())
+        .then((next) => (conv = next))
+        .catch(() => undefined);
+    }
     status.textContent = session ? "New chat." : status.textContent;
     trace("conversation:new");
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
@@ -915,8 +1005,13 @@ async function main(): Promise<void> {
   const keyError = el("key-error");
   const keyRemove = el<HTMLButtonElement>("key-remove");
   const keySave = el<HTMLButtonElement>("key-save");
-  const modelIn = el<HTMLInputElement>("set-model");
+  const modelSel = el<HTMLSelectElement>("set-model");
+  const modelCustomRow = el("model-custom-row");
+  const modelCustom = el<HTMLInputElement>("set-model-custom");
   const modelHelp = el("model-help");
+  const modelsRefresh = el<HTMLButtonElement>("models-refresh");
+  const effortSel = el<HTMLSelectElement>("set-effort");
+  const effortHelp = el("effort-help");
   const retentionSel = el<HTMLSelectElement>("set-retention");
   const savedMsg = el("settings-saved");
   const sites = el("site-list");
@@ -950,12 +1045,72 @@ async function main(): Promise<void> {
     keyInput.placeholder = has ? "Paste a new key to replace it" : p === "anthropic" ? "sk-ant-…" : "sk-…";
   }
 
+  // ---------- Model and effort dropdowns ----------
+  const OTHER = "__other";
+  let models: ModelInfo[] = [];
+  const modelInfo = (id: string): ModelInfo | undefined => models.find((m) => m.id === id);
+
+  function renderEffort(): void {
+    const levels = modelInfo(settings.model)?.efforts ?? [];
+    effortSel.replaceChildren(
+      ...(["default", ...levels] as EffortSetting[]).map((v) => new Option(EFFORT_LABEL[v] + (v === "default" ? " (model decides)" : ""), v)),
+    );
+    effortSel.value = levels.includes(settings.effort as Effort) ? settings.effort : "default";
+    effortSel.disabled = levels.length === 0;
+    effortHelp.textContent = levels.length
+      ? "Higher effort thinks longer: better on hard questions, but slower and uses more tokens."
+      : "This model has no effort setting.";
+  }
+
+  function renderModels(list: ModelInfo[]): void {
+    models = withModel(list, settings.provider, settings.model);
+    modelSel.replaceChildren(...models.map((m) => new Option(m.name, m.id)), new Option("Other model ID…", OTHER));
+    modelSel.value = settings.model;
+    modelCustomRow.hidden = true;
+    renderEffort();
+  }
+
+  // Shows what is known at once, then loads the list for the chosen provider:
+  // cached for a day, else the provider's model list (no tokens billed), else
+  // a built-in list.
+  async function refreshModels(refresh = false): Promise<void> {
+    const p = settings.provider;
+    renderModels(knownModels[p]);
+    modelHelp.textContent = "Loading models…";
+    let key: string | null = null;
+    try {
+      key = await keychain.getKey(p);
+    } catch {
+      key = null;
+    }
+    const list = await loadModelList(storage, p, key, (i, init) => fetch(i, init), Date.now(), { refresh });
+    if (settings.provider !== p) return;
+    rememberModels(p, list.models);
+    // Keep a half-typed custom model ID.
+    if (modelCustomRow.hidden) renderModels(list.models);
+    modelHelp.textContent =
+      list.source === "builtin"
+        ? key
+          ? "Could not load your " + PROVIDER_NAME[p] + " model list. Showing common models."
+          : "Showing common models. Save your " + PROVIDER_NAME[p] + " key to list every model it can use."
+        : "Models your " + PROVIDER_NAME[p] + " key can use." + (list.error ? " Could not refresh the list just now." : "");
+    trace("models:" + p + " " + list.source + " " + list.models.length);
+  }
+
+  /** Saves a model choice; an effort the new model does not support goes back to Default. */
+  async function chooseModel(id: string): Promise<void> {
+    const levels = modelInfo(id)?.efforts ?? [];
+    const effort: EffortSetting = levels.includes(settings.effort as Effort) ? settings.effort : "default";
+    await persist({ ...settings, model: id, effort });
+    renderEffort();
+  }
+
   async function refreshSettings(): Promise<void> {
     for (const i of providerInputs) i.checked = i.value === settings.provider;
     syncSegmented(providerInputs);
-    modelIn.value = settings.model;
-    modelHelp.textContent = "Default for " + PROVIDER_NAME[settings.provider] + ": " + DEFAULT_MODEL[settings.provider] + ".";
     retentionSel.value = settings.retention;
+    // Not awaited: Settings opens at once; the list fills in when it arrives.
+    void refreshModels();
     await refreshKeyStatus();
     const entries = storage ? await loadHistory(storage, settings.retention, Date.now()).catch(() => []) : [];
     historyCount.textContent = entries.length + " saved " + (entries.length === 1 ? "exchange" : "exchanges") + ".";
@@ -1016,10 +1171,34 @@ async function main(): Promise<void> {
       keyInput.value = "";
       keyError.textContent = "";
       keyInput.removeAttribute("aria-invalid");
-      void persist({ ...settings, provider: p, model: DEFAULT_MODEL[p] }).then(refreshSettings);
+      const effort = effortForId(p, DEFAULT_MODEL[p], settings.effort, knownModels[p]) ?? "default";
+      void persist({ ...settings, provider: p, model: DEFAULT_MODEL[p], effort }).then(refreshSettings);
     });
   }
-  modelIn.addEventListener("change", () => void persist({ ...settings, model: modelIn.value }));
+  modelSel.addEventListener("change", () => {
+    if (modelSel.value === OTHER) {
+      modelCustomRow.hidden = false;
+      modelCustom.value = "";
+      modelCustom.focus();
+      return;
+    }
+    modelCustomRow.hidden = true;
+    void chooseModel(modelSel.value);
+  });
+  modelCustom.addEventListener("change", () => {
+    const id = modelCustom.value.trim();
+    if (!id) return;
+    models = withModel(models, settings.provider, id);
+    if (!Array.from(modelSel.options).some((o) => o.value === id)) modelSel.add(new Option(id, id), modelSel.options.length - 1);
+    modelSel.value = id;
+    modelCustomRow.hidden = true;
+    void chooseModel(id);
+  });
+  effortSel.addEventListener("change", () => {
+    const v = effortSel.value;
+    void persist({ ...settings, effort: v === "default" || (modelInfo(settings.model)?.efforts ?? []).includes(v as Effort) ? (v as EffortSetting) : "default" });
+  });
+  modelsRefresh.addEventListener("click", () => void refreshModels(true));
   retentionSel.addEventListener("change", () => {
     void persist({ ...settings, retention: parseSettings({ retention: retentionSel.value }).retention }).then(refreshSettings);
   });
@@ -1050,6 +1229,7 @@ async function main(): Promise<void> {
           await refreshKeyStatus();
           keyStatus.textContent = PROVIDER_NAME[p] + " key works and is saved in your Keychain.";
           await connect();
+          await refreshModels(true);
         } catch {
           keyError.textContent = "The key works, but it could not be saved to the Keychain. Try again.";
         }
@@ -1117,6 +1297,7 @@ async function main(): Promise<void> {
       settings = parseSettings(undefined);
       diag?.forget();
       clearThread();
+      conv = "";
       await connect(false);
       status.textContent = text;
       await refreshSettings();

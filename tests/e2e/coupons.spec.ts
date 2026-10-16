@@ -59,7 +59,7 @@ async function openPopup(
       tabs: {
         query: async () => [{ id: 1 }],
         sendMessage: async (_id: number, m: { type: string; action?: { type: string; ref?: string; text?: string } }) => {
-          if (m.type === "assistant:snapshot") {
+          if (m.type === "scout:snapshot") {
             return {
               url: "https://shop.test/cart",
               title: "Cart",

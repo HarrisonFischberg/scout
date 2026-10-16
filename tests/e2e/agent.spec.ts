@@ -63,7 +63,7 @@ async function openPopup(page: Page, modelDelayMs = 0): Promise<{ acts: string[]
       tabs: {
         query: async () => [{ id: 1 }],
         sendMessage: async (_id: number, m: { type: string; action?: { type: string } }) => {
-          if (m.type === "assistant:snapshot") return snap;
+          if (m.type === "scout:snapshot") return snap;
           w.__recordAct(m.action?.type ?? "?");
           return { ok: true, action: m.action?.type, message: "ok" };
         },

@@ -2,6 +2,14 @@
 // Responses. Callers pass `fetch` so tests never touch the network.
 export type ProviderId = "anthropic" | "openai";
 
+/**
+ * How hard the model thinks before answering. Anthropic sends it as
+ * `output_config.effort` (all five levels, per model), OpenAI as
+ * `reasoning.effort` (low, medium, high on reasoning models).
+ */
+export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+export type Effort = (typeof EFFORTS)[number];
+
 export interface ToolSpec {
   name: string;
   description: string;
@@ -20,6 +28,8 @@ export interface ChatRequest {
   messages: ChatMessage[];
   tools?: ToolSpec[];
   maxTokens: number;
+  /** Omitted: the model's default effort. */
+  effort?: Effort;
   /** Enable the provider's own server-side web search tool (T019). */
   webSearch?: boolean;
   /** Max searches per request (Anthropic `max_uses`). Default 3. */

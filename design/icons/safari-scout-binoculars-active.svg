@@ -1,0 +1,13 @@
+<!-- Safari Scout toolbar icon, active state (agent working, Part 3): the binoculars with filled lenses.
+     Original artwork made for this project (2026-10-16). Drawn in currentColor like safari-scout-binoculars.svg. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <g fill="currentColor">
+    <rect x="11.5" y="5" width="11" height="11" rx="2.5"/>
+    <rect x="41.5" y="5" width="11" height="11" rx="2.5"/>
+    <rect x="26" y="17" width="12" height="11" rx="3"/>
+    <rect x="5" y="14" width="24" height="28" rx="7"/>
+    <rect x="35" y="14" width="24" height="28" rx="7"/>
+    <circle cx="17" cy="44" r="14"/>
+    <circle cx="47" cy="44" r="14"/>
+  </g>
+</svg>

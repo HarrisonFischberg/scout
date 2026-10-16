@@ -12,7 +12,7 @@ final class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         // page text, keys, or user input. Compiled out of release builds.
         if let m = message as? [String: Any], m["type"] as? String == "debug.stage",
            let stage = m["stage"] as? String {
-            Logger(subsystem: "com.example.AssistAnt", category: "stage").debug("stage \(stage, privacy: .public)")
+            Logger(subsystem: "com.example.SafariScout", category: "stage").debug("stage \(stage, privacy: .public)")
             let ok = NSExtensionItem()
             ok.userInfo = [SFExtensionMessageKey: ["ok": true]]
             context.completeRequest(returningItems: [ok], completionHandler: nil)

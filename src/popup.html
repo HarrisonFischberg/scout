@@ -69,6 +69,7 @@
 
       /* Header */
       header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--hairline); }
+      header picture { display: flex; }
       header img { width: 24px; height: 24px; }
       header h1, header h2 { flex: 1; margin: 0; font-size: 15px; font-weight: 600; }
       .icon-btn {
@@ -210,7 +211,7 @@
       #settings-view section { padding: 12px 0; border-bottom: 1px solid var(--hairline); display: flex; flex-direction: column; gap: 8px; }
       #settings-view section:last-child { border-bottom: 0; }
       #settings-view h3 { margin: 0; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.02em; }
-      #settings-view label.field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+      #settings-view .field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
       #settings-view input[type="text"], #settings-view input[type="password"], #settings-view select {
         padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border-control); background: var(--bg-surface);
       }
@@ -223,11 +224,14 @@
     </style>
     <script src="popup.js" defer></script>
   </head>
-  <body>
+  <body data-panel="scout-panel">
     <!-- Chat view -->
     <div id="chat-view" class="view">
       <header>
-        <img src="icons/toolbar-64.png" alt="" />
+        <picture>
+          <source srcset="icons/toolbar-dark-64.png" media="(prefers-color-scheme: dark)" />
+          <img src="icons/toolbar-64.png" alt="" />
+        </picture>
         <h1>Safari Scout</h1>
         <button id="new-chat" class="icon-btn" type="button" aria-label="New chat">
           <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
@@ -247,6 +251,15 @@
             Safari Scout shows an estimated cost after each answer or task.
           </p>
           <button id="no-key-open" class="btn primary" type="button">Add API key</button>
+        </section>
+
+        <section id="private" class="center" aria-labelledby="private-title" hidden>
+          <img src="icons/icon-128.png" alt="" />
+          <h2 id="private-title">Off in Private Browsing</h2>
+          <p class="hint">
+            Safari Scout does not run in private windows, so nothing you browse privately is sent to an AI provider or saved.
+            Open the page in a regular window to use it.
+          </p>
         </section>
 
         <section id="empty" class="center" aria-labelledby="empty-title" hidden>
@@ -380,21 +393,38 @@
           <p id="key-help" class="hint">
             Saved in your Keychain on this device, never in browser storage. Your provider bills your account for every request.
           </p>
-          <label class="field">Model
-            <input id="set-model" type="text" autocomplete="off" spellcheck="false" aria-describedby="model-help" />
-          </label>
-          <p id="model-help" class="hint"></p>
+        </section>
+
+        <section aria-labelledby="model-title">
+          <h3 id="model-title">Model and effort</h3>
+          <div class="field">
+            <label for="set-model">Model</label>
+            <select id="set-model" aria-describedby="model-help"></select>
+          </div>
+          <div id="model-custom-row" hidden>
+            <label class="field">Model ID
+              <input id="set-model-custom" type="text" autocomplete="off" spellcheck="false" placeholder="Exact model ID from your provider" />
+            </label>
+          </div>
+          <p id="model-help" class="hint" role="status"></p>
+          <div class="field">
+            <label for="set-effort">Effort</label>
+            <select id="set-effort" aria-describedby="effort-help"></select>
+          </div>
+          <p id="effort-help" class="hint"></p>
+          <div class="row"><button id="models-refresh" class="btn" type="button">Refresh model list</button></div>
         </section>
 
         <section aria-labelledby="history-title">
           <h3 id="history-title">Chat history</h3>
-          <label class="field">Keep chat history
+          <div class="field">
+            <label for="set-retention">Keep chat history</label>
             <select id="set-retention">
               <option value="off">Off (keep nothing)</option>
               <option value="7">7 days</option>
               <option value="30">30 days</option>
             </select>
-          </label>
+          </div>
           <p id="history-count" class="hint" role="status"></p>
           <div class="row"><button id="history-clear" class="btn" type="button">Clear chat history</button></div>
           <p id="settings-saved" class="hint" role="status"></p>
@@ -403,6 +433,15 @@
         <section aria-labelledby="sites-title">
           <h3 id="sites-title">Site access</h3>
           <ul id="site-list" aria-labelledby="sites-title"></ul>
+        </section>
+
+        <section aria-labelledby="toolbar-title">
+          <h3 id="toolbar-title">Toolbar button</h3>
+          <p class="hint">
+            Shortcut: Control-Shift-S on Mac opens and closes Safari Scout. Safari does not let extensions hide their own button
+            or change the shortcut. To hide the button on Mac, choose View &gt; Customize Toolbar in Safari and drag the binoculars out.
+            On iPhone and iPad, Safari Scout lives in the page menu (the button in the address bar).
+          </p>
         </section>
 
         <!-- debug:start (scripts/build.mjs strips this block from release builds) -->

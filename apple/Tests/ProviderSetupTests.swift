@@ -9,7 +9,7 @@ final class ProviderSetupTests: XCTestCase {
         func test(key: String, provider: Provider) async -> KeyTestResult { result }
     }
 
-    private let store = KeychainStore(service: "com.example.AssistAnt.tests.setup")
+    private let store = KeychainStore(service: "com.example.SafariScout.tests.setup")
 
     override func tearDown() {
         for p in Provider.allCases { try? store.delete(account: p.rawValue) }

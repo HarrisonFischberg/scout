@@ -40,7 +40,7 @@ async function openPopup(page: Page, snap: Page2, script: string[]): Promise<{ a
       tabs: {
         query: async () => [{ id: 1 }],
         sendMessage: async (_id: number, m: { type: string; action?: { type: string } }) => {
-          if (m.type === "assistant:snapshot") return snapshot;
+          if (m.type === "scout:snapshot") return snapshot;
           w.__recordAct(m.action?.type ?? "?");
           return { ok: true, action: m.action?.type, message: "ok" };
         },

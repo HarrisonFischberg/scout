@@ -17,7 +17,7 @@ project.files.select { |f| %w[KeychainStore.swift ProviderSetup.swift].include?(
        .uniq { |f| f.path.to_s.split('/').last }
        .each { |ref| target.source_build_phase.add_file_reference(ref) }
 target.build_configurations.each do |c|
-  c.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.example.AssistAntTests'
+  c.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.example.SafariScoutTests'
   c.build_settings['SWIFT_VERSION'] = '5.0'
   c.build_settings['GENERATE_INFOPLIST_FILE'] = 'YES'
   c.build_settings['CODE_SIGN_STYLE'] = 'Manual'

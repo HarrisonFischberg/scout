@@ -21,7 +21,7 @@ struct KeychainStore {
         return group
     }
 
-    init(service: String = "com.example.AssistAnt.provider-key",
+    init(service: String = "com.example.SafariScout.provider-key",
          accessGroup: String? = KeychainStore.configuredAccessGroup) {
         self.service = service
         self.accessGroup = accessGroup

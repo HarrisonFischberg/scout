@@ -6,7 +6,7 @@ import SafariServices
 // S01 (macOS) / S02 (iOS): enable the extension. S03: provider + key.
 struct OnboardingView: View {
     // Must match PRODUCT_BUNDLE_IDENTIFIER of the extension targets.
-    private let extensionBundleIdentifier = "com.example.AssistAnt.Extension"
+    private let extensionBundleIdentifier = "com.example.SafariScout.Extension"
     @StateObject private var setup = SetupViewModel()
     @State fileprivate var showing: LegalDoc?
 

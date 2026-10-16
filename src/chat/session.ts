@@ -1,6 +1,6 @@
 // One chat turn: stream a provider answer, report text deltas, map errors.
 import { ProviderError } from "../providers/errors";
-import type { ChatMessage, ProviderClient, Usage } from "../providers/types";
+import type { ChatMessage, Effort, ProviderClient, Usage } from "../providers/types";
 import { SYSTEM_PROMPT, buildMessages, type PageContext } from "./prompt";
 
 export type TurnResult =
@@ -10,6 +10,8 @@ export type TurnResult =
 export interface TurnInput {
   provider: ProviderClient;
   model: string;
+  /** Omitted: the model's default effort. */
+  effort?: Effort;
   history: ChatMessage[];
   question: string;
   page: PageContext | null;
@@ -17,6 +19,8 @@ export interface TurnInput {
   signal?: AbortSignal;
   onText: (full: string) => void;
 }
+
+export const CHAT_MAX_TOKENS = 16_000;
 
 export async function runTurn(input: TurnInput): Promise<TurnResult> {
   let text = "";
@@ -26,7 +30,11 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
       model: input.model,
       system: SYSTEM_PROMPT,
       messages: buildMessages(input.history, input.question, input.page, input.extraPages ?? []),
-      maxTokens: 1024,
+      // Current models think before answering and thinking counts toward this
+      // cap, so a small cap cut answers short at higher effort. Streaming, so
+      // no timeout risk; only tokens actually used are billed.
+      maxTokens: CHAT_MAX_TOKENS,
+      ...(input.effort ? { effort: input.effort } : {}),
       ...(input.signal ? { signal: input.signal } : {}),
     };
     for await (const ev of input.provider.stream(req)) {

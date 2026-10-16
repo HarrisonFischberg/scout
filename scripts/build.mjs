@@ -8,7 +8,7 @@ const src = join(root, "src");
 const out = join(root, "apple", "Extension", "Resources");
 // Debug builds include local diagnostics (src/diagnostics.ts). Release builds
 // (`npm run build:release`) compile them out entirely.
-const release = process.env.ASSISTANT_BUILD === "release";
+const release = process.env.SCOUT_BUILD === "release";
 
 await build({
   entryPoints: {
@@ -22,12 +22,12 @@ await build({
   target: "safari16",
   platform: "browser",
   logLevel: "warning",
-  // Needed so `if (__ASSISTANT_DEBUG__)` branches are removed, not just skipped.
+  // Needed so `if (__SCOUT_DEBUG__)` branches are removed, not just skipped.
   minifySyntax: release,
   treeShaking: true,
   define: {
-    __ASSISTANT_DEBUG__: release ? "false" : "true",
-    __ASSISTANT_VERSION__: JSON.stringify(JSON.parse(await readFile(join(src, "manifest.json"), "utf8")).version),
+    __SCOUT_DEBUG__: release ? "false" : "true",
+    __SCOUT_VERSION__: JSON.stringify(JSON.parse(await readFile(join(src, "manifest.json"), "utf8")).version),
   },
 });
 
