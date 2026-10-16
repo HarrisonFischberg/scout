@@ -50,7 +50,13 @@
         font: 16px/1.5 -apple-system, system-ui, sans-serif;
       }
       main { display: flex; flex-direction: column; gap: 12px; padding: 12px; min-height: 360px; }
-      h1, h2 { font-size: 16px; margin: 0; }
+      h1, h2, h3 { font-size: 16px; margin: 0; }
+      h1 { flex: 1; }
+      select, input[type="text"] {
+        font: inherit; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border-control);
+        background: var(--bg-surface); color: var(--text-primary);
+      }
+      #site-list { margin: 0; padding-left: 20px; overflow-wrap: anywhere; }
       a { color: var(--accent-text); text-decoration: underline; }
       #log { flex: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 420px; }
       .msg { border-radius: 12px; padding: 8px 12px; max-width: 85%; overflow-wrap: anywhere; }
@@ -90,8 +96,44 @@
   </head>
   <body>
     <main>
-      <h1>AssistAnt</h1>
+      <div class="row">
+        <h1>AssistAnt</h1>
+        <button id="settings-open" type="button" aria-expanded="false" aria-controls="settings">Settings</button>
+      </div>
       <p id="status" class="hint" role="status">Loading…</p>
+      <section id="settings" class="empty" aria-labelledby="settings-title" hidden>
+        <h2 id="settings-title">Settings</h2>
+        <form id="settings-form">
+          <label for="set-provider">Provider</label>
+          <select id="set-provider">
+            <option value="anthropic">Anthropic</option>
+            <option value="openai">OpenAI</option>
+          </select>
+          <label for="set-model">Model</label>
+          <input id="set-model" type="text" autocomplete="off" spellcheck="false" />
+          <label for="set-retention">Keep chat history</label>
+          <select id="set-retention">
+            <option value="off">Off (keep nothing)</option>
+            <option value="7">7 days</option>
+            <option value="30">30 days</option>
+          </select>
+          <div class="row"><button id="settings-save" type="submit" class="primary">Save settings</button></div>
+          <p id="settings-saved" class="hint" role="status"></p>
+        </form>
+        <p id="history-count" class="hint" role="status"></p>
+        <h3 id="sites-title">Site access</h3>
+        <ul id="site-list" aria-labelledby="sites-title"></ul>
+        <h3>Delete all data</h3>
+        <p class="hint">Removes your API keys from the Keychain, saved settings and history, and site access. Your provider keeps its own records under your account.</p>
+        <button id="delete-all" type="button">Delete all data</button>
+        <div id="delete-confirm" role="alertdialog" aria-labelledby="delete-title" hidden>
+          <p id="delete-title"><strong>Delete everything AssistAnt stored on this device?</strong> This cannot be undone.</p>
+          <div class="row">
+            <button id="delete-yes" type="button" class="primary">Yes, delete all data</button>
+            <button id="delete-no" type="button">Cancel</button>
+          </div>
+        </div>
+      </section>
       <section id="no-key" class="empty" hidden>
         <p><strong>Add an API key to start.</strong></p>
         <p class="hint">

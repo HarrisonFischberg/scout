@@ -11,18 +11,20 @@ import { runCouponSearch } from "./coupons/finder";
 import { formatRunCost } from "./cost";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { createProvider, type ChatMessage } from "./providers";
+import {
+  appendHistory,
+  DEFAULT_MODEL,
+  deleteAllData,
+  loadHistory,
+  loadSettings,
+  parseSettings,
+  saveSettings,
+  type Settings,
+  type StorageArea,
+} from "./settings/settings";
 
-// Model IDs are defaults only. Claude ID from the claude-api skill; the OpenAI
-// default is UNKNOWN until confirmed against OpenAI docs (activity.md T005).
-const DEFAULT_MODEL: Record<Provider, string> = {
-  anthropic: "claude-sonnet-5-5",
-  openai: "gpt-5",
-};
-
-interface Settings {
-  provider: Provider;
-  model: string;
-}
+// Model defaults live in settings.ts. The OpenAI default is UNKNOWN until
+// confirmed against OpenAI docs (activity.md T005).
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -30,14 +32,18 @@ function el<T extends HTMLElement>(id: string): T {
   return node as T;
 }
 
-// Provider/model persistence arrives with Settings in T015. Until then the
-// popup uses whichever provider has a saved key, and touches no extension storage.
-async function findKey(): Promise<{ settings: Settings; apiKey: string } | null> {
+// Prefers the provider chosen in settings, then any provider with a saved key.
+// A fallback provider uses its own default model, not the chosen model.
+async function findKey(chosen: Settings): Promise<{ settings: Settings; apiKey: string } | null> {
   const keychain = createKeychain(nativeSend);
-  for (const provider of ["anthropic", "openai"] as const) {
+  const order: Provider[] = chosen.provider === "openai" ? ["openai", "anthropic"] : ["anthropic", "openai"];
+  for (const provider of order) {
     try {
       const apiKey = await keychain.getKey(provider);
-      if (apiKey) return { settings: { provider, model: DEFAULT_MODEL[provider] }, apiKey };
+      if (apiKey) {
+        const model = provider === chosen.provider ? chosen.model : DEFAULT_MODEL[provider];
+        return { settings: { ...chosen, provider, model }, apiKey };
+      }
     } catch {
       // Treat an unreadable item like a missing one.
     }
@@ -102,6 +108,127 @@ function describeStep(step: StepRecord): string {
   return (step.note ? step.note + " " : "") + "(" + what + ", " + res + ")";
 }
 
+// Granted site origins, minus the provider API hosts the manifest always holds.
+async function listOrigins(): Promise<string[]> {
+  try {
+    const all = await browser.permissions.getAll();
+    return (all.origins ?? []).filter(
+      (o) => !o.startsWith("https://api.anthropic.com/") && !o.startsWith("https://api.openai.com/"),
+    );
+  } catch {
+    return [];
+  }
+}
+
+// S08: provider, model, retention, per-site access, Delete all data.
+function setupSettings(storage: StorageArea | undefined, initial: Settings, status: HTMLElement): void {
+  const openBtn = el<HTMLButtonElement>("settings-open");
+  const panel = el("settings");
+  const form = el<HTMLFormElement>("settings-form");
+  const providerSel = el<HTMLSelectElement>("set-provider");
+  const modelIn = el<HTMLInputElement>("set-model");
+  const retentionSel = el<HTMLSelectElement>("set-retention");
+  const savedMsg = el("settings-saved");
+  const sites = el("site-list");
+  const historyCount = el("history-count");
+  const deleteBtn = el<HTMLButtonElement>("delete-all");
+  const confirmBox = el("delete-confirm");
+  const confirmYes = el<HTMLButtonElement>("delete-yes");
+  const confirmNo = el<HTMLButtonElement>("delete-no");
+
+  providerSel.value = initial.provider;
+  modelIn.value = initial.model;
+  retentionSel.value = initial.retention;
+
+  async function refresh(): Promise<void> {
+    const retention = parseSettings({ retention: retentionSel.value }).retention;
+    const entries = storage ? await loadHistory(storage, retention, Date.now()).catch(() => []) : [];
+    historyCount.textContent = entries.length + " saved " + (entries.length === 1 ? "exchange" : "exchanges") + ".";
+    sites.replaceChildren();
+    const origins = await listOrigins();
+    if (!origins.length) {
+      const li = document.createElement("li");
+      li.textContent = "No sites granted.";
+      sites.appendChild(li);
+    }
+    for (const origin of origins) {
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "Remove";
+      btn.setAttribute("aria-label", "Remove access to " + origin);
+      btn.addEventListener("click", () => {
+        void browser.permissions.remove({ origins: [origin] }).then(refresh, refresh);
+      });
+      li.append(origin + " ", btn);
+      sites.appendChild(li);
+    }
+  }
+
+  openBtn.addEventListener("click", () => {
+    panel.hidden = !panel.hidden;
+    openBtn.setAttribute("aria-expanded", String(!panel.hidden));
+    if (!panel.hidden) {
+      void refresh();
+      providerSel.focus();
+    }
+  });
+
+  providerSel.addEventListener("change", () => {
+    modelIn.value = DEFAULT_MODEL[providerSel.value === "openai" ? "openai" : "anthropic"];
+  });
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const next = parseSettings({
+      provider: providerSel.value,
+      model: modelIn.value,
+      retention: retentionSel.value,
+    });
+    const done = storage ? saveSettings(storage, next) : Promise.reject(new Error("no storage"));
+    done.then(
+      () => {
+        savedMsg.textContent = "Saved. Reopen the popup to use the new provider and model.";
+        void refresh();
+      },
+      () => {
+        savedMsg.textContent = "Could not save settings.";
+      },
+    );
+  });
+
+  deleteBtn.addEventListener("click", () => {
+    confirmBox.hidden = false;
+    deleteBtn.hidden = true;
+    confirmNo.focus();
+  });
+  confirmNo.addEventListener("click", () => {
+    confirmBox.hidden = true;
+    deleteBtn.hidden = false;
+    deleteBtn.focus();
+  });
+  confirmYes.addEventListener("click", () => {
+    const keychain = createKeychain(nativeSend);
+    const none: StorageArea = { get: async () => ({}), set: async () => undefined, clear: async () => undefined };
+    void deleteAllData({
+      storage: storage ?? none,
+      deleteKey: (p) => keychain.deleteKey(p),
+      listGrantedOrigins: listOrigins,
+      removeOrigins: async (origins) => void (await browser.permissions.remove({ origins })),
+    }).then((report) => {
+      const failed = Object.entries(report)
+        .filter(([, ok]) => !ok)
+        .map(([k]) => k);
+      status.textContent = failed.length
+        ? "Some data could not be deleted: " + failed.join(", ") + "."
+        : "All AssistAnt data on this device was deleted. Reopen the popup.";
+      confirmBox.hidden = true;
+      deleteBtn.hidden = false;
+      void refresh();
+    });
+  });
+}
+
 async function main(): Promise<void> {
   const status = el("status");
   const log = el("log");
@@ -149,7 +276,12 @@ async function main(): Promise<void> {
     });
   }
 
-  const found = await findKey();
+  const storage: StorageArea | undefined = browser.storage?.local;
+  let chosen = parseSettings(undefined);
+  if (storage) chosen = await loadSettings(storage).catch(() => chosen);
+  setupSettings(storage, chosen, status);
+
+  const found = await findKey(chosen);
   if (!found) {
     status.textContent = "No API key saved.";
     noKey.hidden = false;
@@ -247,6 +379,13 @@ async function main(): Promise<void> {
     controller = null;
     if (result.ok) {
       history.push({ role: "user", content: trimmed }, { role: "assistant", content: result.text });
+      if (storage) {
+        await appendHistory(storage, settings.retention, {
+          at: Date.now(),
+          question: trimmed,
+          answer: result.text,
+        }).catch(() => undefined);
+      }
       status.textContent =
         "Done." + (result.usage ? " " + formatRunCost(settings.model, result.usage) : "");
     } else {

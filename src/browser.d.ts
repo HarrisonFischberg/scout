@@ -18,6 +18,16 @@ declare const browser: {
   };
   permissions: {
     request(perms: { origins: string[] }): Promise<boolean>;
+    getAll(): Promise<{ origins?: string[] }>;
+    remove(perms: { origins: string[] }): Promise<boolean>;
+  };
+  // Optional so a missing storage area (tests, odd contexts) is handled.
+  storage?: {
+    local: {
+      get(keys: string | string[]): Promise<Record<string, unknown>>;
+      set(items: Record<string, unknown>): Promise<void>;
+      clear(): Promise<void>;
+    };
   };
   scripting: {
     executeScript(injection: {
