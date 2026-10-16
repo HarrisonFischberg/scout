@@ -10,8 +10,22 @@ const now = Date.now();
 const data = {
   settings: { provider: "anthropic", model: "claude-sonnet-5-5", retention: "7" },
   history: [
-    { at: now - 60000, question: "What's the return policy here?", answer: "You can return unworn items within **30 days** for a full refund. Sale items are final.", kind: "chat" },
-    { at: now - 30000, question: "Fill the contact form as Ada Test and send it.", answer: "I filled in Name and Email and chose Support. I did not send it: you declined the approval.", kind: "agent" },
+    {
+      at: now - 60000,
+      question: "Summarize this page: one or two sentences on what it is about, then 3 to 6 bullet points with the key facts.",
+      answer: [
+        "A shooting at an elementary school left **three children and a teacher** dead, according to police, and the suspected gunman is also dead.",
+        "",
+        "- Police said a bystander confronted the suspect.",
+        "- Officials *have not released* the victims' names.",
+        "- The school district closed schools for the rest of the week.",
+        "  - Counseling is offered at the district office.",
+        "",
+        "> \"We are heartbroken,\" the superintendent said.",
+      ].join("\n"),
+      kind: "chat",
+    },
+    { at: now - 30000, question: "Compare the jacket price on these tabs.", answer: "The jacket is cheapest on the outlet page.\n\n| Store | Price |\n|---|---:|\n| Outlet | **$89** |\n| Main store | $120 |", kind: "chat" },
   ],
 };
 

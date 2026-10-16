@@ -161,3 +161,44 @@ test("only the selected mode is highlighted", async ({ page }) => {
   await expect(controlLabel).toHaveClass(/\bon\b/);
   await expect(chatLabel).not.toHaveClass(/\bon\b/);
 });
+
+test("a restored conversation opens scrolled to the newest message", async ({ page }) => {
+  const now = Date.now();
+  const history = Array.from({ length: 6 }, (_, i) => ({
+    at: now - 60000 + i,
+    question: "Question number " + i,
+    answer: "Answer number " + i + "\n\n- point one\n- point two\n- point three",
+    kind: "chat",
+  }));
+  await openPopup(page, { keys: { anthropic: GOOD_KEY }, data: { history } });
+  const last = page.getByRole("log").getByText("Answer number 5");
+  await expect(last).toBeInViewport();
+});
+
+test("the newest message stays in view when the composer grows", async ({ page }) => {
+  const now = Date.now();
+  const history = Array.from({ length: 6 }, (_, i) => ({
+    at: now - 60000 + i, question: "Question number " + i, answer: "Answer number " + i + "\n\n- a\n- b\n- c", kind: "chat",
+  }));
+  await openPopup(page, { keys: { anthropic: GOOD_KEY }, data: { history } });
+  await page.getByRole("radio", { name: "Control Browser" }).check();
+  await page.getByLabel("Ask about this page").fill("one\ntwo\nthree\nfour");
+  await expect(page.getByRole("log").getByText("Answer number 5")).toBeInViewport();
+  await expect(page.getByRole("log").locator("li").last()).toBeInViewport();
+});
+
+test("scrolling up to read is respected while the composer grows", async ({ page }) => {
+  const now = Date.now();
+  const history = Array.from({ length: 6 }, (_, i) => ({
+    at: now - 60000 + i, question: "Question number " + i, answer: "Answer number " + i + "\n\n- a\n- b\n- c", kind: "chat",
+  }));
+  await openPopup(page, { keys: { anthropic: GOOD_KEY }, data: { history } });
+  await expect(page.getByRole("log").getByText("Answer number 5")).toBeInViewport();
+  await page.locator("#thread").evaluate(async (t) => {
+    t.scrollTop = 0;
+    await new Promise((r) => setTimeout(r, 300));
+    t.dispatchEvent(new Event("scroll"));
+  });
+  await page.getByLabel("Ask about this page").fill("one\ntwo\nthree\nfour");
+  await expect(page.getByRole("log").getByText("Question number 0")).toBeInViewport();
+});

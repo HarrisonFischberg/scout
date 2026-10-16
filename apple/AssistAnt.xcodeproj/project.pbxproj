@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0B61B16B770EC3A7178C62D6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B4986E15F6D4CE7B6EBDAC66 /* Assets.xcassets */; };
 		133B8E56268CB0592DBD7CC3 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */; };
 		19F5593FC25FE6CABB131D2F /* privacy-policy.md in Resources */ = {isa = PBXBuildFile; fileRef = 2A2DD59678E293865FEF9520 /* privacy-policy.md */; };
 		2574AB3AD256B028946D68D4 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 2EACFEFE046C585EEC22A075 /* manifest.json */; };
@@ -52,6 +53,7 @@
 		CE59D31E55CE4ADCEC246F3A /* content.js in Resources */ = {isa = PBXBuildFile; fileRef = 0E1A0E7A1B227ADF88A1B413 /* content.js */; };
 		D5B993F4AB34FFCA20E95B69 /* privacy-policy.md in Resources */ = {isa = PBXBuildFile; fileRef = 2A2DD59678E293865FEF9520 /* privacy-policy.md */; };
 		ED15B721FFEBEB0A99F05233 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = 9C7921F29DCF66058FC8BE1C /* background.js */; };
+		EE5F07BE2F2AA2E880B14BDB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B4986E15F6D4CE7B6EBDAC66 /* Assets.xcassets */; };
 		F1B11E8D9F04B01567E493A5 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */; };
 		FB325DAB0C9A7453A5A13044 /* HostAppAccessibilityUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D979F8F918F26FE818AFE57A /* HostAppAccessibilityUITests.swift */; };
 /* End PBXBuildFile section */
@@ -132,6 +134,7 @@
 		A957567A8D34C49A032E09C6 /* AssistAnt (iOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AssistAnt (iOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AFB2AA781644909EFF76E9FC /* ProviderSetupTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSetupTests.swift; sourceTree = "<group>"; };
 		B208F2A517C1376FC6C7DC97 /* AssistAntUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AssistAntUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B4986E15F6D4CE7B6EBDAC66 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BA52935E29A00BF86685A3B8 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D6984060B5995FB15A70F7EB /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		D979F8F918F26FE818AFE57A /* HostAppAccessibilityUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HostAppAccessibilityUITests.swift; sourceTree = "<group>"; };
@@ -290,6 +293,7 @@
 				7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */,
 				899B4FA63AA1A90BAC21BB4C /* Info.plist */,
 				FFE46ABD9E4B81390D9346BB /* AssistAnt.entitlements */,
+				B4986E15F6D4CE7B6EBDAC66 /* Assets.xcassets */,
 			);
 			name = App;
 			path = App;
@@ -485,6 +489,7 @@
 			files = (
 				D5B993F4AB34FFCA20E95B69 /* privacy-policy.md in Resources */,
 				418444F5EF38AA1A10A19813 /* terms.md in Resources */,
+				EE5F07BE2F2AA2E880B14BDB /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -494,6 +499,7 @@
 			files = (
 				19F5593FC25FE6CABB131D2F /* privacy-policy.md in Resources */,
 				B159672DCF20D4BDE70FA9BF /* terms.md in Resources */,
+				0B61B16B770EC3A7178C62D6 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

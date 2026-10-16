@@ -89,6 +89,8 @@ Status values: `pending`, `in progress`, `done`, `blocked`, `needs supervised ch
 | T026 | Control Browser research: agent may use provider web search (`web_search_20260209`), results treated as untrusted, sources cited | T010 | unit: webSearch + research note only when enabled | `npm test -- agent` | done (live research run not yet verified) |
 | T027 | Mac host app: key entry moved to the Safari popup (app and extension do not share a Keychain on Mac yet) | T024 | macOS build ok; iOS keeps in-app key entry | xcodebuild macOS | done |
 | T028 | In-page side panel on macOS (owner idea: UI merged into the Safari page) | T021 | owner decision pending | — | proposed |
+| T029 | Answer formatting (owner report 2026-10-16: Fox News page showed `Summary (from *title*)` with raw asterisks): renderer supports italics, bold italic, strike, h1–h6, quotes, tables, nested lists, rules, URLs with parentheses; prompt rules for clean, attributed, neutral answers without title labels; thread stays pinned to the newest message | T021 | unit: Fox News case renders italic; formatting rules in system prompt; e2e: restored conversation and growing composer keep newest in view, reading position respected | `npm test`; `npx playwright test redesign` | done (live re-check on the Fox News page pending) |
+| T030 | Host app icon (owner report: blank square in Command-Tab): asset catalog with AppIcon for macOS (all sizes) and iOS (opaque 1024) from the ant artwork | — | macOS bundle has AppIcon.icns + Assets.car; iOS bundle has AppIcon PNGs | xcodebuild macOS + iOS | done (Command-Tab not yet seen on owner's Mac) |
 
 ## Safeguard coverage (initial applicability)
 

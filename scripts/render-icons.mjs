@@ -1,8 +1,11 @@
 // Renders design/icons/*.svg to the PNG sizes Safari needs, using Playwright's
-// WebKit (already a dev dependency). Output: src/icons/. Also writes a
-// light/dark toolbar preview to build/icon-preview.png for a visual check.
+// WebKit (already a dev dependency). Output: src/icons/ (extension) and
+// apple/App/Assets.xcassets/AppIcon.appiconset/ (host app: Dock, Command-Tab,
+// Finder, iOS home screen). Also writes a light/dark toolbar preview to
+// build/icon-preview.png for a visual check.
 import { webkit } from "@playwright/test";
-import { mkdir, readFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
@@ -26,6 +29,25 @@ for (const job of jobs) {
     await page.screenshot({ path: join(out, `${job.name}-${size}.png`), omitBackground: true });
   }
 }
+
+// Host app icons. macOS: every size in the asset catalog. iOS: one opaque
+// 1024 (rendered as JPEG, then converted to PNG so it has no alpha channel).
+const appIcons = join(root, "apple", "App", "Assets.xcassets", "AppIcon.appiconset");
+await mkdir(appIcons, { recursive: true });
+const macSvg = await readFile(join(root, "design", "icons", "ant-appicon-mac.svg"), "utf8");
+for (const size of [16, 32, 64, 128, 256, 512, 1024]) {
+  await page.setViewportSize({ width: size, height: size });
+  await page.setContent(`<html><body style="margin:0;background:transparent">${macSvg.replace("<svg ", `<svg width="${size}" height="${size}" `)}</body></html>`);
+  await page.screenshot({ path: join(appIcons, `mac-${size}.png`), omitBackground: true });
+}
+const iosSvg = await readFile(join(root, "design", "icons", "ant-appicon-ios.svg"), "utf8");
+await page.setViewportSize({ width: 1024, height: 1024 });
+await page.setContent(`<html><body style="margin:0;background:#F5F3FF">${iosSvg.replace("<svg ", '<svg width="1024" height="1024" ')}</body></html>`);
+const jpg = join(root, "build", "ios-1024.jpg");
+await mkdir(join(root, "build"), { recursive: true });
+await page.screenshot({ path: jpg, type: "jpeg", quality: 100 });
+execFileSync("sips", ["-s", "format", "png", jpg, "--out", join(appIcons, "ios-1024.png")], { stdio: "ignore" });
+await rm(jpg);
 
 // Preview at real toolbar size (16 and 32 for retina) on light and dark bars.
 const t = await readFile(join(root, "design", "icons", "ant-toolbar.svg"), "utf8");
