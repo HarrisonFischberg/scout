@@ -244,3 +244,14 @@ CoreSimulatorService connection became invalid.  Simulator services will no long
   not met: no dependency-ready pending task exists.
 - Stop: repeating the same sandboxed build cannot change the result. Turns 3–5
   would add no evidence. Owner action is the only path (see the entry above).
+
+- Turn 3 of 5 (same goal run): stop-hook review. The condition needs one
+  dependency-ready `pending` task finished (`done`, or `blocked` with the
+  blocker recorded). No such task exists. T002 is `blocked` before this run.
+  T003–T018 are `pending` but depend on T002, which is not `done`, so they are
+  not dependency-ready. Setting one of them to `blocked` would misstate its
+  cause: its blocker is T002, which is already recorded in launch-blockers 9
+  and 10. No status row changed.
+- Result: goal NOT met. Fallback record. Turns used: 3 of 5. Stopped: the only
+  unblock is owner action on T002 (see the entry above). Turns 4–5 would repeat
+  the same review.
