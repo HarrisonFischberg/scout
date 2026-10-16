@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "AssistAnt",
+  "version": "0.1.0",
+  "description": "Toolbar AI assistant that uses your own API key.",
+  "permissions": ["activeTab", "storage", "scripting", "nativeMessaging", "contextMenus"],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "action": {
+    "default_title": "AssistAnt",
+    "default_popup": "popup.html"
+  }
+}
