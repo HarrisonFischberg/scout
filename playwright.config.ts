@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // Not 4173: that is the Vite preview default and often busy on dev machines.
-const PORT = Number(process.env.E2E_PORT ?? 4317);
+const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
+const PORT = Number(env.E2E_PORT ?? 4317);
 
 export default defineConfig({
   testDir: "tests/e2e",
