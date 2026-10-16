@@ -1174,3 +1174,9 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - iPhone "Hphone" (iPhone 17 Pro, `00008150-001A79E91140401C`): `xcodebuild -scheme "Safari Scout (iOS)" -destination 'id=…'` `BUILD SUCCEEDED`, `xcrun devicectl device install app` installed `com.harrisonfischberg.SafariScout`.
 - Checked in both built bundles: `popup.html` has the consent dialog; `popup.js` has the rest-of-world OpenAI link and the API data terms links; the iOS app's code has the consent sheet ("handles API data").
 - Not verified: opening Safari on either device and seeing the dialog. Owner to check: the first chat on each device should show "Share with Anthropic?" once, even with a key already saved.
+
+## 2026-10-16 — One-command iPhone install
+
+- Owner request: build and install on the iPhone automatically instead of the Xcode steps. Owner had confirmed the Xcode install, extension switch and key entry work on "Hphone".
+- New `scripts/build-ios.sh`: `npm run build`, `xcodebuild` for the device with `-allowProvisioningUpdates`, `scripts/check-extension-bundle.sh`, then `xcrun devicectl device install app`. Device from `SCOUT_IOS_DEVICE` or the first paired physical iOS device (connected one preferred). Does not launch the app. CLAUDE.md build row points to it.
+- Evidence (Terminal panel, outside the sandbox): first run failed in device detection (Node `require` of an extensionless temp file); fixed to `JSON.parse(readFileSync)`. Second run: device 00008150-…, `BUILD SUCCEEDED`, bundle ok, "App installed: com.harrisonfischberg.SafariScout", exit 0.
