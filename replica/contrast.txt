@@ -1,38 +1,48 @@
 $ python3 ~/.claude/plugins/marketplaces/replica-skill/replica-design/contrast.py replica/design/tokens.json
-  AAA   15.46:1  light-text-primary       on light-bg-canvas
-  AAA   16.83:1  light-text-primary       on light-bg-surface
-  AAA   14.42:1  light-text-primary       on light-bg-subtle
-  AAA    8.35:1  light-text-secondary     on light-bg-canvas
-  AAA    9.09:1  light-text-secondary     on light-bg-surface
-  AA     5.32:1  light-text-muted         on light-bg-canvas
-  AA     5.79:1  light-text-muted         on light-bg-surface
-  AA     4.96:1  light-text-muted         on light-bg-subtle
-  AAA    7.10:1  light-accent-on          on light-accent
-  AAA    7.10:1  light-accent-text        on light-bg-surface
-  AA     6.53:1  light-accent-text        on light-bg-canvas
-  AAA   12.22:1  light-bubble-user-text   on light-bubble-user
-  AA     6.57:1  light-danger             on light-bg-surface
-  AAA    7.13:1  light-success            on light-bg-surface
-  PASS   7.10:1  light-focus-ring         on light-bg-surface     ui
-  PASS   6.53:1  light-focus-ring         on light-bg-canvas      ui
+  AAA   15.46:1  light-text-primary       on light-bg-canvas      
+  AAA   16.83:1  light-text-primary       on light-bg-surface     
+  AAA   13.78:1  light-text-primary       on light-bg-subtle      
+  AAA    8.35:1  light-text-secondary     on light-bg-canvas      
+  AAA    9.09:1  light-text-secondary     on light-bg-surface     
+  AA     5.32:1  light-text-muted         on light-bg-canvas      
+  AA     5.79:1  light-text-muted         on light-bg-surface     
+  AA     4.74:1  light-text-muted         on light-bg-subtle      
+  AA     4.70:1  light-accent-on          on light-accent         
+  AA     5.57:1  light-accent-text        on light-bg-surface     
+  AA     5.11:1  light-accent-text        on light-bg-canvas      
+  AAA   13.78:1  light-bubble-user-text   on light-bubble-user    
+  AA     6.57:1  light-danger             on light-bg-surface     
+  AAA    7.13:1  light-success            on light-bg-surface     
+  PASS   4.70:1  light-focus-ring         on light-bg-surface     ui
+  PASS   4.31:1  light-focus-ring         on light-bg-canvas      ui
   PASS   3.43:1  light-border-control     on light-bg-surface     ui
-  AAA   15.63:1  dark-text-primary        on dark-bg-canvas
-  AAA   12.80:1  dark-text-primary        on dark-bg-surface
-  AAA   10.41:1  dark-text-primary        on dark-bg-subtle
-  AAA   11.18:1  dark-text-secondary      on dark-bg-canvas
-  AAA    9.16:1  dark-text-secondary      on dark-bg-surface
-  AAA    7.69:1  dark-text-muted          on dark-bg-canvas
-  AA     6.30:1  dark-text-muted          on dark-bg-surface
-  AA     5.13:1  dark-text-muted          on dark-bg-subtle
-  AA     6.67:1  dark-accent-on           on dark-accent
-  AAA    7.55:1  dark-accent-text         on dark-bg-surface
-  AAA    9.22:1  dark-accent-text         on dark-bg-canvas
-  AAA   10.69:1  dark-bubble-user-text    on dark-bubble-user
-  AA     6.10:1  dark-danger              on dark-bg-surface
-  AAA    9.93:1  dark-success             on dark-bg-surface
-  PASS   7.55:1  dark-focus-ring          on dark-bg-surface      ui
-  PASS   9.22:1  dark-focus-ring          on dark-bg-canvas       ui
+  AAA   15.63:1  dark-text-primary        on dark-bg-canvas       
+  AAA   12.80:1  dark-text-primary        on dark-bg-surface      
+  AAA   10.42:1  dark-text-primary        on dark-bg-subtle       
+  AAA   11.18:1  dark-text-secondary      on dark-bg-canvas       
+  AAA    9.16:1  dark-text-secondary      on dark-bg-surface      
+  AAA    7.69:1  dark-text-muted          on dark-bg-canvas       
+  AA     6.30:1  dark-text-muted          on dark-bg-surface      
+  AA     5.13:1  dark-text-muted          on dark-bg-subtle       
+  AA     4.57:1  dark-accent-on           on dark-accent          
+  AA     4.62:1  dark-accent-text         on dark-bg-surface      
+  AA     5.64:1  dark-accent-text         on dark-bg-canvas       
+  AAA   10.42:1  dark-bubble-user-text    on dark-bubble-user     
+  AA     6.10:1  dark-danger              on dark-bg-surface      
+  AAA    9.93:1  dark-success             on dark-bg-surface      
+  PASS   4.62:1  dark-focus-ring          on dark-bg-surface      ui
+  PASS   5.64:1  dark-focus-ring          on dark-bg-canvas       ui
   PASS   4.27:1  dark-border-control      on dark-bg-surface      ui
+  AAA   13.78:1  light-text-primary       on light-selected       
+  PASS   4.56:1  light-accent-text        on light-bg-subtle      ui
+  PASS   4.70:1  light-accent             on light-bg-surface     ui
+  PASS   4.31:1  light-accent             on light-bg-canvas      ui
+  PASS   3.85:1  light-focus-ring         on light-bg-subtle      ui
+  AAA    8.38:1  dark-text-primary        on dark-selected        
+  PASS   3.76:1  dark-accent-text         on dark-bg-subtle       ui
+  PASS   3.05:1  dark-accent              on dark-bg-surface      ui
+  PASS   3.72:1  dark-accent              on dark-bg-canvas       ui
+  PASS   3.76:1  dark-focus-ring          on dark-bg-subtle       ui
 
-  34 pairs, 0 failing AA
+  44 pairs, 0 failing AA
 exit code: 0

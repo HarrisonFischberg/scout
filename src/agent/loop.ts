@@ -297,6 +297,7 @@ export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
         else if (ev.type === "usage") {
           usage.inputTokens += ev.usage.inputTokens;
           usage.outputTokens += ev.usage.outputTokens;
+          if (ev.usage.webSearches) usage.webSearches = (usage.webSearches ?? 0) + ev.usage.webSearches;
         }
       }
     } catch (err) {

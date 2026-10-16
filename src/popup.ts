@@ -13,7 +13,7 @@ import { mergeTabs, resolveMentions, type TabInfo } from "./chat/tabs";
 import { suggestCodes } from "./coupons/codes";
 import { originLabel } from "./coupons/candidates";
 import { BATCH_SIZE, couponStatusText, couponSummary, runCouponSearch, type BatchState, type CartApi, type CartState } from "./coupons/finder";
-import { formatRunCost } from "./cost";
+import { formatCostLine } from "./cost";
 import { buildReport, describeBrowser, Diagnostics, disabledRun, type RunHandle, type RunKind } from "./diagnostics";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { envelope } from "./bridge/messages";
@@ -533,9 +533,12 @@ async function main(): Promise<void> {
     modelPillText.textContent = pill;
     // Accessible name starts with the visible text (WCAG 2.5.3 Label in Name).
     modelPill.setAttribute("aria-label", pill + ", change model or effort");
-    status.textContent =
-      "Ready. Using " + session.settings.provider + " " + session.settings.model + (effort ? ", " + EFFORT_LABEL[effort].toLowerCase() + " effort" : "") + ".";
-    current.finish(found.fellBackFrom ? "ready_fallback" : "ready", status.textContent);
+    // Nothing shown when ready; the line under the conversation is for each run's cost.
+    status.textContent = "";
+    current.finish(
+      found.fellBackFrom ? "ready_fallback" : "ready",
+      "Ready. Using " + session.settings.provider + " " + session.settings.model + (effort ? ", " + EFFORT_LABEL[effort].toLowerCase() + " effort" : "") + ".",
+    );
     if (found.fellBackFrom) {
       fallbackNotice = addMessage(
         "error",
@@ -818,7 +821,7 @@ async function main(): Promise<void> {
       history.push({ role: "user", content: trimmed }, { role: "assistant", content: result.text });
       history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
       await saveEntry("chat", trimmed, result.text);
-      status.textContent = "Done." + (result.usage ? " " + formatRunCost(s.settings.model, result.usage) : "");
+      status.textContent = result.usage ? formatCostLine(s.settings.model, result.usage) : "";
       current.finish("done", "Answered (" + result.text.length + " characters).", result.usage);
     } else {
       if (result.partial) renderMarkdown(document, bubble, result.partial);
@@ -926,7 +929,7 @@ async function main(): Promise<void> {
     addMessage(outcome.status === "done" ? "assistant" : "error", outcome.message);
     current.finish(outcome.status, outcome.message, outcome.usage);
     await saveEntry("agent", trimmed, outcome.message);
-    status.textContent = "Agent " + outcome.status + ". " + formatRunCost(s.settings.model, outcome.usage);
+    status.textContent = formatCostLine(s.settings.model, outcome.usage);
     send.hidden = false;
     plus.disabled = modelPill.disabled = false;
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
@@ -1041,7 +1044,7 @@ async function main(): Promise<void> {
       couponsStop.addEventListener("click", () => ac.abort(), { once: true });
       trace("coupons:search");
       const sug = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal, s.effort ? { effort: s.effort } : {});
-      used = { inputTokens: sug.inputTokens, outputTokens: sug.outputTokens };
+      used = { inputTokens: sug.inputTokens, outputTokens: sug.outputTokens, ...(sug.webSearches ? { webSearches: sug.webSearches } : {}) };
       trace("coupons:candidates found=" + sug.found + " guessed=" + sug.guessed);
       couponsSummary.textContent =
         "Found " + sug.found + " code" + (sug.found === 1 ? "" : "s") + " online and " + sug.guessed + " common guesses. Testing them on your cart…";
@@ -1065,7 +1068,7 @@ async function main(): Promise<void> {
         : outcome.status === "done" || outcome.status === "stopped"
           ? "No code lowered the total."
           : outcome.message;
-      status.textContent = couponStatusText(outcome.status) + " " + formatRunCost(s.settings.model, used);
+      status.textContent = formatCostLine(s.settings.model, used);
       current.finish(outcome.status, outcome.message, used);
       if (outcome.status === "no_form" || outcome.status === "error" || outcome.status === "no_codes") addMessage("error", summary);
       else addMessage("assistant", summary);

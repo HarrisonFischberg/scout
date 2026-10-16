@@ -42,6 +42,8 @@ export interface ChatRequest {
 export interface Usage {
   inputTokens: number;
   outputTokens: number;
+  /** Server-side web searches, billed per search (Anthropic). Absent when none ran. */
+  webSearches?: number;
 }
 
 export type StreamEvent =

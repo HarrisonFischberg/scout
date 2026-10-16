@@ -50,7 +50,7 @@ for (const scheme of ["light", "dark"]) {
     await r.fulfill({ body: await readFile(join(res, name)), contentType: type });
   });
   await page.goto("http://popup.test/popup.html");
-  await page.waitForSelector("#status:has-text('Ready')");
+  await page.waitForSelector("#composer:not([hidden])");
   await page.getByRole("radio", { name: "Control Browser" }).check();
   await page.getByLabel("Ask about this page").fill("Compare this jacket with the same one on two other stores");
   await page.waitForTimeout(300); // let the 150 ms color transitions finish

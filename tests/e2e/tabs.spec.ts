@@ -104,6 +104,6 @@ test("a tab that cannot be read is named in the conversation, not just the statu
   await page.getByLabel("Ask about this page").fill("Price and rating?");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByRole("log").getByText("Could not read: Reviews of Widget.")).toBeVisible();
-  await expect(page.locator("#status")).toContainText("Done.");
+  await expect(page.locator("#status")).toContainText("Cost: ");
   expect(bodies.join("")).not.toContain("4.5 stars");
 });
