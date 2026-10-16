@@ -5,6 +5,7 @@ import type { Snapshot } from "./snapshot/snapshot";
 import { SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { renderMarkdown } from "./chat/markdown";
 import { runTurn } from "./chat/session";
+import { mergeTabs, resolveMentions, type TabInfo } from "./chat/tabs";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { createProvider, type ChatMessage } from "./providers";
 
@@ -41,12 +42,31 @@ async function findKey(): Promise<{ settings: Settings; apiKey: string } | null>
   return null;
 }
 
-async function readPage(): Promise<PageContext | null> {
+async function listTabs(): Promise<TabInfo[]> {
   try {
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-    if (tab?.id === undefined) return null;
+    const tabs = await browser.tabs.query({ currentWindow: true });
+    return tabs.flatMap((t) =>
+      t.id === undefined || !t.url || !/^https?:/.test(t.url)
+        ? []
+        : [{ id: t.id, title: t.title ?? t.url, url: t.url, active: t.active === true }],
+    );
+  } catch {
+    return [];
+  }
+}
+
+// tabId omitted: the active tab (covered by activeTab). Other tabs need a
+// per-site grant requested from the user first.
+async function readPage(tabId?: number): Promise<PageContext | null> {
+  try {
+    let id = tabId;
+    if (id === undefined) {
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      id = tab?.id;
+    }
+    if (id === undefined) return null;
     const results = await browser.scripting.executeScript({
-      target: { tabId: tab.id },
+      target: { tabId: id },
       func: () => ({
         url: location.href,
         title: document.title,
@@ -141,6 +161,21 @@ async function main(): Promise<void> {
   composer.hidden = false;
   question.focus();
 
+  const allTabs = await listTabs();
+  const others = allTabs.filter((t) => !t.active);
+  const tabsBox = el("tabs");
+  const tabList = el("tab-list");
+  const checked = new Set<number>();
+  for (const t of others) {
+    const label = document.createElement("label");
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.addEventListener("change", () => (box.checked ? checked.add(t.id) : checked.delete(t.id)));
+    label.append(box, document.createTextNode(t.title));
+    tabList.appendChild(label);
+  }
+  tabsBox.hidden = others.length === 0;
+
   const history: ChatMessage[] = [];
   let controller: AbortController | null = null;
 
@@ -166,6 +201,16 @@ async function main(): Promise<void> {
   async function ask(text: string): Promise<void> {
     const trimmed = text.trim();
     if (!trimmed || controller) return;
+    const extra = mergeTabs(
+      others.filter((t) => checked.has(t.id)),
+      resolveMentions(trimmed, others),
+    );
+    // Asked first: the permission prompt needs this click's user gesture.
+    let granted = extra.length === 0;
+    if (!granted) {
+      const origins = [...new Set(extra.map((t) => new URL(t.url).origin + "/*"))];
+      granted = await browser.permissions.request({ origins }).catch(() => false);
+    }
     addMessage("user", trimmed);
     question.value = "";
     const bubble = addMessage("assistant", "");
@@ -175,12 +220,24 @@ async function main(): Promise<void> {
     setBusy(true);
     const page = await readPage();
     if (!page) status.textContent = "Could not read this page. Answering without it.";
+    const extraPages: PageContext[] = [];
+    if (granted) {
+      for (const t of extra) {
+        const p = await readPage(t.id);
+        if (p) extraPages.push(p);
+      }
+    }
+    if (extra.length && extraPages.length < extra.length) {
+      status.textContent =
+        "Read " + extraPages.length + " of " + extra.length + " extra tabs. Site access may have been declined.";
+    }
     const result = await runTurn({
       provider,
       model: settings.model,
       history,
       question: trimmed,
       page,
+      extraPages,
       signal: controller.signal,
       onText: (full) => renderMarkdown(document, bubble, full),
     });

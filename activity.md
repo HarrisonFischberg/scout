@@ -688,3 +688,28 @@ $ npm run e2e -- safety --global-timeout=60000
 - Supervised check: outside the sandbox, `npm run build && npm run e2e -- safety`.
 - Next task: T012 (@tab multi-tab context; depends on T007).
 
+
+## 2026-10-15 - T012 @tab multi-tab context: needs supervised check
+
+- Task: T012 (lowest-numbered pending; T007 satisfied). Status `in progress`, then `needs supervised check`.
+- Files: `src/chat/tabs.ts`, `tests/unit/tabs.test.ts`, `tests/e2e/tabs.spec.ts` (new); `src/chat/prompt.ts` (multi-page fences, shared char budget, system prompt asks to name the source page), `src/chat/session.ts` (`extraPages`), `src/popup.ts` + `src/popup.html` (tab checkbox fieldset, `@name` mentions, permission request), `src/browser.d.ts`, `src/manifest.json`, `prd.md`.
+- Design: other tabs in the window are listed as checkboxes; `@token` in the question also selects a tab whose host or title word matches (active tab skipped, max 4 extra). Each page gets its own untrusted fence with URL and title; the active page keeps the larger share of the 30000-char budget. Only selected tabs are read.
+- Permission change, owner to confirm: added `tabs` (needed for other tabs' title/URL) and `optional_host_permissions` for http(s). Other tabs' origins are requested via `permissions.request` from the Send click; a declined origin means that tab is skipped and the status line says so. This is broader than the PRD's earlier list; PRD updated. Safari's runtime behavior for `permissions.request` is unverified (add to Runtime-verified column of `docs/safari-api-support.md` during supervised check).
+- No new dependency or data flow: selected tab text goes to the same chosen provider as the active page.
+- Results, real output:
+
+```
+$ npm test
+ Test Files  9 passed (9)
+      Tests  82 passed (82)
+$ npx tsc -p tsconfig.json -> exit 0
+$ npx tsc -p tsconfig.lint.json -> exit 0
+$ npm run build -> built extension to .../apple/Extension/Resources
+$ npm run e2e -- tabs --global-timeout=60000
+Timed out waiting 60s for the test suite to run
+  3 did not run
+```
+
+- e2e not exercised: WebKit launch blocked in the sandbox (blocker 12). The popup tab picker and `tabs.spec.ts` have never run in a browser.
+- Supervised check: outside the sandbox, `npm run build && npm run e2e -- tabs`; then in Safari verify the permission prompt for a second site.
+- Next task: T013 (coupon finder; depends on T010, T011).
