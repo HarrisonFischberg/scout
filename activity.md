@@ -423,3 +423,11 @@ Error saving log: Error Domain=NSCocoaErrorDomain Code=513 "You don't have permi
 - Result: same sandbox write block as blocker 9. Build cannot write its log store or info file. No `prd.md` row changed. Marking T002 `done` would misstate acceptance (both Xcode targets, iOS build, and Safari load).
 - `git status` was clean before this run.
 - Turns used: 1 of 5. Stopped: the only unblock is owner action on T002 (run the Xcode builds and the Safari extension load outside the sandbox, then set T002 to `done`). Further turns would repeat this check.
+
+## 2026-10-15 — supervised review of Ralph run 1 (Claude, interactive session)
+
+- Run: 10 iterations, $5 cap each. Only iterations 1–2 changed task status (T001 done, T002 blocked). Iterations 3–10 only appended notes about the blocker.
+- Loop defect: the stall check counted doc-only commits as progress, so it never stopped early. Fixed: progress is now measured on prd.md task status rows only.
+- Headless iterations ran on the CLI default model (reported as Haiku 5.5), not a pinned model.
+- Verified T001: `replica/contrast.txt` → "34 pairs, 0 failing AA".
+- T002 rechecked outside the sandbox: `npm run build` ok; `xcodebuild ... "AssistAnt (macOS)" CODE_SIGNING_ALLOWED=NO build` → BUILD SUCCEEDED; `xcodebuild ... "AssistAnt (iOS)" -destination 'generic/platform=iOS Simulator' ... build` → BUILD SUCCEEDED. App installed and launched on the iPhone 18 Pro simulator (pid 93609), but the screenshot showed a different app in front, so it is not counted as evidence. The Safari extension load in macOS and iOS is still unverified. T002 stays blocked.
