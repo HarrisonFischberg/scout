@@ -1076,3 +1076,11 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Checks: build, typecheck, lint ok; unit 149/149; e2e 57/57 (WebKit, `PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright`); release bundle clean; macOS XCTest 11/11; iOS XCUITest a11y audit 3/3 on "AssistAnt Test iPhone" simulator; signed Mac build (team KTV2G3Z883) registered as `com.example.AssistAnt.Extension` at `Safari Scout.app`.
 - Not done: green control-glow overlay from the owner's design spec (not started).
 - Owner to confirm: Safari toolbar shows binoculars and "Safari Scout" after enabling the re-registered extension.
+
+## 2026-10-16 — Repo and folder renamed to safari-scout
+
+- Owner approved. GitHub repo `HarrisonFischberg/assist-ant` renamed to `HarrisonFischberg/safari-scout` (private; GitHub redirects the old URL). `origin` now points to the new URL.
+- Local folder moved from `~/projects/assist-ant` to `~/projects/safari-scout`. Old-path Mac build unregistered first; rebuilt and re-registered from the new path with `scripts/build-mac.sh`.
+- Updated `package.json` repository URL, `package-lock.json` name, `docs/final-report.md` repo link. Older activity entries keep their original paths as history.
+- Checks from the new folder: typecheck, lint ok; unit 149/149; e2e 57/57; signed macOS build ok, registered as `com.example.AssistAnt.Extension`.
+- Owner to do: Claude Code workspace trust is per folder. Run `claude` once in `~/projects/safari-scout` and accept the trust prompt before the next Ralph loop, or `.claude/settings.json` permissions are ignored.

@@ -1,6 +1,6 @@
 # AssistAnt — final status report
 
-Date: 2026-10-15. Repository: https://github.com/HarrisonFischberg/assist-ant (private).
+Date: 2026-10-15. Repository: https://github.com/HarrisonFischberg/safari-scout (private; named assist-ant until 2026-10-16).
 
 This is an engineering launch-readiness report. It is not legal advice and
 does not state that the app is legally compliant. PASS below means the stated
