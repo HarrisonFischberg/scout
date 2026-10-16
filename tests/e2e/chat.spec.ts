@@ -86,3 +86,14 @@ test("provider 401 shows a readable error", async ({ page }) => {
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText("The API key was rejected.")).toBeVisible();
 });
+
+test.describe("touch device", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 402, height: 874 } });
+
+  // On iPhone, focusing the field on open raises the keyboard over the popup.
+  test("does not auto-focus the question field on open", async ({ page }) => {
+    await openPopup(page, { key: "sk-test-synthetic" });
+    await expect(page.getByLabel("Ask about this page")).toBeVisible();
+    await expect(page.getByLabel("Ask about this page")).not.toBeFocused();
+  });
+});

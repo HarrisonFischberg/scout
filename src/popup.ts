@@ -15,6 +15,7 @@ import {
   appendHistory,
   DEFAULT_MODEL,
   deleteAllData,
+  deleteReportText,
   loadHistory,
   loadSettings,
   parseSettings,
@@ -132,6 +133,7 @@ function setupSettings(storage: StorageArea | undefined, initial: Settings, stat
   const sites = el("site-list");
   const historyCount = el("history-count");
   const deleteBtn = el<HTMLButtonElement>("delete-all");
+  const deleteResult = el("delete-result");
   const confirmBox = el("delete-confirm");
   const confirmYes = el<HTMLButtonElement>("delete-yes");
   const confirmNo = el<HTMLButtonElement>("delete-no");
@@ -170,7 +172,9 @@ function setupSettings(storage: StorageArea | undefined, initial: Settings, stat
     openBtn.setAttribute("aria-expanded", String(!panel.hidden));
     if (!panel.hidden) {
       void refresh();
-      providerSel.focus();
+      // Focus the heading, not the <select>: on iOS a focused select opens its
+      // picker immediately, covering the panel the user just opened.
+      el("settings-title").focus();
     }
   });
 
@@ -216,12 +220,9 @@ function setupSettings(storage: StorageArea | undefined, initial: Settings, stat
       listGrantedOrigins: listOrigins,
       removeOrigins: async (origins) => void (await browser.permissions.remove({ origins })),
     }).then((report) => {
-      const failed = Object.entries(report)
-        .filter(([, ok]) => !ok)
-        .map(([k]) => k);
-      status.textContent = failed.length
-        ? "Some data could not be deleted: " + failed.join(", ") + "."
-        : "All AssistAnt data on this device was deleted. Reopen the popup.";
+      const text = deleteReportText(report);
+      status.textContent = text;
+      deleteResult.textContent = text;
       confirmBox.hidden = true;
       deleteBtn.hidden = false;
       void refresh();
@@ -294,7 +295,9 @@ async function main(): Promise<void> {
   });
   status.textContent = "Ready. Using " + settings.provider + " " + settings.model + ".";
   composer.hidden = false;
-  question.focus();
+  // On touch devices focusing the field on open raises the keyboard over the
+  // small popup; let the user tap into it instead.
+  if (!matchMedia("(pointer: coarse)").matches) question.focus();
 
   const allTabs = await listTabs();
   const others = allTabs.filter((t) => !t.active);

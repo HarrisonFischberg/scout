@@ -122,6 +122,9 @@ export interface DeleteReport {
   keychain: boolean;
   storage: boolean;
   siteAccess: boolean;
+  // Sites still granted after removal. Safari can keep access the user gave
+  // through its own prompt, so this is re-read, never assumed empty.
+  remainingOrigins: string[];
 }
 
 // Each step runs even if an earlier one fails; the report says which did.
@@ -139,9 +142,37 @@ export async function deleteAllData(deps: DeleteDeps): Promise<DeleteReport> {
     await deps.deleteKey("openai");
   });
   const storage = await attempt(() => deps.storage.clear());
-  const siteAccess = await attempt(async () => {
+  let remainingOrigins: string[] = [];
+  const removed = await attempt(async () => {
     const origins = await deps.listGrantedOrigins();
     if (origins.length) await deps.removeOrigins(origins);
   });
-  return { keychain, storage, siteAccess };
+  try {
+    remainingOrigins = await deps.listGrantedOrigins();
+  } catch {
+    remainingOrigins = [];
+  }
+  const siteAccess = removed && remainingOrigins.length === 0;
+  return { keychain, storage, siteAccess, remainingOrigins };
+}
+
+// Plain-language result shown next to the Delete button.
+export function deleteReportText(r: DeleteReport): string {
+  const parts: string[] = [];
+  const failed = [
+    r.keychain ? "" : "your API keys in Keychain",
+    r.storage ? "" : "saved settings and history",
+  ].filter(Boolean);
+  if (failed.length) parts.push("Could not delete " + failed.join(" or ") + ". Try again.");
+  if (r.remainingOrigins.length) {
+    const sites = r.remainingOrigins.map((o) => o.replace(/^\*:\/\/\*?\.?/, "").replace(/\/\*$/, "")).join(", ");
+    parts.push(
+      "Safari still lets AssistAnt read: " + sites + ". Remove it in Safari's extension settings: " +
+        "on iPhone, Settings > Apps > Safari > Extensions > AssistAnt; on Mac, Safari > Settings > Extensions > AssistAnt > Edit Websites.",
+    );
+  } else if (!r.siteAccess) {
+    parts.push("Could not remove site access. Check Safari's extension settings.");
+  }
+  if (r.keychain && r.storage) parts.unshift("Deleted your API keys, settings, and history from this device.");
+  return parts.join(" ");
 }

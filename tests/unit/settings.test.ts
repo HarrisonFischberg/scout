@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   appendHistory,
   deleteAllData,
+  deleteReportText,
   loadHistory,
   loadSettings,
   parseSettings,
@@ -93,13 +94,17 @@ describe("deleteAllData", () => {
     const s = fakeStorage({ settings: { provider: "openai" }, history: [entry(0)] });
     const deleted: string[] = [];
     let removed: string[] = [];
+    let granted = ["https://shop.test/*"];
     const report = await deleteAllData({
       storage: s,
       deleteKey: async (p) => void deleted.push(p),
-      listGrantedOrigins: async () => ["https://shop.test/*"],
-      removeOrigins: async (o) => void (removed = o),
+      listGrantedOrigins: async () => granted,
+      removeOrigins: async (o) => {
+        removed = o;
+        granted = granted.filter((g) => !o.includes(g));
+      },
     });
-    expect(report).toEqual({ keychain: true, storage: true, siteAccess: true });
+    expect(report).toEqual({ keychain: true, storage: true, siteAccess: true, remainingOrigins: [] });
     expect(deleted).toEqual(["anthropic", "openai"]);
     expect(s.data).toEqual({});
     expect(removed).toEqual(["https://shop.test/*"]);
@@ -115,7 +120,29 @@ describe("deleteAllData", () => {
       listGrantedOrigins: async () => [],
       removeOrigins: async () => {},
     });
-    expect(report).toEqual({ keychain: false, storage: true, siteAccess: true });
+    expect(report).toEqual({ keychain: false, storage: true, siteAccess: true, remainingOrigins: [] });
     expect(s.data).toEqual({});
+  });
+
+  // Seen on iOS Safari 27 (T018): access granted via Safari's own prompt
+  // survives permissions.remove. The report must say so, not claim success.
+  it("reports sites Safari still allows after removal", async () => {
+    const report = await deleteAllData({
+      storage: fakeStorage({}),
+      deleteKey: async () => {},
+      listGrantedOrigins: async () => ["*://*.127.0.0.1/*"],
+      removeOrigins: async () => {},
+    });
+    expect(report.siteAccess).toBe(false);
+    expect(report.remainingOrigins).toEqual(["*://*.127.0.0.1/*"]);
+    const text = deleteReportText(report);
+    expect(text).toContain("Safari still lets AssistAnt read: 127.0.0.1.");
+    expect(text).toContain("Settings > Apps > Safari > Extensions > AssistAnt");
+  });
+
+  it("says plainly when everything was deleted", () => {
+    expect(deleteReportText({ keychain: true, storage: true, siteAccess: true, remainingOrigins: [] })).toBe(
+      "Deleted your API keys, settings, and history from this device.",
+    );
   });
 });
