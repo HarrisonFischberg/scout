@@ -74,7 +74,9 @@ final class HostAppAccessibilityUITests: XCTestCase {
         app.buttons["Test key"].tap()
         XCTAssertTrue(app.staticTexts["Share with Anthropic?"].waitForExistence(timeout: 5))
         // SwiftUI may expose Link as a link or a button.
-        XCTAssertTrue(app.links["Anthropic privacy policy"].exists || app.buttons["Anthropic privacy policy"].exists)
+        for name in ["Anthropic privacy policy", "How Anthropic handles API data"] {
+            XCTAssertTrue(app.links[name].exists || app.buttons[name].exists, name)
+        }
         attachScreenshot("consent-sheet-\(scheme.rawValue)")
         try audit(app, "consent-\(scheme.rawValue)")
         app.buttons["Not now"].tap()

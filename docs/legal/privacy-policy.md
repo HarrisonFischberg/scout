@@ -46,7 +46,11 @@ Your chosen AI provider receives the data in section 3 under your own
 account and its terms: Anthropic (Messages API) or OpenAI (Responses API).
 Safari Scout asks for your permission once per provider before it sends
 anything to that provider, names the provider and what is sent, and links to
-its privacy policy. Nothing is sent if you choose Not now.
+its privacy policy and to the terms for its API. Nothing is sent if you choose
+Not now. The providers' privacy policies say they do not cover content sent
+through their business offerings such as the API; requests made with your own
+API key fall under Anthropic's Commercial Terms or OpenAI's API data
+commitments.
 Read their privacy policies; Safari Scout cannot control provider handling.
 Apple distributes the app through the App Store. Provider processors and
 sub-processors: UNKNOWN until reviewed.

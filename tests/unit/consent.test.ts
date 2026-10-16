@@ -11,6 +11,7 @@ import {
   ensureConsent,
   gatedFetch,
   parseConsent,
+  API_TERMS,
   PRIVACY_POLICY,
   providerForUrl,
 } from "../../src/settings/consent";
@@ -241,6 +242,9 @@ describe("consent text", () => {
       expect(all).toMatch(/API key/);
       expect(t.policyUrl).toBe(PRIVACY_POLICY[p]);
       expect(t.policyLabel).toContain(name);
+      // The privacy policies exclude API content; the API terms govern it.
+      expect(t.termsUrl).toBe(API_TERMS[p]);
+      expect(t.termsLabel).toBe("How " + name + " handles API data");
       expect(t.after).toMatch(/Settings/);
       // The other provider is never named, so the user knows exactly who receives data.
       expect(all).not.toContain(p === "anthropic" ? "OpenAI" : "Anthropic");
@@ -251,5 +255,10 @@ describe("consent text", () => {
     expect(new URL(PRIVACY_POLICY.anthropic).hostname).toBe("www.anthropic.com");
     expect(new URL(PRIVACY_POLICY.openai).hostname).toBe("openai.com");
     for (const u of Object.values(PRIVACY_POLICY)) expect(u.startsWith("https://")).toBe(true);
+  });
+
+  it("links to each provider's own API data terms over HTTPS", () => {
+    expect(API_TERMS.anthropic).toBe("https://www.anthropic.com/legal/commercial-terms");
+    expect(API_TERMS.openai).toBe("https://openai.com/enterprise-privacy/");
   });
 });
