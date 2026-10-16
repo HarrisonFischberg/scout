@@ -206,3 +206,41 @@ CoreSimulatorService connection became invalid.  Simulator services will no long
   blocker 9 re-check added. No `prd.md` status row changed.
 - Turns used: 2 of 5. Stopped: the next step is owner action (T002 builds
   outside the sandbox), not a retry. Further turns would not change the result.
+
+## 2026-10-15 — /goal run (turn 1 of 5): no dependency-ready pending task (goal NOT met, recorded)
+
+- Read PROMPT.md, prd.md, activity.md tail, docs/launch-blockers.md.
+- Task scan: T001 `done`. T002 `blocked` (launch-blockers 9, 10). T003–T018
+  `pending`, each depends on T002 directly or through T003/T004. No `pending`
+  task has all dependencies `done`, so none was set to `in progress`.
+- No `xcodebuild` or `simctl` re-run this turn. The 2026-10-15 19:42, 19:45
+  and earlier `/goal` runs already quote the same EPERM / simdiskimaged /
+  no-Simulator-runtime output. Repeating them cannot change the sandbox result.
+- No `prd.md` status row changed. No task files changed. Nothing committed:
+  no task was finished.
+- Turns used: 1 of 5. Stopped: the next step is owner action, not a retry.
+- Next step (owner): run the T002 `xcodebuild` builds and the Safari extension
+  load outside the session sandbox (or approve a writable DerivedData path and
+  a running CoreSimulatorService). Then set T002 to `done`. T003 becomes the
+  next runnable task.
+
+- Turn 2 of 5 (same goal run): one re-check of the T002 macOS build with
+  derived data under `$TMPDIR`. Real output (trimmed):
+
+```
+$ xcodebuild -project apple/AssistAnt.xcodeproj -scheme "AssistAnt (macOS)" -destination generic/platform=macOS -derivedDataPath "$TMPDIR/assistant-dd" CODE_SIGNING_ALLOWED=NO build
+The following build commands failed:
+	Building project AssistAnt with scheme AssistAnt (macOS)
+(1 failure)
+[-[SimServiceContext initWithDeveloperDir:connectionType:error:]:499] WARN  : Unable to discover any Simulator runtimes.
+[-[SimDiskImageManager init]:175] ERROR : Could not kickstart simdiskimaged ... Code=53 "Software caused connection abort"
+[-[SimServiceContext initWithDeveloperDir:connectionType:error:]_block_invoke:556] ERROR : ... Code=409 "Cannot talk to the service used to manage runtime disk images (simdiskimaged) ..."
+
+$ xcrun simctl list runtimes
+CoreSimulatorService connection became invalid.  Simulator services will no longer be available.
+```
+
+- Result: T002 blocker unchanged. No status row changed. Goal condition still
+  not met: no dependency-ready pending task exists.
+- Stop: repeating the same sandboxed build cannot change the result. Turns 3–5
+  would add no evidence. Owner action is the only path (see the entry above).
