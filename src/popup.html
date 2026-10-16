@@ -95,13 +95,22 @@
         </p>
       </section>
       <div id="log" role="log" aria-label="Conversation" aria-live="polite" tabindex="0"></div>
+      <section id="agent" class="empty" aria-label="Agent steps" hidden>
+        <p id="agent-plan" class="hint"></p>
+        <ol id="steps"></ol>
+        <div class="row">
+          <button id="agent-pause" type="button">Pause</button>
+          <button id="agent-stop" type="button">Stop</button>
+        </div>
+      </section>
       <form id="composer" hidden>
-        <label for="question">Ask about this page</label>
+        <label for="question">Ask about this page, or describe a task</label>
         <textarea id="question" rows="3" autocomplete="off"></textarea>
         <div class="row">
           <button id="send" type="submit" class="primary">Send</button>
           <button id="summarize" type="button">Summarize page</button>
           <button id="stop" type="button" hidden>Stop</button>
+          <button id="agent-run" type="button">Do this on the page</button>
         </div>
         <p class="hint">Press Enter to send, Shift+Enter for a new line.</p>
       </form>

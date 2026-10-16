@@ -1,4 +1,7 @@
 // Popup chat (S04): ask about the current page, summarize, streamed Markdown.
+import { AgentControl, runAgent, type AgentPage, type StepRecord } from "./agent/loop";
+import type { Action, ActionResult } from "./actions/executor";
+import type { Snapshot } from "./snapshot/snapshot";
 import { SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { renderMarkdown } from "./chat/markdown";
 import { runTurn } from "./chat/session";
@@ -56,6 +59,26 @@ async function readPage(): Promise<PageContext | null> {
   }
 }
 
+// The content script is injected on demand into the active tab only.
+async function tabAgentPage(): Promise<AgentPage | null> {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id === undefined) return null;
+  const tabId = tab.id;
+  await browser.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
+  return {
+    snapshot: async () => (await browser.tabs.sendMessage(tabId, { type: "assistant:snapshot" })) as Snapshot,
+    act: async (action: Action) =>
+      (await browser.tabs.sendMessage(tabId, { type: "assistant:act", action })) as ActionResult,
+  };
+}
+
+function describeStep(step: StepRecord): string {
+  const a = step.action;
+  const what = a ? a.type + ("ref" in a && a.ref ? " " + a.ref : "") : "finish";
+  const res = step.result ? (step.result.ok ? "ok" : "failed: " + step.result.message) : "done";
+  return (step.note ? step.note + " " : "") + "(" + what + ", " + res + ")";
+}
+
 async function main(): Promise<void> {
   const status = el("status");
   const log = el("log");
@@ -65,6 +88,12 @@ async function main(): Promise<void> {
   const send = el<HTMLButtonElement>("send");
   const summarize = el<HTMLButtonElement>("summarize");
   const stop = el<HTMLButtonElement>("stop");
+  const agentRun = el<HTMLButtonElement>("agent-run");
+  const agentBox = el("agent");
+  const agentPlan = el("agent-plan");
+  const steps = el<HTMLOListElement>("steps");
+  const agentPause = el<HTMLButtonElement>("agent-pause");
+  const agentStop = el<HTMLButtonElement>("agent-stop");
 
   const found = await findKey();
   if (!found) {
@@ -136,6 +165,64 @@ async function main(): Promise<void> {
     }
     setBusy(false);
   }
+
+  let control: AgentControl | null = null;
+
+  async function runTask(goal: string): Promise<void> {
+    const trimmed = goal.trim();
+    if (!trimmed || controller || control) return;
+    const page = await tabAgentPage().catch(() => null);
+    if (!page) {
+      addMessage("error", "Could not reach this page. Reload it and try again.");
+      return;
+    }
+    addMessage("user", trimmed);
+    question.value = "";
+    control = new AgentControl();
+    steps.replaceChildren();
+    agentPlan.textContent = "";
+    agentBox.hidden = false;
+    agentPause.textContent = "Pause";
+    agentRun.disabled = send.disabled = summarize.disabled = true;
+    status.textContent = "Agent running.";
+    agentStop.focus();
+    const outcome = await runAgent({
+      provider,
+      model: settings.model,
+      goal: trimmed,
+      page,
+      control,
+      onEvent: (e) => {
+        if (e.type === "plan") agentPlan.textContent = e.text;
+        else if (e.type === "step_end") {
+          const li = document.createElement("li");
+          li.textContent = describeStep(e.step);
+          steps.appendChild(li);
+        }
+      },
+    });
+    control = null;
+    addMessage(outcome.status === "done" ? "assistant" : "error", outcome.message);
+    status.textContent =
+      "Agent " + outcome.status + ". Tokens: " + (outcome.usage.inputTokens + outcome.usage.outputTokens) + ".";
+    agentRun.disabled = send.disabled = summarize.disabled = false;
+    question.focus();
+  }
+
+  agentRun.addEventListener("click", () => void runTask(question.value));
+  agentPause.addEventListener("click", () => {
+    if (!control) return;
+    if (control.isPaused) {
+      control.resume();
+      agentPause.textContent = "Pause";
+      status.textContent = "Agent running.";
+    } else {
+      control.pause();
+      agentPause.textContent = "Resume";
+      status.textContent = "Agent paused after the current step.";
+    }
+  });
+  agentStop.addEventListener("click", () => control?.stop());
 
   composer.addEventListener("submit", (event) => {
     event.preventDefault();

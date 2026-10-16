@@ -632,3 +632,29 @@ Error: http://127.0.0.1:4173/index.html is already used, make sure that nothing 
 - Update: the backgrounded run later finished: 6 failed, 0 passed, all `Playwright ... Connection invalid` WebKit launch errors (blocker 12). Port 4173 is free again; no `kill` needed.
 - Supervised check: outside the sandbox, `npm run build && npm run e2e -- actions`.
 - Next task: T010 (agent loop; depends on T005, T007, T009, all satisfied).
+
+## 2026-10-15 - T010 agent loop: needs supervised check
+
+- Task: T010 (lowest-numbered pending; T005, T007, T009 satisfied). Status `in progress`, then `needs supervised check`.
+- Files: `src/agent/loop.ts`, `tests/unit/agent.test.ts`, `tests/e2e/agent.spec.ts` (new); `src/popup.ts`, `src/popup.html`, `src/browser.d.ts` (S05 step list, Pause/Stop, "Do this on the page"); `prd.md`, `docs/launch-blockers.md`.
+- Design: `runAgent` runs plan, snapshot, one provider call, one tool call per step. Tools: click/type/select/scroll/navigate/wait (T009 executor) plus `finish`. Budgets: 12 steps, 100000 tokens by default. `AgentControl` gives Pause/Resume/Stop; Stop is checked before every provider call, after it (a stopped run never acts on the model's output), and aborts the in-flight stream via the signal. Snapshot text goes to the model fenced as untrusted; the goal sits outside the fence. Unknown tool names fail the step without acting. Popup injects `content.js` into the active tab on demand and relays `assistant:snapshot`/`assistant:act`.
+- Not in scope / limits: no approval sheet or sensitive-action classifier yet (T011): the loop will click or type anything the model asks. Do not use against real sites until T011. Tool calls are replayed to the provider as plain assistant text, since `ChatMessage` has no tool-result blocks; fine for mocks, to be revisited with live keys (blocker 3). No new dependency or data flow (same provider calls as chat).
+- Results, real output:
+
+```
+$ npm test
+ Test Files  7 passed (7)
+      Tests  60 passed (60)
+$ npx tsc -p tsconfig.json -> no errors
+$ npx tsc -p tsconfig.lint.json -> no errors
+$ npm run build -> built extension to .../apple/Extension/Resources
+$ npm run e2e -- agent --global-timeout=60000
+Running 2 tests using 2 workers
+Timed out waiting 60s for the test suite to run
+  2 did not run
+```
+
+- e2e not exercised: WebKit launch hangs in the sandbox (blocker 12). `tests/e2e/agent.spec.ts` has never run, so the popup wiring and S05 markup are unverified in a browser.
+- Supervised check: outside the sandbox, `npm run build && npm run e2e -- agent`.
+- Next task: T011 (safety layer; depends on T010).
+
