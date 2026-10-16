@@ -136,3 +136,8 @@ CoreSimulatorService connection became invalid.  Simulator services will no long
   session sandbox (or approve a writable DerivedData path) and load the
   extension in Safari macOS and an iOS Simulator. Then set T002 to `done`
   and the Ralph loop can pick T003.
+
+- Stop-hook follow-up (same run): blocked path recorded for T002, the task
+  attempted this run. Blocker 9 in `docs/launch-blockers.md` now notes the
+  2026-10-15 19:42 re-check and points here. T002 stays `blocked`; no task was
+  finished, so the goal condition still is not met. Turns used: 2 of 5.
