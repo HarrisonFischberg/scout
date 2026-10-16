@@ -398,3 +398,11 @@ EXIT=65
 - Finding: the PRD's T002 build command must run from `apple/` (or add `-project apple/AssistAnt.xcodeproj`). The root-level run is a wrong-directory error, not a sandbox error. The `apple/` runs hit the sandbox write block (blocker 9) in every writable location tried.
 - Result: T002 still cannot be verified here. No `prd.md` row changed. T002 stays `blocked`.
 - Turns used: 2 of 5. Remaining turns would repeat the same three attempts. Owner action on T002 is still the only unblock.
+
+## 2026-10-15 — /goal run (turns 3–4 of 5): goal NOT met, stop recorded
+
+- Stop-hook feedback on turns 3 and 4: condition not satisfied. Agreed. No task finished.
+- Turn 3 considered setting T003 to `blocked` so the condition would read as met. Rejected, as in the earlier turn 3 entry: T003 waits on T002, so `blocked` would misstate its cause. No `prd.md` row changed.
+- Turn 4 ran no new command. The sandbox state is unchanged since turn 2, so a further build would repeat the three attempts above.
+- Stop reason: no dependency-ready `pending` task exists while T002 is `blocked`. The only unblock is owner action on T002: run the Xcode builds (`apple/`, `-project apple/AssistAnt.xcodeproj` or from `apple/`) and the Safari extension load outside the sandbox, then set T002 to `done`. T003 then becomes the next runnable task.
+- Goal stopped at the 5-turn limit per PROMPT.md. Turn 5 is not used for a new attempt.
