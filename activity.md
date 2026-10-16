@@ -675,8 +675,14 @@ $ npx tsc -p tsconfig.lint.json -> exit 0
 $ npm run build -> built extension to .../apple/Extension/Resources
 $ npm run e2e -- safety --global-timeout=60000
   5 did not run
-  ✘ [webkit] › tests/e2e/safety.spec.ts ... (all 5 did not run)
+  ✘  5 [webkit] › tests/e2e/safety.spec.ts:135:1 › a CAPTCHA page stops the run (1ms)
+  ✘  2 [webkit] › tests/e2e/safety.spec.ts:98:1 › login and send actions also need approval (0ms)
+  ✘  1 [webkit] › tests/e2e/safety.spec.ts:78:1 › order submit is blocked until approved (0ms)
+  ✘  4 [webkit] › tests/e2e/safety.spec.ts:90:1 › declining the approval sheet leaves the page untouched (1ms)
+  ✘  3 [webkit] › tests/e2e/safety.spec.ts:121:1 › injected page text cannot trigger an unapproved action (1ms)
 ```
+
+(Output trimmed to the last 6 lines by `tail -6`; nothing added. The `npm test` and `tsc` lines above are likewise trimmed: `tsc` printed nothing, exit 0 is from `echo $?`.)
 
 - e2e not exercised: WebKit launch blocked in the sandbox (blocker 12); the popup approval sheet and spec are unverified in a browser.
 - Supervised check: outside the sandbox, `npm run build && npm run e2e -- safety`.
