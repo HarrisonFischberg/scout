@@ -866,3 +866,7 @@ T002b-ios-extension-enabled.png  230.4K
 ```
 
 Result: 0 of 7 flow screenshots exist (grep exit 1); only the T002b enabled-state screenshot is present. Acceptance not met, status stays `blocked`.
+
+### T018 goal-condition conflict (recorded at stop)
+
+The `/goal` condition asks for the task's own verification command to be run with output quoted. T018's command is `manual + xcrun simctl io booted screenshot`. `PROMPT.md` step 7 forbids `xcrun` and the Simulator in the loop, and the sandbox blocks both (blockers 9, 10). Hard project rules outrank the goal text, so the command was not run and no output is invented. T018 is manual-only; the condition cannot be met in this session. Stopping and leaving it `blocked` (blocker 18). Needed: supervised session runs F01-F07 and saves screenshots to `ralph/evidence/`.
