@@ -12,11 +12,13 @@ declare const browser: {
   };
   tabs: {
     query(info: { active: boolean; currentWindow: boolean }): Promise<Array<{ id?: number }>>;
+    sendMessage(tabId: number, message: unknown): Promise<unknown>;
   };
   scripting: {
     executeScript(injection: {
       target: { tabId: number };
-      func: () => unknown;
+      func?: () => unknown;
+      files?: string[];
     }): Promise<Array<{ result?: unknown }>>;
   };
 };
