@@ -155,6 +155,16 @@ describe("web search (T019)", () => {
     expect(ev).toContainEqual({ type: "source", url: "https://deals.test/a", title: "Deals" });
   });
 
+  it("anthropic: reports how many web searches ran, for the cost line", async () => {
+    const f: FetchLike = async () =>
+      sse([
+        { type: "message_start", message: { usage: { input_tokens: 5, output_tokens: 1 } } },
+        { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 3, server_tool_use: { web_search_requests: 2 } } },
+      ]);
+    const ev = await collect(createProvider("anthropic", { apiKey: "k", fetch: f }).stream(search));
+    expect(ev).toContainEqual({ type: "usage", usage: { inputTokens: 5, outputTokens: 3, webSearches: 2 } });
+  });
+
   it("openai: sends web_search and emits url citations as sources", async () => {
     let body = "";
     const f: FetchLike = async (_u, init) => {

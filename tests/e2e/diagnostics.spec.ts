@@ -47,7 +47,7 @@ async function openPopup(page: Page): Promise<void> {
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
   await page.route("https://api.anthropic.com/**", (r) => r.fulfill({ status: 401, body: "{}" }));
   await page.goto("/popup.html");
-  await expect(page.locator("#status")).toContainText("Ready.");
+  await expect(page.getByLabel("Ask about this page")).toBeVisible();
 }
 
 const copied = (page: Page): Promise<string> =>

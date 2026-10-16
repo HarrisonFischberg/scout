@@ -55,11 +55,11 @@ extension SafariScoutApp {
 }
 
 extension Color {
-    // replica/design/tokens.json: color.{light,dark}.accent-text
-    static let accentText = Color(light: 0x6D28D9, dark: 0xC4B5FD)
-    // color.{light,dark}.accent / accent-on: 7.10:1 light, 6.67:1 dark.
-    static let accentFill = Color(light: 0x6D28D9, dark: 0xA78BFA)
-    static let accentOn = Color(light: 0xFFFFFF, dark: 0x1A102E)
+    // replica/design/tokens.json: color.{light,dark}.accent-text (Apple blue)
+    static let accentText = Color(light: 0x0066CC, dark: 0x2997FF)
+    // color.{light,dark}.accent / accent-on: 4.70:1 light, 4.57:1 dark.
+    static let accentFill = Color(light: 0x0071E3, dark: 0x0073E6)
+    static let accentOn = Color(light: 0xFFFFFF, dark: 0xFFFFFF)
 
     init(light: UInt32, dark: UInt32) {
         func rgb(_ v: UInt32) -> (Double, Double, Double) {

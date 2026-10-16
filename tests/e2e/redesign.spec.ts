@@ -91,8 +91,10 @@ test("no key: Add API key opens Settings at the key field; a bad key is explaine
   expect(JSON.stringify(fake.data)).not.toContain(GOOD_KEY);
 
   await page.getByRole("button", { name: "Back to chat" }).click();
-  await expect(page.locator("#status")).toContainText("Ready. Using anthropic");
+  await expect(page.getByLabel("Ask about this page")).toBeVisible();
   await expect(page.getByRole("heading", { name: "How can I help?" })).toBeVisible();
+  // No "Ready. Using …" line: the line under the conversation is only for cost.
+  await expect(page.locator("#status")).toHaveText("");
 });
 
 test("Control Browser mode shows a bold chip and switches the send action", async ({ page }) => {
@@ -115,6 +117,8 @@ test("the conversation is saved and comes back when the popup reopens; New chat 
   await page.getByLabel("Ask about this page").fill("How much is the widget?");
   await page.getByLabel("Ask about this page").press("Enter");
   await expect(page.getByRole("log").getByText("The widget costs")).toBeVisible();
+  // One cost line for the run: 20 tokens in, 5 out on Claude Sonnet 5.5.
+  await expect(page.locator("#status")).toHaveText("Cost: <$0.0001");
 
   await page.reload();
   const log = page.getByRole("log");
@@ -166,7 +170,7 @@ test("the model pill opens a menu in place: picking a model or effort saves it a
   await expect(page.locator("#settings-view")).toBeHidden();
   await expect(pill).toBeFocused();
   await expect(pill).toHaveText("Opus 5.5");
-  await expect(page.locator("#status")).toHaveText("Ready. Using anthropic claude-opus-5-5.");
+  await expect(page.locator("#status")).toHaveText("");
   await expect.poll(() => savedSettings(page)).toMatchObject({ provider: "anthropic", model: "claude-opus-5-5", effort: "default" });
 
   await pill.click();

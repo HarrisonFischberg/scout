@@ -27,6 +27,8 @@ export interface SuggestedCodes {
   searched: boolean;
   inputTokens: number;
   outputTokens: number;
+  /** Web searches the provider ran (billed per search). */
+  webSearches: number;
 }
 
 function norm(url: string): string {
@@ -69,6 +71,7 @@ export async function suggestCodes(
   let text = "";
   let inputTokens = 0;
   let outputTokens = 0;
+  let webSearches = 0;
   const seen = new Set<string>();
   const searched = opts.webSearch !== false;
   if (searched) {
@@ -90,6 +93,7 @@ export async function suggestCodes(
       else if (ev.type === "usage") {
         inputTokens += ev.usage.inputTokens;
         outputTokens += ev.usage.outputTokens;
+        webSearches += ev.usage.webSearches ?? 0;
       }
     }
   }
@@ -108,5 +112,6 @@ export async function suggestCodes(
     searched,
     inputTokens,
     outputTokens,
+    webSearches,
   };
 }

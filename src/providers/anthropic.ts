@@ -57,6 +57,7 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
       const blocks = new Map<number, Block>();
       let inputTokens = 0;
       let outputTokens = 0;
+      let webSearches = 0;
       for await (const raw of readSse(res.body)) {
         const ev = raw as Record<string, any>;
         switch (ev.type) {
@@ -111,12 +112,13 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
           }
           case "message_delta":
             outputTokens = ev.usage?.output_tokens ?? outputTokens;
+            webSearches = ev.usage?.server_tool_use?.web_search_requests ?? webSearches;
             break;
           case "error":
             throw new ProviderError("anthropic", "stream_error");
         }
       }
-      yield { type: "usage", usage: { inputTokens, outputTokens } };
+      yield { type: "usage", usage: { inputTokens, outputTokens, ...(webSearches ? { webSearches } : {}) } };
       yield { type: "done" };
     },
   };

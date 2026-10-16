@@ -1,19 +1,26 @@
 # Safari Scout design system (T001)
 
 Tokens: `replica/design/tokens.json`. Contrast evidence: `replica/contrast.txt`
-(34 pairs, 0 failing AA, run with the Replica `contrast.py` checker).
+(44 pairs, 0 failing AA, run with the Replica `contrast.py` checker).
 
 ## Direction
 
 Safari Scout is a Safari toolbar popup (web extension HTML) and a SwiftUI host
 app (macOS and iOS). The popup is a chat surface, so the design is quiet and
-text-first: neutral surfaces, one violet accent for actions and focus, and
-clear separation between user messages, assistant answers, and agent steps.
+text-first: neutral surfaces, one accent for actions and focus, and clear
+separation between user messages, assistant answers, and agent steps.
+
+2026-10-16 (owner request): the palette matches the system, like Safari's own
+UI. Apple's neutral grays, Apple blue for actions, links, and focus, a gray
+user bubble and selected state, and no purple. Light and dark follow the
+system appearance. The accent is a fixed blue, not the user's macOS accent
+colour, so contrast stays checked.
 
 The `ui-ux-pro-max` design-system query returned a landing-page pattern
 (hero, testimonials, CTA). That pattern does not fit a 360–420 px toolbar
-popup, so only its palette direction was used (violet accent, AI-native
-styling, visible focus, reduced motion). Its Inter font was not used.
+popup, so only its general direction was used (AI-native styling, visible
+focus, reduced motion). Its violet accent was replaced on 2026-10-16 and its
+Inter font was not used.
 
 ## Decisions
 
@@ -36,17 +43,18 @@ styling, visible focus, reduced motion). Its Inter font was not used.
 | --- | --- | --- |
 | Canvas | `#F5F5F7` | `#1C1C1E` |
 | Surface | `#FFFFFF` | `#2C2C2E` |
-| Subtle surface | `#EDEDF2` | `#3A3A3D` |
+| Subtle surface | `#E8E8ED` | `#3A3A3C` |
 | Text primary | `#1D1D1F` | `#F5F5F7` |
 | Text secondary | `#48484D` | `#D1D1D6` |
 | Text muted (helper, timestamps) | `#65656B` | `#AEAEB2` |
-| Accent (buttons, links) | `#6D28D9` | `#A78BFA` |
-| Text on accent | `#FFFFFF` | `#1A102E` |
-| Accent text | `#6D28D9` | `#C4B5FD` |
-| User bubble | `#E9E3FB` / `#2E1065` text | `#3B2A6B` / `#F3EEFF` text |
+| Accent (buttons) | `#0071E3` | `#0073E6` |
+| Text on accent | `#FFFFFF` | `#FFFFFF` |
+| Accent text (links, chip) | `#0066CC` | `#2997FF` |
+| Selected (mode switch) | `#E8E8ED` | `#48484A` |
+| User bubble | `#E8E8ED` / `#1D1D1F` text | `#3A3A3C` / `#F5F5F7` text |
 | Danger | `#B42318` | `#FF8A80` |
 | Success | `#166534` | `#86EFAC` |
-| Focus ring (3:1 UI minimum) | `#6D28D9` | `#C4B5FD` |
+| Focus ring (3:1 UI minimum) | `#0071E3` | `#2997FF` |
 | Control border (3:1 UI minimum) | `#8A8A90` | `#8E8E93` |
 
 ## Component specs
