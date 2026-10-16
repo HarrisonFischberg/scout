@@ -73,9 +73,17 @@ final class SetupViewModel: ObservableObject {
     @Published var provider: Provider = .anthropic
     // Editing the key invalidates an earlier test result.
     @Published var key: String = "" {
-        didSet { if state != .testing && state != .saved { state = .empty } }
+        didSet {
+            hint = nil
+            if state != .testing && state != .saved { state = .empty }
+        }
     }
-    @Published private(set) var state: SetupState = .empty
+    @Published private(set) var state: SetupState = .empty {
+        didSet { hint = nil }
+    }
+    // Explains why a button did nothing. The buttons stay enabled (greyed-out
+    // controls failed the contrast audit), so they must say what is missing.
+    @Published private(set) var hint: String?
 
     private let tester: KeyTesting
     private let store: KeychainStore
@@ -89,14 +97,21 @@ final class SetupViewModel: ObservableObject {
 
     func testKey() async {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else {
+            hint = "Enter your \(provider.displayName) API key first."
+            return
+        }
+        guard state != .testing else { return }
         state = .testing
         state = .result(await tester.test(key: trimmed, provider: provider))
     }
 
     // Saves only after a valid test, then clears the in-memory field.
     func save() {
-        guard state == .result(.valid) else { return }
+        guard state == .result(.valid) else {
+            hint = state == .saved ? "Key already saved to Keychain." : "Test the key before saving."
+            return
+        }
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
             try store.set(trimmed, account: provider.rawValue)
@@ -108,6 +123,7 @@ final class SetupViewModel: ObservableObject {
     }
 
     var statusMessage: String {
+        if let hint { return hint }
         switch state {
         case .empty: return "Enter your \(provider.displayName) API key."
         case .testing: return "Testing key…"

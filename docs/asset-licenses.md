@@ -9,3 +9,4 @@
 | @mdn/browser-compat-data 8.1.6 | reference data only, not in repo | registry.npmjs.org | CC0-1.0 | read for research; not vendored | n/a | `docs/safari-api-support.md` |
 
 "Publicly downloadable" is not a license.
+| @axe-core/playwright 4.14.0 (+ axe-core 4.14.0) | npm devDependency (test only, not shipped) | npm registry | MPL-2.0 | automated WCAG checks in e2e | keep license notice if redistributed; not bundled into the app | tests/e2e/a11y.spec.ts |

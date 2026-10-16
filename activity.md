@@ -934,3 +934,15 @@ $ npx playwright test settings
 - e2e then: 28 passed, 1 failed ("legal drafts open from settings by keyboard and are marked DRAFT"). Cause: the test routed `privacy.html`/`terms.html` on the popup page, but the links open new tabs. Routed on the browser context instead; assertions unchanged. Rerun: "29 passed".
 - `npm test` → "Tests 114 passed (114)"; typecheck, lint, build ok. Xcode macOS + iOS BUILD SUCCEEDED; AssistAntTests "Executed 8 tests, with 0 failures".
 - T019, T020 done. Live web search with real keys still unverified (blocker 3).
+
+## 2026-10-15 — T006 supervised (Claude, interactive session)
+
+- Added iOS UI-test target `AssistAntUITests` (`scripts/add-ui-test-target.rb`) and bundled `docs/legal/*.md` into both app targets.
+- `performAccessibilityAudit` found, in order: disabled "Test key"/"Save key" contrast; system-blue link buttons (~4:1); clipped "Key status" text; toolbar "Done" contrast + Dynamic Type; dark "Save key" (white on light purple). All fixed in code; no audit issue is filtered (test collects every issue and fails on any).
+- First "dark" run was invalid: `XCUIDevice.appearance` did not apply; screenshot was light. Replaced with DEBUG-only `-UITestColorScheme` launch argument plus a pixel assertion that the scheme applied.
+- Disabled buttons replaced by always-enabled buttons that explain what is missing (XCTest: 10/10 pass incl. 2 new hint tests).
+- Legal sheet: real close button (`.cancelAction` shortcut) instead of no control (keyboard trap on macOS); minimal Markdown rendering for headings, quotes, tables, lists, field lines.
+- Hang fix: `xcodebuild test` never exited with screen-recording diagnostics on; `-collect-test-diagnostics never` fixes it. Dedicated simulator "AssistAnt Test iPhone" (BBCC2295-…) avoids clashing with other projects' runners.
+- Final: `xcodebuild ... -scheme AssistAntUITests ... test` → 3/3 passed, TEST SUCCEEDED. macOS build ok; unit 114/114; e2e 38/38 (incl. new axe a11y spec); lint + typecheck ok.
+- Web a11y (T017 input): new `tests/e2e/a11y.spec.ts` (axe-core WCAG 2.2 A/AA, WebKit, light + dark; Option+Tab keyboard walk). Found dark-mode legal-page link contrast failure; fixed with token colors in `scripts/build.mjs`.
+- Lighthouse not run: not installed and no Chrome DevTools MCP. axe in WebKit used instead.

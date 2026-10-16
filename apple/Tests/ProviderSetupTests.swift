@@ -49,4 +49,21 @@ final class ProviderSetupTests: XCTestCase {
         let vm = SetupViewModel(tester: StubTester(result: .valid), store: store)
         XCTAssertFalse(vm.canTest)
     }
+
+    func testPressingTestWithEmptyKeyExplainsWhy() async {
+        let vm = SetupViewModel(tester: StubTester(result: .valid), store: store)
+        await vm.testKey()
+        XCTAssertEqual(vm.state, .empty)
+        XCTAssertEqual(vm.statusMessage, "Enter your Anthropic API key first.")
+        vm.key = "sk-test-synthetic"
+        XCTAssertEqual(vm.statusMessage, "Enter your Anthropic API key.")
+    }
+
+    func testPressingSaveBeforeTestExplainsWhy() throws {
+        let vm = SetupViewModel(tester: StubTester(result: .valid), store: store)
+        vm.key = "sk-test-synthetic"
+        vm.save()
+        XCTAssertEqual(vm.statusMessage, "Test the key before saving.")
+        XCTAssertNil(try store.get(account: Provider.anthropic.rawValue))
+    }
 }

@@ -17,6 +17,7 @@
   },
   "license": "UNLICENSED",
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.64.1",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2",

@@ -63,24 +63,26 @@ struct OnboardingView: View {
                 .autocorrectionDisabled()
                 .accessibilityHint("Paste the key from your provider account")
             HStack {
+                // Always enabled: a press that cannot proceed explains why
+                // in the status line below instead of greying the button out.
                 Button("Test key") { Task { await setup.testKey() } }
-                    .disabled(!setup.canTest)
                 Button("Save key") { setup.save() }
-                    .disabled(setup.state != .result(.valid))
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(AccentButtonStyle())
             }
             // Status is text, never colour alone.
             Text(setup.statusMessage)
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityLabel("Key status: \(setup.statusMessage)")
         }
     }
 }
 
 // S09: privacy policy and terms drafts. Reads docs/legal/*.md copied into the
-// app bundle (supervised step: add them to the App targets' Resources).
+// app bundle (added to both App targets by scripts/add-ui-test-target.rb).
 private struct LegalDocView: View {
     let title: String
     let resource: String
+    @Environment(\.dismiss) private var dismiss
 
     private var text: String {
         guard let url = Bundle.main.url(forResource: resource, withExtension: "md"),
@@ -90,16 +92,74 @@ private struct LegalDocView: View {
         return body
     }
 
+    // Minimal Markdown rendering for the bundled drafts: headings, block
+    // quotes, and paragraphs; inline emphasis and code via AttributedString.
+    static func blocks(_ markdown: String) -> [Text] {
+        let paragraphs = markdown.components(separatedBy: "\n\n")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return paragraphs.map { para in
+            func inline(_ s: String) -> Text {
+                let joined = s.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: " ")
+                let opts = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+                return Text((try? AttributedString(markdown: joined, options: opts)) ?? AttributedString(joined))
+            }
+            let lines = para.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+            func lineByLine(_ items: [String]) -> Text {
+                let opts = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+                let joined = items.joined(separator: "\n")
+                return Text((try? AttributedString(markdown: joined, options: opts)) ?? AttributedString(joined))
+            }
+            // Table: one line per data row, "first cell: other cells".
+            if lines.allSatisfy({ $0.hasPrefix("|") }) {
+                let rows = lines.dropFirst().filter { !$0.replacingOccurrences(of: "|", with: "").allSatisfy { "-: ".contains($0) } }
+                return lineByLine(rows.map { row in
+                    let cells = row.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }
+                    return "• **\(cells.first ?? "")**: " + cells.dropFirst().joined(separator: "; ")
+                })
+            }
+            // Bullet list: keep one item per line.
+            if lines.allSatisfy({ $0.hasPrefix("- ") || $0.hasPrefix("* ") || $0.hasPrefix("  ") }) && lines.first.map({ $0.hasPrefix("- ") || $0.hasPrefix("* ") }) == true {
+                return lineByLine(lines.map { $0.hasPrefix("- ") || $0.hasPrefix("* ") ? "• " + $0.dropFirst(2) : $0 })
+            }
+            // "Label: value" field lines stay on their own lines.
+            if lines.count > 1, lines.allSatisfy({ l in l.range(of: ": ").map { l.distance(from: l.startIndex, to: $0.lowerBound) < 60 } ?? false }) {
+                return lineByLine(lines)
+            }
+            if para.hasPrefix("## ") { return inline(String(para.dropFirst(3))).font(.headline) }
+            if para.hasPrefix("# ") { return inline(String(para.dropFirst(2))).font(.title3.bold()) }
+            if para.hasPrefix(">") {
+                let body = para.split(separator: "\n").map { $0.drop(while: { $0 == ">" || $0 == " " }) }.joined(separator: "\n")
+                return inline(body).italic()
+            }
+            return inline(para)
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(title)
+                        .font(.title2.bold())
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer()
+                    // In-content close control (the system toolbar button failed
+                    // the contrast and Dynamic Type audit). Escape / the cancel
+                    // shortcut also dismiss, so the sheet is never a keyboard trap.
+                    Button("Done") { dismiss() }
+                        .buttonStyle(AccentButtonStyle())
+                        .keyboardShortcut(.cancelAction)
+                }
                 Text("DRAFT. Not approved by legal review.").bold()
-                Text(text).textSelection(.enabled)
+                ForEach(Array(Self.blocks(text).enumerated()), id: \.offset) { _, block in
+                    block
+                }
+                .textSelection(.enabled)
             }
             .padding(24)
             .frame(maxWidth: 560, alignment: .leading)
         }
-        .navigationTitle(title)
     }
 }
 
