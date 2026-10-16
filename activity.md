@@ -799,5 +799,5 @@ Timed out waiting 60s for the teardown for test suite to run
 ```
 
 - e2e not exercised: WebKit launch blocked in the sandbox (blocker 12); `tests/e2e/settings.spec.ts` has never run in a browser. Retention expiry and Delete-all logic are covered by unit tests with fake storage.
-- Supervised check: outside the sandbox, `npm run build && npm run e2e -- settings`. `xcodebuild test` unchanged by this task (no Swift edits).
+- Supervised check: outside the sandbox, `npm run build && npm run e2e -- settings`. Xcode, supervised only (sandbox blocks `xcodebuild`, blocker 9; not run, no output to quote; no Swift edits in this task): `xcodebuild -project apple/AssistAnt.xcodeproj -scheme AssistAntTests -derivedDataPath build/DD test`.
 - Next task: T016 (draft privacy policy + terms; depends on T015).
