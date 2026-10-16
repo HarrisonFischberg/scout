@@ -565,3 +565,22 @@ $ npm run e2e -- chat -> 5 failed, 0 passed: WebKit launch failed in sandbox (XP
 
 - Supervised check: outside the sandbox, `npm run build && npm run e2e -- chat`, then load in Safari and ask a question with a test key.
 - Next task: T008 (snapshot builder, JS only).
+
+- Verbatim `npm run e2e -- chat` output (tail -12 as captured; certificate-trust noise lines removed, long lines cut at 170 chars):
+
+```
+      - [pid=3877][err] 2026-10-15 20:13:54.597 Playwright[3906:11060598] Connection Invalid error for service com.apple.hiservices-xpcservice.
+      - [pid=3877][err] 2026-10-15 20:13:54.597 Playwright[3906:11060586] Error received in message reply handler: Connection invalid
+
+
+    Error Context: test-results/chat-provider-401-shows-a-readable-error-webkit/error-context.md
+
+  5 failed
+    [webkit] › tests/e2e/chat.spec.ts:48:1 › no key: explains setup and offers no composer ─────────
+    [webkit] › tests/e2e/chat.spec.ts:54:1 › ask about the page streams a Markdown answer ──────────
+    [webkit] › tests/e2e/chat.spec.ts:66:1 › summarize button works ────────────────────────────────
+    [webkit] › tests/e2e/chat.spec.ts:72:1 › keyboard only: type, Enter sends, focus returns to the field 
+    [webkit] › tests/e2e/chat.spec.ts:81:1 › provider 401 shows a readable error ───────────────────
+
+[exited with code 0]
+```
