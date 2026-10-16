@@ -926,3 +926,11 @@ $ npx playwright test settings
 - Honest limits: all 4 settings specs failed, including 3 that passed under supervision before and that this change does not touch. That matches the WebKit launch failure of blocker 12, but the failure-reason line was not captured in this run (output filtered), so it is not proven. The new spec has not passed. Host app Swift unbuilt (sandbox, blockers 9, 19).
 - Supervised: `npx playwright test settings` outside the sandbox; add legal `.md` to App Resources and build both schemes.
 - Next task: none pending.
+
+## 2026-10-15 — supervised review of Ralph run 4 (Claude, interactive session)
+
+- Run 4 (Sonnet 5.5, max 4 iterations, $5 cap): 2 iterations, T019 and T020 implemented; loop printed COMPLETE because no row was `pending`. Not Gate A.
+- e2e first attempt failed to start: port 4173 was held by an unrelated local server (owner's studio-site `http.server`, left running). Changed `playwright.config.ts` to default port 4317, overridable with `E2E_PORT`.
+- e2e then: 28 passed, 1 failed ("legal drafts open from settings by keyboard and are marked DRAFT"). Cause: the test routed `privacy.html`/`terms.html` on the popup page, but the links open new tabs. Routed on the browser context instead; assertions unchanged. Rerun: "29 passed".
+- `npm test` → "Tests 114 passed (114)"; typecheck, lint, build ok. Xcode macOS + iOS BUILD SUCCEEDED; AssistAntTests "Executed 8 tests, with 0 failures".
+- T019, T020 done. Live web search with real keys still unverified (blocker 3).
