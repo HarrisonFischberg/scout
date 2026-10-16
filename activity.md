@@ -966,3 +966,10 @@ $ npx playwright test settings
 - Opening Settings focused the provider `<select>`, which on iOS opens the picker over the panel. Fixed: focus the Settings heading; skip auto-focus of the question field on coarse pointers. New e2e tests.
 - Checks: unit 117/117, e2e 40/40, lint + typecheck ok, iOS build ok.
 - Not done: F02–F06 (need owner test keys, blocker 3); macOS Safari flows (owner manual); key sharing between app and extension (blocker 14).
+
+## 2026-10-15 — shared Keychain group (iOS), before owner test keys
+
+- Added `keychain-access-groups` = `$(AppIdentifierPrefix)com.example.AssistAnt.shared` for the iOS app + extension (`apple/iOS-Shared.entitlements`, `scripts/set-ios-keychain-group.rb`); group passed at runtime via Info.plist `AssistAntKeychainGroup` = `$(KEYCHAIN_GROUP)`. macOS unchanged (resolves to empty → no group).
+- Xcode resolved `$(AppIdentifierPrefix)` to `KTV2G3Z883.` on this Mac: a development team appears to be configured. Not assumed to be the owner's paid membership; asked.
+- Verified: host app launched with DEBUG-only `-SeedSyntheticKey YES` wrote `sk-test-synthetic-sharing-check`; the Safari popup then showed "Ready. Using anthropic claude-sonnet-5-5." (`ralph/evidence/T018-ios-shared-keychain-ready.png`). Then `xcrun simctl keychain <test sim> reset`.
+- Regression: macOS build ok, XCTest 10/10.

@@ -10,10 +10,19 @@ struct KeychainStore {
     }
 
     let service: String
-    // Set to the shared app group once the host app writes keys (T006).
+    // Shared between host app and extension so a key saved in the app is
+    // readable by the extension. Comes from Info.plist (KEYCHAIN_GROUP build
+    // setting, iOS only for now); nil when unset, e.g. macOS and unit tests.
     let accessGroup: String?
 
-    init(service: String = "com.example.AssistAnt.provider-key", accessGroup: String? = nil) {
+    static var configuredAccessGroup: String? {
+        guard let group = Bundle.main.object(forInfoDictionaryKey: "AssistAntKeychainGroup") as? String,
+              !group.isEmpty, !group.hasPrefix("$(") else { return nil }
+        return group
+    }
+
+    init(service: String = "com.example.AssistAnt.provider-key",
+         accessGroup: String? = KeychainStore.configuredAccessGroup) {
         self.service = service
         self.accessGroup = accessGroup
     }
