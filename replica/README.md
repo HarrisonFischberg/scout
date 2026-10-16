@@ -15,3 +15,4 @@ pricing, or a safeguard. A removed harmful pattern is not a parity defect.
 | Coupon runs | (n/a, new) | Shows every tried code and its real result; no "guaranteed savings" claim | Safeguard 12 |
 | Permissions | SafarAI: `<all_urls>` content script | `activeTab` + optional per-site access | Safeguard 7 |
 | Bot checks | — | Agent stops at CAPTCHA and asks the user | Never bypass bot detection |
+| Assistant panel (Comet reference, 2026-10-16) | Docked side panel inside the browser window; dropdown mode menu with many skills; Comet's own icons and branding | Toolbar popover (Safari has no side-panel API); two-way Chat / Control Browser switch; original line icons and the ant mascot; status line shows cost after every run | Safari platform limit; fewer choices for a two-mode product; no third-party assets; cost transparency (safeguard 10) |

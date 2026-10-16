@@ -151,7 +151,7 @@ describe("web search (T019)", () => {
       ]);
     };
     const ev = await collect(createProvider("anthropic", { apiKey: "k", fetch: f }).stream(search));
-    expect(JSON.parse(body).tools).toEqual([{ type: "web_search_20250305", name: "web_search", max_uses: 3 }]);
+    expect(JSON.parse(body).tools).toEqual([{ type: "web_search_20260209", name: "web_search", max_uses: 3 }]);
     expect(ev).toContainEqual({ type: "source", url: "https://deals.test/a", title: "Deals" });
   });
 

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  clearHistory,
+  loadConversation,
+  startNewConversation,
   appendHistory,
   deleteAllData,
   deleteReportText,
@@ -144,5 +147,18 @@ describe("deleteAllData", () => {
     expect(deleteReportText({ keychain: true, storage: true, siteAccess: true, remainingOrigins: [] })).toBe(
       "Deleted your API keys, settings, and history from this device.",
     );
+  });
+});
+
+describe("conversation", () => {
+  it("shows only entries since New chat, keeps kinds, and clears", async () => {
+    const s = fakeStorage({});
+    await appendHistory(s, "7", { at: 1000, question: "old", answer: "a", kind: "chat" });
+    await startNewConversation(s, 2000);
+    await appendHistory(s, "7", { at: 3000, question: "Fill the form", answer: "Done", kind: "agent" });
+    const conv = await loadConversation(s, "7", 4000);
+    expect(conv).toEqual([{ at: 3000, question: "Fill the form", answer: "Done", kind: "agent" }]);
+    await clearHistory(s);
+    expect(await loadConversation(s, "7", 4000)).toEqual([]);
   });
 });

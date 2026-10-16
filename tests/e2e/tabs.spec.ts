@@ -69,6 +69,8 @@ async function openPopup(page: Page, opts: { backgroundReadFails?: boolean } = {
 
 test("a ticked tab is read and cited alongside the active page", async ({ page }) => {
   const { bodies } = await openPopup(page);
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("button", { name: "Use other tabs" }).click();
   await page.getByRole("checkbox", { name: "Reviews of Widget" }).check();
   await page.getByLabel("Ask about this page").fill("Is the widget good value?");
   await page.getByRole("button", { name: "Send" }).click();
@@ -96,6 +98,8 @@ test("an untouched tab is never read", async ({ page }) => {
 
 test("a tab that cannot be read is named in the conversation, not just the status line", async ({ page }) => {
   const { bodies } = await openPopup(page, { backgroundReadFails: true });
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("button", { name: "Use other tabs" }).click();
   await page.getByRole("checkbox", { name: "Reviews of Widget" }).check();
   await page.getByLabel("Ask about this page").fill("Price and rating?");
   await page.getByRole("button", { name: "Send" }).click();

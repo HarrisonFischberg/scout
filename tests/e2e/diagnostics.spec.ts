@@ -82,9 +82,11 @@ test("the question is included only after opting in", async ({ page }) => {
   await openPopup(page);
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByLabel("Also record the question I type").check();
+  await page.getByRole("button", { name: "Back to chat" }).click();
   await page.getByLabel("Ask about this page").fill("What does the widget cost?");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText("The API key was rejected.")).toBeVisible();
+  await page.getByRole("button", { name: "Settings" }).click();
   await page.locator("#diag-copy").click();
   await expect(page.locator("#diag-status")).toHaveText(/Diagnostics copied/);
   expect(await copied(page)).toContain('- Question: "What does the widget cost?"');

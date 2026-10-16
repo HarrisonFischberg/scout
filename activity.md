@@ -1020,3 +1020,14 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Manifest: `action.default_icon` (16–64) and `icons` (48–512). Build copies `src/icons/` to Resources; Xcode folder reference added to both extension targets; bundles verified (12 PNGs each).
 - Added `scripts/register-mac-extension.sh` (unregisters Simulator copies, registers + relaunches the Mac app); run after any iOS build.
 - Checks: unit 131, e2e 45, release bundle clean, macOS + iOS builds ok.
+
+## 2026-10-16 — Chat-first popup redesign (T021–T027, supervised)
+
+- Owner request with Comet screenshots: settings inside the dropdown (incl. API key), clean chat with saved history, Chat / Control Browser selector with a bold "Control Browser" chip, cleaner Safari-like UI, chat as the main area.
+- Design: ui-ux-pro-max (minimal style; its Inter web font and landing pattern rejected: new vendor / not applicable); fixing-accessibility rules applied while writing. Existing contrast-checked tokens kept.
+- New: `src/popup.html` and UI layer of `src/popup.ts` rewritten; logic modules unchanged. `src/providers/keytest.ts` (key check against the provider's model list; unit tests). Conversation helpers in `src/settings/settings.ts` (kind, New chat marker, clear). Agent `webSearch` option + research note; Anthropic web search tool updated to `web_search_20260209` (claude-api skill). Mac host app points key entry to the popup.
+- Answer to owner question 2a: Claude computer use and Claude in Chrome cannot drive Safari from an extension, and an MCP server would be a separate program. The existing DOM tool-use agent is the right engine; this pass adds web research.
+- Bugs caught by tests during the work: model pill accessible name did not contain its visible text (WCAG 2.5.3), fixed; Delete all data left a fresh diagnostics record, fixed (`connect(false)`, `Diagnostics.forget`); message box had no visible focus, fixed (ring on the composer box).
+- I first misread a 150 ms color transition in a screenshot as a WebKit `:has()` bug; it was not. Kept the script-set selected class, corrected the code comment.
+- Checks: unit 136, e2e 51 (incl. 6 new redesign tests, axe light/dark on chat + settings), lint + typecheck clean, release bundle clean, XCTest 11/11, macOS build + bundle check ok, extension re-registered. Screenshots: `ralph/evidence/popup-*.png`.
+- Not verified yet: the new popup live in Safari on the owner's Mac; live Control Browser web research; iOS layout of the new popup in the Simulator.

@@ -20,7 +20,7 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
         description: t.description,
         input_schema: t.parameters,
       }));
-      if (req.webSearch) tools.push({ type: "web_search_20250305", name: "web_search", max_uses: 3 });
+      if (req.webSearch) tools.push({ type: "web_search_20260209", name: "web_search", max_uses: 3 });
       const body = {
         model: req.model,
         max_tokens: req.maxTokens,

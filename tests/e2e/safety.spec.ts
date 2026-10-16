@@ -84,7 +84,8 @@ const ORDER_THEN_FINISH = [toolTurn("click", { ref: "e1" }), toolTurn("finish", 
 
 async function startRun(page: Page, goal: string): Promise<void> {
   await page.getByLabel("Ask about this page").fill(goal);
-  await page.getByRole("button", { name: "Do this on the page" }).click();
+  await page.getByRole("radio", { name: "Control Browser" }).check();
+  await page.getByRole("button", { name: "Start task" }).click();
 }
 
 test("order submit is blocked until approved", async ({ page }) => {
