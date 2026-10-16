@@ -8,6 +8,7 @@ import { runTurn } from "./chat/session";
 import { mergeTabs, resolveMentions, type TabInfo } from "./chat/tabs";
 import { suggestCodes } from "./coupons/codes";
 import { runCouponSearch } from "./coupons/finder";
+import { formatRunCost } from "./cost";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { createProvider, type ChatMessage } from "./providers";
 
@@ -246,7 +247,8 @@ async function main(): Promise<void> {
     controller = null;
     if (result.ok) {
       history.push({ role: "user", content: trimmed }, { role: "assistant", content: result.text });
-      status.textContent = "Done.";
+      status.textContent =
+        "Done." + (result.usage ? " " + formatRunCost(settings.model, result.usage) : "");
     } else {
       if (result.partial) renderMarkdown(document, bubble, result.partial);
       else bubble.remove();
@@ -295,7 +297,7 @@ async function main(): Promise<void> {
     control = null;
     addMessage(outcome.status === "done" ? "assistant" : "error", outcome.message);
     status.textContent =
-      "Agent " + outcome.status + ". Tokens: " + (outcome.usage.inputTokens + outcome.usage.outputTokens) + ".";
+      "Agent " + outcome.status + ". " + formatRunCost(settings.model, outcome.usage);
     agentRun.disabled = send.disabled = summarize.disabled = false;
     question.focus();
   }
@@ -323,14 +325,14 @@ async function main(): Promise<void> {
     couponsStop.focus();
     const onStop = (): void => control?.stop();
     couponsStop.addEventListener("click", onStop);
-    let tokens = 0;
+    let used = { inputTokens: 0, outputTokens: 0 };
     try {
       const snap = await page.snapshot();
       const merchant = new URL(snap.url).hostname;
       const ac = new AbortController();
       couponsStop.addEventListener("click", () => ac.abort(), { once: true });
       const sug = await suggestCodes(provider, settings.model, merchant, ac.signal);
-      tokens = sug.inputTokens + sug.outputTokens;
+      used = { inputTokens: sug.inputTokens, outputTokens: sug.outputTokens };
       couponsSummary.textContent = "Trying " + sug.codes.length + " codes…";
       const outcome = await runCouponSearch({
         page,
@@ -350,7 +352,7 @@ async function main(): Promise<void> {
         outcome.status === "done" && outcome.baseline !== null
           ? "Started at $" + outcome.baseline.toFixed(2) + ". " + outcome.message
           : outcome.message;
-      status.textContent = "Coupons " + outcome.status + ". Tokens: " + tokens + ".";
+      status.textContent = "Coupons " + outcome.status + ". " + formatRunCost(settings.model, used);
     } catch {
       couponsSummary.textContent = "Could not finish the coupon search. Nothing was ordered.";
       status.textContent = "Coupons error.";
