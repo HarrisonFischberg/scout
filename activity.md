@@ -870,3 +870,12 @@ Result: 0 of 7 flow screenshots exist (grep exit 1); only the T002b enabled-stat
 ### T018 goal-condition conflict (recorded at stop)
 
 The `/goal` condition asks for the task's own verification command to be run with output quoted. T018's command is `manual + xcrun simctl io booted screenshot`. `PROMPT.md` step 7 forbids `xcrun` and the Simulator in the loop, and the sandbox blocks both (blockers 9, 10). Hard project rules outrank the goal text, so the command was not run and no output is invented. T018 is manual-only; the condition cannot be met in this session. Stopping and leaving it `blocked` (blocker 18). Needed: supervised session runs F01-F07 and saves screenshots to `ralph/evidence/`.
+
+## 2026-10-15 — supervised review of Ralph run 3 (Claude, interactive session)
+
+- Run 3 (Sonnet 5.5, $5 cap each): 6 iterations, then the script printed `<promise>COMPLETE</promise>` because no row was `pending`. That is NOT Gate A: T006, T017, and T018 still need supervised or owner work.
+- Outside the sandbox: `npm run build` ok, typecheck ok, lint ok, `npm test` → "Tests 107 passed (107)", `npx playwright test` → "28 passed".
+- Xcode: macOS + iOS Simulator BUILD SUCCEEDED; AssistAntTests → "Executed 8 tests, with 0 failures", TEST SUCCEEDED.
+- T013 meets its acceptance test, but codes come from model suggestions, not a live web search (launch-blocker 15). A model-invented code shown as "found" would be an unsupported claim, so T019 is added to wire provider web search and require a source URL for every code.
+- T016 drafts exist; S09 in-app screen not built → T020 added.
+- Remaining supervised: T006 (light/dark screenshots, Accessibility Inspector, shared Keychain group needs Apple team ID), T017 (web-quality-audit on popup, Accessibility Inspector), T018 (manual F01–F07 in Safari + Simulator).
