@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "B496321F9C867596A21FB981"
-               BuildableName = "Safari Scout (iOS).app"
+               BuildableName = "Safari Scout.app"
                BlueprintName = "Safari Scout (iOS)"
                ReferencedContainer = "container:SafariScout.xcodeproj">
             </BuildableReference>
@@ -31,7 +31,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B496321F9C867596A21FB981"
-            BuildableName = "Safari Scout (iOS).app"
+            BuildableName = "Safari Scout.app"
             BlueprintName = "Safari Scout (iOS)"
             ReferencedContainer = "container:SafariScout.xcodeproj">
          </BuildableReference>
@@ -64,7 +64,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B496321F9C867596A21FB981"
-            BuildableName = "Safari Scout (iOS).app"
+            BuildableName = "Safari Scout.app"
             BlueprintName = "Safari Scout (iOS)"
             ReferencedContainer = "container:SafariScout.xcodeproj">
          </BuildableReference>
@@ -81,7 +81,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B496321F9C867596A21FB981"
-            BuildableName = "Safari Scout (iOS).app"
+            BuildableName = "Safari Scout.app"
             BlueprintName = "Safari Scout (iOS)"
             ReferencedContainer = "container:SafariScout.xcodeproj">
          </BuildableReference>
