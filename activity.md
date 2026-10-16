@@ -339,3 +339,9 @@ built extension to /Users/harrison/projects/assist-ant/apple/Extension/Resources
 - Stop-hook feedback: condition not satisfied. Agreed.
 - Considered setting T003 to `blocked` so the condition would read as met. Rejected: T003's real state is "waiting on T002", which is already recorded in launch-blockers 9 and 10. Marking it `blocked` would only satisfy the hook, not reflect the work. No `prd.md` row changed.
 - Turns used: 3 of 5. Stopped: the only unblock is owner action on T002 (run the Xcode builds and the Safari extension load outside the sandbox, then set T002 to `done`). Turns 4–5 would repeat the same check.
+
+## 2026-10-15 — /goal run (turn 4 of 5): goal NOT met, final stop
+
+- Stop-hook feedback: condition not met. Agreed. No `pending` task is dependency-ready; T002 is `blocked` (launch-blockers 9, 10). No `prd.md` row changed.
+- No new command run. Nothing has changed in the sandbox since turn 2, so another build or scan would only repeat the same result.
+- Final stop: goal NOT met after 4 turns. Turn 5 not used. Owner action on T002 is the only unblock (run the Xcode builds and the Safari extension load outside the sandbox, then set T002 to `done`).
