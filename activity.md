@@ -584,3 +584,24 @@ $ npm run e2e -- chat -> 5 failed, 0 passed: WebKit launch failed in sandbox (XP
 
 [exited with code 0]
 ```
+
+## 2026-10-15 - T008 page snapshot builder: done
+
+- Task: T008 (lowest-numbered pending; T003 `needs supervised check` counts as satisfied). Status `in progress`, then `done`.
+- Files: `src/snapshot/snapshot.ts` (new), `tests/unit/snapshot.test.ts` (new), `prd.md`.
+- Design: `buildSnapshot` walks a minimal `SnapNode` tree (no jsdom in the repo, so unit tests use plain trees). `fromElement` adapts a live DOM element for the content script; it is typechecked but not unit-tested. Refs are sequential `e1..eN` in document order, so an unchanged page gives the same refs; `onRef` lets T009 map ref to node. Hidden, script, style, `aria-hidden` and `type=hidden` nodes are skipped. Password, card, CVV, OTP and `cc-*` autocomplete fields get `value: "[REDACTED]"` and contribute no text. Text budget 20000 chars, 200 elements, `truncated` flag set.
+- Limits: redaction is name/autocomplete/type heuristics; a card field with an opaque name and no autocomplete is not caught. Computed-style hiding is only in the DOM adapter. Neither is exercised in a real browser (e2e blocked, launch-blockers 12). No new dependency, no new data flow.
+- Results, real output:
+
+```
+$ npm test -- snapshot
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+$ npm test
+ Test Files  5 passed (5)
+      Tests  40 passed (40)
+$ npx tsc -p tsconfig.json -> TypeScript: No errors found
+$ npx tsc -p tsconfig.lint.json -> TypeScript: No errors found
+```
+
+- Next task: T009 (action executor; e2e verification is blocked in sandbox, will be `needs supervised check`).
