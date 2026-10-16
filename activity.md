@@ -821,3 +821,27 @@ docs/legal/terms.md:11
 - Limits, honest: drafts are not legal review (blocker 8 open). In-app S09 legal screen is not built; drafts are docs only. Policy statements about runtime behavior (redaction, retention, Delete all data) rest on T008/T015 unit tests; the e2e for those never ran in a browser (blocker 12). Safeguard rows 1-4 left for T017.
 - Supervised check: owner/counsel reviews `docs/legal/` and supplies UNKNOWN facts.
 - Next task: T017 (safeguards sweep; depends on T006-T016, several still `needs supervised check`, which counts as satisfied).
+
+## 2026-10-15 - T017 safeguards sweep: needs supervised check
+
+- Task: T017 (lowest-numbered pending; T006-T016 all `done` or `needs supervised check`). Status `in progress`, then `needs supervised check`.
+- Files: `docs/compliance-checklist.md` (all 20 rows filled), `prd.md`, `docs/launch-blockers.md` (blocker 17 added), `activity.md`.
+- Result: PASS 5 (rows 4, 7, 8, 10, 11), NOT APPLICABLE 2 (5, 18), BLOCKED 2 (16, 17), NEEDS REVIEW 11. Every row has an evidence path and a named check.
+- Checks run, real output:
+
+```
+$ npm test
+ Test Files  12 passed (12)
+      Tests  107 passed (107)
+$ npm audit
+found 0 vulnerabilities   (run also printed "failed to copy trust settings of system certificate" warnings)
+$ grep -rniE "analytics|telemetry|XMLHttpRequest|sendBeacon|document.cookie|localStorage" src
+(no matches)
+$ grep -rniE "testimonial|5 star|rated|unsubscribe|newsletter|mailto" src docs/legal
+(no matches)
+replica/contrast.txt: 34 pairs, 0 failing AA
+```
+
+- Honest limits: the a11y audits named in T017 were not run. web-quality-audit needs a browser (WebKit blocked, blocker 12); Accessibility Inspector needs the supervised GUI session (blocker 14). Rows 13, 14, 15 stay NEEDS REVIEW. Row 11 PASS rests on absence of such content; listing and landing page do not exist yet. Row 19 lacks a full-tree license scan.
+- Open owner decisions: rows 3, 16, 17 (blockers 1, 5); row 6 (distinct first-run acknowledgement?); row 12 (claims rows at Phase 6).
+- Next task: T018 (manual Safari/Simulator verification; depends on T017). Supervised only: sandbox cannot launch Safari or the Simulator (blockers 9, 10).

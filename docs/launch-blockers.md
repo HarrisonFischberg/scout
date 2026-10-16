@@ -35,3 +35,5 @@ Never infer these from a reference app. Never invent them.
 - Retention or deletion exceptions: UNKNOWN
 
 16. OpenAI model price missing. `src/cost.ts` has no price for `gpt-5`; the UI shows tokens and "Cost estimate unavailable". Owner or supervised session: read https://developers.openai.com/api/docs/pricing, add the row with source and date to `PRICES`, and update `docs/claims-evidence.md`. Also re-check the Anthropic row before release; prices change.
+
+17. T017 a11y audits not run: web-quality-audit (needs a browser, blocker 12) and Accessibility Inspector on SwiftUI (supervised GUI session, blocker 14). Safeguard rows 13, 14, 15 stay NEEDS REVIEW. Rows 3, 16, 17 wait on owner facts (blockers 1, 5). Owner or supervised session: run both audits and update `docs/compliance-checklist.md`.
