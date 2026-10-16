@@ -126,3 +126,57 @@ describe.each(["anthropic", "openai"] as const)("%s error mapping", (id) => {
     expect(err.code).toBe("stream_error");
   });
 });
+
+describe("web search (T019)", () => {
+  const search = { model: "m", messages: [{ role: "user" as const, content: "q" }], maxTokens: 64, webSearch: true };
+
+  it("anthropic: sends the server search tool and emits result URLs as sources", async () => {
+    let body = "";
+    const f: FetchLike = async (_u, init) => {
+      body = String(init.body);
+      return sse([
+        { type: "message_start", message: { usage: { input_tokens: 5, output_tokens: 1 } } },
+        {
+          type: "content_block_start",
+          index: 0,
+          content_block: {
+            type: "web_search_tool_result",
+            content: [{ type: "web_search_result", url: "https://deals.test/a", title: "Deals" }],
+          },
+        },
+        { type: "content_block_stop", index: 0 },
+        { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 3 } },
+      ]);
+    };
+    const ev = await collect(createProvider("anthropic", { apiKey: "k", fetch: f }).stream(search));
+    expect(JSON.parse(body).tools).toEqual([{ type: "web_search_20250305", name: "web_search", max_uses: 3 }]);
+    expect(ev).toContainEqual({ type: "source", url: "https://deals.test/a", title: "Deals" });
+  });
+
+  it("openai: sends web_search and emits url citations as sources", async () => {
+    let body = "";
+    const f: FetchLike = async (_u, init) => {
+      body = String(init.body);
+      return sse([
+        {
+          type: "response.output_text.annotation.added",
+          annotation: { type: "url_citation", url: "https://deals.test/b", title: "More" },
+        },
+        { type: "response.completed", response: { usage: { input_tokens: 5, output_tokens: 3 } } },
+      ]);
+    };
+    const ev = await collect(createProvider("openai", { apiKey: "k", fetch: f }).stream(search));
+    expect(JSON.parse(body).tools).toEqual([{ type: "web_search" }]);
+    expect(ev).toContainEqual({ type: "source", url: "https://deals.test/b", title: "More" });
+  });
+
+  it("omits tools when search is off and no tools given", async () => {
+    let body = "";
+    const f: FetchLike = async (_u, init) => {
+      body = String(init.body);
+      return sse([{ type: "message_stop" }]);
+    };
+    await collect(createProvider("anthropic", { apiKey: "k", fetch: f }).stream({ ...search, webSearch: false }));
+    expect(JSON.parse(body).tools).toBeUndefined();
+  });
+});

@@ -15,17 +15,19 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
   return {
     id: "anthropic",
     async *stream(req: ChatRequest): AsyncGenerator<StreamEvent, void, void> {
+      const tools: Array<Record<string, unknown>> = (req.tools ?? []).map((t) => ({
+        name: t.name,
+        description: t.description,
+        input_schema: t.parameters,
+      }));
+      if (req.webSearch) tools.push({ type: "web_search_20250305", name: "web_search", max_uses: 3 });
       const body = {
         model: req.model,
         max_tokens: req.maxTokens,
         stream: true,
         system: req.system,
         messages: req.messages,
-        tools: req.tools?.map((t) => ({
-          name: t.name,
-          description: t.description,
-          input_schema: t.parameters,
-        })),
+        tools: tools.length ? tools : undefined,
       };
       let res: Response;
       try {
@@ -57,6 +59,13 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
             break;
           case "content_block_start": {
             const cb = ev.content_block ?? {};
+            if (cb.type === "web_search_tool_result" && Array.isArray(cb.content)) {
+              for (const r of cb.content) {
+                if (r?.type === "web_search_result" && typeof r.url === "string") {
+                  yield { type: "source", url: r.url, ...(typeof r.title === "string" ? { title: r.title } : {}) };
+                }
+              }
+            }
             blocks.set(ev.index, {
               kind: cb.type === "tool_use" ? "tool_use" : "text",
               id: cb.id,
@@ -68,7 +77,9 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
           case "content_block_delta": {
             const d = ev.delta ?? {};
             if (d.type === "text_delta") yield { type: "text", delta: d.text };
-            else if (d.type === "input_json_delta") {
+            else if (d.type === "citations_delta" && typeof d.citation?.url === "string") {
+              yield { type: "source", url: d.citation.url };
+            } else if (d.type === "input_json_delta") {
               const b = blocks.get(ev.index);
               if (b) b.json += d.partial_json ?? "";
             }

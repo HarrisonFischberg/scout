@@ -3,7 +3,7 @@ import { AgentControl } from "../../src/agent/loop";
 import type { Action, ActionResult } from "../../src/actions/executor";
 import { suggestCodes } from "../../src/coupons/codes";
 import { parseCodes, parseTotal, runCouponSearch, type CouponPage } from "../../src/coupons/finder";
-import type { ProviderClient } from "../../src/providers";
+import type { ChatRequest, ProviderClient, StreamEvent } from "../../src/providers";
 import type { Snapshot } from "../../src/snapshot/snapshot";
 
 const PCT: Record<string, number> = { SAVE10: 10, SAVE20: 20 };
@@ -64,7 +64,8 @@ describe("parseCodes", () => {
 });
 
 describe("runCouponSearch", () => {
-  const five = ["WELCOME5", "SAVE10", "FREESHIP", "SAVE20", "BOGUS99"];
+  const names = ["WELCOME5", "SAVE10", "FREESHIP", "SAVE20", "BOGUS99"];
+  const five = names.map((code) => ({ code, sourceUrl: "https://deals.test/" + code.toLowerCase() }));
 
   it("tries each code once, keeps the larger saving, never clicks order", async () => {
     const p = shop();
@@ -72,7 +73,7 @@ describe("runCouponSearch", () => {
     const out = await runCouponSearch({ page: p, codes: five, settleMs: 0, onAttempt: (a) => seen.push(a.code) });
     expect(out.status).toBe("done");
     expect(out.baseline).toBe(100);
-    expect(seen).toEqual(five);
+    expect(seen).toEqual(names);
     expect(out.attempts.map((a) => a.total)).toEqual([100, 90, 100, 80, 100]);
     expect(out.best?.code).toBe("SAVE20");
     expect(out.applied).toBe(true);
@@ -84,7 +85,7 @@ describe("runCouponSearch", () => {
   });
 
   it("reports no saving when no code works", async () => {
-    const out = await runCouponSearch({ page: shop(), codes: ["NOPE1", "NOPE2"], settleMs: 0 });
+    const out = await runCouponSearch({ page: shop(), codes: ["NOPE1", "NOPE2"].map((code) => ({ code, sourceUrl: "https://deals.test/x" })), settleMs: 0 });
     expect(out.best).toBeUndefined();
     expect(out.message).toBe("No code lowered the total.");
     expect(out.attempts.every((a) => a.saving === 0)).toBe(true);
@@ -127,16 +128,64 @@ describe("runCouponSearch", () => {
   });
 });
 
+describe("sourced codes", () => {
+  it("records a source URL on every attempt", async () => {
+    const out = await runCouponSearch({ page: shop(), codes: [{ code: "SAVE10", sourceUrl: "https://deals.test/a" }], settleMs: 0 });
+    expect(out.attempts.every((a) => a.sourceUrl === "https://deals.test/a")).toBe(true);
+  });
+  it("never tries a candidate without a source URL", async () => {
+    const p = shop();
+    const out = await runCouponSearch({ page: p, codes: [{ code: "SAVE10", sourceUrl: "" }], settleMs: 0 });
+    expect(out.status).toBe("no_codes");
+    expect(out.message).toContain("No sourced codes");
+    expect(p.acts.some((a) => a.type === "type")).toBe(false);
+  });
+});
+
 describe("suggestCodes", () => {
-  it("parses model text and sums usage", async () => {
-    const provider: ProviderClient = {
+  function fake(events: StreamEvent[], seen: { req?: ChatRequest } = {}): ProviderClient {
+    return {
       id: "anthropic",
-      async *stream() {
-        yield { type: "text", delta: "SAVE10\nSAVE20\n" };
-        yield { type: "usage", usage: { inputTokens: 12, outputTokens: 4 } };
+      async *stream(req) {
+        seen.req = req;
+        yield* events;
       },
     };
+  }
+
+  it("keeps only codes whose URL the search returned, and sums usage", async () => {
+    const seen: { req?: ChatRequest } = {};
+    const provider = fake(
+      [
+        { type: "source", url: "https://deals.test/page" },
+        { type: "text", delta: "SAVE10 | https://deals.test/page\n" },
+        { type: "text", delta: "MADEUP5 | https://invented.test/x\nSAVE20 | https://deals.test/page/\n" },
+        { type: "usage", usage: { inputTokens: 12, outputTokens: 4 } },
+      ],
+      seen,
+    );
     const r = await suggestCodes(provider, "m", "shop.test");
-    expect(r).toEqual({ codes: ["SAVE10", "SAVE20"], inputTokens: 12, outputTokens: 4 });
+    expect(r.codes).toEqual([
+      { code: "SAVE10", sourceUrl: "https://deals.test/page" },
+      { code: "SAVE20", sourceUrl: "https://deals.test/page/" },
+    ]);
+    expect(r.unsourced).toBe(1);
+    expect(r.inputTokens).toBe(12);
+    expect(seen.req?.webSearch).toBe(true);
+  });
+
+  it("says nothing was found instead of guessing when search returns no sources", async () => {
+    const r = await suggestCodes(fake([{ type: "text", delta: "SAVE10 | https://deals.test/p" }]), "m", "shop.test");
+    expect(r.codes).toEqual([]);
+    expect(r.unsourced).toBe(1);
+  });
+
+  it("with search disabled makes no model call and returns no codes", async () => {
+    const seen: { req?: ChatRequest } = {};
+    const r = await suggestCodes(fake([{ type: "text", delta: "SAVE10 | https://deals.test/p" }], seen), "m", "shop.test", undefined, {
+      webSearch: false,
+    });
+    expect(r).toMatchObject({ codes: [], searched: false });
+    expect(seen.req).toBeUndefined();
   });
 });
