@@ -119,7 +119,7 @@ final class ProviderSetupTests: XCTestCase {
         XCTAssertNil(vm.consentRequest)
         XCTAssertEqual(tester.calls, [])
         XCTAssertFalse(consent.has(.anthropic))
-        XCTAssertEqual(vm.statusMessage, "Nothing was sent. Safari Scout tests the key with Anthropic only after you allow sharing.")
+        XCTAssertEqual(vm.statusMessage, "Nothing was sent. Scout for Safari tests the key with Anthropic only after you allow sharing.")
     }
 
     func testAllowStoresConsentThenTests() async {

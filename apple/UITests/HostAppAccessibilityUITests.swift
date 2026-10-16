@@ -13,7 +13,7 @@ final class HostAppAccessibilityUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["-UITestColorScheme", scheme.rawValue, "-UITestResetConsent", "YES"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["Set up Safari Scout"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Set up Scout for Safari"].waitForExistence(timeout: 10))
         // Prove the scheme took effect: sample the top-left background pixel.
         let png = app.screenshot().image
         let dark = Self.isDarkCorner(png)
@@ -80,8 +80,8 @@ final class HostAppAccessibilityUITests: XCTestCase {
         attachScreenshot("consent-sheet-\(scheme.rawValue)")
         try audit(app, "consent-\(scheme.rawValue)")
         app.buttons["Not now"].tap()
-        XCTAssertTrue(app.staticTexts["Set up Safari Scout"].waitForExistence(timeout: 5))
-        let status = app.staticTexts["Key status: Nothing was sent. Safari Scout tests the key with Anthropic only after you allow sharing."]
+        XCTAssertTrue(app.staticTexts["Set up Scout for Safari"].waitForExistence(timeout: 5))
+        let status = app.staticTexts["Key status: Nothing was sent. Scout for Safari tests the key with Anthropic only after you allow sharing."]
         XCTAssertTrue(status.waitForExistence(timeout: 5))
     }
 
@@ -97,6 +97,6 @@ final class HostAppAccessibilityUITests: XCTestCase {
         attachScreenshot("T006-ios-legal-sheet")
         try audit(app, "legal-sheet")
         app.buttons["Done"].tap()
-        XCTAssertTrue(app.staticTexts["Set up Safari Scout"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Set up Scout for Safari"].waitForExistence(timeout: 5))
     }
 }

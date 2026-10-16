@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Safari Scout",
-  "short_name": "Safari Scout",
+  "name": "Scout for Safari",
+  "short_name": "Scout for Safari",
   "version": "0.1.0",
-  "description": "Safari Scout: Your AI assistant in the world wide Safari",
+  "description": "Scout for Safari: Your AI Scout for the Safari Browser",
   "permissions": [
     "activeTab",
     "tabs",
@@ -23,7 +23,7 @@
     "persistent": false
   },
   "action": {
-    "default_title": "Open Safari Scout",
+    "default_title": "Open Scout for Safari",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/toolbar-16.png",
@@ -40,7 +40,7 @@
         "default": "Alt+Shift+S",
         "mac": "MacCtrl+Shift+S"
       },
-      "description": "Toggle Safari Scout"
+      "description": "Toggle Scout for Safari"
     }
   },
   "icons": {

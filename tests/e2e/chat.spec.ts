@@ -129,6 +129,6 @@ test("a provider fallback is announced in the conversation", async ({ page }) =>
   await page.goto("/popup.html");
   await expect(page.getByLabel("Ask about this page")).toBeVisible();
   await expect(
-    page.getByRole("log").getByText("No OpenAI key is saved, so Safari Scout is using your Anthropic key."),
+    page.getByRole("log").getByText("No OpenAI key is saved, so Scout for Safari is using your Anthropic key."),
   ).toBeVisible();
 });

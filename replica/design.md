@@ -1,11 +1,11 @@
-# Safari Scout design system (T001)
+# Scout for Safari design system (T001)
 
 Tokens: `replica/design/tokens.json`. Contrast evidence: `replica/contrast.txt`
 (44 pairs, 0 failing AA, run with the Replica `contrast.py` checker).
 
 ## Direction
 
-Safari Scout is a Safari toolbar popup (web extension HTML) and a SwiftUI host
+Scout for Safari is a Safari toolbar popup (web extension HTML) and a SwiftUI host
 app (macOS and iOS). The popup is a chat surface, so the design is quiet and
 text-first: neutral surfaces, one accent for actions and focus, and clear
 separation between user messages, assistant answers, and agent steps.

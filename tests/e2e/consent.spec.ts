@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// App Store Review Guideline 5.1.2(i): Safari Scout asks once per provider
+// App Store Review Guideline 5.1.2(i): Scout for Safari asks once per provider
 // before it sends anything to Anthropic or OpenAI. Loads the built popup (run
 // `npm run build` first) with a stubbed `browser` namespace; every request to
 // a provider API is recorded by the network layer. Synthetic keys and pages,
@@ -134,7 +134,7 @@ test("Not now sends nothing, keeps the question, and returns focus", async ({ pa
   await expect(dialog).toBeHidden();
   await expect(field).toBeFocused();
   await expect(field).toHaveValue("How much is the widget?");
-  await expect(page.locator("#status")).toHaveText("Nothing was sent. Safari Scout asks before it shares anything with Anthropic.");
+  await expect(page.locator("#status")).toHaveText("Nothing was sent. Scout for Safari asks before it shares anything with Anthropic.");
   expect(calls.anthropic).toHaveLength(0);
   expect(await reads(page)).toBe(0);
   expect(await stored(page)).toBeUndefined();
@@ -245,7 +245,7 @@ test("withdrawing in Settings blocks every request until the user allows again",
   await expect(page.locator("#model-help")).not.toHaveText("Loading models…");
   const n = calls.anthropic.length;
   await page.getByRole("button", { name: "Withdraw permission to share with Anthropic" }).click();
-  await expect(page.locator("#consent-status")).toHaveText("Withdrawn. Safari Scout sends nothing to Anthropic until you allow it again.");
+  await expect(page.locator("#consent-status")).toHaveText("Withdrawn. Scout for Safari sends nothing to Anthropic until you allow it again.");
   await expect(list).toContainText("Anthropic: not allowed");
   await expect(page.locator("#sharing-title")).toBeFocused();
   await expect.poll(() => stored(page)).toEqual({});
@@ -276,7 +276,7 @@ test("testing a new key asks first; Not now neither tests nor saves it", async (
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Not now" }).click();
   await expect(page.locator("#key-status")).toHaveText(
-    "The key was not tested or saved. Safari Scout tests it with Anthropic only after you allow sharing.",
+    "The key was not tested or saved. Scout for Safari tests it with Anthropic only after you allow sharing.",
   );
   // Focus is back in the key form (the field or the button that opened the dialog).
   expect(await page.evaluate(() => !!document.activeElement?.closest("#key-form"))).toBe(true);

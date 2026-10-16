@@ -64,7 +64,7 @@ test("an error offers Copy diagnostics and the report is the Actual behavior", a
   await expect(page.locator("#status")).toHaveText(/Diagnostics copied/);
 
   const report = await copied(page);
-  expect(report).toContain("## Safari Scout diagnostics — Actual behavior");
+  expect(report).toContain("## Scout for Safari diagnostics — Actual behavior");
   expect(report).toMatch(/- Run: ask \(#\d+\)/);
   expect(report).toContain("- Provider: anthropic / claude-sonnet-5-5");
   expect(report).toContain("- Page: shop.test");

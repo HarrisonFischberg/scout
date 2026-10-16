@@ -1,6 +1,6 @@
-# Safari Scout — final status report
+# Scout for Safari — final status report
 
-Date: 2026-10-15. Repository: https://github.com/HarrisonFischberg/safari-scout (private; renamed to Safari Scout on 2026-10-16).
+Date: 2026-10-15. Repository: https://github.com/HarrisonFischberg/safari-scout (private; renamed from assist-ant on 2026-10-16; product renamed to Scout for Safari the same day).
 
 This is an engineering launch-readiness report. It is not legal advice and
 does not state that the app is legally compliant. PASS below means the stated
@@ -8,8 +8,8 @@ engineering checks passed, not legal approval.
 
 ## 1. What was built
 
-Safari Scout is a Safari Web Extension for macOS and iOS with a SwiftUI host app.
-The user brings their own Anthropic or OpenAI API key. There is no Safari Scout
+Scout for Safari is a Safari Web Extension for macOS and iOS with a SwiftUI host app.
+The user brings their own Anthropic or OpenAI API key. There is no Scout for Safari
 server and no analytics.
 
 - Host app: setup screen, provider + key test and save (Keychain, shared with

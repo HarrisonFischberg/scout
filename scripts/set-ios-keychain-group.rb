@@ -5,7 +5,7 @@
 require 'xcodeproj'
 path = File.expand_path('../apple/SafariScout.xcodeproj', __dir__)
 project = Xcodeproj::Project.open(path)
-['Safari Scout (iOS)', 'Safari Scout Extension (iOS)'].each do |name|
+['Scout for Safari (iOS)', 'Scout for Safari Extension (iOS)'].each do |name|
   t = project.targets.find { |x| x.name == name }
   t.build_configurations.each do |c|
     c.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'iOS-Shared.entitlements'

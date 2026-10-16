@@ -106,7 +106,7 @@ test("Control Browser mode shows a bold chip and switches the send action", asyn
   await expect(page.locator("#mode-chip span")).toHaveText("Control Browser");
   expect(await page.locator("#mode-chip").evaluate((n) => getComputedStyle(n).fontWeight)).toBe("700");
   await expect(page.getByRole("button", { name: "Start task" })).toBeVisible();
-  await expect(page.getByLabel("Ask about this page")).toHaveAttribute("placeholder", "Tell Safari Scout what to do on this page…");
+  await expect(page.getByLabel("Ask about this page")).toHaveAttribute("placeholder", "Tell Scout for Safari what to do on this page…");
   await page.getByRole("button", { name: "Back to Chat mode" }).click();
   await expect(page.locator("#mode-chip")).toBeHidden();
   await expect(page.getByRole("radio", { name: "Chat" })).toBeChecked();

@@ -31,10 +31,10 @@ if [ -z "$DEVICE" ]; then
   exit 1
 fi
 echo "device: $DEVICE"
-xcodebuild -project apple/SafariScout.xcodeproj -scheme "Safari Scout (iOS)" \
+xcodebuild -project apple/SafariScout.xcodeproj -scheme "Scout for Safari (iOS)" \
   -destination "id=$DEVICE" -derivedDataPath build/DD -allowProvisioningUpdates build 2>&1 \
   | grep -E ' error:|BUILD'
-APP="build/DD/Build/Products/Debug-iphoneos/Safari Scout.app"
-scripts/check-extension-bundle.sh "$APP/PlugIns/Safari Scout Extension.appex"
+APP="build/DD/Build/Products/Debug-iphoneos/Scout for Safari.app"
+scripts/check-extension-bundle.sh "$APP/PlugIns/Scout for Safari Extension.appex"
 xcrun devicectl device install app --device "$DEVICE" "$APP" 2>&1 | grep -E 'App installed|bundleID|rror'
 echo "Installed. Open Safari to use the new version."

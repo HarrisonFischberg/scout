@@ -6,8 +6,8 @@ require 'xcodeproj'
 TEAM = 'KTV2G3Z883'
 PREFIX = 'com.harrisonfischberg'
 ids = {
-  'Safari Scout (iOS)' => "#{PREFIX}.SafariScout",
-  'Safari Scout Extension (iOS)' => "#{PREFIX}.SafariScout.Extension",
+  'Scout for Safari (iOS)' => "#{PREFIX}.SafariScout",
+  'Scout for Safari Extension (iOS)' => "#{PREFIX}.SafariScout.Extension",
   'SafariScoutUITests' => "#{PREFIX}.SafariScoutUITests",
 }
 path = File.expand_path('../apple/SafariScout.xcodeproj', __dir__)
