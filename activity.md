@@ -317,3 +317,19 @@ Error opening log file (/Users/harrison/Library/Logs/CoreSimulator/CoreSimulator
 - Not re-run: `xcodebuild` and `simctl`. The 2026-10-15 entries above already quote the same EPERM, simdiskimaged and no-Simulator-runtime output. Re-running cannot change the sandbox result.
 - No `prd.md` status row changed. Blocking a pending row would misstate its cause (T002). No task files changed. `git status` clean before this entry.
 - Turns used: 1 of 5. Stopped: the only unblock is owner action on T002 (run the Xcode builds and the Safari extension load outside the session sandbox, then set T002 to `done`). Further turns would repeat this scan.
+
+## 2026-10-15 — /goal run (turn 2 of 5): goal NOT met, recorded
+
+- Stop-hook feedback: no task finished. Agreed. No `pending` task is dependency-ready: T003–T018 all depend on T002, which is `blocked`.
+- Ran the non-Xcode part of T002's verification (`npm run build`). Real output:
+
+```
+> assist-ant@0.1.0 build
+> node scripts/build.mjs
+
+built extension to /Users/harrison/projects/assist-ant/apple/Extension/Resources
+```
+
+- This shows the esbuild pipeline works in the sandbox. It does not finish T002: its acceptance needs both Xcode targets built and the extension loaded in Safari, and both are blocked (launch-blockers 9, 10). Marking T002 `done` on the npm result alone would misstate its status. No `prd.md` row changed.
+- `git status` clean after the build (build output is untracked or ignored).
+- Turns used: 2 of 5. Stopped: the goal cannot be met without owner action on T002. Turns 3–5 would repeat the same scan.
