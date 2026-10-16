@@ -853,3 +853,16 @@ replica/contrast.txt: 34 pairs, 0 failing AA
 - Nothing implementable: acceptance is one screenshot per flow F01-F07 from Safari macOS and the iOS Simulator. Sandbox cannot launch Safari or Simulator (blockers 9, 10) and PROMPT.md forbids `xcrun`/`xcodebuild` in the loop. No command run; no output to quote. No screenshots fabricated.
 - Supervised check: outside sandbox, run F01-F07 in both targets, `xcrun simctl io booted screenshot ralph/evidence/<flow>.png`, log failures as bugs.
 - Next task: none pending. All remaining work is supervised/owner (blockers 1, 2, 5, 8, 9, 10, 12, 14, 15, 16, 17, 18).
+
+### T018 addendum: verification evidence check
+
+`xcrun simctl io booted screenshot` is forbidden in the loop (PROMPT.md step 7), so the supervised command was not run. The sandbox-runnable check of the acceptance criterion (one screenshot per flow F01-F07 in `ralph/evidence/`) was run, real output:
+
+```
+$ ls ralph/evidence; echo ---; ls ralph/evidence | grep -ciE "F0[1-7]"
+T002b-ios-extension-enabled.png  230.4K
+---
+0
+```
+
+Result: 0 of 7 flow screenshots exist (grep exit 1); only the T002b enabled-state screenshot is present. Acceptance not met, status stays `blocked`.
