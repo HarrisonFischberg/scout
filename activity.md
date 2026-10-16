@@ -1166,3 +1166,11 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Owner report: counsel reviewed `docs/legal/consent-review.md` and asked for no changes. Recorded as the owner's report; the scope is the consent text and flow only. The privacy policy (10 UNKNOWN) and terms (11 UNKNOWN) were not part of that review and stay drafts.
 - Owner plan: get the legal pages ready now and publish once the business is registered (EIN and other details). New `docs/legal/publish-checklist.md` lists every fact to supply (with line numbers), the sections counsel still writes, and the engineering steps to remove DRAFT labels, publish, and set the App Store privacy URL. The EIN is not needed on any public page.
 - Updated: `docs/legal/consent-review.md` status, compliance row 6 open items, launch-blocker 8. No code change; nothing published.
+
+## 2026-10-16 — Consent build installed on the owner's Mac and iPhone
+
+- Owner request: put the consent work live in Safari on iOS and on Mac. Done as local installs on the owner's own devices (debug builds); not an App Store or TestFlight release (listing and legal pages are not ready, `docs/legal/publish-checklist.md`).
+- Mac (Terminal panel): `scripts/build-mac.sh` built `1a604f5`, signed Apple Development (team KTV2G3Z883), bundle check ok, registered `com.example.SafariScout.Extension` 0.1.0 with Safari (pluginkit). Registration points at this worktree's `build/DD`; re-run `scripts/build-mac.sh` from the main checkout after merging, or Safari loses the extension if this worktree is removed.
+- iPhone "Hphone" (iPhone 17 Pro, `00008150-001A79E91140401C`): `xcodebuild -scheme "Safari Scout (iOS)" -destination 'id=…'` `BUILD SUCCEEDED`, `xcrun devicectl device install app` installed `com.harrisonfischberg.SafariScout`.
+- Checked in both built bundles: `popup.html` has the consent dialog; `popup.js` has the rest-of-world OpenAI link and the API data terms links; the iOS app's code has the consent sheet ("handles API data").
+- Not verified: opening Safari on either device and seeing the dialog. Owner to check: the first chat on each device should show "Share with Anthropic?" once, even with a key already saved.
