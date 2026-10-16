@@ -92,7 +92,7 @@ test("no key: Add API key opens Settings at the key field; a bad key is explaine
 
   await page.getByRole("button", { name: "Back to chat" }).click();
   await expect(page.locator("#status")).toContainText("Ready. Using anthropic");
-  await expect(page.getByRole("heading", { name: "How can I help on this page?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "How can I help?" })).toBeVisible();
 });
 
 test("Control Browser mode shows a bold chip and switches the send action", async ({ page }) => {
@@ -123,7 +123,7 @@ test("the conversation is saved and comes back when the popup reopens; New chat 
 
   await page.getByRole("button", { name: "New chat" }).click();
   await expect(log.getByText("How much is the widget?")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "How can I help on this page?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "How can I help?" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("log").getByText("How much is the widget?")).toHaveCount(0);
 });
@@ -148,7 +148,7 @@ test("Settings and Back keep focus where the user expects", async ({ page }) => 
   await expect(page.locator("#key-status")).toHaveText("Anthropic key saved in your Keychain.");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Settings" })).toBeFocused();
-  await expect(page.getByRole("heading", { name: "How can I help on this page?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "How can I help?" })).toBeVisible();
 });
 
 test("only the selected mode is highlighted", async ({ page }) => {
