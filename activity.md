@@ -141,3 +141,20 @@ CoreSimulatorService connection became invalid.  Simulator services will no long
   attempted this run. Blocker 9 in `docs/launch-blockers.md` now notes the
   2026-10-15 19:42 re-check and points here. T002 stays `blocked`; no task was
   finished, so the goal condition still is not met. Turns used: 2 of 5.
+
+- Turn 3 of 5 (same goal run): re-ran the rest of T002's verification.
+  Real output (trimmed):
+
+```
+$ npm run build
+> node scripts/build.mjs
+built extension to /Users/harrison/projects/assist-ant/apple/Extension/Resources
+
+$ xcodebuild -project apple/AssistAnt.xcodeproj -scheme "AssistAnt (iOS)" -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO build
+[-[SimServiceContext initWithDeveloperDir:connectionType:error:]:499] WARN  : Unable to discover any Simulator runtimes.
+ERROR : Could not get list of trusted mount directories: ... Code=409 "Cannot talk to the service used to manage runtime disk images (simdiskimaged) because its launchd job is not registered or was unloaded"
+```
+
+- Result: `npm run build` passes. The iOS build cannot resolve a Simulator
+  destination (no runtimes, simdiskimaged unavailable). T002 remains `blocked`.
+  Goal condition not met: no dependency-ready task exists.
