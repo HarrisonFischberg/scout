@@ -255,3 +255,19 @@ CoreSimulatorService connection became invalid.  Simulator services will no long
 - Result: goal NOT met. Fallback record. Turns used: 3 of 5. Stopped: the only
   unblock is owner action on T002 (see the entry above). Turns 4–5 would repeat
   the same review.
+
+- Turn 4 of 5 (same goal run): re-checked the T002 iOS build. Real output (trimmed):
+
+```
+$ xcodebuild -project apple/AssistAnt.xcodeproj -scheme "AssistAnt (iOS)" -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO build
+CoreSimulatorService connection became invalid.  Simulator services will no longer be available.
+Error opening log file (/Users/harrison/Library/Logs/CoreSimulator/CoreSimulator.com.apple.dt.xcodebuild.log): Operation not permitted
+	Destinations incompatible with the "AssistAnt (iOS)" scheme:
+		{ platform:iOS Simulator, id:dvtdevice-DVTiOSDeviceSimulatorPlaceholder-iphonesimulator:placeholder, name:Any iOS Simulator Device }
+		{ platform:macOS, arch:arm64e, id:00008142-000209911E2A401C, name:My Mac, error:My Mac's macOS platform doesn't match AssistAnt.app's supported platforms. ... }
+```
+
+- Result: still blocked. No iPhone 17 Simulator destination exists (CoreSimulatorService
+  is down). The iOS scheme also reports a macOS platform mismatch, a separate
+  project-config issue to check once a Simulator runtime is available. No status
+  row changed.
