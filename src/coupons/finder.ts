@@ -30,6 +30,18 @@ export interface CouponAttempt {
 
 export type CouponStatus = "done" | "no_form" | "no_codes" | "captcha" | "stopped" | "error";
 
+// Plain-language status line for the popup; never shows the internal code.
+export function couponStatusText(status: CouponStatus): string {
+  switch (status) {
+    case "done": return "Coupon search finished.";
+    case "no_form": return "Coupon search stopped: no coupon box on this page.";
+    case "no_codes": return "Coupon search found no sourced codes.";
+    case "captcha": return "Coupon search stopped at a CAPTCHA.";
+    case "stopped": return "Coupon search stopped.";
+    case "error": return "Coupon search failed. Nothing was ordered.";
+  }
+}
+
 export interface CouponOutcome {
   status: CouponStatus;
   baseline: number | null;

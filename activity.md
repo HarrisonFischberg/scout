@@ -946,3 +946,12 @@ $ npx playwright test settings
 - Final: `xcodebuild ... -scheme AssistAntUITests ... test` → 3/3 passed, TEST SUCCEEDED. macOS build ok; unit 114/114; e2e 38/38 (incl. new axe a11y spec); lint + typecheck ok.
 - Web a11y (T017 input): new `tests/e2e/a11y.spec.ts` (axe-core WCAG 2.2 A/AA, WebKit, light + dark; Option+Tab keyboard walk). Found dark-mode legal-page link contrast failure; fixed with token colors in `scripts/build.mjs`.
 - Lighthouse not run: not installed and no Chrome DevTools MCP. axe in WebKit used instead.
+
+## 2026-10-15 — T017 supervised (Claude, interactive session)
+
+- Re-checked all 20 safeguard rows against the repo; changed rows cite real files/tests.
+- `npm audit` (all and `--omit=dev`) → "found 0 vulnerabilities". No runtime npm dependencies.
+- Row 10 was PASS without an upfront disclosure in the UI (only in the terms draft). Added: "Your provider bills your account for every request AssistAnt makes, at the provider's prices. AssistAnt shows an estimated cost after each answer or task." to popup no-key state and host app key setup.
+- Popup status line showed internal codes ("Coupons no_codes."). Added `couponStatusText()` + unit test.
+- Coupon totals: parser only reads "$" totals; other currencies get "Could not read a total", so "$" display is consistent. Recorded as a limitation.
+- Checks after changes: unit 115/115, e2e 38/38, lint + typecheck ok, iOS UI audit TEST SUCCEEDED.

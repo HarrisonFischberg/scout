@@ -7,7 +7,7 @@ import { renderMarkdown } from "./chat/markdown";
 import { runTurn } from "./chat/session";
 import { mergeTabs, resolveMentions, type TabInfo } from "./chat/tabs";
 import { suggestCodes } from "./coupons/codes";
-import { runCouponSearch } from "./coupons/finder";
+import { couponStatusText, runCouponSearch } from "./coupons/finder";
 import { formatRunCost } from "./cost";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { createProvider, type ChatMessage } from "./providers";
@@ -476,7 +476,7 @@ async function main(): Promise<void> {
         couponsSummary.textContent =
           "No sourced codes found, so none were tried. AssistAnt does not guess codes." +
           (sug.unsourced > 0 ? " " + sug.unsourced + " unverifiable suggestion(s) were dropped." : "");
-        status.textContent = "Coupons no_codes. " + formatRunCost(settings.model, used);
+        status.textContent = couponStatusText("no_codes") + " " + formatRunCost(settings.model, used);
         couponsStop.removeEventListener("click", onStop);
         control = null;
         agentRun.disabled = send.disabled = summarize.disabled = couponsRun.disabled = false;
@@ -510,10 +510,10 @@ async function main(): Promise<void> {
         outcome.status === "done" && outcome.baseline !== null
           ? "Started at $" + outcome.baseline.toFixed(2) + ". " + outcome.message
           : outcome.message;
-      status.textContent = "Coupons " + outcome.status + ". " + formatRunCost(settings.model, used);
+      status.textContent = couponStatusText(outcome.status) + " " + formatRunCost(settings.model, used);
     } catch {
       couponsSummary.textContent = "Could not finish the coupon search. Nothing was ordered.";
-      status.textContent = "Coupons error.";
+      status.textContent = couponStatusText("error");
     }
     couponsStop.removeEventListener("click", onStop);
     control = null;

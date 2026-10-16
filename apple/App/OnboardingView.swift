@@ -54,6 +54,7 @@ struct OnboardingView: View {
                 .font(.title2.bold())
                 .accessibilityAddTraits(.isHeader)
             Text("AssistAnt sends page content to the provider you choose, using your own key. The key is stored in Keychain on this device.")
+            Text("Your provider bills your account for every request AssistAnt makes, at the provider's prices. AssistAnt shows an estimated cost after each answer or task.")
             Picker("Provider", selection: $setup.provider) {
                 ForEach(Provider.allCases) { Text($0.displayName).tag($0) }
             }
