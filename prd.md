@@ -1,6 +1,6 @@
 # assist-ant — PRD
 
-Status: DRAFT, awaiting owner approval. Created 2026-10-15.
+Status: APPROVED by owner 2026-10-15 (chat). Build with mocked AI providers until test keys are supplied.
 
 ## Purpose
 
