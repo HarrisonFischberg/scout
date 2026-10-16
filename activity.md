@@ -629,5 +629,6 @@ Error: http://127.0.0.1:4173/index.html is already used, make sure that nothing 
 ```
 
 - e2e not exercised: a first `npm run e2e -- actions` exceeded the 200 s tool timeout (WebKit launch hang, launch-blockers 12) and was moved to the background, which left its fixture server (node, PID 6507) on port 4173. `kill 6507` returned `operation not permitted`, so the retry could not bind the port. I did not change `reuseExistingServer` or otherwise work around it. The spec has never run, so the DOM adapter (`src/actions/dom.ts`) is unverified.
-- Supervised check: outside the sandbox, `kill 6507` if still present, then `npm run build && npm run e2e -- actions`.
+- Update: the backgrounded run later finished: 6 failed, 0 passed, all `Playwright ... Connection invalid` WebKit launch errors (blocker 12). Port 4173 is free again; no `kill` needed.
+- Supervised check: outside the sandbox, `npm run build && npm run e2e -- actions`.
 - Next task: T010 (agent loop; depends on T005, T007, T009, all satisfied).
