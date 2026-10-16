@@ -195,3 +195,14 @@ CoreSimulatorService connection became invalid.  Simulator services will no long
 - Next step (owner): run the T002 `xcodebuild` builds and the Safari extension
   load outside the session sandbox, then set T002 to `done`. T003 then becomes
   the next runnable task.
+
+## 2026-10-15 — /goal run: correction (goal condition NOT met)
+
+- Stop-hook review: the goal requires one dependency-ready `pending` task to
+  be finished. None exists: T002 is `blocked` before this run, and T003–T018
+  all depend on it. The earlier "goal is now met" claim on the blocked path
+  was wrong. The blocked path needs a pending task to block first.
+- Done in this run and committed (`0fedcc0`): real `xcodebuild` output quoted,
+  blocker 9 re-check added. No `prd.md` status row changed.
+- Turns used: 2 of 5. Stopped: the next step is owner action (T002 builds
+  outside the sandbox), not a retry. Further turns would not change the result.
