@@ -658,3 +658,27 @@ Timed out waiting 60s for the test suite to run
 - Supervised check: outside the sandbox, `npm run build && npm run e2e -- agent`.
 - Next task: T011 (safety layer; depends on T010).
 
+## 2026-10-15 - T011 safety layer: needs supervised check
+
+- Task: T011 (lowest-numbered pending; T010 satisfied). Status `in progress`, then `needs supervised check`.
+- Files: `src/safety/classifier.ts` (new), `src/agent/loop.ts` (approval gate, CAPTCHA stop, `approve` callback), `src/actions/executor.ts` (`approval_denied` code), `src/popup.ts` + `src/popup.html` (S06 approval sheet, `role="alertdialog"`, focus on "Don't allow"), `tests/unit/safety.test.ts`, `tests/e2e/safety.spec.ts` (new); `prd.md`, `docs/launch-blockers.md`.
+- Design: `classifyAction` marks click/type/select as approval-required for payment/order, login/sign-up, destructive (delete/close account), send/post/publish, download, form submit (`type=submit`), and any type/select into a redacted (password/card) field. Navigate, scroll, wait, and unknown refs (act on nothing) are not sensitive. The loop denies a sensitive action unless `approve` resolves true: no approver, a throw, or Stop during the prompt all mean no action. A denied step reports `approval_denied` to the model and the run continues. `detectCaptcha` checks title, text, element names and hrefs; a hit ends the run with status `captcha` before any provider call. Untrusted-content wrapping already existed (T007/T010 `fencePage`, system prompt).
+- Limits: classifier is label/regex based, so a mislabeled or non-English button can slip through; `navigate` is not approval-gated. Both noted for T017 review. No new dependency or data flow.
+- Results, real output:
+
+```
+$ npm test
+ Test Files  8 passed (8)
+      Tests  75 passed (75)
+$ npx tsc -p tsconfig.json -> exit 0
+$ npx tsc -p tsconfig.lint.json -> exit 0
+$ npm run build -> built extension to .../apple/Extension/Resources
+$ npm run e2e -- safety --global-timeout=60000
+  5 did not run
+  ✘ [webkit] › tests/e2e/safety.spec.ts ... (all 5 did not run)
+```
+
+- e2e not exercised: WebKit launch blocked in the sandbox (blocker 12); the popup approval sheet and spec are unverified in a browser.
+- Supervised check: outside the sandbox, `npm run build && npm run e2e -- safety`.
+- Next task: T012 (@tab multi-tab context; depends on T007).
+

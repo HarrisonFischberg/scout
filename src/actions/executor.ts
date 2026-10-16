@@ -21,6 +21,7 @@ export type ActionErrorCode =
   | "not_selectable"
   | "no_option"
   | "blocked_url"
+  | "approval_denied"
   | "failed";
 
 export interface ActionResult {

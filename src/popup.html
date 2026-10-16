@@ -50,7 +50,7 @@
         font: 16px/1.5 -apple-system, system-ui, sans-serif;
       }
       main { display: flex; flex-direction: column; gap: 12px; padding: 12px; min-height: 360px; }
-      h1 { font-size: 16px; margin: 0; }
+      h1, h2 { font-size: 16px; margin: 0; }
       a { color: var(--accent-text); text-decoration: underline; }
       #log { flex: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 420px; }
       .msg { border-radius: 12px; padding: 8px 12px; max-width: 85%; overflow-wrap: anywhere; }
@@ -101,6 +101,15 @@
         <div class="row">
           <button id="agent-pause" type="button">Pause</button>
           <button id="agent-stop" type="button">Stop</button>
+        </div>
+      </section>
+      <section id="approval" class="empty" role="alertdialog" aria-labelledby="approval-title" aria-describedby="approval-reason" hidden>
+        <h2 id="approval-title">Approve this action?</h2>
+        <p id="approval-what"></p>
+        <p id="approval-reason" class="hint"></p>
+        <div class="row">
+          <button id="approval-allow" type="button" class="primary">Allow once</button>
+          <button id="approval-deny" type="button">Don't allow</button>
         </div>
       </section>
       <form id="composer" hidden>

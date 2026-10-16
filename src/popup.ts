@@ -1,5 +1,5 @@
 // Popup chat (S04): ask about the current page, summarize, streamed Markdown.
-import { AgentControl, runAgent, type AgentPage, type StepRecord } from "./agent/loop";
+import { AgentControl, runAgent, type AgentPage, type ApprovalRequest, type StepRecord } from "./agent/loop";
 import type { Action, ActionResult } from "./actions/executor";
 import type { Snapshot } from "./snapshot/snapshot";
 import { SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
@@ -94,6 +94,37 @@ async function main(): Promise<void> {
   const steps = el<HTMLOListElement>("steps");
   const agentPause = el<HTMLButtonElement>("agent-pause");
   const agentStop = el<HTMLButtonElement>("agent-stop");
+  const approvalBox = el("approval");
+  const approvalWhat = el("approval-what");
+  const approvalReason = el("approval-reason");
+  const approvalAllow = el<HTMLButtonElement>("approval-allow");
+  const approvalDeny = el<HTMLButtonElement>("approval-deny");
+
+  // S06: the run waits here until the user answers. Deny is the default focus.
+  function askApproval(req: ApprovalRequest): Promise<boolean> {
+    return new Promise((resolve) => {
+      const a = req.action;
+      approvalWhat.textContent =
+        "Agent wants to " + a.type + (req.target ? ' "' + req.target + '"' : "") + ("ref" in a && a.ref ? " (" + a.ref + ")" : "") + ".";
+      approvalReason.textContent = req.classification.reason ?? "";
+      approvalBox.hidden = false;
+      status.textContent = "Waiting for your approval.";
+      approvalDeny.focus();
+      const done = (ok: boolean): void => {
+        approvalAllow.removeEventListener("click", onAllow);
+        approvalDeny.removeEventListener("click", onDeny);
+        agentStop.removeEventListener("click", onDeny);
+        approvalBox.hidden = true;
+        status.textContent = "Agent running.";
+        resolve(ok);
+      };
+      const onAllow = (): void => done(true);
+      const onDeny = (): void => done(false);
+      approvalAllow.addEventListener("click", onAllow);
+      approvalDeny.addEventListener("click", onDeny);
+      agentStop.addEventListener("click", onDeny);
+    });
+  }
 
   const found = await findKey();
   if (!found) {
@@ -192,6 +223,7 @@ async function main(): Promise<void> {
       goal: trimmed,
       page,
       control,
+      approve: askApproval,
       onEvent: (e) => {
         if (e.type === "plan") agentPlan.textContent = e.text;
         else if (e.type === "step_end") {
