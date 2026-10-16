@@ -38,3 +38,7 @@ declare const browser: {
     }): Promise<Array<{ result?: unknown }>>;
   };
 };
+
+/** Set by scripts/build.mjs: true for debug builds, false for release. */
+declare const __ASSISTANT_DEBUG__: boolean;
+declare const __ASSISTANT_VERSION__: string;

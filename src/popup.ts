@@ -10,6 +10,7 @@ import { mergeTabs, resolveMentions, type TabInfo } from "./chat/tabs";
 import { suggestCodes } from "./coupons/codes";
 import { couponStatusText, runCouponSearch } from "./coupons/finder";
 import { formatRunCost } from "./cost";
+import { buildReport, describeBrowser, Diagnostics, disabledRun, type RunHandle, type RunKind } from "./diagnostics";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { createProvider, type ChatMessage } from "./providers";
 import {
@@ -104,18 +105,64 @@ async function readPage(tabId?: number): Promise<PageContext | null> {
   }
 }
 
-// Stage names to the native log in DEBUG app builds (the handler ignores the
-// message otherwise). Never send content. Fire-and-forget.
+// Debug builds only: local run recorder (src/diagnostics.ts). `current` is the
+// run in progress; every stage also goes to the native log. Stage names only,
+// never content.
+let diag: Diagnostics | null = null;
+let current: RunHandle = disabledRun;
+
+function startRun(kind: RunKind, meta: { provider?: string; model?: string; question?: string } = {}): RunHandle {
+  current = diag ? diag.start(kind, meta) : disabledRun;
+  return current;
+}
+
 function trace(stage: string): void {
+  current.stage(stage);
+  if (!__ASSISTANT_DEBUG__) return;
   void Promise.resolve()
     .then(() => browser.runtime.sendNativeMessage("com.example.AssistAnt", { type: "debug.stage", stage }))
     .catch(() => undefined);
+}
+
+function diagnosticsReport(): string {
+  return buildReport(diag?.runs ?? [], {
+    version: __ASSISTANT_VERSION__,
+    build: __ASSISTANT_DEBUG__ ? "debug" : "release",
+    browser: describeBrowser(navigator.userAgent),
+    tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
+}
+
+// Copies the report. If the clipboard is refused, shows it selected in a
+// read-only box next to `anchor` so the user can copy it by hand.
+async function copyDiagnostics(anchor: HTMLElement, statusNode: HTMLElement): Promise<void> {
+  const text = diagnosticsReport();
+  try {
+    await navigator.clipboard.writeText(text);
+    statusNode.textContent = "Diagnostics copied. Paste them into your bug report as Actual behavior.";
+  } catch {
+    let box = anchor.parentElement?.querySelector<HTMLTextAreaElement>("textarea.diag-fallback") ?? null;
+    if (!box) {
+      box = document.createElement("textarea");
+      box.className = "diag-fallback";
+      box.readOnly = true;
+      box.setAttribute("aria-label", "Diagnostics report to copy");
+      box.style.width = "100%";
+      box.style.minHeight = "120px";
+      anchor.insertAdjacentElement("afterend", box);
+    }
+    box.value = text;
+    box.focus();
+    box.select();
+    statusNode.textContent = "Could not copy automatically. The report is selected: press Command-C.";
+  }
 }
 
 // The content script is injected on demand into the active tab only.
 async function tabAgentPage(): Promise<AgentPage | null> {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   if (tab?.id === undefined) return null;
+  current.page(tab.url);
   const tabId = tab.id;
   await browser.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
   // Same isolated world as content.js, so its handler is visible here.
@@ -319,7 +366,9 @@ async function main(): Promise<void> {
       approvalBox.hidden = false;
       status.textContent = "Waiting for your approval.";
       approvalDeny.focus();
+      trace("approval:asked " + a.type + " " + (req.classification.kind ?? "sensitive"));
       const done = (ok: boolean): void => {
+        trace("approval:" + (ok ? "allowed" : "denied"));
         approvalAllow.removeEventListener("click", onAllow);
         approvalDeny.removeEventListener("click", onDeny);
         agentStop.removeEventListener("click", onDeny);
@@ -340,9 +389,28 @@ async function main(): Promise<void> {
   if (storage) chosen = await loadSettings(storage).catch(() => chosen);
   setupSettings(storage, chosen, status);
 
+  if (__ASSISTANT_DEBUG__) {
+    const diagBox = el("diag");
+    diag = new Diagnostics(storage);
+    await diag.load();
+    const diagStatus = el("diag-status");
+    const diagQuestion = el<HTMLInputElement>("diag-question");
+    const diagCopy = el<HTMLButtonElement>("diag-copy");
+    diagQuestion.checked = diag.includeQuestion;
+    diagQuestion.addEventListener("change", () => void diag?.setIncludeQuestion(diagQuestion.checked));
+    diagCopy.addEventListener("click", () => void copyDiagnostics(diagCopy.parentElement ?? diagCopy, diagStatus));
+    el("diag-clear").addEventListener("click", () => {
+      void diag?.clear().then(() => (diagStatus.textContent = "Diagnostics cleared."));
+    });
+    diagBox.hidden = false;
+  }
+
+  startRun("startup", { provider: chosen.provider, model: chosen.model });
   const found = await findKey(chosen);
   if (!found) {
     status.textContent = "No API key saved.";
+    current.error("No API key saved.");
+    current.finish("no_key", "No API key saved.");
     noKey.hidden = false;
     return;
   }
@@ -352,6 +420,7 @@ async function main(): Promise<void> {
     fetch: (input, init) => fetch(input, init),
   });
   status.textContent = "Ready. Using " + settings.provider + " " + settings.model + ".";
+  current.finish(fellBackFrom ? "ready_fallback" : "ready", status.textContent);
   composer.hidden = false;
   // On touch devices focusing the field on open raises the keyboard over the
   // small popup; let the user tap into it instead.
@@ -379,7 +448,23 @@ async function main(): Promise<void> {
     const node = document.createElement("div");
     node.className = "msg " + kind;
     if (kind === "assistant") renderMarkdown(document, node, text);
-    else node.textContent = text;
+    else if (kind === "error" && __ASSISTANT_DEBUG__) {
+      // Own element, so the message reads on its own next to the copy button.
+      const span = document.createElement("span");
+      span.textContent = text;
+      node.appendChild(span);
+    } else node.textContent = text;
+    if (kind === "error") {
+      current.error(text);
+      if (__ASSISTANT_DEBUG__) {
+        const copy = document.createElement("button");
+        copy.type = "button";
+        copy.className = "diag-copy";
+        copy.textContent = "Copy diagnostics";
+        copy.addEventListener("click", () => void copyDiagnostics(copy, status));
+        node.appendChild(copy);
+      }
+    }
     log.appendChild(node);
     log.scrollTop = log.scrollHeight;
     return node;
@@ -414,6 +499,12 @@ async function main(): Promise<void> {
       const origins = [...new Set(extra.map((t) => new URL(t.url).origin + "/*"))];
       granted = await browser.permissions.request({ origins }).catch(() => false);
     }
+    startRun(trimmed === SUMMARIZE_QUESTION ? "summarize" : "ask", {
+      provider: settings.provider,
+      model: settings.model,
+      question: trimmed,
+    });
+    trace("tabs:extra " + extra.length + (extra.length ? (granted ? " granted" : " declined") : ""));
     addMessage("user", trimmed);
     question.value = "";
     const bubble = addMessage("assistant", "");
@@ -422,6 +513,8 @@ async function main(): Promise<void> {
     controller = new AbortController();
     setBusy(true);
     const page = await readPage();
+    current.page(page?.url);
+    trace(page ? "page:read ok" : "page:read failed");
     if (!page) status.textContent = "Could not read this page. Answering without it.";
     const extraPages: PageContext[] = [];
     if (granted) {
@@ -430,6 +523,7 @@ async function main(): Promise<void> {
         if (p) extraPages.push(p);
       }
     }
+    if (extra.length) trace("tabs:read " + extraPages.length + "/" + extra.length);
     // Shown in the conversation, not only the status line, which the answer's
     // "Done" overwrites. iOS Safari cannot read background tabs (seen in T018).
     if (extra.length && extraPages.length < extra.length) {
@@ -440,6 +534,7 @@ async function main(): Promise<void> {
           ". The answer uses only the pages listed as read. Site access may have been declined, or this browser cannot read background tabs (Safari on iPhone and iPad).",
       );
     }
+    trace("model:start");
     const result = await runTurn({
       provider,
       model: settings.model,
@@ -462,11 +557,13 @@ async function main(): Promise<void> {
       }
       status.textContent =
         "Done." + (result.usage ? " " + formatRunCost(settings.model, result.usage) : "");
+      current.finish("done", "Answered (" + result.text.length + " characters).", result.usage);
     } else {
       if (result.partial) renderMarkdown(document, bubble, result.partial);
       else bubble.remove();
       addMessage("error", result.error);
       status.textContent = "The request failed.";
+      current.finish("error", result.error);
     }
     setBusy(false);
   }
@@ -476,9 +573,11 @@ async function main(): Promise<void> {
   async function runTask(goal: string): Promise<void> {
     const trimmed = goal.trim();
     if (!trimmed || controller || control) return;
+    startRun("agent", { provider: settings.provider, model: settings.model, question: trimmed });
     const page = await tabAgentPage().catch(() => null);
     if (!page) {
       addMessage("error", "Could not reach this page. Reload it and try again.");
+      current.finish("error", "Could not reach this page.");
       return;
     }
     addMessage("user", trimmed);
@@ -507,6 +606,11 @@ async function main(): Promise<void> {
           const li = document.createElement("li");
           li.textContent = describeStep(e.step);
           steps.appendChild(li);
+          const a = e.step.action;
+          trace(
+            "step " + e.step.index + " " + (a ? a.type : "finish") +
+              (e.step.result ? (e.step.result.ok ? " ok" : " failed:" + (e.step.result.error ?? "")) : ""),
+          );
         }
       },
       });
@@ -516,6 +620,7 @@ async function main(): Promise<void> {
     }
     control = null;
     addMessage(outcome.status === "done" ? "assistant" : "error", outcome.message);
+    current.finish(outcome.status, outcome.message, outcome.usage);
     status.textContent =
       "Agent " + outcome.status + ". " + formatRunCost(settings.model, outcome.usage);
     agentRun.disabled = send.disabled = summarize.disabled = false;
@@ -531,9 +636,11 @@ async function main(): Promise<void> {
   // S07: codes are tried by plain code, one at a time; the model only suggests them.
   async function runCoupons(): Promise<void> {
     if (controller || control) return;
+    startRun("coupons", { provider: settings.provider, model: settings.model });
     const page = await tabAgentPage().catch(() => null);
     if (!page) {
       addMessage("error", "Could not reach this page. Reload it and try again.");
+      current.finish("error", "Could not reach this page.");
       return;
     }
     control = new AgentControl();
@@ -551,13 +658,16 @@ async function main(): Promise<void> {
       const merchant = new URL(snap.url).hostname;
       const ac = new AbortController();
       couponsStop.addEventListener("click", () => ac.abort(), { once: true });
+      trace("coupons:search");
       const sug = await suggestCodes(provider, settings.model, merchant, ac.signal);
       used = { inputTokens: sug.inputTokens, outputTokens: sug.outputTokens };
+      trace("coupons:sourced " + sug.codes.length + " dropped " + sug.unsourced);
       if (sug.codes.length === 0) {
         couponsSummary.textContent =
           "No sourced codes found, so none were tried. AssistAnt does not guess codes." +
           (sug.unsourced > 0 ? " " + sug.unsourced + " unverifiable suggestion(s) were dropped." : "");
         status.textContent = couponStatusText("no_codes") + " " + formatRunCost(settings.model, used);
+        current.finish("no_codes", couponsSummary.textContent, used);
         couponsStop.removeEventListener("click", onStop);
         control = null;
         agentRun.disabled = send.disabled = summarize.disabled = couponsRun.disabled = false;
@@ -570,6 +680,7 @@ async function main(): Promise<void> {
         codes: sug.codes,
         ...(control ? { control } : {}),
         onAttempt: (a) => {
+          trace("coupons:attempt " + (a.total === null ? "total=unknown" : "saving=" + (a.saving ?? 0).toFixed(2)));
           const tr = document.createElement("tr");
           for (const t of [a.code, a.total === null ? "unknown" : "$" + a.total.toFixed(2), a.note]) {
             const td = document.createElement("td");
@@ -592,9 +703,12 @@ async function main(): Promise<void> {
           ? "Started at $" + outcome.baseline.toFixed(2) + ". " + outcome.message
           : outcome.message;
       status.textContent = couponStatusText(outcome.status) + " " + formatRunCost(settings.model, used);
+      current.finish(outcome.status, outcome.message, used);
     } catch {
       couponsSummary.textContent = "Could not finish the coupon search. Nothing was ordered.";
       status.textContent = couponStatusText("error");
+      current.error(couponsSummary.textContent);
+      current.finish("error", couponsSummary.textContent, used);
     }
     couponsStop.removeEventListener("click", onStop);
     control = null;

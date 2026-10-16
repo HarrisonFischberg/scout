@@ -6,10 +6,12 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:release": "ASSISTANT_BUILD=release node scripts/build.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "tsc -p tsconfig.lint.json",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "check:release": "bash scripts/check-release-bundle.sh"
   },
   "repository": {
     "type": "git",

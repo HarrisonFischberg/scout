@@ -1002,3 +1002,12 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Built, signed ad-hoc, and registered (`pluginkit` listed it), but Safari did not list it.
 - Cause (most likely): LaunchServices also held the iOS Simulator build with the same bundle ID `com.example.AssistAnt`. Fix: `lsregister -u` on the Simulator copies, `touch build/.metadata_never_index` so Spotlight does not re-add them, `lsregister -f -R` on the Mac app, then the owner restarted Safari and re-allowed unsigned extensions. Owner confirms AssistAnt is now listed.
 - Note for the Mac test flow: after any iOS Simulator build, re-run the unregister step or Safari may hide the Mac extension again.
+
+## 2026-10-15 — Diagnostics tool for owner bug reports (supervised)
+
+- Owner request: copy what happened on an error, paste it as "Actual behavior", Claude asks "What is the expected behavior?", then fixes.
+- Added `src/diagnostics.ts`: local recorder of the last 5 runs (kind, stage timeline, user-visible errors, outcome, tokens, page hostname, provider/model). Scrubs keys, emails, URL paths; caps text. Question recorded only with opt-in.
+- Popup (debug builds only): "Copy diagnostics" on every error message and in Settings → Diagnostics, opt-in checkbox, Clear. Clipboard with a selected-text fallback. Runs covered: startup (key lookup), ask, summarize, agent (steps, approvals), coupons.
+- Release builds exclude it: `__ASSISTANT_DEBUG__` define + `minifySyntax` drops the code; `<!-- debug:start/end -->` block stripped from HTML. `npm run check:release` → "release bundle clean".
+- Tests: unit 131 (10 new), e2e 45 (3 new: report is Actual behavior, contains no key/page text/URL query/question by default; opt-in includes question; controls labeled). XCTest 11/11. macOS build ok, bundle check ok.
+- Workflow rule added to CLAUDE.md ("Bug reports from the owner"). Data inventory row added.

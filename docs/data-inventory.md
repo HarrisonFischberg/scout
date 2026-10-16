@@ -13,6 +13,7 @@ row against runtime behavior before any safeguard PASS.
 | Granted site origins (per-site access, T015) | read pages the user chose | browser permission prompt | Safari permission store (not AssistAnt storage); listed in S08 | until removed | S08 Remove / Delete all data |
 | Coupon codes + cart totals | compare savings | F06 | local run log; codes sent to provider | as run log | as run log |
 | Web search queries for coupons | find codes | F06 | provider web-search tool (Anthropic / OpenAI) | provider terms | provider account |
+| Diagnostics (debug builds only): run kind, stage names, user-visible error messages, outcome, token counts, page hostname, provider/model; typed question only if the user opts in | let the developer reproduce bugs the user reports | popup and agent loop while the user uses the app | `browser.storage.local` on the device; copied to the clipboard only when the user taps "Copy diagnostics"; never sent anywhere by the app | last 5 runs | "Clear diagnostics", Delete all data; not present in release builds (`npm run check:release`) |
 | Optional autofill profile (should, opt-in) | fill forms on approval | S08 | Keychain | until removed | Delete all data |
 
 Provider calls (T005, `src/providers/`): requests go directly from the

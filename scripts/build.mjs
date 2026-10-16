@@ -6,6 +6,9 @@ import { join } from "node:path";
 const root = new URL("..", import.meta.url).pathname;
 const src = join(root, "src");
 const out = join(root, "apple", "Extension", "Resources");
+// Debug builds include local diagnostics (src/diagnostics.ts). Release builds
+// (`npm run build:release`) compile them out entirely.
+const release = process.env.ASSISTANT_BUILD === "release";
 
 await build({
   entryPoints: {
@@ -19,13 +22,23 @@ await build({
   target: "safari16",
   platform: "browser",
   logLevel: "warning",
+  // Needed so `if (__ASSISTANT_DEBUG__)` branches are removed, not just skipped.
+  minifySyntax: release,
+  treeShaking: true,
+  define: {
+    __ASSISTANT_DEBUG__: release ? "false" : "true",
+    __ASSISTANT_VERSION__: JSON.stringify(JSON.parse(await readFile(join(src, "manifest.json"), "utf8")).version),
+  },
 });
 
-for (const file of ["manifest.json", "popup.html"]) {
-  await copyFile(join(src, file), join(out, file));
-}
+await copyFile(join(src, "manifest.json"), join(out, "manifest.json"));
+const popupHtml = await readFile(join(src, "popup.html"), "utf8");
+await writeFile(
+  join(out, "popup.html"),
+  release ? popupHtml.replace(/\s*<!-- debug:start[\s\S]*?<!-- debug:end -->/g, "") : popupHtml,
+);
 
-console.log(`built extension to ${out}`);
+console.log(`built extension to ${out} (${release ? "release" : "debug"})`);
 
 // Legal drafts (docs/legal/*.md) become static pages bundled with the
 // extension so S08 can link to them. Markdown subset: #/##/### headings,
