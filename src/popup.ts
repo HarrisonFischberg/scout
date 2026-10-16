@@ -458,7 +458,7 @@ async function main(): Promise<void> {
     control = new AgentControl();
     couponsRows.replaceChildren();
     couponsBox.hidden = false;
-    couponsSummary.textContent = "Asking the model for codes…";
+    couponsSummary.textContent = "Searching the web for codes…";
     agentRun.disabled = send.disabled = summarize.disabled = couponsRun.disabled = true;
     status.textContent = "Finding coupons.";
     couponsStop.focus();
@@ -472,7 +472,18 @@ async function main(): Promise<void> {
       couponsStop.addEventListener("click", () => ac.abort(), { once: true });
       const sug = await suggestCodes(provider, settings.model, merchant, ac.signal);
       used = { inputTokens: sug.inputTokens, outputTokens: sug.outputTokens };
-      couponsSummary.textContent = "Trying " + sug.codes.length + " codes…";
+      if (sug.codes.length === 0) {
+        couponsSummary.textContent =
+          "No sourced codes found, so none were tried. AssistAnt does not guess codes." +
+          (sug.unsourced > 0 ? " " + sug.unsourced + " unverifiable suggestion(s) were dropped." : "");
+        status.textContent = "Coupons no_codes. " + formatRunCost(settings.model, used);
+        couponsStop.removeEventListener("click", onStop);
+        control = null;
+        agentRun.disabled = send.disabled = summarize.disabled = couponsRun.disabled = false;
+        question.focus();
+        return;
+      }
+      couponsSummary.textContent = "Trying " + sug.codes.length + " sourced codes…";
       const outcome = await runCouponSearch({
         page,
         codes: sug.codes,
@@ -484,6 +495,14 @@ async function main(): Promise<void> {
             td.textContent = t;
             tr.appendChild(td);
           }
+          const src = document.createElement("td");
+          const link = document.createElement("a");
+          link.href = a.sourceUrl;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = new URL(a.sourceUrl).hostname;
+          src.appendChild(link);
+          tr.appendChild(src);
           couponsRows.appendChild(tr);
         },
       });

@@ -14,18 +14,20 @@ export function createOpenAI(cfg: ProviderConfig): ProviderClient {
   return {
     id: "openai",
     async *stream(req: ChatRequest): AsyncGenerator<StreamEvent, void, void> {
+      const tools: Array<Record<string, unknown>> = (req.tools ?? []).map((t) => ({
+        type: "function",
+        name: t.name,
+        description: t.description,
+        parameters: t.parameters,
+      }));
+      if (req.webSearch) tools.push({ type: "web_search" });
       const body = {
         model: req.model,
         stream: true,
         instructions: req.system,
         max_output_tokens: req.maxTokens,
         input: req.messages,
-        tools: req.tools?.map((t) => ({
-          type: "function",
-          name: t.name,
-          description: t.description,
-          parameters: t.parameters,
-        })),
+        tools: tools.length ? tools : undefined,
       };
       let res: Response;
       try {
@@ -51,6 +53,15 @@ export function createOpenAI(cfg: ProviderConfig): ProviderClient {
         switch (ev.type) {
           case "response.output_text.delta":
             yield { type: "text", delta: ev.delta };
+            break;
+          case "response.output_text.annotation.added":
+            if (ev.annotation?.type === "url_citation" && typeof ev.annotation.url === "string") {
+              yield {
+                type: "source",
+                url: ev.annotation.url,
+                ...(typeof ev.annotation.title === "string" ? { title: ev.annotation.title } : {}),
+              };
+            }
             break;
           case "response.output_item.added":
             if (ev.item?.type === "function_call") {

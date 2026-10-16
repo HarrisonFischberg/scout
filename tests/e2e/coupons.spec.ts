@@ -10,13 +10,25 @@ function sse(events: Array<Record<string, unknown>>): string {
 
 const CODES_TURN = sse([
   { type: "message_start", message: { usage: { input_tokens: 15, output_tokens: 1 } } },
-  { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
   {
-    type: "content_block_delta",
+    type: "content_block_start",
     index: 0,
-    delta: { type: "text_delta", text: "WELCOME5\nSAVE10\nFREESHIP\nSAVE20\nBOGUS99" },
+    content_block: {
+      type: "web_search_tool_result",
+      content: [{ type: "web_search_result", url: "https://deals.test/codes", title: "Synthetic deals" }],
+    },
   },
   { type: "content_block_stop", index: 0 },
+  { type: "content_block_start", index: 1, content_block: { type: "text", text: "" } },
+  {
+    type: "content_block_delta",
+    index: 1,
+    delta: {
+      type: "text_delta",
+      text: ["WELCOME5", "SAVE10", "FREESHIP", "SAVE20", "BOGUS99"].map((c) => c + " | https://deals.test/codes").join("\n"),
+    },
+  },
+  { type: "content_block_stop", index: 1 },
   { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 12 } },
   { type: "message_stop" },
 ]);
@@ -86,6 +98,10 @@ test("coupon run lists every attempt, keeps the best, never clicks order", async
   await expect(rows.nth(1)).toContainText("$90.00");
   await expect(rows.nth(3)).toContainText("SAVE20");
   await expect(rows.nth(3)).toContainText("$80.00");
+  // Every tried code shows the page it was sourced from.
+  for (let i = 0; i < 5; i++) {
+    await expect(rows.nth(i).getByRole("link", { name: "deals.test" })).toHaveAttribute("href", "https://deals.test/codes");
+  }
   // e3 is "Place order": it must never be clicked.
   expect(clicks).not.toContain("e3");
   // 5 tries plus one re-apply of the winner, all on Apply (e2).

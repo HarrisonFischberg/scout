@@ -879,3 +879,30 @@ The `/goal` condition asks for the task's own verification command to be run wit
 - T013 meets its acceptance test, but codes come from model suggestions, not a live web search (launch-blocker 15). A model-invented code shown as "found" would be an unsupported claim, so T019 is added to wire provider web search and require a source URL for every code.
 - T016 drafts exist; S09 in-app screen not built → T020 added.
 - Remaining supervised: T006 (light/dark screenshots, Accessibility Inspector, shared Keychain group needs Apple team ID), T017 (web-quality-audit on popup, Accessibility Inspector), T018 (manual F01–F07 in Safari + Simulator).
+
+## 2026-10-15 - T019 provider web search in coupon finder: needs supervised check
+
+- Task: T019 (lowest-numbered pending; depends on T013 `done`). Status `in progress`, then `needs supervised check`.
+- Files: `src/providers/{types,anthropic,openai}.ts` (`webSearch` request flag; `source` stream event from Anthropic `web_search_tool_result` / `citations_delta` and OpenAI `url_citation`), `src/coupons/{codes,finder}.ts` (model replies `CODE | URL`; a code is kept only if its URL was returned by the search; finder takes `{code, sourceUrl}` and refuses candidates without a URL; with no sourced codes it says so), `src/popup.{ts,html}` (Source link column, honest copy), `tests/unit/{coupons,providers}.test.ts`, `tests/e2e/coupons.spec.ts`, `docs/legal/terms.md`, `docs/compliance-checklist.md`, `docs/launch-blockers.md` (15), `prd.md`.
+- Mocked only: no call to api.anthropic.com or api.openai.com. Streams are synthetic.
+- Checks, real output:
+
+```
+$ npm run typecheck   -> tsc -p tsconfig.json (no errors)
+$ npm run lint        -> tsc -p tsconfig.lint.json (no errors)
+$ npm test -- coupons providers
+ Test Files  2 passed (2)
+      Tests  35 passed (35)
+$ npm test
+ Test Files  12 passed (12)
+      Tests  114 passed (114)
+$ npm run build       -> built extension to .../apple/Extension/Resources
+$ npx playwright test coupons
+ TimeoutError: browserType.launch: Timeout 180000ms exceeded.
+ sandbox_extension_issue_file_to_process failed ... Playwright.app: 1 (Operation not permitted)
+ 1 failed  [webkit] coupons.spec.ts:88
+```
+
+- Honest limits: e2e failed at WebKit launch, not on an assertion (blocker 12); the updated spec (source link per row) has not run. The request shapes (`web_search_20250305`, `web_search`) match the providers' documented tools from memory and were not checked against a live API (blockers 3, 15). `docs/data-inventory.md` already lists the web-search flow.
+- Supervised: run `npx playwright test coupons` outside the sandbox; one live search check with owner test keys.
+- Next task: T020 (pending).

@@ -20,6 +20,8 @@ export interface ChatRequest {
   messages: ChatMessage[];
   tools?: ToolSpec[];
   maxTokens: number;
+  /** Enable the provider's own server-side web search tool (T019). */
+  webSearch?: boolean;
   signal?: AbortSignal;
 }
 
@@ -31,6 +33,8 @@ export interface Usage {
 export type StreamEvent =
   | { type: "text"; delta: string }
   | { type: "tool_call"; id: string; name: string; input: unknown }
+  /** A page the provider's web search returned or cited. */
+  | { type: "source"; url: string; title?: string }
   | { type: "usage"; usage: Usage }
   | { type: "done" };
 
