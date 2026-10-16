@@ -373,3 +373,28 @@ $ xcodebuild -list -project apple/AssistAnt.xcodeproj
 - Result: blocker unchanged. Xcode tooling is present, but the sandbox blocks CoreSimulatorService and simdiskimaged. T002's Xcode builds cannot run here.
 - No `prd.md` row changed. Marking T002 `done` would misstate acceptance (both Xcode builds and Safari load). Marking a pending row `blocked` would misstate its cause (T002).
 - Turns used: 1 of 5. Stopped: the only unblock is owner action on T002 (run the Xcode builds and Safari extension load outside the sandbox, then set T002 to `done`). Further turns would repeat this check.
+
+## 2026-10-15 — /goal run (turn 2 of 5): goal NOT met, blocker re-verified with three attempts
+
+- Stop-hook feedback: condition not satisfied. Agreed: no task finished.
+- Re-ran T002's PRD command for `AssistAnt (macOS)`. Three attempts, real output trimmed:
+
+```
+# 1. from repo root (PRD command as written)
+xcodebuild: error: The directory /Users/harrison/projects/assist-ant does not contain an Xcode project, workspace or package.
+
+# 2. from apple/ (project lives there)
+IDELogStore: Failed to open log store at /Users/harrison/Library/Developer/Xcode/DerivedData/AssistAnt-dnqddkcbufqikuceewkkloaqpcpv/Logs/Build
+Couldn't create workspace arena folder '/Users/harrison/Library/Developer/Xcode/DerivedData/AssistAnt-dnqddkcbufqikuceewkkloaqpcpv': You don't have permission ...
+** BUILD FAILED **
+
+# 3. from apple/ with -derivedDataPath "$TMPDIR/assistant-dd"
+Error saving log: ... "LogStoreManifest.plist" in the folder "Build".
+  UnderlyingError ... file:///tmp/claude-501/assistant-dd/Logs/Build/LogStoreManifest.plist ... "Operation not permitted"
+** BUILD FAILED **
+EXIT=65
+```
+
+- Finding: the PRD's T002 build command must run from `apple/` (or add `-project apple/AssistAnt.xcodeproj`). The root-level run is a wrong-directory error, not a sandbox error. The `apple/` runs hit the sandbox write block (blocker 9) in every writable location tried.
+- Result: T002 still cannot be verified here. No `prd.md` row changed. T002 stays `blocked`.
+- Turns used: 2 of 5. Remaining turns would repeat the same three attempts. Owner action on T002 is still the only unblock.
