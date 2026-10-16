@@ -2,6 +2,16 @@ import SwiftUI
 
 @main
 struct AssistAntApp: App {
+    init() {
+        #if DEBUG
+        // Manual check that the extension can read what the app writes:
+        // `-SeedSyntheticKey YES` stores an obviously fake key. DEBUG builds only.
+        if UserDefaults.standard.bool(forKey: "SeedSyntheticKey") {
+            try? KeychainStore().set("sk-test-synthetic-sharing-check", account: "anthropic")
+        }
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
