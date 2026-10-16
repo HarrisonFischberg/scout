@@ -1,0 +1,14 @@
+# T032 Simulator log excerpts (iOS Simulator BBCC2295, Safari, com.apple.WebKit subsystem), 2026-10-16
+
+## Before the fix: tap on the page button
+2026-10-16 17:09:39.263 Db MobileSafari[96819:ce4163] [com.apple.WebKit:Extensions] WebContent[96825] Called function tabs.query() (1 argument) in main world
+2026-10-16 17:09:39.264 E  MobileSafari[96819:ce4067] [com.apple.WebKit:IPC] Message WebExtensionContext_TabsQuery fails validation
+2026-10-16 17:09:39.264 E  MobileSafari[96819:ce4067] [com.apple.WebKit:IPC] Received an invalid message WebExtensionContext_TabsQuery from WebContent process with PID 96825
+2026-10-16 17:09:39.304 Df MobileSafari[96819:ce4067] [com.apple.WebKit:Process] AuxiliaryProcessProxy::terminate: PID=96825
+2026-10-16 17:09:39.305 E  MobileSafari[96819:ce4067] [com.apple.WebKit:Process] 0x1141980c0 - [PID=0] WebProcessProxy::processDidTerminateOrFailedToLaunch: reason=Crash
+2026-10-16 17:09:39.305 E  MobileSafari[96819:ce4067] [com.apple.WebKit:Process] 0x1071b2818 - [pageProxyID=46, webPageID=47, PID=0] WebPageProxy::processDidTerminate: (pid 0), reason=Crash
+
+## After the fix: tap on the page button
+2026-10-16 17:18:17.359 Db MobileSafari[96819:ce4163] [com.apple.WebKit:Extensions] WebContent[97044] Called function action.openPopup() (0 arguments) in main world
+
+Lines after 17:18 matching 'invalid message|fails validation|reason=Crash': 0

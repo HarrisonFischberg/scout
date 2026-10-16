@@ -119,6 +119,8 @@ export const REQUESTS = {
   ping: { senders: ["panel", "content"], payload: { object: {} } },
   /** The panel's per-tab state: which conversation it shows and whether it was open. */
   "panel.state": { senders: ["panel"], payload: { object: { tabId: "number" } } },
+  /** Page button (src/edge.ts): the user tapped it; open the toolbar panel. */
+  "panel.open": { senders: ["content"], payload: { object: {} } },
 } as const satisfies Record<string, RequestSpec>;
 
 export type RequestType = keyof typeof REQUESTS;

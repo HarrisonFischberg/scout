@@ -18,6 +18,7 @@ import { buildReport, describeBrowser, Diagnostics, disabledRun, type RunHandle,
 import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { envelope } from "./bridge/messages";
 import { connectPanelPort, type PanelPort } from "./bridge/port";
+import { ALL_SITES, PAGE_BUTTON_KEY, parsePageButton, reachText, type PageButton } from "./panel/edge";
 import { conversationForTab, startNewConversation } from "./panel/state";
 import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/consent";
 import { createProvider, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
@@ -1415,6 +1416,63 @@ async function main(): Promise<void> {
       li.append(origin + " ", btn);
       sites.appendChild(li);
     }
+    await renderPageButton(origins);
+  }
+
+  // ---------- Button on webpages (src/edge.ts) ----------
+  // Off until turned on here. Turning it on asks Safari for site access; the
+  // user may grant every site or fewer, and the button shows where granted.
+  const pageOn = el<HTMLInputElement>("pagebutton-on");
+  const pageSides = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="pagebutton-side"]'));
+  const pageStatus = el("pagebutton-status");
+
+  async function loadPageButton(): Promise<PageButton> {
+    const got = storage ? await storage.get(PAGE_BUTTON_KEY).catch(() => ({}) as Record<string, unknown>) : {};
+    return parsePageButton(got[PAGE_BUTTON_KEY]);
+  }
+  async function savePageButton(next: PageButton): Promise<void> {
+    if (!storage) throw new Error("no storage");
+    await storage.set({ [PAGE_BUTTON_KEY]: next });
+  }
+  async function renderPageButton(origins?: string[]): Promise<void> {
+    const pb = await loadPageButton();
+    pageOn.checked = pb.on;
+    for (const i of pageSides) i.checked = i.value === pb.side;
+    syncSegmented(pageSides);
+    pageStatus.textContent = reachText(pb.on, origins ?? (await listOrigins()));
+  }
+  pageOn.addEventListener("change", () => {
+    const on = pageOn.checked;
+    // Asked before anything else, while the click still counts as a user gesture.
+    const asked = on ? browser.permissions.request({ origins: ALL_SITES }).catch(() => false) : Promise.resolve(false);
+    void (async () => {
+      await asked;
+      try {
+        await savePageButton({ ...(await loadPageButton()), on });
+      } catch {
+        pageOn.checked = !on;
+        pageStatus.textContent = "Could not save the change. Try again.";
+        return;
+      }
+      // Shown on this page at once; the worker adds it to pages opened later.
+      if (on && tab.id !== undefined) {
+        await browser.scripting.executeScript({ target: { tabId: tab.id }, files: ["edge.js"] }).catch(() => undefined);
+      }
+      trace("pagebutton:" + (on ? "on" : "off"));
+      await refreshSettings();
+    })();
+  });
+  for (const i of pageSides) {
+    i.addEventListener("change", () => {
+      syncSegmented(pageSides);
+      const side = i.value === "left" ? "left" : "right";
+      void loadPageButton()
+        .then((pb) => savePageButton({ ...pb, side }))
+        .then(
+          () => (savedMsg.textContent = "Saved."),
+          () => (pageStatus.textContent = "Could not save the change. Try again."),
+        );
+    });
   }
 
   async function openSettings(focusKey = false): Promise<void> {

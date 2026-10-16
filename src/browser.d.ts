@@ -17,6 +17,14 @@ interface BrowserPort {
   onDisconnect: { addListener(fn: () => void): void };
 }
 
+interface BrowserContentScript {
+  id: string;
+  js?: string[];
+  matches?: string[];
+  runAt?: "document_start" | "document_end" | "document_idle";
+  allFrames?: boolean;
+}
+
 declare const browser: {
   runtime: {
     // Optional where the e2e stubs leave them out; the popup degrades without them.
@@ -32,6 +40,7 @@ declare const browser: {
     };
     onConnect?: { addListener(fn: (port: BrowserPort) => void): void };
     onStartup?: { addListener(fn: () => void): void };
+    onInstalled?: { addListener(fn: () => void): void };
   };
   tabs: {
     query(info: { active?: boolean; currentWindow?: boolean }): Promise<
@@ -51,6 +60,8 @@ declare const browser: {
     request(perms: { origins: string[] }): Promise<boolean>;
     getAll(): Promise<{ origins?: string[] }>;
     remove(perms: { origins: string[] }): Promise<boolean>;
+    onAdded?: { addListener(fn: () => void): void };
+    onRemoved?: { addListener(fn: () => void): void };
   };
   // Optional so a missing storage area (tests, odd contexts) is handled.
   storage?: {
@@ -58,6 +69,9 @@ declare const browser: {
       get(keys: string | string[]): Promise<Record<string, unknown>>;
       set(items: Record<string, unknown>): Promise<void>;
       clear(): Promise<void>;
+    };
+    onChanged?: {
+      addListener(fn: (changes: Record<string, { oldValue?: unknown; newValue?: unknown }>, area: string) => void): void;
     };
   };
   scripting: {
@@ -67,6 +81,10 @@ declare const browser: {
       args?: unknown[];
       files?: string[];
     }): Promise<Array<{ result?: unknown }>>;
+    // Safari 16.4+. Optional so older Safari and the e2e stubs degrade.
+    registerContentScripts?(scripts: BrowserContentScript[]): Promise<void>;
+    unregisterContentScripts?(filter: { ids: string[] }): Promise<void>;
+    getRegisteredContentScripts?(filter: { ids: string[] }): Promise<BrowserContentScript[]>;
   };
 };
 
