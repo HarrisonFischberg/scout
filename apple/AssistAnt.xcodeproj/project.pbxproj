@@ -29,6 +29,12 @@
 		A9DCCCEEF09EC9973178027B /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 319A3602A9A92E9E704AEBCD /* popup.js */; };
 		ED15B721FFEBEB0A99F05233 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = 9C7921F29DCF66058FC8BE1C /* background.js */; };
 		F1B11E8D9F04B01567E493A5 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */; };
+		7A1C0D4E2B9F46C3A8E5D1A1 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0; };
+		7A1C0D4E2B9F46C3A8E5D1A3 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A5; };
+		7A1C0D4E2B9F46C3A8E5D1A6 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0; };
+		7A1C0D4E2B9F46C3A8E5D1A2 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0; };
+		7A1C0D4E2B9F46C3A8E5D1A4 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A5; };
+		7A1C0D4E2B9F46C3A8E5D1A7 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -92,6 +98,8 @@
 		BA52935E29A00BF86685A3B8 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D6984060B5995FB15A70F7EB /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		FFE46ABD9E4B81390D9346BB /* AssistAnt.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = AssistAnt.entitlements; sourceTree = "<group>"; };
+		7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSetup.swift; sourceTree = "<group>"; };
+		7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -197,6 +205,8 @@
 			children = (
 				1FFF3A7A6FFAC4C38E60D00F /* AssistAntApp.swift */,
 				D6984060B5995FB15A70F7EB /* ContentView.swift */,
+				7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */,
+				7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */,
 				899B4FA63AA1A90BAC21BB4C /* Info.plist */,
 				FFE46ABD9E4B81390D9346BB /* AssistAnt.entitlements */,
 			);
@@ -373,6 +383,9 @@
 			files = (
 				44591AF1303D7DE7A9594AF2 /* AssistAntApp.swift in Sources */,
 				432C9AE3398D8889519FDAFD /* ContentView.swift in Sources */,
+				7A1C0D4E2B9F46C3A8E5D1A1 /* ProviderSetup.swift in Sources */,
+				7A1C0D4E2B9F46C3A8E5D1A3 /* OnboardingView.swift in Sources */,
+				7A1C0D4E2B9F46C3A8E5D1A6 /* KeychainStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -382,6 +395,9 @@
 			files = (
 				3CA34DA466AB0F3599D4F3D1 /* AssistAntApp.swift in Sources */,
 				523BC8C08DFDAB1AA8A16FAE /* ContentView.swift in Sources */,
+				7A1C0D4E2B9F46C3A8E5D1A2 /* ProviderSetup.swift in Sources */,
+				7A1C0D4E2B9F46C3A8E5D1A4 /* OnboardingView.swift in Sources */,
+				7A1C0D4E2B9F46C3A8E5D1A7 /* KeychainStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
