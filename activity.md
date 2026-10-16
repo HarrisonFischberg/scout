@@ -167,3 +167,31 @@ ERROR : Could not get list of trusted mount directories: ... Code=409 "Cannot ta
   Unblock: owner runs the T002 Xcode builds outside the sandbox (or approves a
   writable DerivedData path and a running CoreSimulator), then loads the
   extension in Safari macOS and an iOS Simulator. T002 then goes to `done`.
+
+## 2026-10-15 — /goal run (new): no dependency-ready pending task (goal NOT met, recorded)
+
+- Read PROMPT.md, prd.md, activity.md tail. Scan: T001 done; T002 blocked
+  (launch-blockers 9, 10); T003–T018 pending, each depends on T002 directly
+  or through T003/T004. No task has all dependencies `done`, so none started.
+- Re-ran T002 macOS build once with derived data under `$TMPDIR`. Real output
+  (trimmed):
+
+```
+$ xcodebuild -project apple/AssistAnt.xcodeproj -scheme "AssistAnt (macOS)" -destination generic/platform=macOS -derivedDataPath "$TMPDIR/assistant-dd" CODE_SIGNING_ALLOWED=NO build
+[-[SimServiceContext initWithDeveloperDir:connectionType:error:]:499] WARN  : Unable to discover any Simulator runtimes. Developer Directory is /Applications/Xcode.app/Contents/Developer.
+[-[SimDiskImageManager init]:175] ERROR : Could not kickstart simdiskimaged; SimDiskImageManager services will not be available: Error Domain=NSPOSIXErrorDomain Code=53 "Software caused connection abort" ...
+** BUILD FAILED **
+
+$ xcrun simctl list runtimes
+CoreSimulatorService connection became invalid.  Simulator services will no longer be available.
+```
+
+- Result: blocker unchanged. No writable derived-data path accepted by the
+  sandbox; CoreSimulatorService and simdiskimaged unavailable. T002 stays
+  `blocked`. No status rows changed. No files committed (no task finished).
+- Turns used: 1 of 5. Stopped: repeating the same sandboxed commands cannot
+  change the result. Earlier runs (above) already tried default and repo
+  derived-data paths with the same EPERM.
+- Next step (owner): run the T002 `xcodebuild` builds and the Safari extension
+  load outside the session sandbox, then set T002 to `done`. T003 then becomes
+  the next runnable task.
