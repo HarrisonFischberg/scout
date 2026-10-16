@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { AgentControl } from "../../src/agent/loop";
 import type { Action, ActionResult } from "../../src/actions/executor";
 import { suggestCodes } from "../../src/coupons/codes";
-import { parseCodes, parseTotal, runCouponSearch, type CouponPage } from "../../src/coupons/finder";
+import { couponStatusText, parseCodes, parseTotal, runCouponSearch, type CouponPage } from "../../src/coupons/finder";
 import type { ChatRequest, ProviderClient, StreamEvent } from "../../src/providers";
 import type { Snapshot } from "../../src/snapshot/snapshot";
 
@@ -187,5 +187,15 @@ describe("suggestCodes", () => {
     });
     expect(r).toMatchObject({ codes: [], searched: false });
     expect(seen.req).toBeUndefined();
+  });
+});
+
+describe("couponStatusText", () => {
+  it("never exposes an internal status code", () => {
+    for (const s of ["done", "no_form", "no_codes", "captcha", "stopped", "error"] as const) {
+      const text = couponStatusText(s);
+      expect(text).not.toMatch(/_/);
+      expect(text).toMatch(/^Coupon search .+\.$/);
+    }
   });
 });
