@@ -158,3 +158,12 @@ ERROR : Could not get list of trusted mount directories: ... Code=409 "Cannot ta
 - Result: `npm run build` passes. The iOS build cannot resolve a Simulator
   destination (no runtimes, simdiskimaged unavailable). T002 remains `blocked`.
   Goal condition not met: no dependency-ready task exists.
+
+- Turn 4 of 5 and stop (fallback record). Goal NOT met: no task finished.
+  Why: every pending task depends on T002 through T003 or T004, and T002 is
+  `blocked` by the sandbox (launch-blockers 9, 10). Repeating the same
+  `xcodebuild` and `simctl` commands cannot change the sandbox, so turns 4 and
+  5 would add no evidence. Stopped at 4 of 5 turns.
+  Unblock: owner runs the T002 Xcode builds outside the sandbox (or approves a
+  writable DerivedData path and a running CoreSimulator), then loads the
+  extension in Safari macOS and an iOS Simulator. T002 then goes to `done`.
