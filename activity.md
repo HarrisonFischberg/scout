@@ -605,3 +605,29 @@ $ npx tsc -p tsconfig.lint.json -> TypeScript: No errors found
 ```
 
 - Next task: T009 (action executor; e2e verification is blocked in sandbox, will be `needs supervised check`).
+
+## 2026-10-15 - T009 action executor: needs supervised check
+
+- Task: T009 (lowest-numbered pending; T008 done). Status `in progress`, then `needs supervised check`.
+- Files: `src/actions/executor.ts`, `src/actions/dom.ts`, `src/content.ts` (new), `src/snapshot/snapshot.ts` (`fromElement` takes an optional node-to-element map), `scripts/build.mjs` (content entry), `tests/unit/actions.test.ts`, `tests/e2e/actions.spec.ts` (new), `prd.md`, `docs/launch-blockers.md`.
+- Design: `executeAction(page, action)` handles click, type, select, scroll, navigate, wait against an `ActionPage` interface, so it unit-tests without a DOM. Every result is `{ok, action, ref?, message, error?}`; missing ref gives `no_ref`, removed element gives `stale_ref`, never throws. Navigate allows only http(s) and resolves relative URLs. Wait is capped at 10 s. Typed text is not echoed in result messages. The content script answers `assistant:snapshot` and `assistant:act`; refs resolve against the last snapshot. It is injected on demand (no `<all_urls>` content script), the background wiring is T010.
+- Not in scope: sensitive-field and approval checks (T011). Typing into a password field is currently allowed by the executor.
+- Results, real output:
+
+```
+$ npm test -- actions
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+$ npm test
+ Test Files  6 passed (6)
+      Tests  51 passed (51)
+$ npx tsc -p tsconfig.json -> TypeScript: No errors found (exit 0)
+$ npx tsc -p tsconfig.lint.json -> exit 0 (after fixing 3 type errors in my new unit test)
+$ npm run build -> built extension to .../apple/Extension/Resources
+$ npm run e2e -- actions --timeout=15000 --global-timeout=90000
+Error: http://127.0.0.1:4173/index.html is already used, make sure that nothing is running on the port/url or set reuseExistingServer:true in config.webServer.
+```
+
+- e2e not exercised: a first `npm run e2e -- actions` exceeded the 200 s tool timeout (WebKit launch hang, launch-blockers 12) and was moved to the background, which left its fixture server (node, PID 6507) on port 4173. `kill 6507` returned `operation not permitted`, so the retry could not bind the port. I did not change `reuseExistingServer` or otherwise work around it. The spec has never run, so the DOM adapter (`src/actions/dom.ts`) is unverified.
+- Supervised check: outside the sandbox, `kill 6507` if still present, then `npm run build && npm run e2e -- actions`.
+- Next task: T010 (agent loop; depends on T005, T007, T009, all satisfied).
