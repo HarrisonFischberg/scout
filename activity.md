@@ -436,3 +436,10 @@ Error saving log: Error Domain=NSCocoaErrorDomain Code=513 "You don't have permi
 
 - T002 split: T002a (builds) done in supervised session; T002b (Safari load check) is the owner's.
 - Loop pinned to `claude-sonnet-5-5`. Xcode/XCTest/Simulator checks stay in the supervised session; loop marks those tasks `needs supervised check`.
+
+## 2026-10-15 — T002b prep (supervised)
+
+- Owner enabled Safari "Allow Unsigned Extensions".
+- Unsigned build (`CODE_SIGNING_ALLOWED=NO`) did not register with Safari. Rebuilt macOS target ad-hoc signed (`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual`): BUILD SUCCEEDED, `codesign` → `Signature=adhoc`.
+- `pluginkit -mAv -p com.apple.Safari.web-extension` now lists `com.example.AssistAnt.Extension(0.1.0)`. Host app launched. Awaiting owner: enable in Safari Settings → Extensions, open popup.
+- T002b macOS: owner reports AssistAnt enabled in Safari Settings → Extensions and the toolbar popup opened (2026-10-15). Evidence is owner report only, no screenshot. iOS Simulator load and runtime API verification still open.
