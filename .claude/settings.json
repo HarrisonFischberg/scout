@@ -1,0 +1,68 @@
+{
+  "env": {
+    "XDG_CACHE_HOME": ".cache",
+    "npm_config_cache": ".cache/npm",
+    "PLAYWRIGHT_BROWSERS_PATH": ".cache/ms-playwright"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm ci:*)",
+      "Bash(npm run:*)",
+      "Bash(npm test:*)",
+      "Bash(npm init:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx playwright:*)",
+      "Bash(npx esbuild:*)",
+      "Bash(npx eslint:*)",
+      "Bash(node:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(plutil:*)",
+      "Bash(git diff:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:developer.apple.com)",
+      "WebFetch(domain:developer.mozilla.org)",
+      "WebFetch(domain:registry.npmjs.org)"
+    ],
+    "deny": [
+      "Bash(sudo:*)",
+      "Bash(rm -rf:*)",
+      "Bash(git push:*)",
+      "Bash(gh:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)"
+    ],
+    "defaultMode": "acceptEdits"
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false,
+    "excludedCommands": ["xcodebuild", "xcrun"],
+    "network": {
+      "allowLocalBinding": true,
+      "allowedDomains": [
+        "registry.npmjs.org",
+        "cdn.playwright.dev",
+        "playwright.azureedge.net",
+        "playwright.download.prss.microsoft.com"
+      ]
+    }
+  }
+}

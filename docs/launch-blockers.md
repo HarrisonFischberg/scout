@@ -7,7 +7,7 @@
 | 3 | Test API keys for Anthropic and OpenAI (owner-provided, low spend limit) | missing credential | owner | live provider integration tests | open; mocked until then |
 | 4 | Merchant terms: automated coupon trying may breach some retailers' terms; bot detection may block | legal review | owner + counsel | F06 release | open |
 | 5 | AI provider usage policies for agentic browsing / user age requirements | legal review | owner | safeguard 17, terms | open |
-| 6 | `/goal` availability unverified; Ralph quickstart not cloned | tool | Claude + owner approval | Phase 4 | open |
+| 6 | `/goal` and Ralph loop | tool | Claude | Phase 4 | resolved 2026-10-15 |
 | 7 | REA web capture needs a CDP browser started with approval | tool | owner | further reference capture (optional) | open |
 | 8 | Privacy policy + terms drafts need qualified legal review | legal review | owner | release | open |
 
