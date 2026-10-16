@@ -8,13 +8,21 @@
   <button id="apply" type="button">Apply</button>
 </form>
 <p>Total: <span id="total">$100.00</span></p>
+<p id="coupon-message" role="status"></p>
 <button id="place-order" type="button">Place order</button>
+<p id="order-status"></p>
 </main>
 <script>
-  // Synthetic codes only. Two valid with different percentages.
+  // Synthetic codes only. Two valid with different percentages; any other
+  // code is accepted by the box and gives no discount.
   const codes = { SAVE10: 10, SAVE20: 20 };
   document.getElementById("apply").addEventListener("click", () => {
-    const pct = codes[document.getElementById("coupon").value.trim().toUpperCase()] ?? 0;
+    const code = document.getElementById("coupon").value.trim().toUpperCase();
+    const pct = codes[code] ?? 0;
     document.getElementById("total").textContent = "$" + (100 - pct).toFixed(2);
+    document.getElementById("coupon-message").textContent = pct ? "Code applied." : "Code not valid.";
+  });
+  document.getElementById("place-order").addEventListener("click", () => {
+    document.getElementById("order-status").textContent = "Order placed.";
   });
 </script></body></html>
