@@ -351,3 +351,25 @@ built extension to /Users/harrison/projects/assist-ant/apple/Extension/Resources
 - Stop-hook feedback: condition not satisfied, as in turns 1–4. No dependency-ready `pending` task exists; T002 is `blocked` (launch-blockers 9, 10). No `prd.md` row changed.
 - Turn 5 used as the stop point. No new command run: nothing in the sandbox changed since turn 2.
 - Goal stopped at the 5-turn limit per PROMPT.md. Owner action on T002 is the only unblock: run the Xcode builds and the Safari extension load outside the sandbox, then set T002 to `done`. T003 then becomes the next runnable task.
+
+## 2026-10-15 — /goal run (turn 1 of 5, per PROMPT.md): goal NOT met, recorded
+
+- Read PROMPT.md, prd.md, activity.md tail, docs/launch-blockers.md.
+- Task scan (prd.md status column): T001 `done`. T002 `blocked` (launch-blockers 9, 10). T003–T018 `pending`, all depend on T002 directly or transitively. None is dependency-ready, so none set to `in progress`.
+- Re-checked the blocker. Real output, trimmed:
+
+```
+$ xcodebuild -version
+Xcode 27.0
+Build version 27A266a
+
+$ xcodebuild -list -project apple/AssistAnt.xcodeproj
+...CoreSimulatorService connection became invalid.  Simulator services will no longer be available.
+...Error opening log file (/Users/harrison/Library/Logs/CoreSimulator/CoreSimulator.com.apple.dt.xcodebuild.log): Operation not permitted
+[-[SimServiceContext initWithDeveloperDir:connectionType:error:]:499] WARN  : Unable to discover any Simulator runtimes.
+[-[SimDiskImageManager init]:175] ERROR : Could not kickstart simdiskimaged ...
+```
+
+- Result: blocker unchanged. Xcode tooling is present, but the sandbox blocks CoreSimulatorService and simdiskimaged. T002's Xcode builds cannot run here.
+- No `prd.md` row changed. Marking T002 `done` would misstate acceptance (both Xcode builds and Safari load). Marking a pending row `blocked` would misstate its cause (T002).
+- Turns used: 1 of 5. Stopped: the only unblock is owner action on T002 (run the Xcode builds and Safari extension load outside the sandbox, then set T002 to `done`). Further turns would repeat this check.
