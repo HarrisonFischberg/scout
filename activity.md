@@ -713,3 +713,16 @@ Timed out waiting 60s for the test suite to run
 - e2e not exercised: WebKit launch blocked in the sandbox (blocker 12). The popup tab picker and `tabs.spec.ts` have never run in a browser.
 - Supervised check: outside the sandbox, `npm run build && npm run e2e -- tabs`; then in Safari verify the permission prompt for a second site.
 - Next task: T013 (coupon finder; depends on T010, T011).
+
+## 2026-10-15 — supervised review of Ralph run 2 (Claude, interactive session)
+
+- Run 2 (Sonnet 5.5, 10 iterations, $5 cap each): every iteration moved a task. 16 → 6 open. Hit the iteration limit, not complete.
+- Outside the sandbox: `npm run typecheck` ok; `npm run lint` (tsc strict config, not ESLint) ok; `npm test` → "Tests 82 passed (82)".
+- `npx playwright test` first run: 22 passed, 2 failed.
+  - safety "a CAPTCHA page stops the run": strict-mode locator matched 2 elements; behavior was correct. Test now asserts the exact stop message.
+  - agent "Stop halts the run within one step": the mock answered instantly, so the run finished before Stop was clicked (test race). Added `modelDelayMs` to hold model replies after the first; with it, the status shows "Agent stopped." Locator made exact. No assertion was loosened.
+  - Rerun: "24 passed".
+- Xcode: macOS and iOS (Simulator) targets BUILD SUCCEEDED with the new Swift code.
+- Added macOS unit-test bundle `AssistAntTests` via `scripts/add-test-target.rb` (xcodeproj gem 1.21.0). `xcodebuild -project apple/AssistAnt.xcodeproj -scheme AssistAntTests -derivedDataPath build/DD test` → "Executed 8 tests, with 0 failures", TEST SUCCEEDED.
+- `grep -rnE "storage\.(local|sync)\.set" src` → no matches.
+- Statuses: T003, T004, T007, T009–T012 done. T006 still needs screenshots, Accessibility Inspector, and the shared Keychain access group (needs an Apple team ID, blocker 2/14).

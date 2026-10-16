@@ -136,6 +136,6 @@ test("a CAPTCHA page stops the run", async ({ page }) => {
   const snap: Page2 = { text: "Please verify you are human.", elements: [] };
   const { acts } = await openPopup(page, snap, ORDER_THEN_FINISH);
   await startRun(page, "Buy it");
-  await expect(page.getByText("CAPTCHA")).toBeVisible();
+  await expect(page.getByText("Stopped: the page asks for a CAPTCHA.")).toBeVisible();
   expect(acts).toEqual([]);
 });

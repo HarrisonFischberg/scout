@@ -39,7 +39,9 @@ const SCRIPT = [
   turn("finish", { summary: "Form sent." }),
 ];
 
-async function openPopup(page: Page): Promise<{ acts: string[]; calls: () => number }> {
+// modelDelayMs holds every model reply after the first, so a test can act
+// (e.g. press Stop) while the run is genuinely mid-flight.
+async function openPopup(page: Page, modelDelayMs = 0): Promise<{ acts: string[]; calls: () => number }> {
   const acts: string[] = [];
   let calls = 0;
   await page.exposeFunction("__recordAct", (a: string) => acts.push(a));
@@ -72,7 +74,9 @@ async function openPopup(page: Page): Promise<{ acts: string[]; calls: () => num
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
   await page.route("https://api.anthropic.com/**", async (r) => {
-    const body = SCRIPT[Math.min(calls++, SCRIPT.length - 1)] ?? "";
+    const n = calls++;
+    const body = SCRIPT[Math.min(n, SCRIPT.length - 1)] ?? "";
+    if (n > 0 && modelDelayMs > 0) await new Promise((res) => setTimeout(res, modelDelayMs));
     await r.fulfill({ status: 200, contentType: "text/event-stream", body });
   });
   await page.goto("/popup.html");
@@ -90,11 +94,11 @@ test("agent completes a 5-step form task and lists every step", async ({ page })
 });
 
 test("Stop halts the run within one step", async ({ page }) => {
-  const { acts, calls } = await openPopup(page);
+  const { acts, calls } = await openPopup(page, 1500);
   await page.getByLabel("Ask about this page").fill("Send a support message as Ada");
   await page.getByRole("button", { name: "Do this on the page" }).click();
   await page.getByRole("button", { name: "Stop" }).first().click();
-  await expect(page.getByText("Stopped.")).toBeVisible();
+  await expect(page.getByText("Stopped.", { exact: true })).toBeVisible();
   expect(acts.length).toBeLessThanOrEqual(1);
   expect(calls()).toBeLessThanOrEqual(2);
 });

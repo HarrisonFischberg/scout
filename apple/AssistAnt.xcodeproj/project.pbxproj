@@ -20,21 +20,26 @@
 		5C75FABD416B3597CFD94F9A /* AssistAnt Extension (iOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4A2569CEA3796C446ACE0B72 /* AssistAnt Extension (iOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		5E298B0C50FFB7B8E4398524 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */; };
 		67689D34836E23C7D42532BB /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 42362C08488648B56DDCF27B /* popup.html */; };
-		7A1C0D4E2B9F46C3A8E5D1F1 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
-		7A1C0D4E2B9F46C3A8E5D1F2 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		68EFD9AC48B2EC8AACAA8530 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */; };
 		6CF0181488D921CF9F0B9750 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = 9C7921F29DCF66058FC8BE1C /* background.js */; };
+		7A1C0D4E2B9F46C3A8E5D1A1 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
+		7A1C0D4E2B9F46C3A8E5D1A2 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
+		7A1C0D4E2B9F46C3A8E5D1A3 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */; };
+		7A1C0D4E2B9F46C3A8E5D1A4 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */; };
+		7A1C0D4E2B9F46C3A8E5D1A6 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
+		7A1C0D4E2B9F46C3A8E5D1A7 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
+		7A1C0D4E2B9F46C3A8E5D1F1 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
+		7A1C0D4E2B9F46C3A8E5D1F2 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		835D2EEF9233782755B3D00F /* AssistAnt Extension (macOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5B36544F9C86B6EED546C345 /* AssistAnt Extension (macOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		8B9A6545AF27168729CA73E8 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
 		997FBCCB476F2CD0AAAEE239 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 319A3602A9A92E9E704AEBCD /* popup.js */; };
 		A9DCCCEEF09EC9973178027B /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 319A3602A9A92E9E704AEBCD /* popup.js */; };
+		B892ED1F69C079AFB3202BAE /* ProviderSetupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB2AA781644909EFF76E9FC /* ProviderSetupTests.swift */; };
+		C0C7388EAF345F982393C9EE /* KeychainStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67857510C6E847756D3CEA9F /* KeychainStoreTests.swift */; };
+		C3A53F9D6F7BA805B8F82363 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
+		C4705C78669FD7B254212BAB /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A44912843C812B2B1960158 /* Cocoa.framework */; };
 		ED15B721FFEBEB0A99F05233 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = 9C7921F29DCF66058FC8BE1C /* background.js */; };
 		F1B11E8D9F04B01567E493A5 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */; };
-		7A1C0D4E2B9F46C3A8E5D1A1 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0; };
-		7A1C0D4E2B9F46C3A8E5D1A3 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A5; };
-		7A1C0D4E2B9F46C3A8E5D1A6 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0; };
-		7A1C0D4E2B9F46C3A8E5D1A2 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0; };
-		7A1C0D4E2B9F46C3A8E5D1A4 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A5; };
-		7A1C0D4E2B9F46C3A8E5D1A7 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -80,9 +85,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
 		1FFF3A7A6FFAC4C38E60D00F /* AssistAntApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AssistAntApp.swift; sourceTree = "<group>"; };
+		2737B9E90C2F5CB976A2DDF7 /* AssistAntTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AssistAntTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2EACFEFE046C585EEC22A075 /* manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; path = manifest.json; sourceTree = "<group>"; };
 		319A3602A9A92E9E704AEBCD /* popup.js */ = {isa = PBXFileReference; includeInIndex = 1; path = popup.js; sourceTree = "<group>"; };
 		42362C08488648B56DDCF27B /* popup.html */ = {isa = PBXFileReference; includeInIndex = 1; path = popup.html; sourceTree = "<group>"; };
@@ -90,19 +95,30 @@
 		4A2569CEA3796C446ACE0B72 /* AssistAnt Extension (iOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "AssistAnt Extension (iOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A44912843C812B2B1960158 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
 		5B36544F9C86B6EED546C345 /* AssistAnt Extension (macOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "AssistAnt Extension (macOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		67857510C6E847756D3CEA9F /* KeychainStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeychainStoreTests.swift; sourceTree = "<group>"; };
 		6BD6F66D11844DC065A72B17 /* AssistAntExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = AssistAntExtension.entitlements; sourceTree = "<group>"; };
 		77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS14.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSetup.swift; sourceTree = "<group>"; };
+		7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		899B4FA63AA1A90BAC21BB4C /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9C7921F29DCF66058FC8BE1C /* background.js */ = {isa = PBXFileReference; includeInIndex = 1; path = background.js; sourceTree = "<group>"; };
 		A957567A8D34C49A032E09C6 /* AssistAnt (iOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AssistAnt (iOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		AFB2AA781644909EFF76E9FC /* ProviderSetupTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSetupTests.swift; sourceTree = "<group>"; };
 		BA52935E29A00BF86685A3B8 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D6984060B5995FB15A70F7EB /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		FFE46ABD9E4B81390D9346BB /* AssistAnt.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = AssistAnt.entitlements; sourceTree = "<group>"; };
-		7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSetup.swift; sourceTree = "<group>"; };
-		7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		058BDEA611DAA58BCC35DBCE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C4705C78669FD7B254212BAB /* Cocoa.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		27B620B0EDB7D985C25BA89E /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -174,6 +190,7 @@
 				5B36544F9C86B6EED546C345 /* AssistAnt Extension (macOS).appex */,
 				A957567A8D34C49A032E09C6 /* AssistAnt (iOS).app */,
 				4A2569CEA3796C446ACE0B72 /* AssistAnt Extension (iOS).appex */,
+				2737B9E90C2F5CB976A2DDF7 /* AssistAntTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -185,6 +202,7 @@
 				D17531A34BE05D28A9803A17 /* Frameworks */,
 				CA7B7D07EAF849AAB1E1577D /* App */,
 				0E297AA71A6C84972C91F6FC /* Extension */,
+				E357AFF747FE264F92E5026C /* Tests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -223,9 +241,36 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		E357AFF747FE264F92E5026C /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				67857510C6E847756D3CEA9F /* KeychainStoreTests.swift */,
+				AFB2AA781644909EFF76E9FC /* ProviderSetupTests.swift */,
+			);
+			name = Tests;
+			path = Tests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		03BFAAF7FE0903248A3120CA /* AssistAntTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BE0524A256F24AE58186DAA4 /* Build configuration list for PBXNativeTarget "AssistAntTests" */;
+			buildPhases = (
+				CCD118378AEE49BF988EDBC8 /* Sources */,
+				058BDEA611DAA58BCC35DBCE /* Frameworks */,
+				2AEB484EDCE84712315EB0E3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AssistAntTests;
+			productName = AssistAntTests;
+			productReference = 2737B9E90C2F5CB976A2DDF7 /* AssistAntTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		9AD50A085B973E592739695A /* AssistAnt Extension (macOS) */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2D1618D0E7DCB9EC8C117D97 /* Build configuration list for PBXNativeTarget "AssistAnt Extension (macOS)" */;
@@ -324,6 +369,7 @@
 				9AD50A085B973E592739695A /* AssistAnt Extension (macOS) */,
 				B496321F9C867596A21FB981 /* AssistAnt (iOS) */,
 				A481F7D633DD264BE0FF871E /* AssistAnt Extension (iOS) */,
+				03BFAAF7FE0903248A3120CA /* AssistAntTests */,
 			);
 		};
 /* End PBXProject section */
@@ -337,6 +383,13 @@
 				67689D34836E23C7D42532BB /* popup.html in Resources */,
 				6CF0181488D921CF9F0B9750 /* background.js in Resources */,
 				A9DCCCEEF09EC9973178027B /* popup.js in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2AEB484EDCE84712315EB0E3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -398,6 +451,17 @@
 				7A1C0D4E2B9F46C3A8E5D1A2 /* ProviderSetup.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1A4 /* OnboardingView.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1A7 /* KeychainStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CCD118378AEE49BF988EDBC8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C0C7388EAF345F982393C9EE /* KeychainStoreTests.swift in Sources */,
+				B892ED1F69C079AFB3202BAE /* ProviderSetupTests.swift in Sources */,
+				8B9A6545AF27168729CA73E8 /* ProviderSetup.swift in Sources */,
+				C3A53F9D6F7BA805B8F82363 /* KeychainStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -476,6 +540,19 @@
 			};
 			name = Release;
 		};
+		4CBA5A57626E80858E6F54C3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAntTests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
 		527BAEE222024E88F068A991 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -498,6 +575,19 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		5E947953E5CD404B254E4F98 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.AssistAntTests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -750,6 +840,15 @@
 			buildConfigurations = (
 				8526D03576FB6EAFE6110C0A /* Release */,
 				E616F2725D53B8FF99A36B28 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BE0524A256F24AE58186DAA4 /* Build configuration list for PBXNativeTarget "AssistAntTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5E947953E5CD404B254E4F98 /* Release */,
+				4CBA5A57626E80858E6F54C3 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
