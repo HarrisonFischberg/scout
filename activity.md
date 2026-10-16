@@ -494,3 +494,27 @@ $ npm run build -> built extension to .../apple/Extension/Resources
   also rebuild both app schemes to confirm the handler change compiles.
 - Next task: T005 (provider layer, JS only) or T008 (snapshot builder).
 - T002b iOS: owner enabled AssistAnt in Simulator Settings → Apps → Safari → Extensions and reports the popup opened from Safari's page menu. Screenshot `ralph/evidence/T002b-ios-extension-enabled.png` shows "Allow Extension" on (the popup itself was not captured). Observed: the extension icon is a generic placeholder; real icon needed (safeguard 19 / brand).
+
+## 2026-10-15 — T005 provider layer: done
+
+- Task: T005 (lowest-numbered pending; T003 counts as satisfied). Status `in progress`, then `done`.
+- Files: `src/providers/{types,errors,sse,anthropic,openai,index}.ts` (new), `tests/unit/providers.test.ts` (new), `prd.md`, `docs/data-inventory.md`.
+- Design: one `ProviderClient.stream()` async generator yielding `text | tool_call | usage | done`. `fetch` injected, so tests never hit the network. Anthropic Messages SSE and OpenAI Responses SSE parsed by a shared reader. Errors: 401/403 `auth_invalid`, 429 `rate_limited` (+`retry-after`), 5xx `provider_unavailable`, fetch reject `network`, other 4xx `bad_request`, in-stream error `stream_error`. `userMessage` never includes the response body or key. Key only in auth header.
+- Fixtures: hand-written synthetic SSE streams inside the test file, chunked mid-event. No live call, no real key.
+- Not done here: model ID defaults and provider web-search server tools are not wired (callers pass `model`; web search arrives with T013). OpenAI model ID UNKNOWN until confirmed against OpenAI docs.
+- No new dependency.
+- Results, real output:
+
+```
+$ npm test -- providers
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+$ npm test
+ Test Files  3 passed (3)
+      Tests  24 passed (24)
+$ npx tsc -p tsconfig.json      -> exit 0
+$ npx tsc -p tsconfig.lint.json -> exit 0
+$ npm run build -> built extension to .../apple/Extension/Resources
+```
+
+- Next task: T008 (snapshot builder, JS only) or T006/T007 (need T001/T004 done; T007 e2e is supervised).
