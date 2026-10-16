@@ -1160,3 +1160,9 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Failing first: 3 unit tests (`consent text`, `API data terms`) failed before the change. Tests updated: `tests/unit/consent.test.ts` (+1), `tests/e2e/consent.spec.ts` (link hrefs, Option+Tab reaches the new link), XCUITest consent sheet checks both links.
 - Open: counsel review (blocker 8); owner to send `docs/legal/consent-review.md`.
 - Checks: typecheck, lint, build ok; unit 215/215; `npm run check:release` clean. Terminal panel (outside the sandbox): e2e 77/77 before the privacy-draft wording change, then a11y + consent + settings specs 26/26 on the rebuilt `privacy.html`; macOS build ok; XCTest 17/17; iOS Simulator build ok; iOS UI accessibility audit 5/5 (consent sheet light and dark, both links present).
+
+## 2026-10-16 — Counsel reviewed the consent wording
+
+- Owner report: counsel reviewed `docs/legal/consent-review.md` and asked for no changes. Recorded as the owner's report; the scope is the consent text and flow only. The privacy policy (10 UNKNOWN) and terms (11 UNKNOWN) were not part of that review and stay drafts.
+- Owner plan: get the legal pages ready now and publish once the business is registered (EIN and other details). New `docs/legal/publish-checklist.md` lists every fact to supply (with line numbers), the sections counsel still writes, and the engineering steps to remove DRAFT labels, publish, and set the App Store privacy URL. The EIN is not needed on any public page.
+- Updated: `docs/legal/consent-review.md` status, compliance row 6 open items, launch-blocker 8. No code change; nothing published.
