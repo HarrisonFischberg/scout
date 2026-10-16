@@ -1063,4 +1063,4 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 
 - Cause: ad-hoc signed builds need Safari's "Allow unsigned extensions", which Safari turns off on quit, hiding the extension.
 - Fix: this Mac has an "Apple Development" certificate (team KTV2G3Z883). New `scripts/build-mac.sh` signs with it (local signing only, no provisioning, nothing sent to Apple), checks the bundle, and registers without launching the app; falls back to ad-hoc when no certificate exists. `codesign --verify --deep --strict` passes; TeamIdentifier=KTV2G3Z883 on app and extension.
-- Not verified: Safari keeping the extension across a restart on the owner's Mac.
+- Verified by owner 2026-10-16: quit and reopened Safari; AssistAnt stayed in the toolbar without "Allow unsigned extensions".
