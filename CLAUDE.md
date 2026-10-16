@@ -25,8 +25,8 @@ loop, Caveman. Verify each before claiming use: `docs/tool-environment.md`.
 | tests | `npm test` (Vitest, `tests/unit/`) |
 | types | `npm run typecheck` |
 | lint | `npm run lint` (strict `tsc -p tsconfig.lint.json`; typescript-eslint does not yet support TypeScript 7) |
-| build | `npm run build` (writes extension to `apple/Extension/Resources/`); Xcode: `xcodebuild -scheme "AssistAnt (macOS)" -destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO build` (blocked in sandbox, launch-blockers 9) |
-| e2e | `npm run e2e` (Playwright WebKit vs `tests/fixtures/`; WebKit cannot launch in sandbox, launch-blockers 12) |
+| build | `npm run build`; macOS: `xcodebuild -project apple/AssistAnt.xcodeproj -scheme "AssistAnt (macOS)" -derivedDataPath build/DD CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= build`; iOS Simulator: same with `-scheme "AssistAnt (iOS)" -destination 'generic/platform=iOS Simulator'`. Sign ad-hoc: unsigned builds cannot use Keychain. Xcode runs outside the loop sandbox (supervised). |
+| e2e | `npx playwright test` (WebKit; outside the sandbox; port 4317 or `E2E_PORT`). iOS UI a11y audit: `xcodebuild -project apple/AssistAnt.xcodeproj -scheme AssistAntUITests -destination 'platform=iOS Simulator,id=BBCC2295-FABD-484B-AFCE-00855F8A328B' -parallel-testing-enabled NO -collect-test-diagnostics never -derivedDataPath build/DD CODE_SIGNING_ALLOWED=NO test` |
 
 ## Artifacts
 
