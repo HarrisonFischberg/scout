@@ -278,3 +278,18 @@ Error opening log file (/Users/harrison/Library/Logs/CoreSimulator/CoreSimulator
   possible issue: the iOS scheme reports a macOS platform mismatch for
   AssistAnt.app (see turn 4 output). Unverified until a Simulator runtime is
   available. Owner action on T002 is the only unblock. Stopped at 5 of 5.
+
+## 2026-10-15 — /goal run (new condition): no dependency-ready pending task (goal NOT met, recorded)
+
+- Read PROMPT.md, prd.md, activity.md tail, docs/launch-blockers.md, docs/tool-environment.md.
+- Task scan (prd.md status column): T001 `done`. T002 `blocked` (launch-blockers 9, 10).
+  T003–T018 `pending`. Dependencies: T003←T002; T004←T002; T005←T003; T006←T001,T004;
+  T007←T001,T005; T008←T003; T009←T008; T010←T005,T007,T009; T011←T010; T012←T007;
+  T013←T010,T011; T014←T005; T015←T004,T007; T016←T015; T017←T006–T016; T018←T017.
+  Every pending task depends on T002 transitively. None is dependency-ready, so none was set to `in progress`.
+- Not re-run: `xcodebuild` and `simctl`. The same EPERM, simdiskimaged and no-Simulator-runtime
+  results are quoted in the 2026-10-15 `/goal` entries above. Re-running cannot change the sandbox.
+- Blocking a pending row would misstate the cause: its blocker is T002, already recorded in
+  launch-blockers 9 and 10. No `prd.md` status row changed. No task files changed.
+- Turns used: 1 of 5. Stopped: the only unblock is owner action on T002 (run the Xcode builds and
+  Safari extension load outside the session sandbox, then set T002 to `done`). Further turns would repeat this scan.
