@@ -10,7 +10,7 @@ read locally 2026-10-15). Values are MDN's `safari` (macOS) and `safari_ios`
 present on these rows. Apple's Safari web extensions page returned only its
 title to the fetch tool, so Apple is not a source here.
 
-| API | macOS Safari | iOS Safari | Safari Scout use (PRD) | Runtime-verified |
+| API | macOS Safari | iOS Safari | Scout for Safari use (PRD) | Runtime-verified |
 | --- | --- | --- | --- | --- |
 | `sidePanel` | not supported | not supported | not used; toolbar popup instead | n/a |
 | `sidebarAction` | not supported | not supported | not used | n/a |
@@ -21,9 +21,9 @@ title to the fetch tool, so Apple is not a source here.
 | `storage` | 14 | 15 | settings, history (T015) | no |
 | `contextMenus` | not in BCD | not in BCD | PRD permission; no feature yet | no. Remove from manifest if Safari rejects it |
 | `activeTab` | not in BCD (permission) | not in BCD | manifest permission | no |
-| `commands` / `_execute_action` (MV3) | 15.4 | 15.4 | "Toggle Safari Scout" shortcut (Part 1) | no. MDN: changing a command's shortcut is not supported, so it is not user-configurable |
+| `commands` / `_execute_action` (MV3) | 15.4 | 15.4 | "Toggle Scout for Safari" shortcut (Part 1) | no. MDN: changing a command's shortcut is not supported, so it is not user-configurable |
 | `action.openPopup` | 16 | 16 | reopen the panel when switching back to a tab where it was open (Part 1) | no |
-| `action.setTitle` | 15.4 | 15.4, partial | "Open / Close Safari Scout" (Part 1) | no. MDN: on iOS the title is not shown |
+| `action.setTitle` | 15.4 | 15.4, partial | "Open / Close Scout for Safari" (Part 1) | no. MDN: on iOS the title is not shown |
 | `action.setIcon` | 15.4 | 15.4 | light/dark toolbar icon swap (Part 1) | no |
 | `action` `theme_icons` | not supported | not supported | not used; the worker swaps icons on `prefers-color-scheme` | n/a |
 | `runtime.connect` / `Port` | 14 | 15 | `scout-panel` port (Part 1) | no |

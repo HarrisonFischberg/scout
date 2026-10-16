@@ -20,10 +20,10 @@ struct OnboardingView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text("Set up Safari Scout")
+                Text("Set up Scout for Safari")
                     .font(.largeTitle.bold())
                     .accessibilityAddTraits(.isHeader)
-                Text("Your AI assistant in the world wide Safari")
+                Text("Your AI Scout for the Safari Browser")
                     .font(.title3)
                     .foregroundStyle(.secondary)
                 enableSection
@@ -41,12 +41,12 @@ struct OnboardingView: View {
                 .font(.title2.bold())
                 .accessibilityAddTraits(.isHeader)
             #if os(macOS)
-            Text("Open Safari extension settings, then switch on Safari Scout.")
+            Text("Open Safari extension settings, then switch on Scout for Safari.")
             Button("Open Safari Extension Settings") {
                 SFSafariApplication.showPreferencesForExtension(withIdentifier: extensionBundleIdentifier) { _ in }
             }
             #else
-            Text("Open the Settings app. Go to Apps, then Safari, then Extensions. Switch on Safari Scout and allow it on the websites you choose.")
+            Text("Open the Settings app. Go to Apps, then Safari, then Extensions. Switch on Scout for Safari and allow it on the websites you choose.")
             #endif
         }
     }
@@ -56,13 +56,13 @@ struct OnboardingView: View {
             Text("2. Add your API key")
                 .font(.title2.bold())
                 .accessibilityAddTraits(.isHeader)
-            Text("Safari Scout sends page content to the provider you choose, using your own key. The key is stored in Keychain on this device.")
-            Text("Your provider bills your account for every request Safari Scout makes, at the provider's prices. Safari Scout shows an estimated cost after each answer or task.")
+            Text("Scout for Safari sends page content to the provider you choose, using your own key. The key is stored in Keychain on this device.")
+            Text("Your provider bills your account for every request Scout for Safari makes, at the provider's prices. Scout for Safari shows an estimated cost after each answer or task.")
             #if os(macOS)
             // On Mac the app and the extension do not share a Keychain group yet
             // (launch-blockers 14), so the key is added in Safari, where the
             // extension stores it itself.
-            Text("On Mac, add your key in Safari: click the Safari Scout icon in the toolbar, then Settings.")
+            Text("On Mac, add your key in Safari: click the Scout for Safari icon in the toolbar, then Settings.")
                 .bold()
             #endif
             #if os(iOS)
@@ -125,7 +125,7 @@ private struct ConsentSheet: View {
             "Later, in Safari: your messages and the tasks you type.",
             "When a request uses the page (questions, Summarize, Control Browser, Find coupons): the page's address, title, and text, and for Control Browser and Find coupons its links, buttons, and form fields. Password and card fields are hidden first.",
             "Text of other tabs only when you choose them.",
-            "Your API key goes only to \(name), to sign in. Safari Scout never sends it anywhere else.",
+            "Your API key goes only to \(name), to sign in. Scout for Safari never sends it anywhere else.",
         ]
     }
 
@@ -136,7 +136,7 @@ private struct ConsentSheet: View {
                     .font(.title2.bold())
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityFocused($headingFocused)
-                Text("Safari Scout sends your requests to \(name), a third-party AI provider, using your own API key. \(name) receives:")
+                Text("Scout for Safari sends your requests to \(name), a third-party AI provider, using your own API key. \(name) receives:")
                     .fixedSize(horizontal: false, vertical: true)
                 ForEach(items, id: \.self) { item in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -147,7 +147,7 @@ private struct ConsentSheet: View {
                 }
                 Link("\(name) privacy policy", destination: provider.privacyPolicy)
                 Link("How \(name) handles API data", destination: provider.apiDataTerms)
-                Text("Nothing is sent until you choose Allow. Safari asks again before Safari Scout's first request from the browser. You can withdraw this permission on this screen.")
+                Text("Nothing is sent until you choose Allow. Safari asks again before Scout for Safari's first request from the browser. You can withdraw this permission on this screen.")
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 24) {
                     Button("Not now", action: notNow)

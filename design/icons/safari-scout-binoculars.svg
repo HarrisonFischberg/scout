@@ -1,4 +1,4 @@
-<!-- Safari Scout toolbar icon: monochrome binoculars, original artwork made for this project (2026-10-16).
+<!-- Scout for Safari toolbar icon: monochrome binoculars, original artwork made for this project (2026-10-16).
      Drawn in currentColor; scripts/render-icons.mjs renders a dark glyph for light toolbars and a light glyph for dark ones. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>

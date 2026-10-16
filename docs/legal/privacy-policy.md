@@ -1,4 +1,4 @@
-# Safari Scout Privacy Policy (DRAFT)
+# Scout for Safari Privacy Policy (DRAFT)
 
 > DRAFT for qualified legal review. Not approved. Not for publication.
 > Items marked **UNKNOWN** are missing facts the owner must supply
@@ -9,27 +9,27 @@ Operator (legal entity and trading name): UNKNOWN
 Business location: UNKNOWN
 Privacy contact: UNKNOWN
 
-## 1. What Safari Scout is
+## 1. What Scout for Safari is
 
-Safari Scout is a Safari extension and host app for macOS and iOS. It sends
+Scout for Safari is a Safari extension and host app for macOS and iOS. It sends
 your questions and page content to an AI provider you choose (Anthropic or
-OpenAI), using your own API key. Safari Scout has no server of its own: nothing
-you do in Safari Scout is sent to the operator.
+OpenAI), using your own API key. Scout for Safari has no server of its own: nothing
+you do in Scout for Safari is sent to the operator.
 
 ## 2. What we do not collect
 
-Safari Scout contains no analytics, no crash telemetry, no advertising
+Scout for Safari contains no analytics, no crash telemetry, no advertising
 identifiers, and sets no cookies. The operator does not receive your key,
 page content, chat messages, or usage data.
 
-## 3. Data Safari Scout handles, and where it goes
+## 3. Data Scout for Safari handles, and where it goes
 
 | Data | Why | Where it goes or is stored | How long | How to delete |
 | --- | --- | --- | --- | --- |
 | Provider API key | call your chosen provider | Keychain on your device. Not in extension storage, logs, or prompts | until you remove it | Remove key, or Delete all data |
 | Provider and model choice | route requests | extension storage on your device | until changed | Delete all data |
 | Your permission to share with each AI provider (provider, date, disclosure version) | send nothing to a provider until you allow it | extension storage on your device; the iPhone and iPad app keeps its own copy for testing your key | until you withdraw it, or the disclosure changes | Withdraw in Settings (or on the app's setup screen), or Delete all data |
-| Page content (text and structure; password and card fields redacted) | answer questions, plan agent actions | sent to the provider you chose, only when you ask. Not stored by Safari Scout beyond the conversation | provider's retention under your account terms | provider-side: your provider account |
+| Page content (text and structure; password and card fields redacted) | answer questions, plan agent actions | sent to the provider you chose, only when you ask. Not stored by Scout for Safari beyond the conversation | provider's retention under your account terms | provider-side: your provider account |
 | Screenshots of the visible tab, if the agent uses them | visual grounding | sent to the provider you chose | provider's retention | provider-side: your provider account |
 | Chat questions and answers | optional history | extension storage on your device | your setting: off, 7 days, or 30 days (default 7). Max 200 entries | auto-expiry, or Delete all data |
 | Sites you granted access to | read pages you chose | Safari's permission store; listed in Settings | until removed | Remove in Settings, or Delete all data |
@@ -44,22 +44,22 @@ version.
 
 Your chosen AI provider receives the data in section 3 under your own
 account and its terms: Anthropic (Messages API) or OpenAI (Responses API).
-Safari Scout asks for your permission once per provider before it sends
+Scout for Safari asks for your permission once per provider before it sends
 anything to that provider, names the provider and what is sent, and links to
 its privacy policy and to the terms for its API. Nothing is sent if you choose
 Not now. The providers' privacy policies say they do not cover content sent
 through their business offerings such as the API; requests made with your own
 API key fall under Anthropic's Commercial Terms or OpenAI's API data
 commitments.
-Read their privacy policies; Safari Scout cannot control provider handling.
+Read their privacy policies; Scout for Safari cannot control provider handling.
 Apple distributes the app through the App Store. Provider processors and
 sub-processors: UNKNOWN until reviewed.
 
 ## 5. Sensitive data
 
 Pages you view may contain personal, financial, or health information.
-Safari Scout redacts password and card fields before sending a page snapshot.
-It cannot recognise all sensitive text. Do not use Safari Scout on pages whose
+Scout for Safari redacts password and card fields before sending a page snapshot.
+It cannot recognise all sensitive text. Do not use Scout for Safari on pages whose
 content you do not want sent to your provider.
 
 ## 6. Your choices

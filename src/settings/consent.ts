@@ -1,5 +1,5 @@
 // Permission to share with a third-party AI provider (App Store Review
-// Guideline 5.1.2(i)). Asked once per provider, before Safari Scout sends
+// Guideline 5.1.2(i)). Asked once per provider, before Scout for Safari sends
 // anything to it. Kept in `browser.storage.local`; Settings shows it and can
 // withdraw it; Delete all data clears it with the rest of storage.
 import type { Provider } from "../keychain";
@@ -146,14 +146,14 @@ export function consentText(p: Provider): ConsentText {
   return {
     title: "Share with " + name + "?",
     intro:
-      "Safari Scout sends your requests to " + name + ", a third-party AI provider, using your own API key. " +
-      "Each time you use Safari Scout, " + name + " receives:",
+      "Scout for Safari sends your requests to " + name + ", a third-party AI provider, using your own API key. " +
+      "Each time you use Scout for Safari, " + name + " receives:",
     items: [
       "Your messages and the tasks you type.",
       "When a request uses the page (questions, Summarize, Control Browser, Find coupons): the page's address, title, and text, " +
         "and for Control Browser and Find coupons its links, buttons, and form fields. Password and card fields are hidden first.",
       "Text of other tabs only when you choose them.",
-      "Your API key, only to sign in to " + name + ". Safari Scout never sends it anywhere else.",
+      "Your API key, only to sign in to " + name + ". Scout for Safari never sends it anywhere else.",
     ],
     policyLabel: name + " privacy policy",
     policyUrl: PRIVACY_POLICY[p],

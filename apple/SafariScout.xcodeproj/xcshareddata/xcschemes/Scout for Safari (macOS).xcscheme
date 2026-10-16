@@ -15,8 +15,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "9FE3739F845541AF268D6ED4"
-               BuildableName = "Safari Scout.app"
-               BlueprintName = "Safari Scout (macOS)"
+               BuildableName = "Scout for Safari.app"
+               BlueprintName = "Scout for Safari (macOS)"
                ReferencedContainer = "container:SafariScout.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -31,8 +31,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "9FE3739F845541AF268D6ED4"
-            BuildableName = "Safari Scout.app"
-            BlueprintName = "Safari Scout (macOS)"
+            BuildableName = "Scout for Safari.app"
+            BlueprintName = "Scout for Safari (macOS)"
             ReferencedContainer = "container:SafariScout.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
@@ -54,8 +54,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "9FE3739F845541AF268D6ED4"
-            BuildableName = "Safari Scout.app"
-            BlueprintName = "Safari Scout (macOS)"
+            BuildableName = "Scout for Safari.app"
+            BlueprintName = "Scout for Safari (macOS)"
             ReferencedContainer = "container:SafariScout.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -71,8 +71,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "9FE3739F845541AF268D6ED4"
-            BuildableName = "Safari Scout.app"
-            BlueprintName = "Safari Scout (macOS)"
+            BuildableName = "Scout for Safari.app"
+            BlueprintName = "Scout for Safari (macOS)"
             ReferencedContainer = "container:SafariScout.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

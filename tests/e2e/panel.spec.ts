@@ -130,7 +130,7 @@ test("an off-page question goes out as a normal chat message, with the page only
 test("the panel is off in Private Browsing, with a short explanation", async ({ page }) => {
   await openPanel(page, { id: 3, incognito: true });
   await expect(page.getByRole("heading", { name: "Off in Private Browsing" })).toBeVisible();
-  await expect(page.locator("#status")).toHaveText("Safari Scout is off in Private Browsing.");
+  await expect(page.locator("#status")).toHaveText("Scout for Safari is off in Private Browsing.");
   await expect(page.locator("#composer")).toBeHidden();
   await expect(page.getByRole("button", { name: "Settings" })).toBeHidden();
   const hellos = await page.evaluate(() => (globalThis as unknown as { __fake: { hellos: unknown[] } }).__fake.hellos);

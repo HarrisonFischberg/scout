@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fresh-context Ralph loop for Safari Scout.
+# Fresh-context Ralph loop for Scout for Safari.
 # Behavior modeled on coleam00/ralph-loop-quickstart (fresh `claude -p` per
 # iteration, PROMPT.md + prd.md + activity.md). That repo has no license, so
 # this script is an original implementation, not a copy.

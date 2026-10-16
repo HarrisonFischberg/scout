@@ -6,6 +6,10 @@ the privacy policy and terms are still drafts (`publish-checklist.md`).
 Prepared 2026-10-16 from the code at commit `015eaeb` plus the link change
 recorded in `activity.md` the same day. Not bundled into the app.
 
+Renamed after review: on 2026-10-16 the product was renamed from "Safari
+Scout" to "Scout for Safari". The app's consent wording changed only in the
+product name. The text below is kept as counsel reviewed it.
+
 ## 1. What we need from you
 
 Please review the wording and flow below against:

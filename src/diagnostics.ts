@@ -186,15 +186,15 @@ export function describeBrowser(ua: string): string {
 
 /** Markdown the user pastes as "Actual behavior". Most recent run in full, earlier runs summarised. */
 export function buildReport(runs: readonly DiagRun[], env: ReportEnv): string {
-  const lines: string[] = ["## Safari Scout diagnostics — Actual behavior", ""];
+  const lines: string[] = ["## Scout for Safari diagnostics — Actual behavior", ""];
   const last = runs[runs.length - 1];
   if (!last) {
-    lines.push("No runs recorded yet. Use Safari Scout, then copy diagnostics again.");
+    lines.push("No runs recorded yet. Use Scout for Safari, then copy diagnostics again.");
     return lines.join("\n");
   }
   lines.push(
     `- Run: ${last.kind} (#${last.id}) at ${clock(last.startedAt)}${env.tz ? " " + env.tz : ""}`,
-    `- Build: Safari Scout ${env.version} (${env.build}) · ${env.browser}`,
+    `- Build: Scout for Safari ${env.version} (${env.build}) · ${env.browser}`,
     `- Provider: ${last.provider ?? "none"}${last.model ? " / " + last.model : ""}`,
     `- Page: ${last.pageHost ?? "not read"}`,
     `- Outcome: ${last.outcome ? `${last.outcome.status} — "${last.outcome.message}"` : "did not finish (popup closed or still running)"}`,

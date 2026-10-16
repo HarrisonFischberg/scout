@@ -8,7 +8,7 @@ app_group = project.main_group.find_subpath('App', false) || project.main_group
 ref = project.files.find { |f| f.path.to_s.end_with?('Assets.xcassets') } ||
       app_group.new_reference('Assets.xcassets')
 ref.last_known_file_type = 'folder.assetcatalog'
-['Safari Scout (macOS)', 'Safari Scout (iOS)'].each do |name|
+['Scout for Safari (macOS)', 'Scout for Safari (iOS)'].each do |name|
   t = project.targets.find { |x| x.name == name }
   t.add_resources([ref]) unless t.resources_build_phase.files_references.include?(ref)
 end

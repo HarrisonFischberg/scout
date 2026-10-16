@@ -188,14 +188,14 @@ final class SetupViewModel: ObservableObject {
     func declineSharing() {
         guard let asked = consentRequest else { return }
         consentRequest = nil
-        hint = "Nothing was sent. Safari Scout tests the key with \(asked.displayName) only after you allow sharing."
+        hint = "Nothing was sent. Scout for Safari tests the key with \(asked.displayName) only after you allow sharing."
     }
 
     func withdrawSharing() {
         consent.withdraw(provider)
         sharingAllowed = false
         if case .result = state { state = .empty }
-        hint = "Withdrawn. Safari Scout sends nothing to \(provider.displayName) from this app until you allow it again."
+        hint = "Withdrawn. Scout for Safari sends nothing to \(provider.displayName) from this app until you allow it again."
     }
 
     // Saves only after a valid test, then clears the in-memory field.

@@ -10,14 +10,14 @@ legal.set_source_tree('<group>')
 legal.set_path('../docs/legal')
 %w[privacy-policy.md terms.md].each do |f|
   ref = legal.files.find { |r| r.path == f } || legal.new_reference(f)
-  ['Safari Scout (macOS)', 'Safari Scout (iOS)'].each do |name|
+  ['Scout for Safari (macOS)', 'Scout for Safari (iOS)'].each do |name|
     t = project.targets.find { |x| x.name == name }
     t.add_resources([ref]) unless t.resources_build_phase.files_references.include?(ref)
   end
 end
 
 unless project.targets.any? { |t| t.name == 'SafariScoutUITests' }
-  app = project.targets.find { |t| t.name == 'Safari Scout (iOS)' }
+  app = project.targets.find { |t| t.name == 'Scout for Safari (iOS)' }
   target = project.new_target(:ui_test_bundle, 'SafariScoutUITests', :ios, '17.0')
   group = project.main_group.find_subpath('UITests', true)
   group.set_source_tree('<group>')

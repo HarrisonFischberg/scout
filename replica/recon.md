@@ -1,9 +1,9 @@
-# Recon map: Safari Scout references — SafarAI + Comet assistant (Safari macOS + iOS)
+# Recon map: Scout for Safari references — SafarAI + Comet assistant (Safari macOS + iOS)
 
 Scope: toolbar AI assistant inside Safari: page Q&A, summaries, multi-tab
 context, and an approval-gated browser agent, including a coupon finder at
 checkout. Bring-your-own API key (Anthropic or OpenAI).
-For: owner's own product (Safari Scout). Business details UNKNOWN.
+For: owner's own product (Scout for Safari). Business details UNKNOWN.
 Date: 2026-10-15
 
 ## Sources
@@ -16,7 +16,7 @@ Date: 2026-10-15
 
 ## Core loop
 
-On any page, open Safari Scout from the toolbar, ask or delegate, and get an
+On any page, open Scout for Safari from the toolbar, ask or delegate, and get an
 answer or a supervised multi-step action run.
 
 ## Screens

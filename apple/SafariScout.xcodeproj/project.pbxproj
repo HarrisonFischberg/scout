@@ -24,7 +24,7 @@
 		4B8DECDD083E4E0D24B435E1 /* privacy.html in Resources */ = {isa = PBXBuildFile; fileRef = 3DE806274580B227D3995289 /* privacy.html */; };
 		523BC8C08DFDAB1AA8A16FAE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6984060B5995FB15A70F7EB /* ContentView.swift */; };
 		54402E0BD5CABDE383CC2812 /* content.js in Resources */ = {isa = PBXBuildFile; fileRef = 0E1A0E7A1B227ADF88A1B413 /* content.js */; };
-		5C75FABD416B3597CFD94F9A /* Safari Scout Extension (iOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4A2569CEA3796C446ACE0B72 /* Safari Scout Extension (iOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		5C75FABD416B3597CFD94F9A /* Scout for Safari Extension (iOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4A2569CEA3796C446ACE0B72 /* Scout for Safari Extension (iOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		5E298B0C50FFB7B8E4398524 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */; };
 		67689D34836E23C7D42532BB /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 42362C08488648B56DDCF27B /* popup.html */; };
 		68EFD9AC48B2EC8AACAA8530 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */; };
@@ -40,7 +40,7 @@
 		7A1C0D4E2B9F46C3A8E5D1F1 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		7A1C0D4E2B9F46C3A8E5D1F2 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		7D806FF2F407994E4D28F1CF /* terms.html in Resources */ = {isa = PBXBuildFile; fileRef = E531573CE3C35CCBA2D4399C /* terms.html */; };
-		835D2EEF9233782755B3D00F /* Safari Scout Extension (macOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5B36544F9C86B6EED546C345 /* Safari Scout Extension (macOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		835D2EEF9233782755B3D00F /* Scout for Safari Extension (macOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5B36544F9C86B6EED546C345 /* Scout for Safari Extension (macOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8B9A6545AF27168729CA73E8 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
 		997FBCCB476F2CD0AAAEE239 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 319A3602A9A92E9E704AEBCD /* popup.js */; };
 		A9BCE9F420000BAEE4CBCF29 /* icons in Resources */ = {isa = PBXBuildFile; fileRef = 334A0CB4A03F106FEB4E1814 /* icons */; };
@@ -64,21 +64,21 @@
 			containerPortal = 3548676990B6C22592899C12 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = A481F7D633DD264BE0FF871E;
-			remoteInfo = "Safari Scout Extension (iOS)";
+			remoteInfo = "Scout for Safari Extension (iOS)";
 		};
 		BEC446359B16DCC7FCD9DA1D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 3548676990B6C22592899C12 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = B496321F9C867596A21FB981;
-			remoteInfo = "Safari Scout (iOS)";
+			remoteInfo = "Scout for Safari (iOS)";
 		};
 		CB1B1B26F1AE7869A24B6BCF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 3548676990B6C22592899C12 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 9AD50A085B973E592739695A;
-			remoteInfo = "Safari Scout Extension (macOS)";
+			remoteInfo = "Scout for Safari Extension (macOS)";
 		};
 /* End PBXContainerItemProxy section */
 
@@ -89,7 +89,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				835D2EEF9233782755B3D00F /* Safari Scout Extension (macOS).appex in Embed Foundation Extensions */,
+				835D2EEF9233782755B3D00F /* Scout for Safari Extension (macOS).appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -100,7 +100,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				5C75FABD416B3597CFD94F9A /* Safari Scout Extension (iOS).appex in Embed Foundation Extensions */,
+				5C75FABD416B3597CFD94F9A /* Scout for Safari Extension (iOS).appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -118,10 +118,10 @@
 		334A0CB4A03F106FEB4E1814 /* icons */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; path = icons; sourceTree = "<group>"; };
 		3DE806274580B227D3995289 /* privacy.html */ = {isa = PBXFileReference; includeInIndex = 1; path = privacy.html; sourceTree = "<group>"; };
 		42362C08488648B56DDCF27B /* popup.html */ = {isa = PBXFileReference; includeInIndex = 1; path = popup.html; sourceTree = "<group>"; };
-		49CA46C4964F64376FDFBEBA /* Safari Scout (macOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Safari Scout (macOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		4A2569CEA3796C446ACE0B72 /* Safari Scout Extension (iOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Safari Scout Extension (iOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		49CA46C4964F64376FDFBEBA /* Scout for Safari (macOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Scout for Safari (macOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4A2569CEA3796C446ACE0B72 /* Scout for Safari Extension (iOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Scout for Safari Extension (iOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A44912843C812B2B1960158 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
-		5B36544F9C86B6EED546C345 /* Safari Scout Extension (macOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Safari Scout Extension (macOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5B36544F9C86B6EED546C345 /* Scout for Safari Extension (macOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Scout for Safari Extension (macOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		67857510C6E847756D3CEA9F /* KeychainStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeychainStoreTests.swift; sourceTree = "<group>"; };
 		6BD6F66D11844DC065A72B17 /* SafariScoutExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = SafariScoutExtension.entitlements; sourceTree = "<group>"; };
 		77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS14.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
@@ -131,7 +131,7 @@
 		826B6B632BCAB1F014E23696 /* terms.md */ = {isa = PBXFileReference; includeInIndex = 1; path = terms.md; sourceTree = "<group>"; };
 		899B4FA63AA1A90BAC21BB4C /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9C7921F29DCF66058FC8BE1C /* background.js */ = {isa = PBXFileReference; includeInIndex = 1; path = background.js; sourceTree = "<group>"; };
-		A957567A8D34C49A032E09C6 /* Safari Scout (iOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Safari Scout (iOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A957567A8D34C49A032E09C6 /* Scout for Safari (iOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Scout for Safari (iOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AFB2AA781644909EFF76E9FC /* ProviderSetupTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSetupTests.swift; sourceTree = "<group>"; };
 		B208F2A517C1376FC6C7DC97 /* SafariScoutUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SafariScoutUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B4986E15F6D4CE7B6EBDAC66 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -235,10 +235,10 @@
 		3F5C47B46FD5427DB7956208 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				49CA46C4964F64376FDFBEBA /* Safari Scout (macOS).app */,
-				5B36544F9C86B6EED546C345 /* Safari Scout Extension (macOS).appex */,
-				A957567A8D34C49A032E09C6 /* Safari Scout (iOS).app */,
-				4A2569CEA3796C446ACE0B72 /* Safari Scout Extension (iOS).appex */,
+				49CA46C4964F64376FDFBEBA /* Scout for Safari (macOS).app */,
+				5B36544F9C86B6EED546C345 /* Scout for Safari Extension (macOS).appex */,
+				A957567A8D34C49A032E09C6 /* Scout for Safari (iOS).app */,
+				4A2569CEA3796C446ACE0B72 /* Scout for Safari Extension (iOS).appex */,
 				2737B9E90C2F5CB976A2DDF7 /* SafariScoutTests.xctest */,
 				B208F2A517C1376FC6C7DC97 /* SafariScoutUITests.xctest */,
 			);
@@ -356,9 +356,9 @@
 			productReference = B208F2A517C1376FC6C7DC97 /* SafariScoutUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		9AD50A085B973E592739695A /* Safari Scout Extension (macOS) */ = {
+		9AD50A085B973E592739695A /* Scout for Safari Extension (macOS) */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2D1618D0E7DCB9EC8C117D97 /* Build configuration list for PBXNativeTarget "Safari Scout Extension (macOS)" */;
+			buildConfigurationList = 2D1618D0E7DCB9EC8C117D97 /* Build configuration list for PBXNativeTarget "Scout for Safari Extension (macOS)" */;
 			buildPhases = (
 				DF7F4A6F12E5ADFD368EE368 /* Sources */,
 				E8BB82833BF5F5993AA6BD04 /* Frameworks */,
@@ -368,14 +368,14 @@
 			);
 			dependencies = (
 			);
-			name = "Safari Scout Extension (macOS)";
-			productName = "Safari Scout Extension (macOS)";
-			productReference = 5B36544F9C86B6EED546C345 /* Safari Scout Extension (macOS).appex */;
+			name = "Scout for Safari Extension (macOS)";
+			productName = "Scout for Safari Extension (macOS)";
+			productReference = 5B36544F9C86B6EED546C345 /* Scout for Safari Extension (macOS).appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		9FE3739F845541AF268D6ED4 /* Safari Scout (macOS) */ = {
+		9FE3739F845541AF268D6ED4 /* Scout for Safari (macOS) */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 0454B43D00B40F8A7D28E276 /* Build configuration list for PBXNativeTarget "Safari Scout (macOS)" */;
+			buildConfigurationList = 0454B43D00B40F8A7D28E276 /* Build configuration list for PBXNativeTarget "Scout for Safari (macOS)" */;
 			buildPhases = (
 				C332BAE45346BA21E802912C /* Sources */,
 				5295DEEBAF205A1613076938 /* Frameworks */,
@@ -387,14 +387,14 @@
 			dependencies = (
 				93EB1ABE068C657245A6FC0A /* PBXTargetDependency */,
 			);
-			name = "Safari Scout (macOS)";
-			productName = "Safari Scout (macOS)";
-			productReference = 49CA46C4964F64376FDFBEBA /* Safari Scout (macOS).app */;
+			name = "Scout for Safari (macOS)";
+			productName = "Scout for Safari (macOS)";
+			productReference = 49CA46C4964F64376FDFBEBA /* Scout for Safari (macOS).app */;
 			productType = "com.apple.product-type.application";
 		};
-		A481F7D633DD264BE0FF871E /* Safari Scout Extension (iOS) */ = {
+		A481F7D633DD264BE0FF871E /* Scout for Safari Extension (iOS) */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AE8D3A316116FB88F868D009 /* Build configuration list for PBXNativeTarget "Safari Scout Extension (iOS)" */;
+			buildConfigurationList = AE8D3A316116FB88F868D009 /* Build configuration list for PBXNativeTarget "Scout for Safari Extension (iOS)" */;
 			buildPhases = (
 				055F3733B4CC36F1FBF9B95A /* Sources */,
 				27B620B0EDB7D985C25BA89E /* Frameworks */,
@@ -404,14 +404,14 @@
 			);
 			dependencies = (
 			);
-			name = "Safari Scout Extension (iOS)";
-			productName = "Safari Scout Extension (iOS)";
-			productReference = 4A2569CEA3796C446ACE0B72 /* Safari Scout Extension (iOS).appex */;
+			name = "Scout for Safari Extension (iOS)";
+			productName = "Scout for Safari Extension (iOS)";
+			productReference = 4A2569CEA3796C446ACE0B72 /* Scout for Safari Extension (iOS).appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		B496321F9C867596A21FB981 /* Safari Scout (iOS) */ = {
+		B496321F9C867596A21FB981 /* Scout for Safari (iOS) */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AA5934108546628588C7D5C8 /* Build configuration list for PBXNativeTarget "Safari Scout (iOS)" */;
+			buildConfigurationList = AA5934108546628588C7D5C8 /* Build configuration list for PBXNativeTarget "Scout for Safari (iOS)" */;
 			buildPhases = (
 				5B244354C358E5ACF887DC0C /* Sources */,
 				80F77DA4660FE3B45C8CAAFC /* Frameworks */,
@@ -423,9 +423,9 @@
 			dependencies = (
 				F0D6701D0EFBF0D3142E4749 /* PBXTargetDependency */,
 			);
-			name = "Safari Scout (iOS)";
-			productName = "Safari Scout (iOS)";
-			productReference = A957567A8D34C49A032E09C6 /* Safari Scout (iOS).app */;
+			name = "Scout for Safari (iOS)";
+			productName = "Scout for Safari (iOS)";
+			productReference = A957567A8D34C49A032E09C6 /* Scout for Safari (iOS).app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -450,10 +450,10 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				9FE3739F845541AF268D6ED4 /* Safari Scout (macOS) */,
-				9AD50A085B973E592739695A /* Safari Scout Extension (macOS) */,
-				B496321F9C867596A21FB981 /* Safari Scout (iOS) */,
-				A481F7D633DD264BE0FF871E /* Safari Scout Extension (iOS) */,
+				9FE3739F845541AF268D6ED4 /* Scout for Safari (macOS) */,
+				9AD50A085B973E592739695A /* Scout for Safari Extension (macOS) */,
+				B496321F9C867596A21FB981 /* Scout for Safari (iOS) */,
+				A481F7D633DD264BE0FF871E /* Scout for Safari Extension (iOS) */,
 				03BFAAF7FE0903248A3120CA /* SafariScoutTests */,
 				77E697E80853BA2409AF86E5 /* SafariScoutUITests */,
 			);
@@ -594,20 +594,20 @@
 /* Begin PBXTargetDependency section */
 		93EB1ABE068C657245A6FC0A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = "Safari Scout Extension (macOS)";
-			target = 9AD50A085B973E592739695A /* Safari Scout Extension (macOS) */;
+			name = "Scout for Safari Extension (macOS)";
+			target = 9AD50A085B973E592739695A /* Scout for Safari Extension (macOS) */;
 			targetProxy = CB1B1B26F1AE7869A24B6BCF /* PBXContainerItemProxy */;
 		};
 		ABA3018CE36D7C585A54E428 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = "Safari Scout (iOS)";
-			target = B496321F9C867596A21FB981 /* Safari Scout (iOS) */;
+			name = "Scout for Safari (iOS)";
+			target = B496321F9C867596A21FB981 /* Scout for Safari (iOS) */;
 			targetProxy = BEC446359B16DCC7FCD9DA1D /* PBXContainerItemProxy */;
 		};
 		F0D6701D0EFBF0D3142E4749 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = "Safari Scout Extension (iOS)";
-			target = A481F7D633DD264BE0FF871E /* Safari Scout Extension (iOS) */;
+			name = "Scout for Safari Extension (iOS)";
+			target = A481F7D633DD264BE0FF871E /* Scout for Safari Extension (iOS) */;
 			targetProxy = 414C14E09ED5EA35B05E9CA0 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -625,7 +625,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = "Safari Scout (iOS)";
+				TEST_TARGET_NAME = "Scout for Safari (iOS)";
 			};
 			name = Debug;
 		};
@@ -646,7 +646,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout;
-				PRODUCT_NAME = "Safari Scout";
+				PRODUCT_NAME = "Scout for Safari";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -670,7 +670,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout;
-				PRODUCT_NAME = "Safari Scout";
+				PRODUCT_NAME = "Scout for Safari";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -709,7 +709,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout;
-				PRODUCT_NAME = "Safari Scout";
+				PRODUCT_NAME = "Scout for Safari";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -799,7 +799,7 @@
 				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.harrisonfischberg.SafariScout.shared";
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout.Extension;
-				PRODUCT_NAME = "Safari Scout Extension";
+				PRODUCT_NAME = "Scout for Safari Extension";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -827,7 +827,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout;
-				PRODUCT_NAME = "Safari Scout";
+				PRODUCT_NAME = "Scout for Safari";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -846,7 +846,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout.Extension;
-				PRODUCT_NAME = "Safari Scout Extension";
+				PRODUCT_NAME = "Scout for Safari Extension";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -926,7 +926,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = "Safari Scout (iOS)";
+				TEST_TARGET_NAME = "Scout for Safari (iOS)";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -945,7 +945,7 @@
 				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.harrisonfischberg.SafariScout.shared";
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout.Extension;
-				PRODUCT_NAME = "Safari Scout Extension";
+				PRODUCT_NAME = "Scout for Safari Extension";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -964,7 +964,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout.Extension;
-				PRODUCT_NAME = "Safari Scout Extension";
+				PRODUCT_NAME = "Scout for Safari Extension";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -974,7 +974,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0454B43D00B40F8A7D28E276 /* Build configuration list for PBXNativeTarget "Safari Scout (macOS)" */ = {
+		0454B43D00B40F8A7D28E276 /* Build configuration list for PBXNativeTarget "Scout for Safari (macOS)" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4996FAFC57EC1B27925B52F4 /* Release */,
@@ -983,7 +983,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2D1618D0E7DCB9EC8C117D97 /* Build configuration list for PBXNativeTarget "Safari Scout Extension (macOS)" */ = {
+		2D1618D0E7DCB9EC8C117D97 /* Build configuration list for PBXNativeTarget "Scout for Safari Extension (macOS)" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F6106EF545596DE91E83CB61 /* Release */,
@@ -992,7 +992,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		AA5934108546628588C7D5C8 /* Build configuration list for PBXNativeTarget "Safari Scout (iOS)" */ = {
+		AA5934108546628588C7D5C8 /* Build configuration list for PBXNativeTarget "Scout for Safari (iOS)" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				527BAEE222024E88F068A991 /* Release */,
@@ -1001,7 +1001,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		AE8D3A316116FB88F868D009 /* Build configuration list for PBXNativeTarget "Safari Scout Extension (iOS)" */ = {
+		AE8D3A316116FB88F868D009 /* Build configuration list for PBXNativeTarget "Scout for Safari Extension (iOS)" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				8526D03576FB6EAFE6110C0A /* Release */,

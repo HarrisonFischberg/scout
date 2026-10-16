@@ -2,7 +2,7 @@
   "name": "safari-scout",
   "version": "0.1.0",
   "private": true,
-  "description": "Safari Scout Safari extension (TypeScript, bundled with esbuild)",
+  "description": "Scout for Safari Safari extension (TypeScript, bundled with esbuild)",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",

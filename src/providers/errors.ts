@@ -10,13 +10,13 @@ export type ProviderErrorCode =
   | "consent_required";
 
 const MESSAGES: Record<ProviderErrorCode, string> = {
-  auth_invalid: "The API key was rejected. Check the key in Safari Scout settings.",
+  auth_invalid: "The API key was rejected. Check the key in Scout for Safari settings.",
   rate_limited: "The provider is rate limiting requests. Wait a moment and try again.",
   provider_unavailable: "The provider is having problems. Try again shortly.",
   network: "Could not reach the provider. Check your connection.",
   bad_request: "The provider rejected the request.",
   stream_error: "The response stream ended with an error.",
-  consent_required: "Safari Scout needs your permission before it sends anything to this provider. Nothing was sent.",
+  consent_required: "Scout for Safari needs your permission before it sends anything to this provider. Nothing was sent.",
 };
 
 export class ProviderError extends Error {

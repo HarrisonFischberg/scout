@@ -6,7 +6,7 @@ require 'xcodeproj'
 root = File.expand_path('..', __dir__)
 path = File.join(root, 'apple/SafariScout.xcodeproj')
 project = Xcodeproj::Project.open(path)
-targets = project.targets.select { |t| t.name.start_with?('Safari Scout Extension') }
+targets = project.targets.select { |t| t.name.start_with?('Scout for Safari Extension') }
 existing = targets.first.resources_build_phase.files_references
 group = existing.first.parent
 built = Dir.children(File.join(root, 'apple/Extension/Resources')).reject { |f| f.start_with?('.') }.sort

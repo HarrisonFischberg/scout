@@ -146,13 +146,13 @@ test("no winning code: asks to find 25 more, searches again without repeating co
   const { asks } = await openPopup(page, { pct: {} });
   await page.getByRole("button", { name: "Find coupons" }).click();
   await expect(page.locator("#coupons-more-text")).toHaveText(
-    "We've tried 25 codes and none lowered your total. Would you like Safari Scout to find 25 more to test?",
+    "We've tried 25 codes and none lowered your total. Would you like Scout for Safari to find 25 more to test?",
     BATCH_WAIT,
   );
   await expect(page.getByRole("button", { name: "Find 25 more" })).toBeFocused();
   await page.getByRole("button", { name: "Find 25 more" }).click();
   await expect(page.locator("#coupons-more-text")).toHaveText(
-    "We've tried 50 codes and none lowered your total. Would you like Safari Scout to find 25 more to test?",
+    "We've tried 50 codes and none lowered your total. Would you like Scout for Safari to find 25 more to test?",
     BATCH_WAIT,
   );
   // The second web search names the codes already tried so it looks for others.

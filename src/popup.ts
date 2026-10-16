@@ -362,7 +362,7 @@ async function main(): Promise<void> {
     el("private").hidden = false;
     el("new-chat").hidden = true;
     el("settings-open").hidden = true;
-    status.textContent = "Safari Scout is off in Private Browsing.";
+    status.textContent = "Scout for Safari is off in Private Browsing.";
     return;
   }
 
@@ -547,7 +547,7 @@ async function main(): Promise<void> {
     if (found.fellBackFrom) {
       fallbackNotice = addMessage(
         "error",
-        "No " + PROVIDER_NAME[found.fellBackFrom] + " key is saved, so Safari Scout is using your " +
+        "No " + PROVIDER_NAME[found.fellBackFrom] + " key is saved, so Scout for Safari is using your " +
           PROVIDER_NAME[session.settings.provider] + " key. Add your " + PROVIDER_NAME[found.fellBackFrom] + " key in Settings to use it.",
       );
     }
@@ -561,7 +561,7 @@ async function main(): Promise<void> {
     for (const i of modeInputs) i.checked = i.value === next;
     syncSegmented(modeInputs);
     modeChip.hidden = next !== "control";
-    question.placeholder = next === "control" ? "Tell Safari Scout what to do on this page…" : "Ask anything…";
+    question.placeholder = next === "control" ? "Tell Scout for Safari what to do on this page…" : "Ask anything…";
     send.setAttribute("aria-label", next === "control" ? "Start task" : "Send");
   }
   for (const i of modeInputs) i.addEventListener("change", () => setMode(mode()));
@@ -830,7 +830,7 @@ async function main(): Promise<void> {
   async function allowSharing(p: Provider): Promise<boolean> {
     const ok = await ensureConsent(consent, p, askConsent, Date.now());
     renderConsent();
-    if (!ok) status.textContent = "Nothing was sent. Safari Scout asks before it shares anything with " + PROVIDER_NAME[p] + ".";
+    if (!ok) status.textContent = "Nothing was sent. Scout for Safari asks before it shares anything with " + PROVIDER_NAME[p] + ".";
     return ok;
   }
 
@@ -1046,7 +1046,7 @@ async function main(): Promise<void> {
   function askMoreCodes(state: BatchState): Promise<boolean> {
     return new Promise((resolve) => {
       couponsMoreText.textContent =
-        "We've tried " + state.tried + " codes and none lowered your total. Would you like Safari Scout to find " + state.next + " more to test?";
+        "We've tried " + state.tried + " codes and none lowered your total. Would you like Scout for Safari to find " + state.next + " more to test?";
       couponsMoreYes.textContent = "Find " + state.next + " more";
       couponsMore.hidden = false;
       status.textContent = "Waiting for you: try more codes?";
@@ -1268,7 +1268,7 @@ async function main(): Promise<void> {
         const li = document.createElement("li");
         const rec = consent.record(p);
         if (!rec) {
-          li.textContent = PROVIDER_NAME[p] + ": not allowed. Safari Scout asks before it sends anything.";
+          li.textContent = PROVIDER_NAME[p] + ": not allowed. Scout for Safari asks before it sends anything.";
           return li;
         }
         const day = new Date(rec.at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -1280,7 +1280,7 @@ async function main(): Promise<void> {
         btn.addEventListener("click", () => {
           // The gate closes at once; storage follows.
           void consent.withdraw(p).then(
-            () => (consentStatus.textContent = "Withdrawn. Safari Scout sends nothing to " + PROVIDER_NAME[p] + " until you allow it again."),
+            () => (consentStatus.textContent = "Withdrawn. Scout for Safari sends nothing to " + PROVIDER_NAME[p] + " until you allow it again."),
             () => (consentStatus.textContent = "Could not save the change. Nothing is sent to " + PROVIDER_NAME[p] + " while this panel is open. Try again."),
           );
           trace("consent:withdrawn " + p);
@@ -1371,7 +1371,7 @@ async function main(): Promise<void> {
         ? key
           ? "Could not load your " + PROVIDER_NAME[p] + " model list. Showing common models."
           : saved
-            ? "Showing common models. Safari Scout lists every model your key can use after you allow sharing with " + PROVIDER_NAME[p] + "."
+            ? "Showing common models. Scout for Safari lists every model your key can use after you allow sharing with " + PROVIDER_NAME[p] + "."
             : "Showing common models. Save your " + PROVIDER_NAME[p] + " key to list every model it can use."
         : "Models your " + PROVIDER_NAME[p] + " key can use." + (list.error ? " Could not refresh the list just now." : "");
     trace("models:" + p + " " + list.source + " " + list.models.length);
@@ -1502,7 +1502,7 @@ async function main(): Promise<void> {
       // Testing the key is a request to the provider, so it needs consent too.
       if (!consent.has(p) && !(await allowSharing(p))) {
         keyStatus.textContent =
-          "The key was not tested or saved. Safari Scout tests it with " + PROVIDER_NAME[p] + " only after you allow sharing.";
+          "The key was not tested or saved. Scout for Safari tests it with " + PROVIDER_NAME[p] + " only after you allow sharing.";
         return;
       }
       keySave.disabled = true;
