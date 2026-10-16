@@ -467,3 +467,29 @@ $ npx playwright test
 - Supervised check: `npx playwright install webkit && npm run e2e` (expect 3 passed).
 - Note: `npm run lint` is rewritten to `rtk lint` by the command hook in this session, so the tsc command was run directly.
 - Next task: T004 (Keychain bridge; needs `xcodebuild test`, supervised) or T005/T008 (JS only, depend on T003 which now counts as satisfied).
+
+## 2026-10-15 — T004 Keychain bridge: needs supervised check
+
+- Task: T004 (lowest-numbered pending, T002a done). Status `in progress`, then `needs supervised check`.
+- Files: `apple/Extension/KeychainStore.swift` (new: `KeychainStore` set/get/delete via SecItem, `KeychainBridge.handle` message dispatch), `apple/Extension/SafariWebExtensionHandler.swift` (routes native messages to `KeychainBridge`), `apple/AssistAnt.xcodeproj/project.pbxproj` (adds `KeychainStore.swift` to both extension targets; `plutil -lint` OK), `apple/Tests/KeychainStoreTests.swift` (XCTest, synthetic keys, test-only service name), `src/keychain.ts` (JS client, injectable transport, `sendNativeMessage`), `src/browser.d.ts`, `tests/unit/keychain.test.ts`, `tests/node-shim.d.ts`, `prd.md`, `docs/launch-blockers.md` (#13).
+- Design: key passes over native messaging only. `src/` has no `storage.local|sync|session`, `localStorage`, `sessionStorage` use; a unit test scans `src/*.ts` for that. Keychain item is generic-password, `AfterFirstUnlock`. `accessGroup` is nil until the host app shares it (T006).
+- No new dependency. Keychain data flow already in `docs/data-inventory.md` row 1.
+- Results, real output:
+
+```
+$ npm test -- keychain
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+$ npm test
+ Test Files  2 passed (2)
+      Tests  6 passed (6)
+$ npm run typecheck   -> tsc -p tsconfig.json (no errors)
+$ npx tsc -p tsconfig.lint.json -> no errors (same command `npm run lint` runs)
+$ npm run build -> built extension to .../apple/Extension/Resources
+```
+
+- Not run: `xcodebuild test` (sandbox blocks, launch-blockers 9). Swift is uncompiled, so not `done`. The Xcode project has no XCTest target yet (launch-blockers 13).
+- Supervised check: add unit-test target with the two Swift files above, then
+  `xcodebuild test -project apple/AssistAnt.xcodeproj -scheme "AssistAnt (macOS)" -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO`;
+  also rebuild both app schemes to confirm the handler change compiles.
+- Next task: T005 (provider layer, JS only) or T008 (snapshot builder).

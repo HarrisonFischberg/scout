@@ -14,6 +14,7 @@
 | 10 | Safari runtime load cannot run here: CoreSimulatorService is not running (no iOS Simulator runtime or devices), and Launch Services (`open`) is blocked. Needs owner to start a simulator and load the extension in Safari macOS | tool | owner | T002 acceptance (extension loads); T006, T007, T018 | open (T002 blocked) |
 | 11 | Bundle identifier is a placeholder: `com.example.AssistAnt` (app) and `com.example.AssistAnt.Extension`. Owner must choose the reverse-DNS prefix before signing or the App Store | missing fact | owner | Apple Developer signing; App Store | open; placeholder in `apple/AssistAnt.xcodeproj` |
 | 12 | Playwright WebKit cannot launch under the session sandbox (`sandbox_extension_issue_file_to_process failed ... Playwright.app: Operation not permitted`, then `browserType.launch` timeout). Needs owner to run `npm run e2e` outside the sandbox | tool | owner | T003 e2e verification; every later `npm run e2e` task (T007, T009–T013, T015) | open (T003 needs supervised check) |
+| 13 | T004 Swift side is written but unbuilt: sandbox blocks `xcodebuild`/`swiftc`, and the Xcode project has no XCTest target. Supervised session must add a macOS unit-test bundle (sources: `apple/Extension/KeychainStore.swift`, `apple/Tests/KeychainStoreTests.swift`), then run `xcodebuild test`. Keychain access in a test host may need a keychain entitlement or a signed host | tool | owner (supervised session) | T004 `xcodebuild test` verification | open (T004 needs supervised check) |
 
 ## Unknown business and legal inputs
 
