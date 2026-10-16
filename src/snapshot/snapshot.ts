@@ -209,11 +209,15 @@ export function buildSnapshot(root: SnapNode, opts: SnapshotOptions): Snapshot {
   return { url: opts.url, title: opts.title, text, elements, truncated };
 }
 
-/** Adapt a live DOM element. Content script only; not unit-tested (no DOM in Vitest). */
-export function fromElement(el: Element): SnapNode {
+/**
+ * Adapt a live DOM element. Content script only; not unit-tested (no DOM in Vitest).
+ * `map` records which element each node came from, so refs can be resolved (T009).
+ */
+export function fromElement(el: Element, map?: Map<SnapNode, Element>): SnapNode {
   const attrs: Record<string, string> = {};
   for (const a of Array.from(el.attributes)) attrs[a.name.toLowerCase()] = a.value;
   const node: SnapNode = { tag: el.tagName.toLowerCase(), attrs, children: [] };
+  map?.set(node, el);
   if (el instanceof HTMLElement) {
     const cs = getComputedStyle(el);
     if (cs.display === "none" || cs.visibility === "hidden") node.hidden = true;
@@ -226,7 +230,7 @@ export function fromElement(el: Element): SnapNode {
     if (child.nodeType === 3) {
       node.children.push({ tag: "#text", attrs: {}, text: child.textContent ?? "", children: [] });
     } else if (child.nodeType === 1) {
-      node.children.push(fromElement(child as Element));
+      node.children.push(fromElement(child as Element, map));
     }
   }
   return node;

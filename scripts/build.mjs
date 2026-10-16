@@ -11,6 +11,7 @@ await build({
   entryPoints: {
     background: join(src, "background.ts"),
     popup: join(src, "popup.ts"),
+    content: join(src, "content.ts"),
   },
   outdir: out,
   bundle: true,
