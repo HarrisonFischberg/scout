@@ -255,6 +255,8 @@
       #consent ul { margin: 6px 0; padding-left: 18px; font-size: 14px; }
       #consent li { margin: 4px 0; }
       #consent .row { margin-top: 12px; justify-content: flex-end; }
+      label.check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+      label.check input { margin: 3px 0 0; }
 
       @media (prefers-reduced-motion: no-preference) {
         .icon-btn, .chip, .segmented label, #plus-menu button, #model-menu button { transition: background-color 150ms, color 150ms, border-color 150ms; }
@@ -491,12 +493,29 @@
           <ul id="site-list" aria-labelledby="sites-title"></ul>
         </section>
 
+        <section aria-labelledby="pagebutton-title">
+          <h3 id="pagebutton-title">Button on webpages</h3>
+          <label class="check"><input id="pagebutton-on" type="checkbox" aria-describedby="pagebutton-help" />Show a Scout button on the edge of webpages</label>
+          <p id="pagebutton-help" class="hint">
+            Handy on iPhone and iPad, where Safari keeps Scout for Safari in the page menu. Tap the button to open Scout for Safari.
+            Drag it up, down, or to the other side; it shrinks when you are not using it. It shows only on sites Scout for Safari
+            can access, never in Private Browsing, and reads nothing from the page.
+          </p>
+          <fieldset class="segmented" id="pagebutton-side">
+            <legend>Side of the screen</legend>
+            <label><input type="radio" name="pagebutton-side" value="left" />Left</label>
+            <label><input type="radio" name="pagebutton-side" value="right" />Right</label>
+          </fieldset>
+          <p id="pagebutton-status" class="hint" role="status"></p>
+        </section>
+
         <section aria-labelledby="toolbar-title">
           <h3 id="toolbar-title">Toolbar button</h3>
           <p class="hint">
             Shortcut: Control-Shift-S on Mac opens and closes Scout for Safari. Safari does not let extensions hide their own button
             or change the shortcut. To hide the button on Mac, choose View &gt; Customize Toolbar in Safari and drag the binoculars out.
-            On iPhone and iPad, Scout for Safari lives in the page menu (the button in the address bar).
+            On iPhone and iPad, Scout for Safari lives in the page menu (the button in the address bar); turn on Button on webpages
+            above to also get a button on the page.
           </p>
         </section>
 

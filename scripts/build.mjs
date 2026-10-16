@@ -15,6 +15,7 @@ await build({
     background: join(src, "background.ts"),
     popup: join(src, "popup.ts"),
     content: join(src, "content.ts"),
+    edge: join(src, "edge.ts"),
   },
   outdir: out,
   bundle: true,

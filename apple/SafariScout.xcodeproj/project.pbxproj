@@ -42,9 +42,11 @@
 		7D806FF2F407994E4D28F1CF /* terms.html in Resources */ = {isa = PBXBuildFile; fileRef = E531573CE3C35CCBA2D4399C /* terms.html */; };
 		835D2EEF9233782755B3D00F /* Scout for Safari Extension (macOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5B36544F9C86B6EED546C345 /* Scout for Safari Extension (macOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8B9A6545AF27168729CA73E8 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
+		982764464B6865F0DAF9415B /* edge.js in Resources */ = {isa = PBXBuildFile; fileRef = 4D16268A894074E1BF8D7243 /* edge.js */; };
 		997FBCCB476F2CD0AAAEE239 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 319A3602A9A92E9E704AEBCD /* popup.js */; };
 		A9BCE9F420000BAEE4CBCF29 /* icons in Resources */ = {isa = PBXBuildFile; fileRef = 334A0CB4A03F106FEB4E1814 /* icons */; };
 		A9DCCCEEF09EC9973178027B /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 319A3602A9A92E9E704AEBCD /* popup.js */; };
+		B0F17D07F5D33A6B6AE0E129 /* edge.js in Resources */ = {isa = PBXBuildFile; fileRef = 4D16268A894074E1BF8D7243 /* edge.js */; };
 		B159672DCF20D4BDE70FA9BF /* terms.md in Resources */ = {isa = PBXBuildFile; fileRef = 826B6B632BCAB1F014E23696 /* terms.md */; };
 		B892ED1F69C079AFB3202BAE /* ProviderSetupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB2AA781644909EFF76E9FC /* ProviderSetupTests.swift */; };
 		C0C7388EAF345F982393C9EE /* KeychainStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67857510C6E847756D3CEA9F /* KeychainStoreTests.swift */; };
@@ -120,6 +122,7 @@
 		42362C08488648B56DDCF27B /* popup.html */ = {isa = PBXFileReference; includeInIndex = 1; path = popup.html; sourceTree = "<group>"; };
 		49CA46C4964F64376FDFBEBA /* Scout for Safari (macOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Scout for Safari (macOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A2569CEA3796C446ACE0B72 /* Scout for Safari Extension (iOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Scout for Safari Extension (iOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D16268A894074E1BF8D7243 /* edge.js */ = {isa = PBXFileReference; includeInIndex = 1; path = edge.js; sourceTree = "<group>"; };
 		5A44912843C812B2B1960158 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
 		5B36544F9C86B6EED546C345 /* Scout for Safari Extension (macOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Scout for Safari Extension (macOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		67857510C6E847756D3CEA9F /* KeychainStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeychainStoreTests.swift; sourceTree = "<group>"; };
@@ -269,6 +272,7 @@
 				3DE806274580B227D3995289 /* privacy.html */,
 				E531573CE3C35CCBA2D4399C /* terms.html */,
 				334A0CB4A03F106FEB4E1814 /* icons */,
+				4D16268A894074E1BF8D7243 /* edge.js */,
 			);
 			name = Resources;
 			path = Resources;
@@ -473,6 +477,7 @@
 				6EA542403783ECDEBEC6053B /* privacy.html in Resources */,
 				70FC8B3D8AC5270477A9D58C /* terms.html in Resources */,
 				A9BCE9F420000BAEE4CBCF29 /* icons in Resources */,
+				B0F17D07F5D33A6B6AE0E129 /* edge.js in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -515,6 +520,7 @@
 				4B8DECDD083E4E0D24B435E1 /* privacy.html in Resources */,
 				7D806FF2F407994E4D28F1CF /* terms.html in Resources */,
 				2DCE22FAAA4B8AA6634699DB /* icons in Resources */,
+				982764464B6865F0DAF9415B /* edge.js in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

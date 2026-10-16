@@ -3,8 +3,9 @@
 // icon matched to the light/dark theme, and drops state for closed tabs.
 // Parts 2 and 3 add the tool host, permission gate, agent runner, and overlay.
 import { PANEL_EVENTS, PANEL_PORT, checkSchema, classifySender, createRouter, envelope, parseEnvelope, type MessageSender, type Self } from "./bridge/messages";
+import { edgeMatches, EDGE_SCRIPT_ID, PAGE_BUTTON_KEY, parsePageButton, sameMatches } from "./panel/edge";
 import { clearTabStates, forgetTab, loadTabStates, setPanelOpen, tabKey } from "./panel/state";
-import { toolbarIcon, TITLE_CLOSE, TITLE_OPEN } from "./panel/toolbar";
+import { openPanel, toolbarIcon, TITLE_CLOSE, TITLE_OPEN } from "./panel/toolbar";
 
 const self = (): Self => ({ id: browser.runtime.id ?? "", baseUrl: browser.runtime.getURL?.("") ?? "" });
 const storage = browser.storage?.local;
@@ -25,6 +26,8 @@ const route = createRouter(
       const states = storage ? await loadTabStates(storage) : {};
       return states[tabKey(p.tabId)] ?? {};
     },
+    // Page button (src/edge.ts): Safari's own panel, never a frame in the page.
+    "panel.open": () => openPanel(browser.action),
   },
   self,
 );
@@ -86,4 +89,38 @@ browser.tabs.onRemoved?.addListener((tabId) => {
 browser.runtime.onStartup?.addListener(() => {
   if (storage) void clearTabStates(storage).catch(() => undefined);
   syncIcon();
+  queuePageButtonSync();
+});
+
+// ---------- Page button: the edge script runs only where Scout has site access ----------
+// Registered for the granted web origins while the setting is on, and
+// unregistered when it is off or no site is granted. Updated when the setting
+// or the grants change. Pages already open drop the button themselves when the
+// setting goes off (src/edge.ts).
+async function syncPageButton(): Promise<void> {
+  const scripting = browser.scripting;
+  if (!storage || !scripting.registerContentScripts || !scripting.unregisterContentScripts) return;
+  const pref = parsePageButton((await storage.get(PAGE_BUTTON_KEY))[PAGE_BUTTON_KEY]);
+  const matches = pref.on ? edgeMatches((await browser.permissions.getAll()).origins ?? []) : [];
+  const existing = (await scripting.getRegisteredContentScripts?.({ ids: [EDGE_SCRIPT_ID] }).catch(() => [])) ?? [];
+  const current = existing.find((s) => s.id === EDGE_SCRIPT_ID);
+  if (current ? sameMatches(current.matches ?? [], matches) : matches.length === 0) return;
+  if (current) await scripting.unregisterContentScripts({ ids: [EDGE_SCRIPT_ID] });
+  if (matches.length) {
+    await scripting.registerContentScripts([{ id: EDGE_SCRIPT_ID, js: ["edge.js"], matches, runAt: "document_idle", allFrames: false }]);
+  }
+}
+
+let pageButtonSync: Promise<void> = Promise.resolve();
+function queuePageButtonSync(): void {
+  pageButtonSync = pageButtonSync.then(syncPageButton).catch(() => undefined);
+}
+queuePageButtonSync();
+browser.runtime.onInstalled?.addListener(queuePageButtonSync);
+browser.permissions.onAdded?.addListener(queuePageButtonSync);
+browser.permissions.onRemoved?.addListener(queuePageButtonSync);
+browser.storage?.onChanged?.addListener((changes, area) => {
+  const change = changes[PAGE_BUTTON_KEY];
+  // Only on/off matters here; moving the button changes nothing about where it runs.
+  if (area === "local" && change && parsePageButton(change.oldValue).on !== parsePageButton(change.newValue).on) queuePageButtonSync();
 });

@@ -11,3 +11,19 @@ export function toolbarIcon(dark: boolean, active = false): Record<string, strin
   const name = "toolbar" + (active ? "-active" : "") + (dark ? "-dark" : "");
   return Object.fromEntries(TOOLBAR_SIZES.map((s) => [String(s), `icons/${name}-${s}.png`]));
 }
+
+/**
+ * Opens the toolbar panel: a popover on Mac, Safari's sheet over the page on
+ * iPhone and iPad. Used by the page button (src/edge.ts), which must never run
+ * the panel inside the page: Safari loads such a frame in the page's process
+ * and kills it when the frame uses extension APIs (owner report 2026-10-16).
+ */
+export async function openPanel(action: { openPopup?(): Promise<void> } | undefined): Promise<{ opened: boolean }> {
+  if (!action?.openPopup) return { opened: false };
+  try {
+    await action.openPopup();
+    return { opened: true };
+  } catch {
+    return { opened: false };
+  }
+}

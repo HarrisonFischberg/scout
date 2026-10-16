@@ -54,6 +54,29 @@ unsupported), so the Scout panel is the toolbar popover. Consequences:
   Customize Toolbar (Mac); on iPhone and iPad it sits in the page menu.
 - The toggle shortcut cannot be remapped by the user in Safari.
 
+## Button on webpages (T032, 2026-10-16)
+
+iOS Safari has no extension API to place a button beside the address bar
+(Apple's iPhone User Guide, iOS 27: extensions are reached from the page
+menu; tab bar layouts are Compact, Bottom, Top only). T032 draws its own tab on
+the page instead. APIs it relies on (MDN browser-compat-data, read from GitHub
+2026-10-16; none runtime-verified):
+
+| API | macOS Safari | iOS Safari | Use | Runtime-verified |
+| --- | --- | --- | --- | --- |
+| `scripting.registerContentScripts` / `unregisterContentScripts` / `getRegisteredContentScripts` | 16.4 | 16.4 (mirror) | edge script only on granted origins | iOS Simulator 2026-10-16: tab appeared on the granted site |
+| `action.openPopup` from the worker, after a tap in a content script | 16 | 16 | the tab opens the toolbar panel | iOS Simulator 2026-10-16: Safari opened the panel sheet (log: `action.openPopup()` called, no errors) |
+| `permissions.onAdded` / `onRemoved` | not checked | not checked | re-register when grants change (optional; also re-checked at startup) | no |
+| HTML `popover` | web platform | web platform | tab in the top layer | iOS Simulator: tab drawn over the page |
+
+Do not frame extension pages in websites (`web_accessible_resources` with a
+page). Owner bug report 2026-10-16: on iOS Safari 27.0.1 such a frame runs in
+the page's own web process; when it called `tabs.query()` WebKit logged
+"Received an invalid message WebExtensionContext_TabsQuery from WebContent
+process" and terminated the process, so the page showed "This webpage was
+reloaded because a problem occurred". The manifest entry also made Safari ask
+for site access ("Permission Required") before the panel would open.
+
 ## Still to verify (T002 acceptance, runtime part)
 
 1. Extension loads in Safari on macOS (enable under Safari Settings >
