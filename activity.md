@@ -1064,3 +1064,15 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Cause: ad-hoc signed builds need Safari's "Allow unsigned extensions", which Safari turns off on quit, hiding the extension.
 - Fix: this Mac has an "Apple Development" certificate (team KTV2G3Z883). New `scripts/build-mac.sh` signs with it (local signing only, no provisioning, nothing sent to Apple), checks the bundle, and registers without launching the app; falls back to ad-hoc when no certificate exists. `codesign --verify --deep --strict` passes; TeamIdentifier=KTV2G3Z883 on app and extension.
 - Verified by owner 2026-10-16: quit and reopened Safari; AssistAnt stayed in the toolbar without "Allow unsigned extensions".
+
+## 2026-10-16 — Renamed to Safari Scout; binoculars replace the ant
+
+- Owner request: rename everything from "AssistAnt" to "Safari Scout" and replace the ant artwork with binoculars.
+- Renamed: user-facing text, prompts, docs, manifest name and tagline ("Safari Scout: Your AI assistant in the world wide Safari"), Xcode project (`apple/SafariScout.xcodeproj`), products ("Safari Scout.app", "Safari Scout Extension.appex"), schemes, targets, Swift app file, entitlements files, scripts, content-script global (`__safariScoutHandle`), Info.plist key (`SafariScoutKeychainGroup`).
+- Kept on purpose: bundle IDs `com.example.AssistAnt*` and Keychain group `com.example.AssistAnt.shared`. Changing them would orphan the saved API key and re-register Safari's extension as new. Placeholder IDs still need replacing before release (launch-blocker 14). GitHub repo and local folder still named `assist-ant`.
+- Icons: original binoculars SVGs in `design/icons/`, rendered to `src/icons/` and the AppIcon set by `scripts/render-icons.mjs`; ant SVGs deleted. `docs/asset-licenses.md` updated.
+- New launch-blocker 21: "Safari" is an Apple trademark; App Store review may reject the name. Needs trademark search + counsel.
+- Fixed: rename left `scripts/register-mac-extension.sh` with an unquoted `grep Safari Scout`; quoted it. Removed old `AssistAnt.app` build products (same bundle ID) and unregistered them.
+- Checks: build, typecheck, lint ok; unit 149/149; e2e 57/57 (WebKit, `PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright`); release bundle clean; macOS XCTest 11/11; iOS XCUITest a11y audit 3/3 on "AssistAnt Test iPhone" simulator; signed Mac build (team KTV2G3Z883) registered as `com.example.AssistAnt.Extension` at `Safari Scout.app`.
+- Not done: green control-glow overlay from the owner's design spec (not started).
+- Owner to confirm: Safari toolbar shows binoculars and "Safari Scout" after enabling the re-registered extension.

@@ -1,11 +1,11 @@
-# AssistAnt design system (T001)
+# Safari Scout design system (T001)
 
 Tokens: `replica/design/tokens.json`. Contrast evidence: `replica/contrast.txt`
 (34 pairs, 0 failing AA, run with the Replica `contrast.py` checker).
 
 ## Direction
 
-AssistAnt is a Safari toolbar popup (web extension HTML) and a SwiftUI host
+Safari Scout is a Safari toolbar popup (web extension HTML) and a SwiftUI host
 app (macOS and iOS). The popup is a chat surface, so the design is quiet and
 text-first: neutral surfaces, one violet accent for actions and focus, and
 clear separation between user messages, assistant answers, and agent steps.

@@ -20,9 +20,12 @@ struct OnboardingView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text("Set up AssistAnt")
+                Text("Set up Safari Scout")
                     .font(.largeTitle.bold())
                     .accessibilityAddTraits(.isHeader)
+                Text("Your AI assistant in the world wide Safari")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
                 enableSection
                 keySection
                 legalSection
@@ -38,12 +41,12 @@ struct OnboardingView: View {
                 .font(.title2.bold())
                 .accessibilityAddTraits(.isHeader)
             #if os(macOS)
-            Text("Open Safari extension settings, then switch on AssistAnt.")
+            Text("Open Safari extension settings, then switch on Safari Scout.")
             Button("Open Safari Extension Settings") {
                 SFSafariApplication.showPreferencesForExtension(withIdentifier: extensionBundleIdentifier) { _ in }
             }
             #else
-            Text("Open the Settings app. Go to Apps, then Safari, then Extensions. Switch on AssistAnt and allow it on the websites you choose.")
+            Text("Open the Settings app. Go to Apps, then Safari, then Extensions. Switch on Safari Scout and allow it on the websites you choose.")
             #endif
         }
     }
@@ -53,13 +56,13 @@ struct OnboardingView: View {
             Text("2. Add your API key")
                 .font(.title2.bold())
                 .accessibilityAddTraits(.isHeader)
-            Text("AssistAnt sends page content to the provider you choose, using your own key. The key is stored in Keychain on this device.")
-            Text("Your provider bills your account for every request AssistAnt makes, at the provider's prices. AssistAnt shows an estimated cost after each answer or task.")
+            Text("Safari Scout sends page content to the provider you choose, using your own key. The key is stored in Keychain on this device.")
+            Text("Your provider bills your account for every request Safari Scout makes, at the provider's prices. Safari Scout shows an estimated cost after each answer or task.")
             #if os(macOS)
             // On Mac the app and the extension do not share a Keychain group yet
             // (launch-blockers 14), so the key is added in Safari, where the
             // extension stores it itself.
-            Text("On Mac, add your key in Safari: click the AssistAnt icon in the toolbar, then Settings.")
+            Text("On Mac, add your key in Safari: click the Safari Scout icon in the toolbar, then Settings.")
                 .bold()
             #endif
             #if os(iOS)

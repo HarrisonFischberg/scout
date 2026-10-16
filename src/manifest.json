@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "AssistAnt",
+  "name": "Safari Scout",
   "version": "0.1.0",
-  "description": "Toolbar AI assistant that uses your own API key.",
+  "description": "Safari Scout: Your AI assistant in the world wide Safari",
   "permissions": [
     "activeTab",
     "tabs",
@@ -22,7 +22,7 @@
     "persistent": false
   },
   "action": {
-    "default_title": "AssistAnt",
+    "default_title": "Safari Scout",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/toolbar-16.png",

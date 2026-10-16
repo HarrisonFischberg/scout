@@ -127,6 +127,6 @@ test("a provider fallback is announced in the conversation", async ({ page }) =>
   await page.goto("/popup.html");
   await expect(page.locator("#status")).toContainText("Using anthropic");
   await expect(
-    page.getByRole("log").getByText("No OpenAI key is saved, so AssistAnt is using your Anthropic key."),
+    page.getByRole("log").getByText("No OpenAI key is saved, so Safari Scout is using your Anthropic key."),
   ).toBeVisible();
 });

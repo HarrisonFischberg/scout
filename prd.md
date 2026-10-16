@@ -1,10 +1,10 @@
-# assist-ant — PRD
+# Safari Scout — PRD
 
 Status: APPROVED by owner 2026-10-15 (chat). Build with mocked AI providers until test keys are supplied.
 
 ## Purpose
 
-AssistAnt: a Safari toolbar AI assistant and supervised browser agent for
+Safari Scout: a Safari toolbar AI assistant and supervised browser agent for
 macOS and iOS. The user brings their own Anthropic or OpenAI API key.
 
 ## Product features (MVP = all `must` rows in `replica/features.csv`)
@@ -20,7 +20,7 @@ macOS and iOS. The user brings their own Anthropic or OpenAI API key.
    code one at a time, read the cart total after each, keep the best, stop
    before the order. Shows every attempt and its real result.
 5. Cost transparency: token usage and estimated provider cost per run.
-6. Privacy: no AssistAnt server, no analytics; history retention setting;
+6. Privacy: no Safari Scout server, no analytics; history retention setting;
    Delete all data.
 
 ## Architecture (recommended)
@@ -61,10 +61,10 @@ Status values: `pending`, `in progress`, `done`, `blocked`, `needs supervised ch
 | ID | Task | Depends on | Acceptance criteria | Verification command | Status |
 | --- | --- | --- | --- | --- | --- |
 | T001 | Visual direction via `ui-ux-pro-max`; tokens + component specs in `replica/design.md`; contrast checked | — | Light + dark tokens; every text/control pair ≥ WCAG AA per Replica contrast tool | Replica contrast checker output saved to `replica/contrast.txt` | done |
-| T002a | Xcode multiplatform Safari extension project; esbuild TS pipeline; Safari API support table from MDN compat data | — | Both targets build; `npm run build` emits extension into `apple/Extension/Resources`; `docs/safari-api-support.md` exists | `npm run build`; `xcodebuild -project apple/AssistAnt.xcodeproj -scheme "AssistAnt (macOS)" -derivedDataPath build/DD CODE_SIGNING_ALLOWED=NO build`; same for `"AssistAnt (iOS)" -destination 'generic/platform=iOS Simulator'` (supervised) | done (supervised 2026-10-15: both BUILD SUCCEEDED, see activity.md) |
+| T002a | Xcode multiplatform Safari extension project; esbuild TS pipeline; Safari API support table from MDN compat data | — | Both targets build; `npm run build` emits extension into `apple/Extension/Resources`; `docs/safari-api-support.md` exists | `npm run build`; `xcodebuild -project apple/SafariScout.xcodeproj -scheme "Safari Scout (macOS)" -derivedDataPath build/DD CODE_SIGNING_ALLOWED=NO build`; same for `"Safari Scout (iOS)" -destination 'generic/platform=iOS Simulator'` (supervised) | done (supervised 2026-10-15: both BUILD SUCCEEDED, see activity.md) |
 | T002b | Load the extension in Safari macOS and the iOS Simulator; runtime-verify the API support table | T002a | Extension appears and its popup opens in both; table's Runtime-verified column filled | owner manual check + screenshots in `ralph/evidence/` | owner — load PASS on macOS + iOS Simulator (owner-reported popup; iOS enabled-state screenshot `ralph/evidence/T002b-ios-extension-enabled.png`); runtime API column still open, to be filled during T004/T007/T012 supervised checks |
 | T003 | Test harness: Vitest, Playwright WebKit, local fixture site (shop, forms, injection page), lint, typecheck | T002a | `npm test`, `npm run e2e`, `npm run lint`, `npm run typecheck` all run green on a trivial test | those commands | done (supervised 2026-10-15: typecheck, lint, 82 unit, 24/24 WebKit e2e pass outside sandbox) |
-| T004 | Keychain bridge via native messaging (set/get/delete key) | T002a | XCTest covers set/get/delete; JS never persists key; grep finds no key in storage | `xcodebuild test`; `npm test -- keychain` | done (supervised 2026-10-15: XCTest AssistAntTests 4/4 Keychain tests pass; `npm test -- keychain` pass; no `storage.*.set` anywhere in src/) |
+| T004 | Keychain bridge via native messaging (set/get/delete key) | T002a | XCTest covers set/get/delete; JS never persists key; grep finds no key in storage | `xcodebuild test`; `npm test -- keychain` | done (supervised 2026-10-15: XCTest SafariScoutTests 4/4 Keychain tests pass; `npm test -- keychain` pass; no `storage.*.set` anywhere in src/) |
 | T005 | Provider layer: Anthropic + OpenAI adapters, streaming, tool calls, error mapping (401, 429, network), token usage | T003 | Unit tests with recorded fixtures pass for both providers; errors map to user messages | `npm test -- providers` | done (18 provider tests pass; see activity.md) |
 | T006 | Host app onboarding + key setup screens (S01–S03), VoiceOver labels | T001, T004 | Screens render light/dark; Test key button shows valid/invalid; Accessibility Inspector no errors | `xcodebuild test` + screenshots in `ralph/evidence/` | blocked (partial). Done 2026-10-15 supervised: iOS XCUITest `performAccessibilityAudit` passes on setup screen in light and dark (dark verified by pixel check) and on the legal sheet; screenshots `ralph/evidence/T006-ios-*.png`; fixes: contrast (accent-text tint, token-paired AccentButtonStyle), clipped status text, sheet close control, raw Markdown. Still open: shared Keychain access group needs Apple team ID (blockers 2, 14); macOS host app visual + Accessibility Inspector check (owner manual) |
 | T007 | Popup chat (S04): page Q&A, summarize, streaming, no-key + error states, keyboard operable | T001, T005 | Playwright: ask + summarize on fixture page with mocked provider; keyboard-only path passes | `npm run e2e -- chat` | done (supervised 2026-10-15: e2e chat specs pass in WebKit) |

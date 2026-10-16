@@ -11,7 +11,7 @@ async function load(page: Page): Promise<void> {
 }
 
 const call = <T>(page: Page, req: unknown): Promise<T> =>
-  page.evaluate((r) => (window as unknown as { __assistAntHandle: Handler }).__assistAntHandle(r), req) as Promise<T>;
+  page.evaluate((r) => (window as unknown as { __safariScoutHandle: Handler }).__safariScoutHandle(r), req) as Promise<T>;
 
 interface Cart {
   total: number;

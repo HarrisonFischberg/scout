@@ -20,13 +20,13 @@ Per Replica recon rules, no further SafarAI source is read.
 
 | # | Observation | Evidence | Verified or inferred | Limitation | Informs |
 | --- | --- | --- | --- | --- | --- |
-| 1 | SafarAI is an Xcode Safari Web Extension: SwiftUI host app + MV3 extension (popup, content script, background module). | repo tree; README "Architecture" | verified | tree only | Same project shape for AssistAnt (Xcode multiplatform Safari extension) |
-| 2 | SafarAI requests `<all_urls>` host permission and a content script on every page, plus `tabs`, `scripting`, `contextMenus`. | manifest.json | verified | — | AssistAnt starts from `activeTab` + optional host permissions (safeguard 7) |
-| 3 | SafarAI declares `side_panel`, a Chrome API. Safari is not known to support `sidePanel`. | manifest.json | inferred (Safari support unverified) | must test in Safari 27 | AssistAnt uses toolbar popup; on macOS optionally an in-page panel |
-| 4 | SafarAI is single-provider (DeepSeek) and Q&A only: no agent actions. | README features | verified (docs) | docs may lag code | AssistAnt adds Anthropic + OpenAI and an agent action layer |
-| 5 | SafarAI README says keys live in Keychain; DEVELOPMENT.md says browser local storage. Contradiction. | README vs DEVELOPMENT.md | verified contradiction | did not read code to resolve | AssistAnt stores key in Keychain via native messaging, tested |
+| 1 | SafarAI is an Xcode Safari Web Extension: SwiftUI host app + MV3 extension (popup, content script, background module). | repo tree; README "Architecture" | verified | tree only | Same project shape for Safari Scout (Xcode multiplatform Safari extension) |
+| 2 | SafarAI requests `<all_urls>` host permission and a content script on every page, plus `tabs`, `scripting`, `contextMenus`. | manifest.json | verified | — | Safari Scout starts from `activeTab` + optional host permissions (safeguard 7) |
+| 3 | SafarAI declares `side_panel`, a Chrome API. Safari is not known to support `sidePanel`. | manifest.json | inferred (Safari support unverified) | must test in Safari 27 | Safari Scout uses toolbar popup; on macOS optionally an in-page panel |
+| 4 | SafarAI is single-provider (DeepSeek) and Q&A only: no agent actions. | README features | verified (docs) | docs may lag code | Safari Scout adds Anthropic + OpenAI and an agent action layer |
+| 5 | SafarAI README says keys live in Keychain; DEVELOPMENT.md says browser local storage. Contradiction. | README vs DEVELOPMENT.md | verified contradiction | did not read code to resolve | Safari Scout stores key in Keychain via native messaging, tested |
 | 6 | SafarAI README uses placeholder screenshots; no real UI reference. | README image URLs (via.placeholder.com) | verified | — | Visual direction from ui-ux-pro-max, not SafarAI |
-| 7 | Comet assistant: platforms Mac, Windows, iOS, Android; example tasks include buying a product to criteria; shows a "Pause" control during agent runs. | perplexity.ai/comet | verified (public page) | page omits UX, approvals, shortcuts | AssistAnt run view gets Pause/Stop |
+| 7 | Comet assistant: platforms Mac, Windows, iOS, Android; example tasks include buying a product to criteria; shows a "Pause" control during agent runs. | perplexity.ai/comet | verified (public page) | page omits UX, approvals, shortcuts | Safari Scout run view gets Pause/Stop |
 | 8 | Comet asks approval before sensitive actions (login, purchase); has @tab multi-tab context, summaries, form fill, shopping, Gmail/Calendar/Notion, history search. | owner-pasted summary | inferred (unverified secondhand) | not checked against product | Feature matrix rows; approval gate design |
 
 ## Limitations of this analysis

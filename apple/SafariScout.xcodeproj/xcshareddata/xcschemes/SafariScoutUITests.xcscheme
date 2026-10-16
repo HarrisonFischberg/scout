@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "B496321F9C867596A21FB981"
-               BuildableName = "AssistAnt (iOS).app"
-               BlueprintName = "AssistAnt (iOS)"
-               ReferencedContainer = "container:AssistAnt.xcodeproj">
+               BuildableName = "Safari Scout (iOS).app"
+               BlueprintName = "Safari Scout (iOS)"
+               ReferencedContainer = "container:SafariScout.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -31,12 +31,22 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B496321F9C867596A21FB981"
-            BuildableName = "AssistAnt (iOS).app"
-            BlueprintName = "AssistAnt (iOS)"
-            ReferencedContainer = "container:AssistAnt.xcodeproj">
+            BuildableName = "Safari Scout (iOS).app"
+            BlueprintName = "Safari Scout (iOS)"
+            ReferencedContainer = "container:SafariScout.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "77E697E80853BA2409AF86E5"
+               BuildableName = "SafariScoutUITests.xctest"
+               BlueprintName = "SafariScoutUITests"
+               ReferencedContainer = "container:SafariScout.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
@@ -54,9 +64,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B496321F9C867596A21FB981"
-            BuildableName = "AssistAnt (iOS).app"
-            BlueprintName = "AssistAnt (iOS)"
-            ReferencedContainer = "container:AssistAnt.xcodeproj">
+            BuildableName = "Safari Scout (iOS).app"
+            BlueprintName = "Safari Scout (iOS)"
+            ReferencedContainer = "container:SafariScout.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -71,9 +81,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B496321F9C867596A21FB981"
-            BuildableName = "AssistAnt (iOS).app"
-            BlueprintName = "AssistAnt (iOS)"
-            ReferencedContainer = "container:AssistAnt.xcodeproj">
+            BuildableName = "Safari Scout (iOS).app"
+            BlueprintName = "Safari Scout (iOS)"
+            ReferencedContainer = "container:SafariScout.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

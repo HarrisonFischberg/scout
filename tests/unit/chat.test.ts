@@ -89,7 +89,7 @@ describe("runTurn", () => {
     });
     expect(result).toEqual({
       ok: false,
-      error: "The API key was rejected. Check the key in AssistAnt settings.",
+      error: "The API key was rejected. Check the key in Safari Scout settings.",
       partial: "",
     });
   });

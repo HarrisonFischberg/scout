@@ -1,11 +1,11 @@
-# Adds a standalone macOS unit-test bundle (AssistAntTests) to the Xcode
+# Adds a standalone macOS unit-test bundle (SafariScoutTests) to the Xcode
 # project and a shared scheme that runs it. Idempotent.
 require 'xcodeproj'
-path = File.expand_path('../apple/AssistAnt.xcodeproj', __dir__)
+path = File.expand_path('../apple/SafariScout.xcodeproj', __dir__)
 project = Xcodeproj::Project.open(path)
-exit 0 if project.targets.any? { |t| t.name == 'AssistAntTests' }
+exit 0 if project.targets.any? { |t| t.name == 'SafariScoutTests' }
 
-target = project.new_target(:unit_test_bundle, 'AssistAntTests', :osx, '14.0')
+target = project.new_target(:unit_test_bundle, 'SafariScoutTests', :osx, '14.0')
 group = project.main_group.find_subpath('Tests', true)
 group.set_source_tree('<group>')
 group.set_path('Tests')
@@ -28,5 +28,5 @@ project.save
 scheme = Xcodeproj::XCScheme.new
 scheme.add_build_target(target)
 scheme.add_test_target(target)
-scheme.save_as(path, 'AssistAntTests', true)
-puts 'added AssistAntTests'
+scheme.save_as(path, 'SafariScoutTests', true)
+puts 'added SafariScoutTests'

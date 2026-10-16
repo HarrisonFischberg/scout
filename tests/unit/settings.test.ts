@@ -139,8 +139,8 @@ describe("deleteAllData", () => {
     expect(report.siteAccess).toBe(false);
     expect(report.remainingOrigins).toEqual(["*://*.127.0.0.1/*"]);
     const text = deleteReportText(report);
-    expect(text).toContain("Safari still lets AssistAnt read: 127.0.0.1.");
-    expect(text).toContain("Settings > Apps > Safari > Extensions > AssistAnt");
+    expect(text).toContain("Safari still lets Safari Scout read: 127.0.0.1.");
+    expect(text).toContain("Settings > Apps > Safari > Extensions > Safari Scout");
   });
 
   it("says plainly when everything was deleted", () => {

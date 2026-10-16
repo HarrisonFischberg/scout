@@ -9,7 +9,7 @@ export type ProviderErrorCode =
   | "stream_error";
 
 const MESSAGES: Record<ProviderErrorCode, string> = {
-  auth_invalid: "The API key was rejected. Check the key in AssistAnt settings.",
+  auth_invalid: "The API key was rejected. Check the key in Safari Scout settings.",
   rate_limited: "The provider is rate limiting requests. Wait a moment and try again.",
   provider_unavailable: "The provider is having problems. Try again shortly.",
   network: "Could not reach the provider. Check your connection.",

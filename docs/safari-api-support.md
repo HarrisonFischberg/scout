@@ -10,7 +10,7 @@ read locally 2026-10-15). Values are MDN's `safari` (macOS) and `safari_ios`
 present on these rows. Apple's Safari web extensions page returned only its
 title to the fetch tool, so Apple is not a source here.
 
-| API | macOS Safari | iOS Safari | AssistAnt use (PRD) | Runtime-verified |
+| API | macOS Safari | iOS Safari | Safari Scout use (PRD) | Runtime-verified |
 | --- | --- | --- | --- | --- |
 | `sidePanel` | not supported | not supported | not used; toolbar popup instead | n/a |
 | `sidebarAction` | not supported | not supported | not used | n/a |

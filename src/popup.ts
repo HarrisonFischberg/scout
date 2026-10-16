@@ -183,7 +183,7 @@ async function tabAgentPage(): Promise<(AgentPage & { cart: CartApi }) | null> {
           const h = (globalThis as unknown as Record<string, ((x: ContentRequest) => unknown) | undefined>)[name];
           if (typeof r !== "object" || r === null) return { ok: false, why: "no-args" };
           if (!h) {
-            const loaded = (globalThis as unknown as Record<string, unknown>).__assistAntContent === true;
+            const loaded = (globalThis as unknown as Record<string, unknown>).__safariScoutContent === true;
             return { ok: false, why: "no-handler loaded=" + String(loaded) };
           }
           const out = h(r);
@@ -453,7 +453,7 @@ async function main(): Promise<void> {
     if (found.fellBackFrom) {
       fallbackNotice = addMessage(
         "error",
-        "No " + PROVIDER_NAME[found.fellBackFrom] + " key is saved, so AssistAnt is using your " +
+        "No " + PROVIDER_NAME[found.fellBackFrom] + " key is saved, so Safari Scout is using your " +
           PROVIDER_NAME[session.settings.provider] + " key. Add your " + PROVIDER_NAME[found.fellBackFrom] + " key in Settings to use it.",
       );
     }
@@ -467,7 +467,7 @@ async function main(): Promise<void> {
     for (const i of modeInputs) i.checked = i.value === next;
     syncSegmented(modeInputs);
     modeChip.hidden = next !== "control";
-    question.placeholder = next === "control" ? "Tell AssistAnt what to do on this page…" : "Ask anything…";
+    question.placeholder = next === "control" ? "Tell Safari Scout what to do on this page…" : "Ask anything…";
     send.setAttribute("aria-label", next === "control" ? "Start task" : "Send");
   }
   for (const i of modeInputs) i.addEventListener("change", () => setMode(mode()));

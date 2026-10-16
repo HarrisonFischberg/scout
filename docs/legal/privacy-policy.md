@@ -1,4 +1,4 @@
-# AssistAnt Privacy Policy (DRAFT)
+# Safari Scout Privacy Policy (DRAFT)
 
 > DRAFT for qualified legal review. Not approved. Not for publication.
 > Items marked **UNKNOWN** are missing facts the owner must supply
@@ -9,26 +9,26 @@ Operator (legal entity and trading name): UNKNOWN
 Business location: UNKNOWN
 Privacy contact: UNKNOWN
 
-## 1. What AssistAnt is
+## 1. What Safari Scout is
 
-AssistAnt is a Safari extension and host app for macOS and iOS. It sends
+Safari Scout is a Safari extension and host app for macOS and iOS. It sends
 your questions and page content to an AI provider you choose (Anthropic or
-OpenAI), using your own API key. AssistAnt has no server of its own: nothing
-you do in AssistAnt is sent to the operator.
+OpenAI), using your own API key. Safari Scout has no server of its own: nothing
+you do in Safari Scout is sent to the operator.
 
 ## 2. What we do not collect
 
-AssistAnt contains no analytics, no crash telemetry, no advertising
+Safari Scout contains no analytics, no crash telemetry, no advertising
 identifiers, and sets no cookies. The operator does not receive your key,
 page content, chat messages, or usage data.
 
-## 3. Data AssistAnt handles, and where it goes
+## 3. Data Safari Scout handles, and where it goes
 
 | Data | Why | Where it goes or is stored | How long | How to delete |
 | --- | --- | --- | --- | --- |
 | Provider API key | call your chosen provider | Keychain on your device. Not in extension storage, logs, or prompts | until you remove it | Remove key, or Delete all data |
 | Provider and model choice | route requests | extension storage on your device | until changed | Delete all data |
-| Page content (text and structure; password and card fields redacted) | answer questions, plan agent actions | sent to the provider you chose, only when you ask. Not stored by AssistAnt beyond the conversation | provider's retention under your account terms | provider-side: your provider account |
+| Page content (text and structure; password and card fields redacted) | answer questions, plan agent actions | sent to the provider you chose, only when you ask. Not stored by Safari Scout beyond the conversation | provider's retention under your account terms | provider-side: your provider account |
 | Screenshots of the visible tab, if the agent uses them | visual grounding | sent to the provider you chose | provider's retention | provider-side: your provider account |
 | Chat questions and answers | optional history | extension storage on your device | your setting: off, 7 days, or 30 days (default 7). Max 200 entries | auto-expiry, or Delete all data |
 | Sites you granted access to | read pages you chose | Safari's permission store; listed in Settings | until removed | Remove in Settings, or Delete all data |
@@ -43,15 +43,15 @@ version.
 
 Your chosen AI provider receives the data in section 3 under your own
 account and its terms: Anthropic (Messages API) or OpenAI (Responses API).
-Read their privacy policies; AssistAnt cannot control provider handling.
+Read their privacy policies; Safari Scout cannot control provider handling.
 Apple distributes the app through the App Store. Provider processors and
 sub-processors: UNKNOWN until reviewed.
 
 ## 5. Sensitive data
 
 Pages you view may contain personal, financial, or health information.
-AssistAnt redacts password and card fields before sending a page snapshot.
-It cannot recognise all sensitive text. Do not use AssistAnt on pages whose
+Safari Scout redacts password and card fields before sending a page snapshot.
+It cannot recognise all sensitive text. Do not use Safari Scout on pages whose
 content you do not want sent to your provider.
 
 ## 6. Your choices

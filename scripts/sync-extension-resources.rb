@@ -4,9 +4,9 @@
 # from the bundles, so the agent and legal links failed on device).
 require 'xcodeproj'
 root = File.expand_path('..', __dir__)
-path = File.join(root, 'apple/AssistAnt.xcodeproj')
+path = File.join(root, 'apple/SafariScout.xcodeproj')
 project = Xcodeproj::Project.open(path)
-targets = project.targets.select { |t| t.name.start_with?('AssistAnt Extension') }
+targets = project.targets.select { |t| t.name.start_with?('Safari Scout Extension') }
 existing = targets.first.resources_build_phase.files_references
 group = existing.first.parent
 built = Dir.children(File.join(root, 'apple/Extension/Resources')).reject { |f| f.start_with?('.') }.sort

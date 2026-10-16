@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "03BFAAF7FE0903248A3120CA"
-               BuildableName = "AssistAntTests.xctest"
-               BlueprintName = "AssistAntTests"
-               ReferencedContainer = "container:AssistAnt.xcodeproj">
+               BlueprintIdentifier = "9FE3739F845541AF268D6ED4"
+               BuildableName = "Safari Scout (macOS).app"
+               BlueprintName = "Safari Scout (macOS)"
+               ReferencedContainer = "container:SafariScout.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -27,17 +27,16 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "9FE3739F845541AF268D6ED4"
+            BuildableName = "Safari Scout (macOS).app"
+            BlueprintName = "Safari Scout (macOS)"
+            ReferencedContainer = "container:SafariScout.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
       <Testables>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "03BFAAF7FE0903248A3120CA"
-               BuildableName = "AssistAntTests.xctest"
-               BlueprintName = "AssistAntTests"
-               ReferencedContainer = "container:AssistAnt.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
@@ -50,6 +49,16 @@
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "9FE3739F845541AF268D6ED4"
+            BuildableName = "Safari Scout (macOS).app"
+            BlueprintName = "Safari Scout (macOS)"
+            ReferencedContainer = "container:SafariScout.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -57,6 +66,16 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "9FE3739F845541AF268D6ED4"
+            BuildableName = "Safari Scout (macOS).app"
+            BlueprintName = "Safari Scout (macOS)"
+            ReferencedContainer = "container:SafariScout.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">
