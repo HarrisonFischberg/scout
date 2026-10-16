@@ -3,6 +3,7 @@
 declare const browser: {
   runtime: {
     sendMessage(message: unknown): Promise<unknown>;
+    sendNativeMessage(application: string, message: unknown): Promise<unknown>;
     onMessage: {
       addListener(
         listener: (message: unknown) => Promise<unknown> | unknown,
