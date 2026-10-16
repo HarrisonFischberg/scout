@@ -29,3 +29,28 @@ Item text: `~/.claude/skills/new-app/references/safeguards.md`.
 | 18 | Email unsubscribe | | | | | | | |
 | 19 | Asset and code licenses | | | | | | | |
 | 20 | Data deletion request | | | | | | | |
+
+## T016 legal draft review checklist
+
+Drafts: `docs/legal/privacy-policy.md`, `docs/legal/terms.md` (both marked
+DRAFT, not legal advice, need qualified review, blocker 8).
+
+| Data-inventory row | In privacy policy section 3 |
+| --- | --- |
+| Provider API key | yes |
+| Provider + model choice | yes |
+| Page content snapshot | yes |
+| Screenshots | yes |
+| Chat messages (history) | yes |
+| Granted site origins | yes |
+| Coupon codes + cart totals | yes |
+| Web search queries | yes |
+| Autofill profile (not built) | yes, marked not yet built |
+
+- Not collected (analytics, telemetry, ad IDs, cookies): section 2.
+- Vendors Anthropic, OpenAI, Apple: section 4.
+- Deletion and retention: sections 3 and 6.
+- Every unknown fact is marked UNKNOWN, none invented: entity, location,
+  contact, effective date, minimum age, price, refunds, governing law,
+  regional regimes, warranty/liability wording (blockers 1, 4, 5).
+- Not done here: safeguard rows 1-4 status (T017); in-app S09 screen.
