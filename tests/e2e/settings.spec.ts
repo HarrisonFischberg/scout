@@ -56,14 +56,15 @@ async function openPopup(page: Page): Promise<void> {
   await page.goto("/popup.html");
 }
 
-test("settings save and persist the chosen provider, model, and retention", async ({ page }) => {
+test("settings save as you change them and persist provider, model, and retention", async ({ page }) => {
   await openPopup(page);
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByLabel("Provider").selectOption("openai");
-  await page.getByLabel("Model").fill("gpt-test-model");
+  await page.getByRole("radio", { name: "OpenAI" }).check();
+  await expect(page.getByLabel("Model", { exact: true })).toHaveValue("gpt-5");
+  await page.getByLabel("Model", { exact: true }).fill("gpt-test-model");
+  await page.getByLabel("Model", { exact: true }).press("Tab");
   await page.getByLabel("Keep chat history").selectOption("30");
-  await page.getByRole("button", { name: "Save settings" }).click();
-  await expect(page.getByText("Saved.")).toBeVisible();
+  await expect(page.locator("#settings-saved")).toHaveText("Saved.");
   const saved = await page.evaluate(() => (globalThis as unknown as { __fake: { data: { settings: unknown } } }).__fake.data.settings);
   expect(saved).toEqual({ provider: "openai", model: "gpt-test-model", retention: "30" });
 });
@@ -120,9 +121,9 @@ test("legal drafts open from settings by keyboard and are marked DRAFT", async (
 
 // iOS opens a <select>'s picker as soon as it gets focus (seen in T018), so
 // opening Settings must focus the heading, not the provider select.
-test("opening Settings focuses its heading, not the provider select", async ({ page }) => {
+test("opening Settings focuses its heading, not a provider control", async ({ page }) => {
   await openPopup(page);
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page.getByRole("heading", { name: "Settings", level: 2 })).toBeFocused();
-  await expect(page.getByLabel("Provider")).not.toBeFocused();
+  for (const name of ["Anthropic", "OpenAI"]) await expect(page.getByRole("radio", { name })).not.toBeFocused();
 });

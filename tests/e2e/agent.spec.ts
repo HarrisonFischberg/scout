@@ -98,7 +98,8 @@ async function openPopup(page: Page, modelDelayMs = 0): Promise<{ acts: string[]
 test("agent completes a 5-step form task and lists every step", async ({ page }) => {
   const { acts } = await openPopup(page);
   await page.getByLabel("Ask about this page").fill("Send a support message as Ada");
-  await page.getByRole("button", { name: "Do this on the page" }).click();
+  await page.getByRole("radio", { name: "Control Browser" }).check();
+  await page.getByRole("button", { name: "Start task" }).click();
   const log = page.getByRole("log", { name: "Conversation" });
   await expect(log.getByText("Form sent.")).toBeVisible();
   await expect(page.getByRole("list").locator("li")).toHaveCount(6);
@@ -108,7 +109,8 @@ test("agent completes a 5-step form task and lists every step", async ({ page })
 test("Stop halts the run within one step", async ({ page }) => {
   const { acts, calls } = await openPopup(page, 1500);
   await page.getByLabel("Ask about this page").fill("Send a support message as Ada");
-  await page.getByRole("button", { name: "Do this on the page" }).click();
+  await page.getByRole("radio", { name: "Control Browser" }).check();
+  await page.getByRole("button", { name: "Start task" }).click();
   await page.getByRole("button", { name: "Stop" }).first().click();
   await expect(page.getByText("Stopped.", { exact: true })).toBeVisible();
   expect(acts.length).toBeLessThanOrEqual(1);

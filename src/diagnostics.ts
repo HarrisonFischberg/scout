@@ -110,6 +110,11 @@ export class Diagnostics {
     await this.persist();
   }
 
+  /** Drops everything in memory without writing (storage was just cleared). */
+  forget(): void {
+    this.data = { includeQuestion: false, nextId: 1, runs: [] };
+  }
+
   get runs(): readonly DiagRun[] {
     return this.data.runs;
   }

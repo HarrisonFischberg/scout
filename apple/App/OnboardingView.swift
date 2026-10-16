@@ -55,6 +55,14 @@ struct OnboardingView: View {
                 .accessibilityAddTraits(.isHeader)
             Text("AssistAnt sends page content to the provider you choose, using your own key. The key is stored in Keychain on this device.")
             Text("Your provider bills your account for every request AssistAnt makes, at the provider's prices. AssistAnt shows an estimated cost after each answer or task.")
+            #if os(macOS)
+            // On Mac the app and the extension do not share a Keychain group yet
+            // (launch-blockers 14), so the key is added in Safari, where the
+            // extension stores it itself.
+            Text("On Mac, add your key in Safari: click the AssistAnt icon in the toolbar, then Settings.")
+                .bold()
+            #endif
+            #if os(iOS)
             Picker("Provider", selection: $setup.provider) {
                 ForEach(Provider.allCases) { Text($0.displayName).tag($0) }
             }
@@ -74,6 +82,7 @@ struct OnboardingView: View {
             Text(setup.statusMessage)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityLabel("Key status: \(setup.statusMessage)")
+            #endif
         }
     }
 }

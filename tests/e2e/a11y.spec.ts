@@ -87,8 +87,13 @@ test("every visible control in the popup is reachable by Option+Tab and shows a 
     const info = await page.evaluate(() => {
       const el = document.activeElement as HTMLElement | null;
       if (!el || el === document.body) return null;
-      const cs = getComputedStyle(el);
-      const ring = cs.outlineStyle !== "none" && parseFloat(cs.outlineWidth) > 0 || cs.boxShadow !== "none";
+      const hasRing = (n: Element): boolean => {
+        const cs = getComputedStyle(n);
+        return (cs.outlineStyle !== "none" && parseFloat(cs.outlineWidth) > 0) || cs.boxShadow.includes("0px 0px 0px");
+      };
+      // The message box draws focus on its container (.composer-box) instead of the textarea.
+      const box = el.closest(".composer-box");
+      const ring = hasRing(el) || (el.id === "question" && box !== null && hasRing(box));
       return { name: el.id || el.getAttribute("aria-label") || el.textContent?.trim() || el.tagName, ring };
     });
     if (!info) continue;

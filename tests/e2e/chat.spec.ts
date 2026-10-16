@@ -47,7 +47,8 @@ async function openPopup(page: Page, opts: { key: string | null }): Promise<{ bo
 
 test("no key: explains setup and offers no composer", async ({ page }) => {
   await openPopup(page, { key: null });
-  await expect(page.getByText("Add an API key to start.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Add your API key to start" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add API key" })).toBeVisible();
   await expect(page.getByLabel("Ask about this page")).toBeHidden();
 });
 
@@ -65,6 +66,7 @@ test("ask about the page streams a Markdown answer", async ({ page }) => {
 
 test("summarize button works", async ({ page }) => {
   await openPopup(page, { key: "sk-test-synthetic" });
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Summarize page" }).click();
   await expect(page.getByRole("log").getByText("with free shipping.")).toBeVisible();
 });

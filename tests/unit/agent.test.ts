@@ -232,3 +232,24 @@ describe("malformed snapshot", () => {
     expect(out.message).toBe("Could not read the page.");
   });
 });
+
+describe("web research", () => {
+  it("passes webSearch and the research note to the provider only when asked", async () => {
+    const seen: ChatRequest[] = [];
+    const provider = {
+      id: "anthropic",
+      async *stream(req: ChatRequest): AsyncGenerator<StreamEvent> {
+        seen.push(req);
+        yield { type: "tool_call", id: "t1", name: "finish", input: { summary: "done" } };
+      },
+    } as unknown as ProviderClient;
+    const snap = { url: "https://shop.test/", title: "t", text: "", elements: [], truncated: false };
+    const page = { snapshot: async () => snap, act: async () => ({ ok: true, action: "click", message: "" }) } as unknown as AgentPage;
+    await runAgent({ provider, model: "m", goal: "g", page, webSearch: true });
+    await runAgent({ provider, model: "m", goal: "g", page });
+    expect(seen[0]!.webSearch).toBe(true);
+    expect(seen[0]!.system).toContain("You may use web search");
+    expect(seen[1]!.webSearch).toBeUndefined();
+    expect(seen[1]!.system).not.toContain("web search");
+  });
+});

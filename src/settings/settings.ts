@@ -10,11 +10,18 @@ export interface Settings {
   retention: Retention;
 }
 
+export type HistoryKind = "chat" | "agent" | "coupons";
+
 export interface HistoryEntry {
   at: number;
   question: string;
   answer: string;
+  /** What produced the entry. Absent on entries saved before T025 (chat). */
+  kind?: HistoryKind;
 }
+
+/** Storage key for the start of the current conversation ("New chat" resets it). */
+export const CHAT_START_KEY = "chatStartedAt";
 
 // Minimal view of `browser.storage.local`, so tests can pass a fake.
 export interface StorageArea {
@@ -82,7 +89,14 @@ function parseHistory(raw: unknown): HistoryEntry[] {
   return raw.flatMap((e: unknown) => {
     const r = e as Partial<HistoryEntry> | null;
     return r && typeof r.at === "number" && typeof r.question === "string" && typeof r.answer === "string"
-      ? [{ at: r.at, question: r.question, answer: r.answer }]
+      ? [
+          {
+            at: r.at,
+            question: r.question,
+            answer: r.answer,
+            ...(r.kind === "agent" || r.kind === "coupons" || r.kind === "chat" ? { kind: r.kind } : {}),
+          },
+        ]
       : [];
   });
 }
@@ -175,4 +189,26 @@ export function deleteReportText(r: DeleteReport): string {
   }
   if (r.keychain && r.storage) parts.unshift("Deleted your API keys, settings, and history from this device.");
   return parts.join(" ");
+}
+
+/** Entries in the current conversation: those saved since the last "New chat". */
+export async function loadConversation(
+  storage: StorageArea,
+  retention: Retention,
+  now: number,
+): Promise<HistoryEntry[]> {
+  const all = await loadHistory(storage, retention, now);
+  const got = await storage.get(CHAT_START_KEY);
+  const start = typeof got[CHAT_START_KEY] === "number" ? (got[CHAT_START_KEY] as number) : 0;
+  return all.filter((e) => e.at >= start);
+}
+
+/** Starts a new conversation; earlier entries stay in history until they expire. */
+export async function startNewConversation(storage: StorageArea, now: number): Promise<void> {
+  await storage.set({ [CHAT_START_KEY]: now });
+}
+
+/** Removes all saved chat history. */
+export async function clearHistory(storage: StorageArea): Promise<void> {
+  await storage.set({ [HISTORY_KEY]: [] });
 }

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AssistAnt</title>
     <style>
+      /* Tokens: replica/design/tokens.json (contrast-checked, replica/contrast.txt). */
       :root {
         color-scheme: light dark;
         --bg-canvas: #f5f5f7;
@@ -16,11 +17,14 @@
         --accent: #6d28d9;
         --accent-on: #ffffff;
         --accent-text: #6d28d9;
+        --accent-soft: #ede9fe;
         --bubble-user: #e9e3fb;
         --bubble-user-text: #2e1065;
         --danger: #b42318;
         --focus-ring: #6d28d9;
         --border-control: #8a8a90;
+        --hairline: #d9d9de;
+        --shadow: 0 1px 2px rgb(0 0 0 / 6%), 0 4px 16px rgb(0 0 0 / 6%);
       }
       @media (prefers-color-scheme: dark) {
         :root {
@@ -33,117 +37,346 @@
           --accent: #a78bfa;
           --accent-on: #1a102e;
           --accent-text: #c4b5fd;
+          --accent-soft: #2e2550;
           --bubble-user: #3b2a6b;
           --bubble-user-text: #f3eeff;
           --danger: #ff8a80;
           --focus-ring: #c4b5fd;
           --border-control: #8e8e93;
+          --hairline: #3a3a3d;
+          --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 16px rgb(0 0 0 / 30%);
         }
       }
       * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
       body {
-        margin: 0;
-        width: 380px;
-        max-width: 100%;
         background: var(--bg-canvas);
         color: var(--text-primary);
-        font: 16px/1.5 -apple-system, system-ui, sans-serif;
+        font: 15px/1.5 -apple-system, system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
       }
-      main { display: flex; flex-direction: column; gap: 12px; padding: 12px; min-height: 360px; }
-      h1, h2, h3 { font-size: 16px; margin: 0; }
-      h1 { flex: 1; }
-      select, input[type="text"] {
-        font: inherit; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border-control);
-        background: var(--bg-surface); color: var(--text-primary);
-      }
-      #site-list { margin: 0; padding-left: 20px; overflow-wrap: anywhere; }
+      /* macOS toolbar popover: fixed size so the composer stays pinned. iOS: full sheet. */
+      @media (hover: hover) and (pointer: fine) { body { width: 400px; height: 600px; } }
+      [hidden] { display: none !important; }
+      .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+      button, select, input, textarea { font: inherit; color: inherit; }
+      button { cursor: pointer; }
+      svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
       a { color: var(--accent-text); text-decoration: underline; }
-      #log { flex: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 420px; }
-      .msg { border-radius: 12px; padding: 8px 12px; max-width: 85%; overflow-wrap: anywhere; }
+
+      .view { display: flex; flex-direction: column; height: 100%; }
+
+      /* Header */
+      header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--hairline); }
+      header img { width: 24px; height: 24px; }
+      header h1, header h2 { flex: 1; margin: 0; font-size: 15px; font-weight: 600; }
+      .icon-btn {
+        display: inline-grid; place-items: center; min-width: 32px; height: 32px; padding: 0 6px;
+        border: 0; border-radius: 8px; background: transparent; color: var(--text-secondary);
+      }
+      .icon-btn:hover { background: var(--bg-subtle); color: var(--text-primary); }
+
+      /* Thread */
+      #thread { flex: 1; overflow-y: auto; padding: 12px 14px 4px; display: flex; flex-direction: column; gap: 12px; }
+      #log { display: flex; flex-direction: column; gap: 12px; }
+      .msg { overflow-wrap: anywhere; }
       .msg p, .msg ul, .msg ol, .msg pre { margin: 0 0 8px; }
       .msg > :last-child { margin-bottom: 0; }
-      .msg h3, .msg h4, .msg h5 { margin: 0 0 4px; font-size: 16px; }
+      .msg h3, .msg h4, .msg h5 { margin: 0 0 4px; font-size: 15px; }
       .msg pre { overflow-x: auto; background: var(--bg-subtle); padding: 8px; border-radius: 8px; }
-      .msg.user { align-self: flex-end; background: var(--bubble-user); color: var(--bubble-user-text); }
-      .msg.assistant { align-self: flex-start; background: var(--bg-surface); }
-      .msg.error { align-self: flex-start; background: var(--bg-surface); color: var(--danger); border: 1px solid var(--danger); }
-      .hint { color: var(--text-muted); font-size: 14px; margin: 0; }
-      .msg.error .diag-copy { display: block; margin-top: 8px; color: var(--text-primary); }
-      #diag-text { width: 100%; min-height: 120px; font: 12px/1.4 ui-monospace, monospace; }
-      .empty { background: var(--bg-surface); border-radius: 12px; padding: 12px; }
-      form { display: flex; flex-direction: column; gap: 8px; }
-      fieldset { border: 1px solid var(--border-control); border-radius: 8px; margin: 0; padding: 8px; }
-      legend { font-size: 14px; color: var(--text-secondary); padding: 0 4px; }
-      #tab-list label { display: flex; gap: 8px; align-items: baseline; overflow-wrap: anywhere; }
-      label { font-size: 14px; color: var(--text-secondary); }
-      textarea {
-        font: inherit; width: 100%; min-height: 64px; resize: vertical; padding: 8px;
-        border-radius: 8px; border: 1px solid var(--border-control);
-        background: var(--bg-surface); color: var(--text-primary);
+      .msg.user {
+        align-self: flex-end; max-width: 85%; padding: 8px 12px; border-radius: 16px 16px 4px 16px;
+        background: var(--bubble-user); color: var(--bubble-user-text);
       }
-      table { width: 100%; border-collapse: collapse; font-size: 14px; }
-      th, td { text-align: left; padding: 4px; border-bottom: 1px solid var(--border-control); overflow-wrap: anywhere; }
-      .row { display: flex; gap: 8px; flex-wrap: wrap; }
-      button {
-        font: inherit; min-height: 32px; padding: 4px 12px; border-radius: 8px; cursor: pointer;
-        border: 1px solid var(--border-control); background: var(--bg-surface); color: var(--text-primary);
+      .msg.user .mode { display: block; font-size: 12px; font-weight: 700; }
+      .msg.assistant { align-self: stretch; }
+      .msg.error {
+        align-self: stretch; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--danger);
+        color: var(--danger); background: var(--bg-surface);
       }
-      button.primary { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
-      button:disabled { color: var(--text-muted); background: var(--bg-subtle); border-color: var(--bg-subtle); cursor: default; }
-      :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-      [hidden] { display: none !important; }
-      @media (prefers-reduced-motion: no-preference) { button { transition: background-color 150ms; } }
+      .msg.error .diag-copy {
+        display: block; margin-top: 6px; padding: 2px 8px; border-radius: 6px; font-size: 13px;
+        border: 1px solid var(--border-control); background: transparent; color: var(--text-primary);
+      }
+      .card { background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 10px 12px; box-shadow: var(--shadow); }
+      .card h2 { font-size: 14px; margin: 0 0 4px; }
+      .card ol { margin: 6px 0; padding-left: 20px; font-size: 14px; }
+      .hint { color: var(--text-muted); font-size: 13px; margin: 0; }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      .btn {
+        min-height: 32px; padding: 4px 12px; border-radius: 8px;
+        border: 1px solid var(--border-control); background: var(--bg-surface);
+      }
+      .btn.primary { background: var(--accent); color: var(--accent-on); border-color: var(--accent); font-weight: 600; }
+      .btn.danger { color: var(--danger); border-color: var(--danger); }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th, td { text-align: left; padding: 4px 6px 4px 0; border-bottom: 1px solid var(--hairline); }
+
+      /* Empty and setup states */
+      .center { margin: auto 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 8px; }
+      .center img { width: 72px; height: 72px; }
+      .center p { margin: 0; }
+      .center h2 { margin: 0; font-size: 17px; }
+      .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+      .chip {
+        min-height: 32px; padding: 4px 12px; border-radius: 999px;
+        border: 1px solid var(--hairline); background: var(--bg-surface); color: var(--text-primary); font-size: 14px;
+      }
+      .chip:hover { border-color: var(--border-control); }
+
+      /* Composer */
+      #status { padding: 0 16px 4px; min-height: 20px; }
+      #composer { margin: 0 10px 10px; position: relative; }
+      .composer-box {
+        background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 16px;
+        box-shadow: var(--shadow); padding: 8px 8px 6px 12px;
+      }
+      /* The textarea has no outline of its own; the box around it shows focus. */
+      .composer-box:focus-within { border-color: var(--border-control); }
+      .composer-box:has(#question:focus-visible) { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring), var(--shadow); }
+      #mode-chip { display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 2px; font-weight: 700; color: var(--accent-text); }
+      #mode-chip .icon-btn { min-width: 24px; height: 24px; padding: 0; }
+      #question {
+        display: block; width: 100%; resize: none; border: 0; outline: 0; background: transparent;
+        padding: 4px 0; min-height: 24px; max-height: 140px; line-height: 1.45;
+      }
+      #question::placeholder { color: var(--text-muted); }
+      .composer-foot { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+      .spacer { flex: 1; }
+      .round {
+        display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+        border: 1px solid var(--hairline); background: transparent; color: var(--text-secondary);
+      }
+      .round.send { border: 0; background: var(--accent); color: var(--accent-on); }
+      .round.send svg.i { stroke-width: 2.2; }
+      fieldset.segmented {
+        align-self: flex-start; display: inline-flex; margin: 0; padding: 2px; border: 1px solid var(--hairline); border-radius: 999px; gap: 2px;
+      }
+      fieldset.segmented legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+      .segmented label {
+        position: relative; display: inline-flex; align-items: center; gap: 4px; min-height: 28px;
+        padding: 0 10px; border-radius: 999px; font-size: 13px; color: var(--text-secondary); cursor: pointer;
+      }
+      .segmented input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+      /* Selected state is a class set from script (syncSegmented in popup.ts). */
+      .segmented label.on { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+      .segmented label:has(input:focus-visible) { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+      #model-pill {
+        border: 0; background: transparent; color: var(--text-muted); font-size: 12px; max-width: 110px;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 4px 6px; border-radius: 6px;
+      }
+      #model-pill:hover { background: var(--bg-subtle); }
+      #plus-menu {
+        position: absolute; left: 0; bottom: calc(100% + 6px); min-width: 220px; margin: 0; padding: 6px;
+        list-style: none; background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 12px; box-shadow: var(--shadow);
+      }
+      #plus-menu button {
+        display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0;
+        border-radius: 8px; background: transparent; text-align: left;
+      }
+      #plus-menu button:hover { background: var(--bg-subtle); }
+      #tabs { border: 0; margin: 0 0 4px; padding: 0; }
+      #tabs legend { font-size: 12px; color: var(--text-muted); padding: 0; }
+      #tab-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+      #tab-list label {
+        display: inline-flex; gap: 6px; align-items: center; padding: 2px 8px; border-radius: 999px;
+        border: 1px solid var(--hairline); font-size: 13px; max-width: 100%; overflow-wrap: anywhere;
+      }
+
+      /* Settings view */
+      #settings-view .body { flex: 1; overflow-y: auto; padding: 8px 14px 16px; }
+      #settings-view section { padding: 12px 0; border-bottom: 1px solid var(--hairline); display: flex; flex-direction: column; gap: 8px; }
+      #settings-view section:last-child { border-bottom: 0; }
+      #settings-view h3 { margin: 0; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.02em; }
+      #settings-view label.field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+      #settings-view input[type="text"], #settings-view input[type="password"], #settings-view select {
+        padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border-control); background: var(--bg-surface);
+      }
+      #site-list { margin: 0; padding-left: 18px; overflow-wrap: anywhere; font-size: 14px; }
+      #site-list li { margin: 4px 0; }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .icon-btn, .chip, .segmented label, #plus-menu button { transition: background-color 150ms, color 150ms, border-color 150ms; }
+      }
     </style>
     <script src="popup.js" defer></script>
   </head>
   <body>
-    <main>
-      <div class="row">
+    <!-- Chat view -->
+    <div id="chat-view" class="view">
+      <header>
+        <img src="icons/toolbar-64.png" alt="" />
         <h1>AssistAnt</h1>
-        <button id="settings-open" type="button" aria-expanded="false" aria-controls="settings">Settings</button>
-      </div>
-      <p id="status" class="hint" role="status">Loading…</p>
-      <section id="settings" class="empty" aria-labelledby="settings-title" hidden>
-        <h2 id="settings-title" tabindex="-1">Settings</h2>
-        <form id="settings-form">
-          <label for="set-provider">Provider</label>
-          <select id="set-provider">
-            <option value="anthropic">Anthropic</option>
-            <option value="openai">OpenAI</option>
-          </select>
-          <label for="set-model">Model</label>
-          <input id="set-model" type="text" autocomplete="off" spellcheck="false" />
-          <label for="set-retention">Keep chat history</label>
-          <select id="set-retention">
-            <option value="off">Off (keep nothing)</option>
-            <option value="7">7 days</option>
-            <option value="30">30 days</option>
-          </select>
-          <div class="row"><button id="settings-save" type="submit" class="primary">Save settings</button></div>
-          <p id="settings-saved" class="hint" role="status"></p>
-        </form>
-        <p id="history-count" class="hint" role="status"></p>
-        <h3 id="sites-title">Site access</h3>
-        <ul id="site-list" aria-labelledby="sites-title"></ul>
-        <h3 id="legal-title">Legal (DRAFT)</h3>
-        <ul aria-labelledby="legal-title">
-          <li><a id="legal-privacy" href="privacy.html" target="_blank" rel="noopener">Privacy policy (draft)</a></li>
-          <li><a id="legal-terms" href="terms.html" target="_blank" rel="noopener">Terms of service (draft)</a></li>
-        </ul>
-        <p class="hint">Drafts awaiting legal review. Not final.</p>
-        <h3>Delete all data</h3>
-        <p class="hint">Removes your API keys from the Keychain, saved settings and history, and site access. Your provider keeps its own records under your account.</p>
-        <button id="delete-all" type="button">Delete all data</button>
-        <div id="delete-confirm" role="alertdialog" aria-labelledby="delete-title" hidden>
-          <p id="delete-title"><strong>Delete everything AssistAnt stored on this device?</strong> This cannot be undone.</p>
+        <button id="new-chat" class="icon-btn" type="button" aria-label="New chat">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
+        <button id="settings-open" class="icon-btn" type="button" aria-label="Settings">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+        </button>
+      </header>
+
+      <div id="thread">
+        <section id="no-key" class="center" aria-labelledby="no-key-title" hidden>
+          <img src="icons/icon-128.png" alt="" />
+          <h2 id="no-key-title">Add your API key to start</h2>
+          <p class="hint">
+            AssistAnt uses your own Anthropic or OpenAI key, kept in your Keychain. Page text you ask about is sent to that provider.
+            Your provider bills your account for every request AssistAnt makes, at the provider's prices.
+            AssistAnt shows an estimated cost after each answer or task.
+          </p>
+          <button id="no-key-open" class="btn primary" type="button">Add API key</button>
+        </section>
+
+        <section id="empty" class="center" aria-labelledby="empty-title" hidden>
+          <img src="icons/icon-128.png" alt="" />
+          <h2 id="empty-title">How can I help on this page?</h2>
+          <div class="chips">
+            <button class="chip" type="button" data-prompt="summarize">Summarize this page</button>
+            <button class="chip" type="button" data-prompt="Explain the most important points on this page.">Explain the key points</button>
+            <button class="chip" type="button" data-prompt="coupons">Find coupons</button>
+          </div>
+        </section>
+
+        <div id="log" role="log" aria-label="Conversation" aria-live="polite"></div>
+
+        <section id="agent" class="card" aria-labelledby="agent-title" hidden>
+          <h2 id="agent-title">Controlling the browser</h2>
+          <p id="agent-plan" class="hint"></p>
+          <ol id="steps"></ol>
           <div class="row">
-            <button id="delete-yes" type="button" class="primary">Yes, delete all data</button>
-            <button id="delete-no" type="button">Cancel</button>
+            <button id="agent-pause" class="btn" type="button">Pause</button>
+            <button id="agent-stop" class="btn" type="button">Stop</button>
+          </div>
+        </section>
+
+        <section id="approval" class="card" role="alertdialog" aria-labelledby="approval-title" aria-describedby="approval-what approval-reason" hidden>
+          <h2 id="approval-title">Approve this action?</h2>
+          <p id="approval-what"></p>
+          <p id="approval-reason" class="hint"></p>
+          <div class="row">
+            <button id="approval-allow" class="btn primary" type="button">Allow once</button>
+            <button id="approval-deny" class="btn" type="button">Don't allow</button>
+          </div>
+        </section>
+
+        <section id="coupons" class="card" aria-labelledby="coupons-title" hidden>
+          <h2 id="coupons-title">Coupon results</h2>
+          <p id="coupons-summary" class="hint" role="status"></p>
+          <table id="coupons-table">
+            <caption class="hint">Codes tried one at a time, with the total read from the page after each.</caption>
+            <thead><tr><th scope="col">Code</th><th scope="col">Total</th><th scope="col">Result</th><th scope="col">Source</th></tr></thead>
+            <tbody id="coupons-rows"></tbody>
+          </table>
+          <p class="hint">Codes come from your provider's web search; each links to the page it was found on and may be expired. AssistAnt never places the order.</p>
+          <button id="coupons-stop" class="btn" type="button">Stop</button>
+        </section>
+      </div>
+
+      <p id="status" class="hint" role="status">Loading…</p>
+
+      <form id="composer" hidden>
+        <ul id="plus-menu" aria-label="More actions" hidden>
+          <li><button id="summarize" type="button">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7"/></svg>Summarize page</button></li>
+          <li><button id="coupons-run" type="button">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12 12 20 3 11V3h8Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Find coupons</button></li>
+          <li><button id="tabs-toggle" type="button" aria-expanded="false" aria-controls="tabs">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M8 5v4"/></svg>Use other tabs</button></li>
+        </ul>
+        <div class="composer-box">
+          <div id="mode-chip" hidden>
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 7 16 2-7 7-2Z"/></svg>
+            <span>Control Browser</span>
+            <button id="mode-clear" class="icon-btn" type="button" aria-label="Back to Chat mode">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+          </div>
+          <fieldset id="tabs" hidden>
+            <legend>Also use these tabs (or type @name)</legend>
+            <div id="tab-list"></div>
+          </fieldset>
+          <label for="question" class="sr-only">Ask about this page or describe a task</label>
+          <textarea id="question" rows="1" placeholder="Ask anything…" autocomplete="off" aria-describedby="composer-help"></textarea>
+          <p id="composer-help" class="sr-only">Press Enter to send, Shift+Enter for a new line.</p>
+          <div class="composer-foot">
+            <button id="plus" class="round" type="button" aria-label="More actions" aria-expanded="false" aria-controls="plus-menu">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <fieldset class="segmented">
+              <legend>Mode</legend>
+              <label><input type="radio" name="mode" value="chat" checked />Chat</label>
+              <label><input type="radio" name="mode" value="control" />Control Browser</label>
+            </fieldset>
+            <span class="spacer"></span>
+            <button id="model-pill" type="button" aria-label="Change model"></button>
+            <button id="stop" class="round" type="button" aria-label="Stop" hidden>
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>
+            </button>
+            <button id="send" class="round send" type="submit" aria-label="Send">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
           </div>
         </div>
-        <p id="delete-result" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+
+    <!-- Settings view -->
+    <div id="settings-view" class="view" hidden>
+      <header>
+        <button id="settings-back" class="icon-btn" type="button" aria-label="Back to chat">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <h2 id="settings-title" tabindex="-1">Settings</h2>
+      </header>
+      <div class="body">
+        <section aria-labelledby="provider-title">
+          <h3 id="provider-title">AI provider</h3>
+          <fieldset class="segmented" id="set-provider">
+            <legend>Provider</legend>
+            <label><input type="radio" name="provider" value="anthropic" />Anthropic</label>
+            <label><input type="radio" name="provider" value="openai" />OpenAI</label>
+          </fieldset>
+          <p id="key-status" class="hint" role="status"></p>
+          <form id="key-form" class="row" autocomplete="off">
+            <label class="field" style="flex: 1 1 100%">
+              <span id="key-label">API key</span>
+              <input id="key-input" type="password" autocomplete="off" spellcheck="false" aria-describedby="key-help key-error" />
+            </label>
+            <button id="key-save" class="btn primary" type="submit">Test and save</button>
+            <button id="key-remove" class="btn" type="button">Remove key</button>
+          </form>
+          <p id="key-error" class="hint" role="alert"></p>
+          <p id="key-help" class="hint">
+            Saved in your Keychain on this device, never in browser storage. Your provider bills your account for every request.
+          </p>
+          <label class="field">Model
+            <input id="set-model" type="text" autocomplete="off" spellcheck="false" aria-describedby="model-help" />
+          </label>
+          <p id="model-help" class="hint"></p>
+        </section>
+
+        <section aria-labelledby="history-title">
+          <h3 id="history-title">Chat history</h3>
+          <label class="field">Keep chat history
+            <select id="set-retention">
+              <option value="off">Off (keep nothing)</option>
+              <option value="7">7 days</option>
+              <option value="30">30 days</option>
+            </select>
+          </label>
+          <p id="history-count" class="hint" role="status"></p>
+          <div class="row"><button id="history-clear" class="btn" type="button">Clear chat history</button></div>
+          <p id="settings-saved" class="hint" role="status"></p>
+        </section>
+
+        <section aria-labelledby="sites-title">
+          <h3 id="sites-title">Site access</h3>
+          <ul id="site-list" aria-labelledby="sites-title"></ul>
+        </section>
+
         <!-- debug:start (scripts/build.mjs strips this block from release builds) -->
-        <div id="diag" hidden>
+        <section id="diag" aria-labelledby="diag-title" hidden>
           <h3 id="diag-title">Diagnostics (debug build)</h3>
           <p class="hint">
             Records what the last 5 runs did, on this device only, so you can paste it into a bug report.
@@ -151,70 +384,36 @@
           </p>
           <label><input id="diag-question" type="checkbox" /> Also record the question I type</label>
           <div class="row">
-            <button id="diag-copy" type="button">Copy diagnostics</button>
-            <button id="diag-clear" type="button">Clear diagnostics</button>
+            <button id="diag-copy" class="btn" type="button">Copy diagnostics</button>
+            <button id="diag-clear" class="btn" type="button">Clear diagnostics</button>
           </div>
-          <p id="diag-status" role="status" aria-live="polite"></p>
-          <textarea id="diag-text" readonly hidden aria-label="Diagnostics report to copy"></textarea>
-        </div>
+          <p id="diag-status" class="hint" role="status" aria-live="polite"></p>
+        </section>
         <!-- debug:end -->
-      </section>
-      <section id="no-key" class="empty" hidden>
-        <p><strong>Add an API key to start.</strong></p>
-        <p class="hint">
-          Open the AssistAnt app, choose Anthropic or OpenAI, and save your own API key.
-          The key stays in your Keychain. Page text you ask about is sent to that provider.
-        </p>
-        <p class="hint">
-          Your provider bills your account for every request AssistAnt makes, at the provider's prices.
-          AssistAnt shows an estimated cost after each answer or task.
-        </p>
-      </section>
-      <div id="log" role="log" aria-label="Conversation" aria-live="polite" tabindex="0"></div>
-      <section id="agent" class="empty" aria-label="Agent steps" hidden>
-        <p id="agent-plan" class="hint"></p>
-        <ol id="steps"></ol>
-        <div class="row">
-          <button id="agent-pause" type="button">Pause</button>
-          <button id="agent-stop" type="button">Stop</button>
-        </div>
-      </section>
-      <section id="approval" class="empty" role="alertdialog" aria-labelledby="approval-title" aria-describedby="approval-reason" hidden>
-        <h2 id="approval-title">Approve this action?</h2>
-        <p id="approval-what"></p>
-        <p id="approval-reason" class="hint"></p>
-        <div class="row">
-          <button id="approval-allow" type="button" class="primary">Allow once</button>
-          <button id="approval-deny" type="button">Don't allow</button>
-        </div>
-      </section>
-      <section id="coupons" class="empty" aria-labelledby="coupons-title" hidden>
-        <h2 id="coupons-title">Coupon results</h2>
-        <p id="coupons-summary" class="hint" role="status"></p>
-        <table id="coupons-table">
-          <caption class="hint">Codes tried one at a time, with the total read from the page after each.</caption>
-          <thead><tr><th scope="col">Code</th><th scope="col">Total</th><th scope="col">Result</th><th scope="col">Source</th></tr></thead>
-          <tbody id="coupons-rows"></tbody>
-        </table>
-        <p class="hint">Codes come from your provider's web search; each links to the page it was found on and may be expired. AssistAnt never places the order.</p>
-        <button id="coupons-stop" type="button">Stop</button>
-      </section>
-      <form id="composer" hidden>
-        <label for="question">Ask about this page, or describe a task</label>
-        <textarea id="question" rows="3" autocomplete="off"></textarea>
-        <fieldset id="tabs" hidden>
-          <legend>Also use these tabs (or type @name)</legend>
-          <div id="tab-list"></div>
-        </fieldset>
-        <div class="row">
-          <button id="send" type="submit" class="primary">Send</button>
-          <button id="summarize" type="button">Summarize page</button>
-          <button id="stop" type="button" hidden>Stop</button>
-          <button id="agent-run" type="button">Do this on the page</button>
-          <button id="coupons-run" type="button">Find coupons</button>
-        </div>
-        <p class="hint">Press Enter to send, Shift+Enter for a new line.</p>
-      </form>
-    </main>
+
+        <section aria-labelledby="legal-title">
+          <h3 id="legal-title">Legal (DRAFT)</h3>
+          <ul aria-labelledby="legal-title" style="margin: 0; padding-left: 18px">
+            <li><a id="legal-privacy" href="privacy.html" target="_blank" rel="noopener">Privacy policy (draft)</a></li>
+            <li><a id="legal-terms" href="terms.html" target="_blank" rel="noopener">Terms of service (draft)</a></li>
+          </ul>
+          <p class="hint">Drafts awaiting legal review. Not final.</p>
+        </section>
+
+        <section aria-labelledby="delete-title-h">
+          <h3 id="delete-title-h">Delete all data</h3>
+          <p class="hint">Removes your API keys from the Keychain, saved settings and history, and site access. Your provider keeps its own records under your account.</p>
+          <div class="row"><button id="delete-all" class="btn danger" type="button">Delete all data</button></div>
+          <div id="delete-confirm" role="alertdialog" aria-labelledby="delete-title" hidden>
+            <p id="delete-title"><strong>Delete everything AssistAnt stored on this device?</strong> This cannot be undone.</p>
+            <div class="row">
+              <button id="delete-yes" class="btn primary" type="button">Yes, delete all data</button>
+              <button id="delete-no" class="btn" type="button">Cancel</button>
+            </div>
+          </div>
+          <p id="delete-result" class="hint" role="status" aria-live="polite"></p>
+        </section>
+      </div>
+    </div>
   </body>
 </html>
