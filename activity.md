@@ -443,3 +443,27 @@ Error saving log: Error Domain=NSCocoaErrorDomain Code=513 "You don't have permi
 - Unsigned build (`CODE_SIGNING_ALLOWED=NO`) did not register with Safari. Rebuilt macOS target ad-hoc signed (`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual`): BUILD SUCCEEDED, `codesign` → `Signature=adhoc`.
 - `pluginkit -mAv -p com.apple.Safari.web-extension` now lists `com.example.AssistAnt.Extension(0.1.0)`. Host app launched. Awaiting owner: enable in Safari Settings → Extensions, open popup.
 - T002b macOS: owner reports AssistAnt enabled in Safari Settings → Extensions and the toolbar popup opened (2026-10-15). Evidence is owner report only, no screenshot. iOS Simulator load and runtime API verification still open.
+
+## 2026-10-15 — T003 test harness: needs supervised check
+
+- Task: T003 (only dependency-ready pending task; T002a done). Status set `in progress`, then `needs supervised check`.
+- Files: `package.json` (+scripts `typecheck`, `lint`, `test`, `e2e`; devDeps vitest 5.0.5, @playwright/test 1.64.1), `vitest.config.ts`, `playwright.config.ts`, `tsconfig.lint.json`, `scripts/serve-fixtures.mjs`, `tests/unit/smoke.test.ts`, `tests/e2e/fixtures.spec.ts`, `tests/fixtures/{index,shop,forms,injection}.html` (synthetic), `.gitignore`, `CLAUDE.md`, `docs/asset-licenses.md`, `docs/launch-blockers.md` (#12), `prd.md`.
+- Lint choice: `typescript-eslint` 8.71.2 peer range is `typescript <6.1.0`; repo uses TypeScript 7.0.2, so npm refused the install (ERESOLVE). Not forced. `npm run lint` runs strict `tsc` (noUnusedLocals, noUnusedParameters, noImplicitReturns, noFallthroughCasesInSwitch). Revisit when typescript-eslint supports TS 7.
+- Results, real output trimmed:
+
+```
+$ npm run typecheck   -> tsc -p tsconfig.json (no errors)
+$ npx tsc -p tsconfig.lint.json -> TypeScript: No errors found   (same command `npm run lint` runs)
+$ npm test
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+$ npx playwright test
+ TimeoutError: browserType.launch: Timeout 180000ms exceeded.
+  [pid][err] sandbox_extension_issue_file_to_process failed for .../webkit-2370/Playwright.app: 1 (Operation not permitted)
+  3 failed (all three: browser launch, not assertions)
+```
+
+- Result: typecheck, lint, unit green. e2e unverified: WebKit launch blocked by sandbox (launch-blockers 12). Not marked `done`: acceptance needs all four green.
+- Supervised check: `npx playwright install webkit && npm run e2e` (expect 3 passed).
+- Note: `npm run lint` is rewritten to `rtk lint` by the command hook in this session, so the tsc command was run directly.
+- Next task: T004 (Keychain bridge; needs `xcodebuild test`, supervised) or T005/T008 (JS only, depend on T003 which now counts as satisfied).

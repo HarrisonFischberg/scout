@@ -22,11 +22,11 @@ loop, Caveman. Verify each before claiming use: `docs/tool-environment.md`.
 
 | Check | Command |
 | --- | --- |
-| tests | TODO |
-| types | `npx tsc -p tsconfig.json` (`npm run typecheck` arrives in T003) |
-| lint | TODO |
+| tests | `npm test` (Vitest, `tests/unit/`) |
+| types | `npm run typecheck` |
+| lint | `npm run lint` (strict `tsc -p tsconfig.lint.json`; typescript-eslint does not yet support TypeScript 7) |
 | build | `npm run build` (writes extension to `apple/Extension/Resources/`); Xcode: `xcodebuild -scheme "AssistAnt (macOS)" -destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO build` (blocked in sandbox, launch-blockers 9) |
-| e2e | TODO |
+| e2e | `npm run e2e` (Playwright WebKit vs `tests/fixtures/`; WebKit cannot launch in sandbox, launch-blockers 12) |
 
 ## Artifacts
 

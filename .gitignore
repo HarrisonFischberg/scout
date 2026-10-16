@@ -8,6 +8,8 @@ build/
 *.log
 ralph/logs/
 .cache/
+test-results/
+playwright-report/
 build/
 DerivedData/
 xcuserdata/

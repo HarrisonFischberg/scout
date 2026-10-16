@@ -5,7 +5,11 @@
   "description": "AssistAnt Safari extension (TypeScript, bundled with esbuild)",
   "type": "module",
   "scripts": {
-    "build": "node scripts/build.mjs"
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.lint.json",
+    "test": "vitest run",
+    "e2e": "playwright test"
   },
   "repository": {
     "type": "git",
@@ -13,7 +17,9 @@
   },
   "license": "UNLICENSED",
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "esbuild": "^0.28.2",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
   }
 }
