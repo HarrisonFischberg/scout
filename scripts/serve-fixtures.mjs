@@ -22,7 +22,8 @@ function cartJson(codes) {
 }
 async function cartApi(req, res, path) {
   const id = /(?:^|;\s*)cart=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? Math.random().toString(36).slice(2);
-  const headers = { "content-type": "application/json", "set-cookie": "cart=" + id + "; Path=/" };
+  // Real Shopify stores answer /cart.js as text/javascript (checked 2026-10-16).
+  const headers = { "content-type": "text/javascript; charset=utf-8", "set-cookie": "cart=" + id + "; Path=/" };
   if (!carts.has(id)) carts.set(id, []);
   if (path === "/cart/update.js" && req.method === "POST") {
     let body = "";

@@ -20,8 +20,10 @@ function toState(j: unknown): CartState | null {
 export async function shopifyCartInfo(f: FetchFn = fetch): Promise<CartState | null> {
   try {
     const r = await f("/cart.js", { credentials: "same-origin", headers: { accept: "application/json" } });
-    if (!r.ok || !(r.headers.get("content-type") ?? "").includes("json")) return null;
-    return toState(await r.json());
+    if (!r.ok) return null;
+    // Real stores label the JSON text/javascript, so parse the body and check
+    // its shape instead of trusting the content type.
+    return toState(JSON.parse(await r.text()));
   } catch {
     return null;
   }

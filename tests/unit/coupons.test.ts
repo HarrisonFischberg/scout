@@ -14,7 +14,8 @@ import {
   type CouponPage,
 } from "../../src/coupons/finder";
 import type { ChatRequest, ProviderClient, StreamEvent } from "../../src/providers";
-import type { Snapshot } from "../../src/snapshot/snapshot";
+import { shopifyCartInfo } from "../../src/coupons/shopify";
+import { buildSnapshot, type SnapNode, type Snapshot } from "../../src/snapshot/snapshot";
 
 const PCT: Record<string, number> = { SAVE10: 10, SAVE20: 20 };
 
@@ -60,6 +61,16 @@ describe("parseTotal", () => {
     expect(parseTotal("Subtotal: $100.00\nTotal: $80.00")).toBe(80);
     expect(parseTotal("Subtotal: $100.00")).toBeNull();
     expect(parseTotal("Order total $1,234.50")).toBe(1234.5);
+  });
+
+  // Diagnostics run #20: Shopify checkout puts "Total" and "USD $170.00" in
+  // separate cells, and shows "Total savings" once a code applies.
+  it("reads a total on the next line after a currency code", () => {
+    expect(parseTotal("Subtotal\n$170.00\nShipping\nEnter shipping address\nTotal\nUSD $170.00")).toBe(170);
+  });
+  it("never reads Total savings or Total discount as the total", () => {
+    expect(parseTotal("Total\nUSD $136.00\nTotal savings\n$34.00")).toBe(136);
+    expect(parseTotal("Total: $90.00\nTotal discount: $10.00")).toBe(90);
   });
 });
 
@@ -179,6 +190,78 @@ describe("candidates and labels", () => {
 describe("batches", () => {
   const many = Array.from({ length: 30 }, (_, i) => ({ code: "NOPE" + (i + 10), origin: "pattern" as const }));
 
+  // Owner, 2026-10-16: after 25 attempts, apply the best code if one saves
+  // money; only when none does, ask whether to find 25 more.
+  it("applies the best code after a batch of 25 without asking", async () => {
+    const codes = [...many.slice(0, 2), { code: "SAVE20", origin: "sourced" as const, sourceUrl: "https://deals.test/a" }, ...many.slice(2)];
+    let asked = 0;
+    const out = await runCouponSearch({
+      page: shop(),
+      codes,
+      settleMs: 0,
+      batchSize: 25,
+      askMore: async () => {
+        asked++;
+        return true;
+      },
+    });
+    expect(asked).toBe(0);
+    expect(out.attempts).toHaveLength(25);
+    expect(out.best?.code).toBe("SAVE20");
+    expect(out.applied).toBe(true);
+    expect(couponSummary(out)).toContain("you save $20.00, 20% off");
+  });
+
+  it("when none worked and the queue runs short, finds codes not tried yet to fill the next 25", async () => {
+    const asked: Array<{ tried: number; remaining: number; next: number }> = [];
+    const known: string[][] = [];
+    const out = await runCouponSearch({
+      page: shop(),
+      codes: many,
+      settleMs: 0,
+      batchSize: 25,
+      askMore: async (st) => {
+        asked.push({ tried: st.tried, remaining: st.remaining, next: st.next });
+        return asked.length === 1;
+      },
+      findMore: async (k) => {
+        known.push(k);
+        return [{ code: "NOPE10", origin: "pattern" }, ...Array.from({ length: 30 }, (_, i) => ({ code: "FRESH" + (i + 10), origin: "pattern" as const }))];
+      },
+    });
+    expect(asked).toEqual([
+      { tried: 25, remaining: 5, next: 25 },
+      { tried: 50, remaining: 10, next: 25 },
+    ]);
+    expect(known).toHaveLength(1);
+    expect(known[0]).toHaveLength(30);
+    expect(out.attempts).toHaveLength(50);
+    expect(out.attempts.slice(25, 30).map((a) => a.code)).toEqual(["NOPE35", "NOPE36", "NOPE37", "NOPE38", "NOPE39"]);
+    expect(out.attempts[30]?.code).toBe("FRESH10");
+    expect(new Set(out.attempts.map((a) => a.code)).size).toBe(50);
+  });
+
+  it("finds more even when every queued code was tried, and stops when none are left to find", async () => {
+    let asked = 0;
+    const out = await runCouponSearch({
+      page: shop(),
+      codes: many.slice(0, 25),
+      settleMs: 0,
+      batchSize: 25,
+      askMore: async (st) => {
+        asked++;
+        expect(st).toMatchObject({ tried: 25, remaining: 0, next: 25 });
+        return true;
+      },
+      findMore: async () => [],
+    });
+    expect(asked).toBe(1);
+    expect(out.status).toBe("done");
+    expect(out.attempts).toHaveLength(25);
+    expect(out.exhausted).toBe(true);
+    expect(couponSummary(out)).toContain("I tested **25 codes** and none lowered your total of $100.00. I couldn't find any more codes to try.");
+  });
+
   it("asks after each batch and stops when the user says no", async () => {
     const asked: number[] = [];
     const out = await runCouponSearch({
@@ -284,6 +367,102 @@ describe("Shopify cart path", () => {
   });
 });
 
+// Diagnostics run #20: a Shopify checkout page with a ZIP code field before
+// the discount box, an Apply button that stays disabled until a code is typed,
+// and a total drawn one character per span. Synthetic store and codes.
+function checkout(): CouponPage & { zip: string; ordered: number } {
+  const pct: Record<string, number> = { SAVE10: 10, SAVE20: 20 };
+  let typed = "";
+  let applied = "";
+  let refs = new Map<string, SnapNode>();
+  const t = (text: string): SnapNode => ({ tag: "#text", attrs: {}, text, children: [] });
+  const n = (tag: string, attrs: Record<string, string> = {}, children: SnapNode[] = [], value?: string): SnapNode => ({
+    tag,
+    attrs,
+    children,
+    ...(value !== undefined ? { value } : {}),
+  });
+  const price = (v: number): SnapNode[] => {
+    const s = "$" + v.toFixed(2);
+    return [
+      n("abbr", {}, [t("USD")]),
+      n("strong", {}, [n("span", { "aria-hidden": "true" }, [t(s)])]),
+      n("strong", {}, [n("span", { "aria-label": s }, s.split("").map((c) => n("span", {}, [t(c)])))]),
+    ];
+  };
+  const p = {
+    zip: "",
+    ordered: 0,
+    async snapshot(): Promise<Snapshot> {
+      const total = 170 * (1 - (pct[applied] ?? 0) / 100);
+      const tree = n("body", {}, [
+        n("main", {}, [
+          n("input", { id: "email", type: "email", placeholder: "Email", autocomplete: "shipping email" }),
+          n("input", { id: "zip", type: "text", name: "postalCode", placeholder: "ZIP code", autocomplete: "shipping postal-code" }, [], p.zip),
+          n("button", { id: "pay", type: "submit" }, [t("Pay now")]),
+        ]),
+        n("aside", {}, [
+          n("button", { id: "toggle", type: "button" }, [t("Add discount")]),
+          n("input", { id: "code", type: "text", name: "reductions", placeholder: "Discount code or gift card" }, [], typed),
+          n("button", { id: "apply", type: "submit", "aria-label": "Apply Discount Code", ...(typed ? {} : { disabled: "" }) }, [t("Apply")]),
+          n("div", { role: "row" }, [n("div", {}, [t("Subtotal")]), n("div", {}, [t("$170.00")])]),
+          n("div", { role: "row" }, [n("div", {}, [n("strong", {}, [t("Total")])]), n("div", {}, [n("div", {}, price(total))])]),
+          ...(applied && pct[applied] ? [n("div", {}, [t("Total savings")]), n("div", {}, [t("$" + (170 - total).toFixed(2))])] : []),
+        ]),
+      ]);
+      const next = new Map<string, SnapNode>();
+      const snap = buildSnapshot(tree, { url: "https://shop.test/checkouts/cn/x", title: "Checkout", onRef: (r, node) => next.set(r, node) });
+      refs = next;
+      return snap;
+    },
+    async act(a: Action): Promise<ActionResult> {
+      const id = "ref" in a && a.ref ? refs.get(a.ref)?.attrs.id : undefined;
+      if (a.type === "type" && id === "zip") p.zip = a.text;
+      if (a.type === "type" && id === "code") typed = a.text;
+      if (a.type === "click" && id === "apply") {
+        if (!typed) return { ok: false, action: "click", message: "disabled", error: "disabled" };
+        applied = typed.toUpperCase();
+        typed = "";
+      }
+      if (a.type === "click" && id === "pay") p.ordered++;
+      return { ok: true, action: a.type, message: "ok" };
+    },
+  };
+  return p;
+}
+
+describe("Shopify checkout page (page path)", () => {
+  it("uses the discount box, not the ZIP code field, reads the split total, and applies the best code", async () => {
+    const p = checkout();
+    const codes = ["WELCOME5", "SAVE10", "SAVE20", "NOPE99"].map((code) => ({ code, origin: "sourced" as const, sourceUrl: "https://deals.test/x" }));
+    const out = await runCouponSearch({ page: p, codes, settleMs: 0 });
+    expect(out.method).toBe("page");
+    expect(out.baseline).toBe(170);
+    expect(out.attempts.map((a) => a.total)).toEqual([170, 153, 136, 170]);
+    expect(out.best?.code).toBe("SAVE20");
+    expect(out.applied).toBe(true);
+    expect(p.zip).toBe("");
+    expect(p.ordered).toBe(0);
+  });
+});
+
+describe("shopifyCartInfo", () => {
+  const cart = JSON.stringify({ total_price: 17000, currency: "USD", discount_codes: [] });
+  const reply = (body: string, type: string): Response => new Response(body, { status: 200, headers: { "content-type": type } });
+
+  // Real Shopify stores answer /cart.js as text/javascript (checked 2026-10-16).
+  it("reads the cart when the store labels the JSON as JavaScript", async () => {
+    expect(await shopifyCartInfo(async () => reply(cart, "text/javascript; charset=utf-8"))).toEqual({ total: 170, currency: "USD", codes: [] });
+    expect(await shopifyCartInfo(async () => reply(cart, "application/json"))).toEqual({ total: 170, currency: "USD", codes: [] });
+  });
+
+  it("returns null when /cart.js is not a Shopify cart", async () => {
+    expect(await shopifyCartInfo(async () => reply("<!doctype html><p>Not found</p>", "text/html"))).toBeNull();
+    expect(await shopifyCartInfo(async () => reply("window.cart = {};", "text/javascript"))).toBeNull();
+    expect(await shopifyCartInfo(async () => reply(JSON.stringify({ items: [] }), "application/json"))).toBeNull();
+  });
+});
+
 describe("suggestCodes", () => {
   function fake(events: StreamEvent[], seen: { req?: ChatRequest } = {}): ProviderClient {
     return {
@@ -316,6 +495,27 @@ describe("suggestCodes", () => {
     expect(r.codes.some((c) => c.code === "WELCOME10" && c.origin === "pattern")).toBe(true);
     expect(r.found).toBe(2);
     expect(r.inputTokens).toBe(12);
+  });
+
+  it("when asked for more, names the tried codes, skips them, and adds the longer guess list", async () => {
+    const seen: { req?: ChatRequest } = {};
+    const first = await suggestCodes(fake([], {}), "m", "getbeefy.co", undefined, { webSearch: false });
+    const tried = ["RACH", ...first.codes.map((c) => c.code)];
+    const provider = fake(
+      [
+        { type: "source", url: "https://deals.test/new" },
+        { type: "text", delta: "RACH | https://deals.test/new\nNEWONE | https://deals.test/new\n" },
+      ],
+      seen,
+    );
+    const r = await suggestCodes(provider, "m", "getbeefy.co", undefined, { exclude: tried });
+    const msg = String(seen.req?.messages[0]?.content);
+    expect(msg).toContain("Already tried, do not list these again");
+    expect(msg).toContain("RACH, BEEFY10");
+    expect(r.codes[0]).toEqual({ code: "NEWONE", origin: "sourced", sourceUrl: "https://deals.test/new" });
+    expect(r.codes.some((c) => tried.includes(c.code))).toBe(false);
+    expect(r.codes.filter((c) => c.origin === "pattern").length).toBeGreaterThanOrEqual(25);
+    expect(r.codes.some((c) => c.code === "BEEFY50")).toBe(true);
   });
 
   it("with search disabled makes no model call but still offers pattern guesses", async () => {

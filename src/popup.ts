@@ -12,14 +12,14 @@ import { runTurn } from "./chat/session";
 import { mergeTabs, resolveMentions, type TabInfo } from "./chat/tabs";
 import { suggestCodes } from "./coupons/codes";
 import { originLabel } from "./coupons/candidates";
-import { BATCH_SIZE, couponStatusText, couponSummary, runCouponSearch, type BatchState, type CartApi, type CartState } from "./coupons/finder";
+import { couponStatusText, couponSummary, runCouponSearch, type BatchState, type CartApi, type CartState } from "./coupons/finder";
 import { formatCostLine } from "./cost";
 import { buildReport, describeBrowser, Diagnostics, disabledRun, type RunHandle, type RunKind } from "./diagnostics";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { envelope } from "./bridge/messages";
 import { connectPanelPort, type PanelPort } from "./bridge/port";
 import { conversationForTab, startNewConversation } from "./panel/state";
-import { createProvider, type ChatMessage, type Effort, type ProviderClient } from "./providers";
+import { createProvider, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
@@ -953,6 +953,8 @@ async function main(): Promise<void> {
   });
 
   // ---------- Coupons (S07, T031): find many codes, test them in batches of 25. ----------
+  // Owner, 2026-10-16: a batch that finds a saving applies the best code and
+  // ends; a batch with none asks whether to find and test 25 more.
   const couponsMore = el("coupons-more");
   const couponsMoreText = el("coupons-more-text");
   const couponsMoreYes = el<HTMLButtonElement>("coupons-more-yes");
@@ -960,17 +962,14 @@ async function main(): Promise<void> {
 
   function askMoreCodes(state: BatchState): Promise<boolean> {
     return new Promise((resolve) => {
-      const next = Math.min(BATCH_SIZE, state.remaining);
-      couponsMoreText.textContent = state.best
-        ? "Tried " + state.tried + " codes. Best so far: " + state.best.code + " saves $" + (state.best.saving ?? 0).toFixed(2) +
-          ". Try " + next + " more to look for a bigger saving?"
-        : "We've tried " + state.tried + " codes and none lowered your total. Would you like to try " + next + " more?";
-      couponsMoreYes.textContent = "Try " + next + " more";
+      couponsMoreText.textContent =
+        "We've tried " + state.tried + " codes and none lowered your total. Would you like Safari Scout to find " + state.next + " more to test?";
+      couponsMoreYes.textContent = "Find " + state.next + " more";
       couponsMore.hidden = false;
       status.textContent = "Waiting for you: try more codes?";
       scrollToEnd();
       couponsMoreYes.focus();
-      trace("coupons:ask-more tried=" + state.tried + " remaining=" + state.remaining);
+      trace("coupons:ask-more tried=" + state.tried + " remaining=" + state.remaining + " next=" + state.next);
       const done = (ok: boolean): void => {
         couponsMore.hidden = true;
         couponsMoreYes.removeEventListener("click", yes);
@@ -1030,12 +1029,12 @@ async function main(): Promise<void> {
     send.hidden = true;
     plus.disabled = modelPill.disabled = true;
     closeModelMenu();
-    status.textContent = "Finding coupons. This can take up to a minute.";
+    status.textContent = "Finding coupons. The web search can take a couple of minutes.";
     scrollToEnd();
     couponsStop.focus();
     const onStop = (): void => control?.stop();
     couponsStop.addEventListener("click", onStop);
-    let used = { inputTokens: 0, outputTokens: 0 };
+    let used: Usage = { inputTokens: 0, outputTokens: 0 };
     let summary = "";
     try {
       const snap = await page.snapshot();
@@ -1045,6 +1044,14 @@ async function main(): Promise<void> {
       trace("coupons:search");
       const sug = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal, s.effort ? { effort: s.effort } : {});
       used = { inputTokens: sug.inputTokens, outputTokens: sug.outputTokens, ...(sug.webSearches ? { webSearches: sug.webSearches } : {}) };
+      const addUsage = (more: { inputTokens: number; outputTokens: number; webSearches: number }): void => {
+        const searches = (used.webSearches ?? 0) + more.webSearches;
+        used = {
+          inputTokens: used.inputTokens + more.inputTokens,
+          outputTokens: used.outputTokens + more.outputTokens,
+          ...(searches ? { webSearches: searches } : {}),
+        };
+      };
       trace("coupons:candidates found=" + sug.found + " guessed=" + sug.guessed);
       couponsSummary.textContent =
         "Found " + sug.found + " code" + (sug.found === 1 ? "" : "s") + " online and " + sug.guessed + " common guesses. Testing them on your cart…";
@@ -1054,6 +1061,20 @@ async function main(): Promise<void> {
         control,
         delayMs: 250,
         askMore: askMoreCodes,
+        findMore: async (known) => {
+          trace("coupons:find-more known=" + known.length);
+          couponsSummary.textContent = "Searching the web for more codes…";
+          status.textContent = "Finding more coupons. The web search can take a couple of minutes.";
+          const more = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
+            exclude: known,
+            ...(s.effort ? { effort: s.effort } : {}),
+          });
+          addUsage(more);
+          trace("coupons:candidates found=" + more.found + " guessed=" + more.guessed);
+          couponsSummary.textContent =
+            more.codes.length > 0 ? "Found " + more.codes.length + " more codes to try. Testing them on your cart…" : "No more codes found.";
+          return more.codes;
+        },
         onAttempt: (a, index, total) => {
           trace("coupons:attempt " + index + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none"));
           couponsSummary.textContent = "Testing code " + index + " of " + total + "…";

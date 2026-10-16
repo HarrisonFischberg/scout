@@ -82,6 +82,37 @@ describe("snapshot", () => {
     expect(snap.text.length).toBeLessThanOrEqual(5000);
   });
 
+  // Diagnostics run #20 (2026-10-16): Shopify checkout draws each character of
+  // a price in its own span and puts the whole amount in aria-label.
+  it("reads a price split into one span per character through its aria-label", () => {
+    const chars = "$170.00".split("").map((c) => n("span", {}, [t(c)]));
+    const tree = n("div", { role: "row" }, [
+      n("div", { role: "rowheader" }, [n("strong", {}, [t("Total")])]),
+      n("div", { role: "cell" }, [
+        n("div", {}, [
+          n("abbr", {}, [n("span", {}, [t("USD")])]),
+          n("strong", {}, [n("span", { "aria-hidden": "true" }, [n("span", {}, [t("$170.00")])])]),
+          n("strong", {}, [n("span", {}, [n("span", { "aria-label": "$170.00" }, chars)])]),
+        ]),
+      ]),
+    ]);
+    expect(buildSnapshot(tree, opts).text).toBe("Total\nUSD $170.00");
+  });
+
+  it("keeps an aria-label container's text when the label says something else", () => {
+    const tree = n("nav", { "aria-label": "Main menu" }, [n("span", {}, [t("Home")]), n("span", {}, [t("Shop")])]);
+    expect(buildSnapshot(tree, opts).text).toBe("Home Shop");
+  });
+
+  it("does not redact a discount box that also takes gift cards, but still redacts gift card numbers and PINs", () => {
+    expect(isSensitiveField(n("input", { type: "text", name: "reductions", placeholder: "Discount code or gift card" }))).toBe(false);
+    expect(isSensitiveField(n("input", { type: "text", "aria-label": "Promo code or gift card" }))).toBe(false);
+    expect(isSensitiveField(n("input", { type: "text", name: "gift_card_number" }))).toBe(true);
+    expect(isSensitiveField(n("input", { type: "text", placeholder: "Gift card" }))).toBe(true);
+    expect(isSensitiveField(n("input", { type: "text", name: "discount_card_number" }))).toBe(true);
+    expect(isSensitiveField(n("input", { type: "text", placeholder: "Gift card PIN", name: "coupon_pin" }))).toBe(true);
+  });
+
   it("reports refs through onRef for the executor", () => {
     const seen: string[] = [];
     const btn = n("button", {}, [t("Go")]);
