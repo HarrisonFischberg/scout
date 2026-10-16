@@ -41,7 +41,9 @@ export function createOpenAI(cfg: ProviderConfig): ProviderClient {
           body: JSON.stringify(body),
           signal: req.signal,
         });
-      } catch {
+      } catch (err) {
+        // A refused request (no consent, src/settings/consent.ts) keeps its reason.
+        if (err instanceof ProviderError) throw err;
         throw new ProviderError("openai", "network");
       }
       if (!res.ok) throw errorFromStatus("openai", res);

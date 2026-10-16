@@ -19,6 +19,7 @@ import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { envelope } from "./bridge/messages";
 import { connectPanelPort, type PanelPort } from "./bridge/port";
 import { conversationForTab, startNewConversation } from "./panel/state";
+import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/consent";
 import { createProvider, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
@@ -343,6 +344,10 @@ async function main(): Promise<void> {
   const keychain = createKeychain(nativeSend);
   let settings = parseSettings(undefined);
   if (storage) settings = await loadSettings(storage).catch(() => settings);
+  // Permission to share with each AI provider (src/settings/consent.ts). Every
+  // provider request goes through providerFetch, which refuses one without it.
+  const consent = await Consent.load(storage);
+  const providerFetch = gatedFetch((p) => consent.has(p), (i, init) => fetch(i, init));
 
   document.addEventListener("keydown", (e) => {
     if (isToggleShortcut(e)) {
@@ -381,7 +386,7 @@ async function main(): Promise<void> {
   // Cached or built-in model lists, so names and effort support are known
   // before Settings is opened. No network call here.
   for (const p of ["anthropic", "openai"] as const) {
-    rememberModels(p, (await loadModelList(storage, p, null, (i, init) => fetch(i, init), Date.now())).models);
+    rememberModels(p, (await loadModelList(storage, p, null, providerFetch, Date.now())).models);
   }
 
   let session: Session | null = null;
@@ -523,7 +528,7 @@ async function main(): Promise<void> {
     const effort = effortForId(found.settings.provider, found.settings.model, found.settings.effort, knownModels[found.settings.provider]);
     session = {
       settings: found.settings,
-      provider: createProvider(found.settings.provider, { apiKey: found.apiKey, fetch: (i, init) => fetch(i, init) }),
+      provider: createProvider(found.settings.provider, { apiKey: found.apiKey, fetch: providerFetch }),
       ...(effort ? { effort } : {}),
       ...(found.fellBackFrom ? { fellBackFrom: found.fellBackFrom } : {}),
     };
@@ -650,15 +655,16 @@ async function main(): Promise<void> {
   }
 
   // Cached list, else the provider's list (no tokens billed), as in Settings.
+  // Only after the user allowed sharing with that provider.
   async function refreshMenuModels(): Promise<void> {
     const p = activeSettings().provider;
     let key: string | null = null;
     try {
-      key = await keychain.getKey(p);
+      key = consent.has(p) ? await keychain.getKey(p) : null;
     } catch {
       key = null;
     }
-    const list = await loadModelList(storage, p, key, (i, init) => fetch(i, init), Date.now());
+    const list = await loadModelList(storage, p, key, providerFetch, Date.now());
     const changed = JSON.stringify(list.models) !== JSON.stringify(knownModels[p]);
     rememberModels(p, list.models);
     if (changed && !modelMenu.hidden && activeSettings().provider === p) renderModelMenu();
@@ -753,11 +759,84 @@ async function main(): Promise<void> {
     else question.focus();
   });
 
+  // ---------- Consent: asked once per provider before anything is sent ----------
+  // App Store Review Guideline 5.1.2(i). A modal dialog: focus starts on its
+  // heading so neither button is preselected; Escape is Not now; focus returns
+  // to the control that opened it.
+  const consentDialog = el<HTMLDialogElement>("consent");
+  const consentTitle = el("consent-title");
+  const consentAllow = el<HTMLButtonElement>("consent-allow");
+  const consentDeny = el<HTMLButtonElement>("consent-deny");
+  let consentPending: Promise<boolean> | null = null;
+
+  function askConsent(p: Provider): Promise<boolean> {
+    if (consentPending) return consentPending;
+    const returnTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const t = consentText(p);
+    consentTitle.textContent = t.title;
+    el("consent-intro").textContent = t.intro;
+    el("consent-items").replaceChildren(
+      ...t.items.map((item) => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        return li;
+      }),
+    );
+    const policy = el<HTMLAnchorElement>("consent-policy");
+    policy.href = t.policyUrl;
+    policy.textContent = t.policyLabel;
+    el("consent-after").textContent = t.after;
+    consentDialog.showModal();
+    consentTitle.focus();
+    trace("consent:asked " + p);
+    consentPending = new Promise((resolve) => {
+      const done = (ok: boolean): void => {
+        if (!consentPending) return;
+        consentPending = null;
+        consentAllow.removeEventListener("click", onAllow);
+        consentDeny.removeEventListener("click", onDeny);
+        consentDialog.removeEventListener("cancel", onCancel);
+        consentDialog.removeEventListener("close", onClose);
+        if (consentDialog.open) consentDialog.close();
+        trace("consent:" + (ok ? "allowed " : "declined ") + p);
+        // The opener, unless it was hidden meanwhile (the + menu closes first).
+        const back = returnTo && returnTo.isConnected && returnTo.offsetParent !== null ? returnTo : null;
+        (back ?? (chatView.hidden ? keySave : matchMedia("(pointer: coarse)").matches ? send : question)).focus();
+        resolve(ok);
+      };
+      const onAllow = (): void => done(true);
+      const onDeny = (): void => done(false);
+      const onCancel = (e: Event): void => {
+        e.preventDefault();
+        done(false);
+      };
+      const onClose = (): void => done(false);
+      consentAllow.addEventListener("click", onAllow);
+      consentDeny.addEventListener("click", onDeny);
+      consentDialog.addEventListener("cancel", onCancel);
+      consentDialog.addEventListener("close", onClose);
+    });
+    return consentPending;
+  }
+
+  /**
+   * Asks for `p` and returns whether it may receive data. Callers check
+   * `consent.has` first, so an allowed request stays synchronous and the click
+   * keeps its user gesture for the site-access prompt that may follow.
+   */
+  async function allowSharing(p: Provider): Promise<boolean> {
+    const ok = await ensureConsent(consent, p, askConsent, Date.now());
+    renderConsent();
+    if (!ok) status.textContent = "Nothing was sent. Safari Scout asks before it shares anything with " + PROVIDER_NAME[p] + ".";
+    return ok;
+  }
+
   // ---------- Chat ----------
   async function ask(text: string): Promise<void> {
     const trimmed = text.trim();
     if (!trimmed || controller || control || !session) return;
     const s = session;
+    if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     const extra = mergeTabs(
       others.filter((t) => checked.has(t.id)),
       resolveMentions(trimmed, others),
@@ -867,6 +946,7 @@ async function main(): Promise<void> {
     const trimmed = goal.trim();
     if (!trimmed || controller || control || !session) return;
     const s = session;
+    if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     startRun("agent", { provider: s.settings.provider, model: s.settings.model, question: trimmed });
     const page = await tabAgentPage().catch(() => null);
     if (!page) {
@@ -1011,6 +1091,7 @@ async function main(): Promise<void> {
   async function runCoupons(): Promise<void> {
     if (controller || control || !session) return;
     const s = session;
+    if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     startRun("coupons", { provider: s.settings.provider, model: s.settings.model });
     const page = await tabAgentPage().catch(() => null);
     if (!page) {
@@ -1174,6 +1255,41 @@ async function main(): Promise<void> {
   const sites = el("site-list");
   const historyCount = el("history-count");
 
+  // ---------- Sharing with AI providers: state and withdrawal ----------
+  const consentList = el("consent-list");
+  const consentStatus = el("consent-status");
+
+  function renderConsent(): void {
+    consentList.replaceChildren(
+      ...(["anthropic", "openai"] as const).map((p) => {
+        const li = document.createElement("li");
+        const rec = consent.record(p);
+        if (!rec) {
+          li.textContent = PROVIDER_NAME[p] + ": not allowed. Safari Scout asks before it sends anything.";
+          return li;
+        }
+        const day = new Date(rec.at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn";
+        btn.textContent = "Withdraw";
+        btn.setAttribute("aria-label", "Withdraw permission to share with " + PROVIDER_NAME[p]);
+        btn.addEventListener("click", () => {
+          // The gate closes at once; storage follows.
+          void consent.withdraw(p).then(
+            () => (consentStatus.textContent = "Withdrawn. Safari Scout sends nothing to " + PROVIDER_NAME[p] + " until you allow it again."),
+            () => (consentStatus.textContent = "Could not save the change. Nothing is sent to " + PROVIDER_NAME[p] + " while this panel is open. Try again."),
+          );
+          trace("consent:withdrawn " + p);
+          renderConsent();
+          el("sharing-title").focus();
+        });
+        li.append(PROVIDER_NAME[p] + ": allowed on " + day + ". ", btn);
+        return li;
+      }),
+    );
+  }
+
   const chosenProvider = (): Provider => (providerInputs.find((i) => i.checked)?.value === "openai" ? "openai" : "anthropic");
 
   async function persist(next: Settings, message = "Saved."): Promise<void> {
@@ -1234,13 +1350,15 @@ async function main(): Promise<void> {
     const p = settings.provider;
     renderModels(knownModels[p]);
     modelHelp.textContent = "Loading models…";
-    let key: string | null = null;
+    let saved: string | null = null;
     try {
-      key = await keychain.getKey(p);
+      saved = await keychain.getKey(p);
     } catch {
-      key = null;
+      saved = null;
     }
-    const list = await loadModelList(storage, p, key, (i, init) => fetch(i, init), Date.now(), { refresh });
+    // The live list is a request to the provider, so only after consent.
+    const key = consent.has(p) ? saved : null;
+    const list = await loadModelList(storage, p, key, providerFetch, Date.now(), { refresh });
     if (settings.provider !== p) return;
     rememberModels(p, list.models);
     // Keep a half-typed custom model ID.
@@ -1249,7 +1367,9 @@ async function main(): Promise<void> {
       list.source === "builtin"
         ? key
           ? "Could not load your " + PROVIDER_NAME[p] + " model list. Showing common models."
-          : "Showing common models. Save your " + PROVIDER_NAME[p] + " key to list every model it can use."
+          : saved
+            ? "Showing common models. Safari Scout lists every model your key can use after you allow sharing with " + PROVIDER_NAME[p] + "."
+            : "Showing common models. Save your " + PROVIDER_NAME[p] + " key to list every model it can use."
         : "Models your " + PROVIDER_NAME[p] + " key can use." + (list.error ? " Could not refresh the list just now." : "");
     trace("models:" + p + " " + list.source + " " + list.models.length);
   }
@@ -1266,6 +1386,7 @@ async function main(): Promise<void> {
     for (const i of providerInputs) i.checked = i.value === settings.provider;
     syncSegmented(providerInputs);
     retentionSel.value = settings.retention;
+    renderConsent();
     // Not awaited: Settings opens at once; the list fills in when it arrives.
     void refreshModels();
     await refreshKeyStatus();
@@ -1299,6 +1420,7 @@ async function main(): Promise<void> {
     settingsView.hidden = false;
     savedMsg.textContent = "";
     keyError.textContent = "";
+    consentStatus.textContent = "";
     await refreshSettings();
     // Focus the heading or the key field, never a <select>: on iOS a focused
     // select opens its picker immediately (T018).
@@ -1373,10 +1495,16 @@ async function main(): Promise<void> {
       keyInput.focus();
       return;
     }
-    keySave.disabled = true;
-    keyStatus.textContent = "Testing the key with " + PROVIDER_NAME[p] + "…";
     void (async () => {
-      const result = await checkKey(p, key, (i, init) => fetch(i, init));
+      // Testing the key is a request to the provider, so it needs consent too.
+      if (!consent.has(p) && !(await allowSharing(p))) {
+        keyStatus.textContent =
+          "The key was not tested or saved. Safari Scout tests it with " + PROVIDER_NAME[p] + " only after you allow sharing.";
+        return;
+      }
+      keySave.disabled = true;
+      keyStatus.textContent = "Testing the key with " + PROVIDER_NAME[p] + "…";
+      const result = await checkKey(p, key, providerFetch);
       trace("key:test " + p + " " + result);
       if (result === "valid") {
         try {
@@ -1451,6 +1579,7 @@ async function main(): Promise<void> {
       confirmBox.hidden = true;
       deleteBtn.hidden = false;
       settings = parseSettings(undefined);
+      consent.forget();
       diag?.forget();
       clearThread();
       conv = "";

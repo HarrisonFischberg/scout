@@ -39,6 +39,8 @@ async function openPopup(page: Page, opts: { backgroundReadFails?: boolean } = {
           sendNativeMessage: async () => ({ ok: true, value: "sk-test-synthetic" }),
           onMessage: { addListener() {} },
         },
+        // Sharing with the provider already allowed (consent.spec.ts covers asking).
+        storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 1 }, openai: { at: 1, version: 1 } } } : {}), set: async () => undefined, clear: async () => undefined } },
         tabs: {
           query: async (info: { active?: boolean }) => (info.active ? tabs.filter((t) => t.active) : tabs),
         },

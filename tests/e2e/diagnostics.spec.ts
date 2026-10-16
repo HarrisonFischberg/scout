@@ -10,7 +10,8 @@ const PAGE = { url: "https://shop.test/cart?session=abc", title: "Test shop", te
 async function openPopup(page: Page): Promise<void> {
   await page.addInitScript(
     ({ key, pageData }) => {
-      const data: Record<string, unknown> = {};
+      // Sharing with the provider already allowed (consent.spec.ts covers asking).
+      const data: Record<string, unknown> = { aiConsent: { anthropic: { at: 1, version: 1 }, openai: { at: 1, version: 1 } } };
       (globalThis as unknown as { browser: unknown }).browser = {
         runtime: {
           sendMessage: async () => ({ ok: true }),
