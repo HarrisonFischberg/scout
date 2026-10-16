@@ -11,8 +11,13 @@ declare const browser: {
     };
   };
   tabs: {
-    query(info: { active: boolean; currentWindow: boolean }): Promise<Array<{ id?: number }>>;
+    query(info: { active?: boolean; currentWindow?: boolean }): Promise<
+      Array<{ id?: number; title?: string; url?: string; active?: boolean }>
+    >;
     sendMessage(tabId: number, message: unknown): Promise<unknown>;
+  };
+  permissions: {
+    request(perms: { origins: string[] }): Promise<boolean>;
   };
   scripting: {
     executeScript(injection: {

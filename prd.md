@@ -36,8 +36,8 @@ macOS and iOS. The user brings their own Anthropic or OpenAI API key.
   time; default Claude Sonnet 5.5, user-selectable.
 - Native messaging (`SafariWebExtensionHandler`) for Keychain read/write.
   The key never enters `storage.local`, logs, or model prompts.
-- Permissions: `activeTab`, `storage`, `scripting`, `nativeMessaging`,
-  `contextMenus`; host access requested per site, not `<all_urls>` up front.
+- Permissions: `activeTab`, `tabs` (T012: titles/URLs for the @tab picker), `storage`,
+  `scripting`, `nativeMessaging`, `contextMenus`; host access requested per site, not `<all_urls>` up front.
 - Safety layer: page text wrapped as untrusted data in prompts; an allowlist
   of tool actions; classifier rules mark sensitive actions (payment/order
   submit, login/password fields, send/post, personal-data form submit,
@@ -72,7 +72,7 @@ Status values: `pending`, `in progress`, `done`, `blocked`, `needs supervised ch
 | T009 | Action executor: click/type/select/scroll/navigate/wait by ref; result reporting | T008 | Playwright on fixtures: each action succeeds; missing ref fails cleanly | `npm run e2e -- actions` | needs supervised check (unit 51 pass, typecheck + lint clean; `tests/e2e/actions.spec.ts` written, WebKit e2e not run in sandbox, see activity.md and launch-blockers 12) |
 | T010 | Agent loop: plan, step list UI (S05), budgets, Pause/Stop | T005, T007, T009 | E2E with scripted mock model completes a 5-step form task; Stop halts within one step | `npm run e2e -- agent` | needs supervised check (unit 60 pass, typecheck + lint clean; `tests/e2e/agent.spec.ts` written, WebKit launch hangs in sandbox, see activity.md and launch-blockers 12) |
 | T011 | Safety layer: sensitive-action classifier + approval sheet (S06), CAPTCHA stop, untrusted-content wrapping | T010 | E2E: order-submit, login, and send are blocked until approved; injection fixture cannot trigger an unapproved action | `npm run e2e -- safety` | needs supervised check (unit 75 pass, typecheck + lint clean; `tests/e2e/safety.spec.ts` written, WebKit launch blocked in sandbox, see activity.md and launch-blockers 12) |
-| T012 | @tab multi-tab context | T007 | E2E: answer cites content from 2 selected fixture tabs | `npm run e2e -- tabs` | pending |
+| T012 | @tab multi-tab context | T007 | E2E: answer cites content from 2 selected fixture tabs | `npm run e2e -- tabs` | needs supervised check (unit 82 pass, typecheck + lint clean; `tests/e2e/tabs.spec.ts` written, WebKit launch blocked in sandbox, see activity.md and launch-blockers 12) |
 | T013 | Coupon finder (F06): search codes, try 1×1, parse totals, keep best, never click order (S07) | T010, T011 | E2E on fixture shop with 5 codes (2 valid, different %): best one applied, all attempts listed with real totals, order button never clicked | `npm run e2e -- coupons` | pending |
 | T014 | Cost display: tokens + estimated cost per run, price table dated and sourced | T005 | Unit test on cost math; price source recorded in `docs/claims-evidence.md` | `npm test -- cost` | pending |
 | T015 | Settings (S08): provider/model, retention, per-site access, Delete all data | T004, T007 | E2E: Delete all data clears storage and Keychain item; retention expiry unit-tested | `npm run e2e -- settings`; `xcodebuild test` | pending |

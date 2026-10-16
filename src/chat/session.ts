@@ -13,6 +13,7 @@ export interface TurnInput {
   history: ChatMessage[];
   question: string;
   page: PageContext | null;
+  extraPages?: PageContext[];
   signal?: AbortSignal;
   onText: (full: string) => void;
 }
@@ -24,7 +25,7 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     const req = {
       model: input.model,
       system: SYSTEM_PROMPT,
-      messages: buildMessages(input.history, input.question, input.page),
+      messages: buildMessages(input.history, input.question, input.page, input.extraPages ?? []),
       maxTokens: 1024,
       ...(input.signal ? { signal: input.signal } : {}),
     };
