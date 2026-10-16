@@ -57,6 +57,13 @@ for (const scheme of ["light", "dark"] as const) {
       expect(await axe(page)).toEqual([]);
     });
 
+    test("popup model menu has no WCAG 2.2 AA violations", async ({ page }) => {
+      await openPopup(page);
+      await page.locator("#model-pill").click();
+      await expect(page.getByRole("menu", { name: "Model and effort" })).toBeVisible();
+      expect(await axe(page)).toEqual([]);
+    });
+
     test("popup settings view has no WCAG 2.2 AA violations", async ({ page }) => {
       await openPopup(page);
       await page.getByRole("button", { name: "Settings" }).click();

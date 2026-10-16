@@ -141,6 +141,84 @@ test("the + menu opens by keyboard, Escape closes it and returns focus", async (
   await expect(plus).toHaveAttribute("aria-expanded", "false");
 });
 
+const savedSettings = (page: Page) =>
+  page.evaluate(() => (globalThis as unknown as { __fake: { data: { settings: unknown } } }).__fake.data.settings);
+
+test("the model pill opens a menu in place: picking a model or effort saves it and Settings stays closed", async ({ page }) => {
+  await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+  const pill = page.locator("#model-pill");
+  await expect(pill).toHaveText("Sonnet 5.5");
+  await expect(pill).toHaveAttribute("aria-haspopup", "menu");
+  await pill.click();
+  const menu = page.getByRole("menu", { name: "Model and effort" });
+  await expect(menu).toBeVisible();
+  await expect(pill).toHaveAttribute("aria-expanded", "true");
+  const sonnet = menu.getByRole("menuitemradio", { name: "Claude Sonnet 5.5" });
+  await expect(sonnet).toHaveAttribute("aria-checked", "true");
+  await expect(sonnet).toBeFocused();
+  // The menu opens above the composer, inside the popup.
+  const menuBox = (await menu.boundingBox())!;
+  expect(menuBox.y).toBeGreaterThanOrEqual(0);
+  expect(menuBox.y + menuBox.height).toBeLessThanOrEqual((await page.locator(".composer-box").boundingBox())!.y);
+
+  await menu.getByRole("menuitemradio", { name: "Claude Opus 5.5" }).click();
+  await expect(menu).toBeHidden();
+  await expect(page.locator("#settings-view")).toBeHidden();
+  await expect(pill).toBeFocused();
+  await expect(pill).toHaveText("Opus 5.5");
+  await expect(page.locator("#status")).toHaveText("Ready. Using anthropic claude-opus-5-5.");
+  await expect.poll(() => savedSettings(page)).toMatchObject({ provider: "anthropic", model: "claude-opus-5-5", effort: "default" });
+
+  await pill.click();
+  await menu.getByRole("menuitemradio", { name: "High", exact: true }).click();
+  await expect(pill).toHaveText("Opus 5.5 · High");
+  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-opus-5-5", effort: "high" });
+
+  // A click outside closes it without changing anything.
+  await pill.click();
+  await expect(menu).toBeVisible();
+  await page.getByLabel("Ask about this page").click();
+  await expect(menu).toBeHidden();
+  await expect(pill).toHaveAttribute("aria-expanded", "false");
+  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-opus-5-5", effort: "high" });
+});
+
+test("the model menu works by keyboard: arrows move, Enter picks, Escape closes and returns focus", async ({ page }) => {
+  await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+  const pill = page.locator("#model-pill");
+  const menu = page.getByRole("menu", { name: "Model and effort" });
+  await pill.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(menu.getByRole("menuitemradio", { name: "Claude Sonnet 5.5" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(menu.getByRole("menuitemradio", { name: "Claude Opus 5.5" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+  await expect(pill).toBeFocused();
+  await expect.poll(() => savedSettings(page)).toBeUndefined();
+
+  await page.keyboard.press("Enter");
+  await expect(menu).toBeVisible();
+  await page.keyboard.press("End");
+  await expect(menu.getByRole("menuitemradio", { name: "Max" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(menu).toBeHidden();
+  await expect(pill).toHaveText("Sonnet 5.5 · Max");
+  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-sonnet-5-5", effort: "max" });
+});
+
+test("the mode switch stays on one line beside the model pill when the popup first opens", async ({ page }) => {
+  await openPopup(page, {
+    keys: { anthropic: GOOD_KEY },
+    data: { settings: { provider: "anthropic", model: "claude-opus-5-5", effort: "medium", retention: "7" } },
+  });
+  await expect(page.locator("#model-pill")).toHaveText("Opus 5.5 · Medium");
+  for (const label of await page.locator(".composer-foot fieldset.segmented label").all()) {
+    expect((await label.boundingBox())!.height).toBeLessThanOrEqual(30);
+  }
+  expect(await page.locator(".composer-foot").evaluate((n) => n.scrollWidth - n.clientWidth)).toBe(0);
+});
+
 test("Settings and Back keep focus where the user expects", async ({ page }) => {
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
   await page.getByRole("button", { name: "Settings" }).click();
