@@ -108,3 +108,31 @@ Decisions taken (redirect if wrong):
 - Used MDN BCD for Safari support data because Apple's page could not be read through the fetch tool.
 - Kept `contextMenus` in the manifest per PRD, though MDN has no entry for it.
 - Commit message author attribution: PROMPT.md names Claude Opus 5.5 as co-author; the session reminder says Haiku 5.5 is the current model. Used the PROMPT.md line (project instruction).
+
+## 2026-10-15 — /goal run: no dependency-ready pending task (goal NOT met, recorded)
+
+- Goal: finish exactly one dependency-ready pending task in `prd.md`.
+- Scan of `prd.md`: T001 done. T002 blocked (launch-blockers 9, 10). Every
+  other task is pending and depends, directly or through T003/T004, on T002.
+  No pending task has all dependencies `done`, so none was started.
+- Retried the blocked T002 verification once to confirm the blocker still holds.
+  Real output (trimmed):
+
+```
+$ xcodebuild -project apple/AssistAnt.xcodeproj -scheme "AssistAnt (macOS)" -destination generic/platform=macOS CODE_SIGNING_ALLOWED=NO build
+Couldn't create workspace arena folder '/Users/harrison/Library/Developer/Xcode/DerivedData/AssistAnt-dnqddkcbufqikuceewkkloaqpcpv': You don’t have permission to save the file “AssistAnt-dnqddkcbufqikuceewkkloaqpcpv” in the folder “DerivedData”.
+** BUILD FAILED **
+
+$ xcrun simctl list runtimes
+CoreSimulatorService connection became invalid.  Simulator services will no longer be available.
+```
+
+- Result: blocker unchanged. Build output needs a writable DerivedData path and
+  a running CoreSimulatorService. Both come from the sandbox, not the code.
+- Turns used: 1 of 5. Stopped early: further turns cannot change the sandbox,
+  and no task can be finished without T002.
+- No status rows changed. Launch-blockers 9 and 10 still apply.
+- Next step (owner): run the two `xcodebuild` commands in T002 outside the
+  session sandbox (or approve a writable DerivedData path) and load the
+  extension in Safari macOS and an iOS Simulator. Then set T002 to `done`
+  and the Ralph loop can pick T003.
