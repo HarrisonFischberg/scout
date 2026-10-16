@@ -19,12 +19,16 @@
 		4202761E19E3D5DF570469CA /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 2EACFEFE046C585EEC22A075 /* manifest.json */; };
 		432C9AE3398D8889519FDAFD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6984060B5995FB15A70F7EB /* ContentView.swift */; };
 		44591AF1303D7DE7A9594AF2 /* AssistAntApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFF3A7A6FFAC4C38E60D00F /* AssistAntApp.swift */; };
+		4B8DECDD083E4E0D24B435E1 /* privacy.html in Resources */ = {isa = PBXBuildFile; fileRef = 3DE806274580B227D3995289 /* privacy.html */; };
 		523BC8C08DFDAB1AA8A16FAE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6984060B5995FB15A70F7EB /* ContentView.swift */; };
+		54402E0BD5CABDE383CC2812 /* content.js in Resources */ = {isa = PBXBuildFile; fileRef = 0E1A0E7A1B227ADF88A1B413 /* content.js */; };
 		5C75FABD416B3597CFD94F9A /* AssistAnt Extension (iOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4A2569CEA3796C446ACE0B72 /* AssistAnt Extension (iOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		5E298B0C50FFB7B8E4398524 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */; };
 		67689D34836E23C7D42532BB /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 42362C08488648B56DDCF27B /* popup.html */; };
 		68EFD9AC48B2EC8AACAA8530 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */; };
 		6CF0181488D921CF9F0B9750 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = 9C7921F29DCF66058FC8BE1C /* background.js */; };
+		6EA542403783ECDEBEC6053B /* privacy.html in Resources */ = {isa = PBXBuildFile; fileRef = 3DE806274580B227D3995289 /* privacy.html */; };
+		70FC8B3D8AC5270477A9D58C /* terms.html in Resources */ = {isa = PBXBuildFile; fileRef = E531573CE3C35CCBA2D4399C /* terms.html */; };
 		7A1C0D4E2B9F46C3A8E5D1A1 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
 		7A1C0D4E2B9F46C3A8E5D1A2 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
 		7A1C0D4E2B9F46C3A8E5D1A3 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */; };
@@ -33,6 +37,7 @@
 		7A1C0D4E2B9F46C3A8E5D1A7 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		7A1C0D4E2B9F46C3A8E5D1F1 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		7A1C0D4E2B9F46C3A8E5D1F2 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
+		7D806FF2F407994E4D28F1CF /* terms.html in Resources */ = {isa = PBXBuildFile; fileRef = E531573CE3C35CCBA2D4399C /* terms.html */; };
 		835D2EEF9233782755B3D00F /* AssistAnt Extension (macOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5B36544F9C86B6EED546C345 /* AssistAnt Extension (macOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8B9A6545AF27168729CA73E8 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
 		997FBCCB476F2CD0AAAEE239 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 319A3602A9A92E9E704AEBCD /* popup.js */; };
@@ -42,6 +47,7 @@
 		C0C7388EAF345F982393C9EE /* KeychainStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67857510C6E847756D3CEA9F /* KeychainStoreTests.swift */; };
 		C3A53F9D6F7BA805B8F82363 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		C4705C78669FD7B254212BAB /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A44912843C812B2B1960158 /* Cocoa.framework */; };
+		CE59D31E55CE4ADCEC246F3A /* content.js in Resources */ = {isa = PBXBuildFile; fileRef = 0E1A0E7A1B227ADF88A1B413 /* content.js */; };
 		D5B993F4AB34FFCA20E95B69 /* privacy-policy.md in Resources */ = {isa = PBXBuildFile; fileRef = 2A2DD59678E293865FEF9520 /* privacy-policy.md */; };
 		ED15B721FFEBEB0A99F05233 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = 9C7921F29DCF66058FC8BE1C /* background.js */; };
 		F1B11E8D9F04B01567E493A5 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */; };
@@ -98,12 +104,14 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0E1A0E7A1B227ADF88A1B413 /* content.js */ = {isa = PBXFileReference; includeInIndex = 1; path = content.js; sourceTree = "<group>"; };
 		1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
 		1FFF3A7A6FFAC4C38E60D00F /* AssistAntApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AssistAntApp.swift; sourceTree = "<group>"; };
 		2737B9E90C2F5CB976A2DDF7 /* AssistAntTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AssistAntTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A2DD59678E293865FEF9520 /* privacy-policy.md */ = {isa = PBXFileReference; includeInIndex = 1; path = "privacy-policy.md"; sourceTree = "<group>"; };
 		2EACFEFE046C585EEC22A075 /* manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; path = manifest.json; sourceTree = "<group>"; };
 		319A3602A9A92E9E704AEBCD /* popup.js */ = {isa = PBXFileReference; includeInIndex = 1; path = popup.js; sourceTree = "<group>"; };
+		3DE806274580B227D3995289 /* privacy.html */ = {isa = PBXFileReference; includeInIndex = 1; path = privacy.html; sourceTree = "<group>"; };
 		42362C08488648B56DDCF27B /* popup.html */ = {isa = PBXFileReference; includeInIndex = 1; path = popup.html; sourceTree = "<group>"; };
 		49CA46C4964F64376FDFBEBA /* AssistAnt (macOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AssistAnt (macOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A2569CEA3796C446ACE0B72 /* AssistAnt Extension (iOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "AssistAnt Extension (iOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -124,6 +132,7 @@
 		BA52935E29A00BF86685A3B8 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D6984060B5995FB15A70F7EB /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		D979F8F918F26FE818AFE57A /* HostAppAccessibilityUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HostAppAccessibilityUITests.swift; sourceTree = "<group>"; };
+		E531573CE3C35CCBA2D4399C /* terms.html */ = {isa = PBXFileReference; includeInIndex = 1; path = terms.html; sourceTree = "<group>"; };
 		FFE46ABD9E4B81390D9346BB /* AssistAnt.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = AssistAnt.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -250,6 +259,9 @@
 				42362C08488648B56DDCF27B /* popup.html */,
 				9C7921F29DCF66058FC8BE1C /* background.js */,
 				319A3602A9A92E9E704AEBCD /* popup.js */,
+				0E1A0E7A1B227ADF88A1B413 /* content.js */,
+				3DE806274580B227D3995289 /* privacy.html */,
+				E531573CE3C35CCBA2D4399C /* terms.html */,
 			);
 			name = Resources;
 			path = Resources;
@@ -449,6 +461,9 @@
 				67689D34836E23C7D42532BB /* popup.html in Resources */,
 				6CF0181488D921CF9F0B9750 /* background.js in Resources */,
 				A9DCCCEEF09EC9973178027B /* popup.js in Resources */,
+				CE59D31E55CE4ADCEC246F3A /* content.js in Resources */,
+				6EA542403783ECDEBEC6053B /* privacy.html in Resources */,
+				70FC8B3D8AC5270477A9D58C /* terms.html in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -485,6 +500,9 @@
 				2E0506CD04E8191BAFA1EB6F /* popup.html in Resources */,
 				ED15B721FFEBEB0A99F05233 /* background.js in Resources */,
 				997FBCCB476F2CD0AAAEE239 /* popup.js in Resources */,
+				54402E0BD5CABDE383CC2812 /* content.js in Resources */,
+				4B8DECDD083E4E0D24B435E1 /* privacy.html in Resources */,
+				7D806FF2F407994E4D28F1CF /* terms.html in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -163,3 +163,72 @@ describe("agent loop", () => {
     expect(out.message.length).toBeGreaterThan(0);
   });
 });
+
+// Seen on iOS Safari (T018): a content-script message went unanswered and the
+// run hung with Stop doing nothing. Page calls must time out and Stop must end
+// a run that is waiting.
+describe("hung page calls", () => {
+  const never = <T>(): Promise<T> => new Promise<T>(() => undefined);
+  const noModel = {
+    async *stream() {
+      throw new Error("model must not be called");
+    },
+  } as unknown as Parameters<typeof runAgent>[0]["provider"];
+
+  it("fails with a clear message when the page does not answer", async () => {
+    const out = await runAgent({
+      provider: noModel,
+      model: "m",
+      goal: "g",
+      page: { snapshot: never, act: never },
+      budget: { maxSteps: 3, maxTokens: 1000, pageTimeoutMs: 30 },
+    });
+    expect(out.status).toBe("error");
+    expect(out.message).toBe("The page did not answer within 0 seconds. Reload the page and try again.");
+  });
+
+  it("Stop ends a run that is waiting on the page", async () => {
+    const control = new AgentControl();
+    const run = runAgent({
+      provider: noModel,
+      model: "m",
+      goal: "g",
+      page: { snapshot: never, act: never },
+      control,
+      budget: { maxSteps: 3, maxTokens: 1000, pageTimeoutMs: 60_000 },
+    });
+    setTimeout(() => control.stop(), 10);
+    const out = await run;
+    expect(out.status).toBe("stopped");
+  });
+
+  it("Stop aborts the in-flight model request", async () => {
+    const control = new AgentControl();
+    let seen: AbortSignal | undefined;
+    const provider = {
+      async *stream(req: { signal?: AbortSignal }) {
+        seen = req.signal;
+        await new Promise((_, reject) => req.signal?.addEventListener("abort", () => reject(new Error("aborted"))));
+      },
+    } as unknown as Parameters<typeof runAgent>[0]["provider"];
+    const snap = { url: "https://shop.test/", title: "t", text: "", elements: [], truncated: false };
+    const run = runAgent({ provider, model: "m", goal: "g", page: { snapshot: async () => snap, act: never }, control });
+    setTimeout(() => control.stop(), 10);
+    const out = await run;
+    expect(out.status).toBe("stopped");
+    expect(seen?.aborted).toBe(true);
+  });
+});
+
+describe("malformed snapshot", () => {
+  it("ends with a clear error instead of throwing", async () => {
+    const out = await runAgent({
+      provider: { async *stream() {} } as unknown as Parameters<typeof runAgent>[0]["provider"],
+      model: "m",
+      goal: "g",
+      page: { snapshot: async () => undefined as unknown as Snapshot, act: async () => ({ ok: true, action: "click", message: "" }) },
+    });
+    expect(out.status).toBe("error");
+    expect(out.message).toBe("Could not read the page.");
+  });
+});

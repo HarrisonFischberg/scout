@@ -4,7 +4,6 @@
   "version": "0.1.0",
   "description": "Toolbar AI assistant that uses your own API key.",
   "permissions": ["activeTab", "tabs", "storage", "scripting", "nativeMessaging", "contextMenus"],
-  "host_permissions": ["https://api.anthropic.com/*", "https://api.openai.com/*"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "scripts": ["background.js"],

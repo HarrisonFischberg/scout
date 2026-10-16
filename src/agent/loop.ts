@@ -18,9 +18,42 @@ export interface AgentBudget {
   maxSteps: number;
   /** Input plus output tokens across the whole run. */
   maxTokens: number;
+  /** A page call (snapshot or action) that takes longer fails instead of hanging the run. */
+  pageTimeoutMs?: number;
 }
 
-export const DEFAULT_BUDGET: AgentBudget = { maxSteps: 12, maxTokens: 100_000 };
+export const DEFAULT_BUDGET: AgentBudget = { maxSteps: 12, maxTokens: 100_000, pageTimeoutMs: 15_000 };
+
+// The snapshot crosses Safari's script-injection boundary; never trust its shape.
+function isSnapshot(v: unknown): v is Snapshot {
+  if (typeof v !== "object" || v === null) return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.url === "string" && typeof o.title === "string" && typeof o.text === "string" && Array.isArray(o.elements);
+}
+
+class PageCallError extends Error {
+  constructor(readonly reason: "timeout" | "stopped") {
+    super(reason);
+  }
+}
+
+// Races a page call against a timeout and the stop signal. Safari can leave a
+// message to a content script unanswered (seen on iOS in T018), so nothing
+// here may wait forever.
+function guarded<T>(call: Promise<T>, ms: number, signals: AbortSignal[]): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new PageCallError("timeout")), ms);
+    const onAbort = (): void => reject(new PageCallError("stopped"));
+    for (const sig of signals) {
+      if (sig.aborted) onAbort();
+      sig.addEventListener("abort", onAbort, { once: true });
+    }
+    call.then(resolve, reject).finally(() => {
+      clearTimeout(timer);
+      for (const sig of signals) sig.removeEventListener("abort", onAbort);
+    });
+  });
+}
 
 export type AgentStatus = "done" | "stopped" | "captcha" | "step_budget" | "token_budget" | "error";
 
@@ -56,6 +89,9 @@ export class AgentControl {
   private paused = false;
   private stopped = false;
   private waiters: Array<() => void> = [];
+  private readonly abort = new AbortController();
+  /** Aborted by stop(): cancels an in-flight model request or page call. */
+  readonly signal: AbortSignal = this.abort.signal;
 
   pause(): void {
     this.paused = true;
@@ -66,6 +102,7 @@ export class AgentControl {
   }
   stop(): void {
     this.stopped = true;
+    this.abort.abort();
     this.flush();
   }
   get isStopped(): boolean {
@@ -152,6 +189,8 @@ export interface AgentInput {
   /** Resolves true to allow a sensitive action. Absent means deny. */
   approve?: (req: ApprovalRequest) => Promise<boolean>;
   onEvent?: (e: AgentEvent) => void;
+  /** Diagnostics hook: receives stage names only, never content. */
+  trace?: (stage: string) => void;
 }
 
 function observation(snap: Snapshot): string {
@@ -179,6 +218,16 @@ export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
   const history: ChatMessage[] = [];
   const end = (status: AgentStatus, message: string): AgentOutcome => ({ status, steps, usage, message });
   const halted = (): boolean => control.isStopped || input.signal?.aborted === true;
+  const trace = input.trace ?? (() => undefined);
+  const signals = [control.signal, ...(input.signal ? [input.signal] : [])];
+  const pageMs = budget.pageTimeoutMs ?? DEFAULT_BUDGET.pageTimeoutMs ?? 15_000;
+  // Manual combine: AbortSignal.any needs Safari 17.4; the iOS target is 17.0.
+  const modelAbort = new AbortController();
+  for (const sig of signals) {
+    if (sig.aborted) modelAbort.abort();
+    else sig.addEventListener("abort", () => modelAbort.abort(), { once: true });
+  }
+  const modelSignal = modelAbort.signal;
 
   for (let index = 1; ; index++) {
     await control.gate();
@@ -193,9 +242,22 @@ export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
 
     let snap: Snapshot;
     try {
-      snap = await input.page.snapshot();
-    } catch {
-      return end("error", "Could not read the page.");
+      trace("snapshot:start " + index);
+      const raw: unknown = await guarded(input.page.snapshot(), pageMs, signals);
+      if (!isSnapshot(raw)) {
+        trace("snapshot:invalid " + index + " " + (raw === null ? "null" : typeof raw));
+        return end("error", "Could not read the page.");
+      }
+      snap = raw;
+      trace("snapshot:done " + index);
+    } catch (err) {
+      if (halted()) return end("stopped", "Stopped.");
+      return end(
+        "error",
+        err instanceof PageCallError && err.reason === "timeout"
+          ? "The page did not answer within " + Math.round(pageMs / 1000) + " seconds. Reload the page and try again."
+          : "Could not read the page.",
+      );
     }
     // CAPTCHAs are a hard stop: the agent never tries to solve or bypass one.
     if (detectCaptcha(snap)) {
@@ -213,8 +275,9 @@ export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
         messages: history,
         tools: AGENT_TOOLS,
         maxTokens: 1024,
-        ...(input.signal ? { signal: input.signal } : {}),
+        signal: modelSignal,
       };
+      trace("model:start " + index);
       for await (const ev of input.provider.stream(req)) {
         if (ev.type === "text") text += ev.delta;
         else if (ev.type === "tool_call" && !call) call = { id: ev.id, name: ev.name, input: ev.input };
@@ -229,6 +292,7 @@ export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
       return end("error", msg);
     }
 
+    trace("model:done " + index + (call ? " tool=" + call.name : " no-tool"));
     const note = text.trim();
     if (index === 1 && note) emit({ type: "plan", text: note });
     // Stop requested while the model was answering: do not act on its output.
@@ -273,9 +337,15 @@ export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
         };
       } else {
         try {
-          step.result = await input.page.act(action);
-        } catch {
-          step.result = { ok: false, action: action.type, message: "Action failed.", error: "failed" };
+          step.result = await guarded(input.page.act(action), pageMs, signals);
+        } catch (err) {
+          if (halted()) return end("stopped", "Stopped.");
+          step.result = {
+            ok: false,
+            action: action.type,
+            message: err instanceof PageCallError && err.reason === "timeout" ? "The page did not answer in time." : "Action failed.",
+            error: "failed",
+          };
         }
       }
     }

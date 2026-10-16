@@ -45,7 +45,19 @@ async function openPopup(page: Page, snap: Page2, script: string[]): Promise<{ a
           return { ok: true, action: m.action?.type, message: "ok" };
         },
       },
-      scripting: { executeScript: async () => [{ result: null }] },
+      scripting: {
+        // The popup calls the content handler through executeScript(func, args);
+        // the fake page behind it is tabs.sendMessage above.
+        // Runs the popup's real injected func against a fake page handler.
+        executeScript: async (inj: { func?: (...a: unknown[]) => unknown; args?: unknown[] }) => {
+          if (!inj.func || !inj.args) return [{ result: null }];
+          const g = globalThis as unknown as Record<string, unknown> & {
+            browser: { tabs: { sendMessage: (id: number, m: unknown) => Promise<unknown> } };
+          };
+          g.__assistAntHandle = (r: unknown) => g.browser.tabs.sendMessage(1, r);
+          return [{ result: await inj.func(...inj.args) }];
+        },
+      },
     };
   }, snap);
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));

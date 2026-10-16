@@ -973,3 +973,20 @@ $ npx playwright test settings
 - Xcode resolved `$(AppIdentifierPrefix)` to `KTV2G3Z883.` on this Mac: a development team appears to be configured. Not assumed to be the owner's paid membership; asked.
 - Verified: host app launched with DEBUG-only `-SeedSyntheticKey YES` wrote `sk-test-synthetic-sharing-check`; the Safari popup then showed "Ready. Using anthropic claude-sonnet-5-5." (`ralph/evidence/T018-ios-shared-keychain-ready.png`). Then `xcrun simctl keychain <test sim> reset`.
 - Regression: macOS build ok, XCTest 10/10.
+
+## 2026-10-15 — T018 live verification with owner test keys (Claude, supervised)
+
+Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site on 127.0.0.1:4318 (synthetic pages only). Results with Anthropic `claude-sonnet-5-5`:
+
+- F02 ask: first attempt "The API key was rejected" (401). Cause: browser-origin calls need `anthropic-dangerous-direct-browser-access: true` (confirmed in the official TypeScript SDK source, sent for `dangerouslyAllowBrowser`). Added header + unit assertion. Also removed provider hosts from `host_permissions` (not needed; fewer prompts). Retest: correct total and "no coupon applied"; status shows tokens + estimated cost ($0.0014). PASS.
+- F03 summarize: accurate bullets, $0.0018. PASS.
+- F04 cross-tab: answered "I can't tell you" about the ticked tab. iOS Safari cannot script a background tab; the popup only noted this in the status line, which "Done" overwrote. Fix: unread tabs named in the conversation; new e2e. Live capability gap remains on iOS (works on macOS e2e only).
+- F05 agent: hung on "Agent running." with Stop doing nothing. Causes found with DEBUG-only stage tracing (stage names only, compiled out of release; `debug.stage` native message → os_log):
+  1. `content.js` (and `privacy.html`/`terms.html`) were never in either extension bundle's Copy Bundle Resources → handler missing. Fixed with `scripts/sync-extension-resources.rb`; added `scripts/check-extension-bundle.sh`.
+  2. Page calls over `tabs.sendMessage` could wait forever. Switched to `scripting.executeScript` with an envelope that reports failures; page calls now time out (15 s) and Stop aborts both page calls and the model request (`AgentControl.signal`). New unit tests for hang, Stop-while-waiting, Stop-aborts-model, malformed snapshot.
+  3. Popup now catches any agent failure instead of staying on "Agent running.".
+  Retest: plan shown; typed name + email, selected Support; approval sheet "Agent wants to click "Send" (e5). This looks like it sends or publishes something."; chose Don't allow; agent reported it did not send and did not retry. 10,336 tokens, $0.03. PASS.
+- F06 coupons: "No sourced codes found, so none were tried. AssistAnt does not guess codes." on the synthetic shop (expected: no public codes exist for 127.0.0.1). $0.0073. PASS for honesty; applying a real sourced code is untested live.
+- Provider switch: OpenAI chosen + saved, popup still used Anthropic silently. Trace: `key:openai missing`. Root cause in host app: switching the provider picker kept "Key saved to Keychain." from the other provider, so the OpenAI key looked saved but never was. Fixed: per-provider state + provider name in the message (XCTest added); popup now announces any fallback (e2e added).
+- Checks after fixes: unit 121/121, e2e 42/42, XCTest 11/11, iOS UI a11y audit TEST SUCCEEDED, macOS + iOS builds ok, both bundles contain all 7 resources.
+- Owner action: re-enter the OpenAI test key in the host app (the status now names the provider), then the OpenAI live path can be verified.

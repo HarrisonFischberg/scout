@@ -2,6 +2,7 @@
 import { AgentControl, runAgent, type AgentPage, type ApprovalRequest, type StepRecord } from "./agent/loop";
 import type { Action, ActionResult } from "./actions/executor";
 import type { Snapshot } from "./snapshot/snapshot";
+import { CONTENT_HANDLER, type ContentRequest } from "./content-api";
 import { SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { renderMarkdown } from "./chat/markdown";
 import { runTurn } from "./chat/session";
@@ -35,22 +36,36 @@ function el<T extends HTMLElement>(id: string): T {
 
 // Prefers the provider chosen in settings, then any provider with a saved key.
 // A fallback provider uses its own default model, not the chosen model.
-async function findKey(chosen: Settings): Promise<{ settings: Settings; apiKey: string } | null> {
+// Uses the chosen provider's key. Falls back to the other provider only with
+// a note the popup shows, never silently (seen in T018: OpenAI chosen, Anthropic
+// used with no explanation).
+async function findKey(
+  chosen: Settings,
+): Promise<{ settings: Settings; apiKey: string; fellBackFrom?: Provider } | null> {
   const keychain = createKeychain(nativeSend);
   const order: Provider[] = chosen.provider === "openai" ? ["openai", "anthropic"] : ["anthropic", "openai"];
   for (const provider of order) {
+    let apiKey: string | null = null;
     try {
-      const apiKey = await keychain.getKey(provider);
-      if (apiKey) {
-        const model = provider === chosen.provider ? chosen.model : DEFAULT_MODEL[provider];
-        return { settings: { ...chosen, provider, model }, apiKey };
-      }
-    } catch {
+      apiKey = await keychain.getKey(provider);
+      trace("key:" + provider + (apiKey ? " found" : " missing"));
+    } catch (err) {
       // Treat an unreadable item like a missing one.
+      trace("key:" + provider + " error " + (err instanceof Error ? err.message : "unknown"));
+    }
+    if (apiKey) {
+      const model = provider === chosen.provider ? chosen.model : DEFAULT_MODEL[provider];
+      return {
+        settings: { ...chosen, provider, model },
+        apiKey,
+        ...(provider !== chosen.provider ? { fellBackFrom: chosen.provider } : {}),
+      };
     }
   }
   return null;
 }
+
+const PROVIDER_NAME: Record<Provider, string> = { anthropic: "Anthropic", openai: "OpenAI" };
 
 async function listTabs(): Promise<TabInfo[]> {
   try {
@@ -89,16 +104,59 @@ async function readPage(tabId?: number): Promise<PageContext | null> {
   }
 }
 
+// Stage names to the native log in DEBUG app builds (the handler ignores the
+// message otherwise). Never send content. Fire-and-forget.
+function trace(stage: string): void {
+  void Promise.resolve()
+    .then(() => browser.runtime.sendNativeMessage("com.example.AssistAnt", { type: "debug.stage", stage }))
+    .catch(() => undefined);
+}
+
 // The content script is injected on demand into the active tab only.
 async function tabAgentPage(): Promise<AgentPage | null> {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   if (tab?.id === undefined) return null;
   const tabId = tab.id;
   await browser.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
+  // Same isolated world as content.js, so its handler is visible here.
+  const call = async (req: ContentRequest): Promise<unknown> => {
+    const [res] = await browser.scripting.executeScript({
+      target: { tabId },
+      // Returns an envelope so a failure inside the page is reported, not
+      // silently turned into null by Safari.
+      func: (r: ContentRequest, name: string) => {
+        try {
+          const h = (globalThis as unknown as Record<string, ((x: ContentRequest) => unknown) | undefined>)[name];
+          if (typeof r !== "object" || r === null) return { ok: false, why: "no-args" };
+          if (!h) {
+            const loaded = (globalThis as unknown as Record<string, unknown>).__assistAntContent === true;
+            return { ok: false, why: "no-handler loaded=" + String(loaded) };
+          }
+          const out = h(r);
+          if (out && typeof (out as Promise<unknown>).then === "function") {
+            return (out as Promise<unknown>).then(
+              (value) => ({ ok: true, value }),
+              () => ({ ok: false, why: "threw-async" }),
+            );
+          }
+          return { ok: true, value: out };
+        } catch {
+          return { ok: false, why: "threw" };
+        }
+      },
+      args: [req, CONTENT_HANDLER],
+    });
+    const env = res?.result as { ok?: boolean; value?: unknown; why?: string } | null | undefined;
+    if (!env || env.ok !== true) {
+      trace("content:" + req.type + " " + (env ? env.why ?? "bad-envelope" : "null-result"));
+      return null;
+    }
+    return env.value;
+  };
+
   return {
-    snapshot: async () => (await browser.tabs.sendMessage(tabId, { type: "assistant:snapshot" })) as Snapshot,
-    act: async (action: Action) =>
-      (await browser.tabs.sendMessage(tabId, { type: "assistant:act", action })) as ActionResult,
+    snapshot: async () => (await call({ type: "assistant:snapshot" })) as Snapshot,
+    act: async (action: Action) => (await call({ type: "assistant:act", action })) as ActionResult,
   };
 }
 
@@ -288,7 +346,7 @@ async function main(): Promise<void> {
     noKey.hidden = false;
     return;
   }
-  const { settings, apiKey } = found;
+  const { settings, apiKey, fellBackFrom } = found;
   const provider = createProvider(settings.provider, {
     apiKey,
     fetch: (input, init) => fetch(input, init),
@@ -325,6 +383,13 @@ async function main(): Promise<void> {
     log.appendChild(node);
     log.scrollTop = log.scrollHeight;
     return node;
+  }
+  if (fellBackFrom) {
+    addMessage(
+      "error",
+      "No " + PROVIDER_NAME[fellBackFrom] + " key is saved, so AssistAnt is using your " +
+        PROVIDER_NAME[settings.provider] + " key. Add your " + PROVIDER_NAME[fellBackFrom] + " key in the AssistAnt app to use it.",
+    );
   }
 
   function setBusy(busy: boolean): void {
@@ -365,9 +430,15 @@ async function main(): Promise<void> {
         if (p) extraPages.push(p);
       }
     }
+    // Shown in the conversation, not only the status line, which the answer's
+    // "Done" overwrites. iOS Safari cannot read background tabs (seen in T018).
     if (extra.length && extraPages.length < extra.length) {
-      status.textContent =
-        "Read " + extraPages.length + " of " + extra.length + " extra tabs. Site access may have been declined.";
+      const missed = extra.filter((t) => !extraPages.some((p) => p.url === t.url)).map((t) => t.title);
+      addMessage(
+        "error",
+        "Could not read: " + missed.join(", ") +
+          ". The answer uses only the pages listed as read. Site access may have been declined, or this browser cannot read background tabs (Safari on iPhone and iPad).",
+      );
     }
     const result = await runTurn({
       provider,
@@ -420,12 +491,15 @@ async function main(): Promise<void> {
     agentRun.disabled = send.disabled = summarize.disabled = true;
     status.textContent = "Agent running.";
     agentStop.focus();
-    const outcome = await runAgent({
+    let outcome: Awaited<ReturnType<typeof runAgent>>;
+    try {
+      outcome = await runAgent({
       provider,
       model: settings.model,
       goal: trimmed,
       page,
       control,
+      trace,
       approve: askApproval,
       onEvent: (e) => {
         if (e.type === "plan") agentPlan.textContent = e.text;
@@ -435,7 +509,11 @@ async function main(): Promise<void> {
           steps.appendChild(li);
         }
       },
-    });
+      });
+    } catch {
+      // Never leave the popup stuck on "Agent running." (seen on iOS, T018).
+      outcome = { status: "error", steps: [], usage: { inputTokens: 0, outputTokens: 0 }, message: "The task stopped because of an unexpected error. Nothing more was done on the page." };
+    }
     control = null;
     addMessage(outcome.status === "done" ? "assistant" : "error", outcome.message);
     status.textContent =
@@ -538,7 +616,10 @@ async function main(): Promise<void> {
       status.textContent = "Agent paused after the current step.";
     }
   });
-  agentStop.addEventListener("click", () => control?.stop());
+  agentStop.addEventListener("click", () => {
+    trace("ui:stop-click " + (control ? "has-control" : "no-control"));
+    control?.stop();
+  });
 
   composer.addEventListener("submit", (event) => {
     event.preventDefault();

@@ -66,4 +66,17 @@ final class ProviderSetupTests: XCTestCase {
         XCTAssertEqual(vm.statusMessage, "Test the key before saving.")
         XCTAssertNil(try store.get(account: Provider.anthropic.rawValue))
     }
+
+    func testSwitchingProviderShowsThatProvidersOwnState() async throws {
+        let vm = SetupViewModel(tester: StubTester(result: .valid), store: store)
+        vm.key = "sk-test-synthetic"
+        await vm.testKey()
+        vm.save()
+        XCTAssertEqual(vm.statusMessage, "Anthropic key saved to Keychain.")
+        vm.provider = .openai
+        XCTAssertEqual(vm.state, .empty)
+        XCTAssertEqual(vm.statusMessage, "Enter your OpenAI API key.")
+        vm.provider = .anthropic
+        XCTAssertEqual(vm.statusMessage, "Anthropic key saved to Keychain.")
+    }
 }

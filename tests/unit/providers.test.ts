@@ -74,6 +74,8 @@ describe("anthropic adapter", () => {
     const events = await collect(createProvider("anthropic", { apiKey: "sk-test-synthetic", fetch: f }).stream(req));
     expect(events).toEqual(expectedEvents("tu_1"));
     expect((seen?.headers as Record<string, string>)["x-api-key"]).toBe("sk-test-synthetic");
+    // Without this the API answers 401 to browser-origin calls (seen live, T018).
+    expect((seen?.headers as Record<string, string>)["anthropic-dangerous-direct-browser-access"]).toBe("true");
     expect(String(seen?.body)).not.toContain("sk-test-synthetic");
     expect(JSON.parse(String(seen?.body)).tools[0].input_schema).toEqual({ type: "object" });
   });

@@ -70,7 +70,15 @@ enum SetupState: Equatable {
 
 @MainActor
 final class SetupViewModel: ObservableObject {
-    @Published var provider: Provider = .anthropic
+    // Switching provider shows that provider's own state. Before this, the
+    // "saved" message from one provider stayed up after switching (T018).
+    @Published var provider: Provider = .anthropic {
+        didSet {
+            guard provider != oldValue else { return }
+            key = ""
+            state = hasSavedKey(for: provider) ? .saved : .empty
+        }
+    }
     // Editing the key invalidates an earlier test result.
     @Published var key: String = "" {
         didSet {
@@ -91,6 +99,11 @@ final class SetupViewModel: ObservableObject {
     init(tester: KeyTesting = ProviderKeyTester(), store: KeychainStore = KeychainStore()) {
         self.tester = tester
         self.store = store
+        state = hasSavedKey(for: provider) ? .saved : .empty
+    }
+
+    func hasSavedKey(for provider: Provider) -> Bool {
+        ((try? store.get(account: provider.rawValue)) ?? nil) != nil
     }
 
     var canTest: Bool { !key.trimmingCharacters(in: .whitespaces).isEmpty && state != .testing }
@@ -130,7 +143,7 @@ final class SetupViewModel: ObservableObject {
         case .result(.valid): return "Key is valid. Save it to Keychain."
         case .result(.invalid): return "\(provider.displayName) rejected this key. Check it and try again."
         case .result(.networkError): return "Could not reach \(provider.displayName). Check your connection and try again."
-        case .saved: return "Key saved to Keychain."
+        case .saved: return "\(provider.displayName) key saved to Keychain."
         }
     }
 }

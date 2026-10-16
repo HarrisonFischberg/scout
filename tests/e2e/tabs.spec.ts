@@ -29,10 +29,10 @@ const ANSWER = sse([
   { type: "message_stop" },
 ]);
 
-async function openPopup(page: Page): Promise<{ bodies: string[] }> {
+async function openPopup(page: Page, opts: { backgroundReadFails?: boolean } = {}): Promise<{ bodies: string[] }> {
   const bodies: string[] = [];
   await page.addInitScript(
-    ({ tabs, pages }) => {
+    ({ tabs, pages, backgroundReadFails }) => {
       const stub = {
         runtime: {
           sendMessage: async () => ({ ok: true }),
@@ -44,12 +44,18 @@ async function openPopup(page: Page): Promise<{ bodies: string[] }> {
         },
         permissions: { request: async () => true },
         scripting: {
-          executeScript: async (inj: { target: { tabId: number } }) => [{ result: pages[inj.target.tabId] }],
+          executeScript: async (inj: { target: { tabId: number } }) => {
+            // iOS Safari: scripting a background tab fails (T018).
+            if (backgroundReadFails && !tabs.find((t) => t.id === inj.target.tabId)?.active) {
+              throw new Error("No tab with id");
+            }
+            return [{ result: pages[inj.target.tabId] }];
+          },
         },
       };
       (globalThis as unknown as { browser: unknown }).browser = stub;
     },
-    { tabs: TABS, pages: PAGES },
+    { tabs: TABS, pages: PAGES, backgroundReadFails: opts.backgroundReadFails === true },
   );
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
@@ -86,4 +92,14 @@ test("an untouched tab is never read", async ({ page }) => {
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByRole("log").getByText("Test shop")).toBeVisible();
   expect(bodies[0]).not.toContain("Customers rate the Widget");
+});
+
+test("a tab that cannot be read is named in the conversation, not just the status line", async ({ page }) => {
+  const { bodies } = await openPopup(page, { backgroundReadFails: true });
+  await page.getByRole("checkbox", { name: "Reviews of Widget" }).check();
+  await page.getByLabel("Ask about this page").fill("Price and rating?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("log").getByText("Could not read: Reviews of Widget.")).toBeVisible();
+  await expect(page.locator("#status")).toContainText("Done.");
+  expect(bodies.join("")).not.toContain("4.5 stars");
 });

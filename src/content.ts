@@ -1,12 +1,12 @@
-// Content script (T009). Injected on demand by the background script (T010)
-// with `scripting.executeScript`; never declared for all URLs. Answers two
-// messages: snapshot the page, and perform one action by ref from the last
-// snapshot. Page content is untrusted data and only leaves via the reply.
+// Content script (T009). Injected on demand with `scripting.executeScript`;
+// never declared for all URLs. Exposes one handler for two requests: snapshot
+// the page, and perform one action by ref from the last snapshot. Page content
+// is untrusted data and only leaves via the return value.
 import { domPage } from "./actions/dom";
-import { executeAction, type Action, type ActionResult } from "./actions/executor";
+import { executeAction, type ActionResult } from "./actions/executor";
 import { buildSnapshot, fromElement, type SnapNode, type Snapshot } from "./snapshot/snapshot";
 
-export type ContentRequest = { type: "assistant:snapshot" } | { type: "assistant:act"; action: Action };
+import { CONTENT_HANDLER as HANDLER, type ContentRequest } from "./content-api";
 
 const FLAG = "__assistAntContent";
 const g = globalThis as unknown as Record<string, unknown>;
@@ -31,12 +31,12 @@ if (!g[FLAG]) {
     return snap;
   };
 
-  browser.runtime.onMessage.addListener((message: unknown): Promise<Snapshot | ActionResult> | undefined => {
-    const req = message as Partial<ContentRequest> | null;
-    if (req?.type === "assistant:snapshot") return Promise.resolve(snapshot());
-    if (req?.type === "assistant:act") {
-      return executeAction(domPage(refs, window), (req as { action: Action }).action);
-    }
-    return undefined;
-  });
+  // Called from the popup through scripting.executeScript, not runtime
+  // messaging: on iOS Safari a tabs.sendMessage to this script went
+  // unanswered (T018), while executeScript results arrive reliably.
+  g[HANDLER] = (req: ContentRequest): Promise<Snapshot | ActionResult> | Snapshot | null => {
+    if (req.type === "assistant:snapshot") return snapshot();
+    if (req.type === "assistant:act") return executeAction(domPage(refs, window), req.action);
+    return null;
+  };
 }
