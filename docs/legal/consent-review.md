@@ -1,6 +1,8 @@
 # Consent to share with third-party AI — packet for counsel
 
-Status: DRAFT for legal review (launch-blocker 8). Not approved by counsel.
+Status: reviewed by counsel, no changes requested (reported by the owner,
+2026-10-16). This covers the consent wording and flow in this packet only;
+the privacy policy and terms are still drafts (`publish-checklist.md`).
 Prepared 2026-10-16 from the code at commit `015eaeb` plus the link change
 recorded in `activity.md` the same day. Not bundled into the app.
 
