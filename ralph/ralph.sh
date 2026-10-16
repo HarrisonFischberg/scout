@@ -22,7 +22,8 @@ done
 GOAL='Per PROMPT.md, exactly one dependency-ready pending task in prd.md is finished: its status row is updated to done (or blocked with the blocker recorded in activity.md and docs/launch-blockers.md), its verification command was run and the real output is quoted in activity.md, and the change is committed locally. Stop after 5 turns if not met and record why in activity.md.'
 
 open_tasks() { grep -cE '^\| T[0-9]+ .*\| (pending|in progress) \|$' prd.md || true; }
-progress_mark() { echo "$(git rev-parse HEAD 2>/dev/null)-$(shasum activity.md prd.md | shasum | cut -c1-12)"; }
+# Progress = a change in task status rows, not activity.md notes or commits.
+progress_mark() { grep -E '^\| T[0-9]+ ' prd.md | awk -F'|' '{print $2 $(NF-1)}' | shasum | cut -c1-12; }
 
 stalls=0
 for ((i = 1; i <= MAX_ITER; i++)); do
