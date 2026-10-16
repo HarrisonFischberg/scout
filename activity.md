@@ -1041,3 +1041,10 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Owner report 2: Command-Tab showed a blank square. Cause: `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` but no asset catalog existed. Added `apple/App/Assets.xcassets` (macOS sizes 16–1024 with icon-grid margin and shadow; iOS opaque 1024, `hasAlpha: no`), rendered from new SVGs by `scripts/render-icons.mjs`; added to both app targets (`scripts/add-app-icons.rb`). macOS bundle now has `AppIcon.icns` + `Assets.car`.
 - Checks: unit 143, e2e 54, lint + typecheck clean, release bundle clean, XCTest pass, macOS + iOS builds ok, bundle check ok, Mac extension re-registered.
 - Not verified yet: the Fox News page live with the new prompt; the icon in the owner's Command-Tab (macOS may cache the old icon until the app is relaunched).
+
+## 2026-10-16 — Keep the host app out of the Dock and Command-Tab
+
+- Owner: the app showed in Command-Tab; Wipr/Superagent do not. Cause: `scripts/register-mac-extension.sh` launched the app after every build and it stayed open. The extension runs inside Safari and does not need the app running (Safari starts the extension's native handler itself).
+- Fix: register script no longer launches the app (`--open` to show it); macOS `AppDelegate.applicationShouldTerminateAfterLastWindowClosed` returns true, so the setup window's close quits the app. `LSUIElement` not used: an app with no Dock icon would leave first-run users with a window and no menu bar.
+- Checks: macOS + iOS builds ok, XCTest pass, extension still registered with the app not running.
+- Not verified: Safari use with the app quit on the owner's Mac (expected to work: same as Wipr).
