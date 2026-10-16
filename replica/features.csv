@@ -1,0 +1,40 @@
+feature,area,priority,original,clone,notes
+Enable-extension onboarding (macOS host app),onboarding,must,yes,no,SafarAI host app
+Enable-extension onboarding (iOS host app),onboarding,must,partial,no,
+Choose provider Anthropic or OpenAI,setup,must,no,no,SafarAI is DeepSeek only
+Store API key in Keychain via native messaging,setup,must,claimed,no,SafarAI docs contradict
+Test API key button,setup,must,unknown,no,
+Toolbar popup chat about current page,assistant,must,yes,no,
+Streamed responses with Markdown,assistant,must,yes,no,
+Summarize page quick action,assistant,must,yes,no,Comet Alt+S
+Ask across open tabs (@tab),assistant,must,yes,no,Comet; macOS first
+Translate / fact-check selection,assistant,should,yes,no,Comet
+Agent: read page as structured snapshot,agent,must,yes,no,
+Agent: click / type / scroll / navigate tools,agent,must,yes,no,
+Agent: plan + live step list,agent,must,yes,no,
+Agent: Pause and Stop at any time,agent,must,yes,no,Comet shows Pause
+Agent: approval gate for sensitive actions,agent,must,yes,no,payment submit / login / send / personal data
+Agent: treat page text as untrusted (injection guard),agent,must,unknown,no,
+Coupon finder: search web for codes,shopping,must,no,no,owner's headline feature
+Coupon finder: try codes one at a time and compare totals,shopping,must,no,no,
+Coupon finder: apply best and stop before order,shopping,must,no,no,
+Show token usage / estimated API cost per run,billing,must,no,no,safeguard 10
+Delete all local data,privacy,must,no,no,safeguard 20
+Form autofill from user-approved profile,agent,should,yes,no,local only; opt-in
+Product compare across sites,shopping,should,yes,no,
+Conversation history with retention setting,assistant,should,unknown,no,
+Context menu: ask about selection,assistant,should,yes,no,SafarAI contextMenus
+Keyboard shortcut to open,assistant,should,yes,no,
+Per-site access controls,privacy,should,no,no,
+Voice input,assistant,could,yes,no,
+Price drop alerts,shopping,could,yes,no,iOS background limits
+Smart tab grouping,tabs,could,yes,no,Safari tabGroups API unverified
+In-page side panel on macOS,assistant,could,yes,no,Safari lacks sidePanel (verify)
+Local model provider,setup,could,no,no,
+Additional providers (Gemini etc),setup,could,no,no,
+Gmail / Calendar / Notion integrations,integrations,could,yes,skip,needs OAuth + backend; defer
+Perplexity search index,search,could,yes,skip,proprietary; use provider web search
+History search by concept,assistant,could,yes,skip,Safari exposes no history API (verify)
+Autonomous purchase,shopping,could,yes,skip,intentional: user places orders
+Automated login with stored passwords,agent,could,yes,skip,intentional: user logs in
+CAPTCHA solving,agent,could,unknown,skip,never bypass bot detection
