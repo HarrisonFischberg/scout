@@ -20,7 +20,9 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
         description: t.description,
         input_schema: t.parameters,
       }));
-      if (req.webSearch) tools.push({ type: "web_search_20260209", name: "web_search", max_uses: 3 });
+      if (req.webSearch) tools.push({ type: "web_search_20260209", name: "web_search", max_uses: req.webSearchMaxUses ?? 3 });
+      // Web fetch only opens URLs already in the conversation (e.g. search results).
+      if (req.webSearch && req.webFetch) tools.push({ type: "web_fetch_20260209", name: "web_fetch", max_uses: req.webSearchMaxUses ?? 3 });
       const body = {
         model: req.model,
         max_tokens: req.maxTokens,
@@ -63,6 +65,9 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
             break;
           case "content_block_start": {
             const cb = ev.content_block ?? {};
+            if (cb.type === "web_fetch_tool_result" && typeof cb.content?.url === "string") {
+              yield { type: "source", url: cb.content.url };
+            }
             if (cb.type === "web_search_tool_result" && Array.isArray(cb.content)) {
               for (const r of cb.content) {
                 if (r?.type === "web_search_result" && typeof r.url === "string") {

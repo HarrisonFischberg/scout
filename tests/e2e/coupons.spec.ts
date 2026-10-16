@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
 // Drives the built popup (run `npm run build` first). The mock model suggests
-// 5 synthetic codes; a fake tab simulates the fixture shop (SAVE10 = 10%,
-// SAVE20 = 20%, the rest invalid). No live provider call, no merchant site.
+// 5 synthetic codes; common-pattern guesses follow (T031). A fake tab simulates
+// a non-Shopify shop (SAVE10 = 10%, SAVE20 = 20%, the rest invalid), so the
+// page path (coupon box) is used. No live provider call, no merchant site.
 // Not run in the sandbox (launch-blockers 12).
 function sse(events: Array<Record<string, unknown>>): string {
   return events.map((e) => "event: " + String(e.type) + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
@@ -33,12 +34,15 @@ const CODES_TURN = sse([
   { type: "message_stop" },
 ]);
 
-async function openPopup(page: Page): Promise<{ clicks: string[] }> {
+async function openPopup(
+  page: Page,
+  opts: { pct?: Record<string, number>; codesTurn?: string } = {},
+): Promise<{ clicks: string[] }> {
   const clicks: string[] = [];
   await page.exposeFunction("__recordClick", (ref: string) => clicks.push(ref));
-  await page.addInitScript(() => {
+  await page.addInitScript((pctIn: Record<string, number>) => {
     const w = window as unknown as { __recordClick: (r: string) => void };
-    const pct: Record<string, number> = { SAVE10: 10, SAVE20: 20 };
+    const pct: Record<string, number> = pctIn;
     let typed = "";
     let total = 100;
     const elements = [
@@ -87,35 +91,64 @@ async function openPopup(page: Page): Promise<{ clicks: string[] }> {
         },
       },
     };
-  });
+  }, opts.pct ?? { SAVE10: 10, SAVE20: 20 });
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
   await page.route("https://api.anthropic.com/**", (r) =>
-    r.fulfill({ status: 200, contentType: "text/event-stream", body: CODES_TURN }),
+    r.fulfill({ status: 200, contentType: "text/event-stream", body: opts.codesTurn ?? CODES_TURN }),
   );
   await page.goto("/popup.html");
   return { clicks };
 }
 
-test("coupon run lists every attempt, keeps the best, never clicks order", async ({ page }) => {
+// The page path waits ~0.65 s per code (settle + polite pause), so 25 codes take ~16 s.
+const BATCH_WAIT = { timeout: 45_000 };
+
+test("coupon run tests a batch of 25, asks before more, keeps the best, never clicks order", async ({ page }) => {
+  test.setTimeout(90_000);
   const { clicks } = await openPopup(page);
   await page.getByRole("button", { name: "Find coupons" }).click();
-  const table = page.getByRole("table");
-  await expect(page.getByText("Best code SAVE20 applied")).toBeVisible();
-  const rows = table.locator("tbody tr");
-  await expect(rows).toHaveCount(5);
+  // After the first 25 codes the user is asked whether to keep going.
+  await expect(page.locator("#coupons-more-text")).toHaveText(
+    "Tried 25 codes. Best so far: SAVE20 saves $20.00. Try 16 more to look for a bigger saving?",
+    BATCH_WAIT,
+  );
+  await expect(page.getByRole("button", { name: "Try 16 more" })).toBeFocused();
+  const rows = page.locator("#coupons-rows tr");
+  await expect(rows).toHaveCount(25);
+  // Codes found online come first and link to their page; guesses are labeled.
   await expect(rows.nth(0)).toContainText("WELCOME5");
   await expect(rows.nth(0)).toContainText("$100.00");
   await expect(rows.nth(1)).toContainText("SAVE10");
   await expect(rows.nth(1)).toContainText("$90.00");
   await expect(rows.nth(3)).toContainText("SAVE20");
   await expect(rows.nth(3)).toContainText("$80.00");
-  // Every tried code shows the page it was sourced from.
   for (let i = 0; i < 5; i++) {
     await expect(rows.nth(i).getByRole("link", { name: "deals.test" })).toHaveAttribute("href", "https://deals.test/codes");
   }
+  await expect(rows.nth(5)).toContainText("Guess (common pattern)");
+
+  await page.getByRole("button", { name: "Stop here" }).click();
+  const answer = page.getByRole("log").locator(".msg.assistant").last();
+  await expect(answer).toContainText("I tested 25 codes. SAVE20 is the best: your total drops from $100.00 to $80.00 (you save $20.00).", BATCH_WAIT);
+  await expect(answer).toContainText("It's applied to your cart, and I didn't go to checkout.");
   // e3 is "Place order": it must never be clicked.
   expect(clicks).not.toContain("e3");
-  // 5 tries plus one re-apply of the winner, all on Apply (e2).
-  expect(clicks).toEqual(["e2", "e2", "e2", "e2", "e2", "e2"]);
+  // 25 tries plus one re-apply of the winner, all on Apply (e2).
+  expect(clicks).toHaveLength(26);
+  expect(new Set(clicks)).toEqual(new Set(["e2"]));
+});
+
+test("no winning code: asks whether to try more, then tests the rest", async ({ page }) => {
+  test.setTimeout(120_000);
+  await openPopup(page, { pct: {} });
+  await page.getByRole("button", { name: "Find coupons" }).click();
+  await expect(page.locator("#coupons-more-text")).toHaveText(
+    "We've tried 25 codes and none lowered your total. Would you like to try 16 more?",
+    BATCH_WAIT,
+  );
+  await page.getByRole("button", { name: "Try 16 more" }).click();
+  const answer = page.getByRole("log").locator(".msg.assistant").last();
+  await expect(answer).toContainText("I tested 41 codes and none lowered your total of $100.00.", BATCH_WAIT);
+  await expect(page.locator("#coupons-rows tr")).toHaveCount(41);
 });

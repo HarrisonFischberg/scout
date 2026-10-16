@@ -1,67 +1,91 @@
-// Coupon finder (T013): try candidate codes one at a time on the cart page,
-// read the real total after each, keep the best, and stop before the order.
-// Every candidate carries the URL of the searched page it came from (T019);
-// a candidate without one is never tried. The try loop is plain code, not model-driven, so the page cannot steer it.
+// Coupon finder (T013, T031): try candidate codes one at a time against the
+// real cart, keep the best, apply it, and never touch checkout. The try loop is
+// plain code, not model-driven, so page content cannot steer it.
+//
+// Two ways to test a code:
+//   shopify - the store's own cart endpoint (/cart/update.js), the same one its
+//             Apply button uses, in the user's session. Fast and exact.
+//   page    - type the code in the page's coupon box, press Apply, read the total.
+// Codes are tested in batches (default 25); between batches the user is asked
+// whether to keep going.
 import type { Action, ActionResult } from "../actions/executor";
 import type { AgentControl } from "../agent/loop";
 import { classifyAction, detectCaptcha } from "../safety/classifier";
 import type { SnapElement, Snapshot } from "../snapshot/snapshot";
+import { CODE_RE, originLabel, type CandidateOrigin, type CouponCandidate } from "./candidates";
+
+export type { CouponCandidate } from "./candidates";
+
+export interface CartState {
+  /** Cart total in the store currency, already including any applied code. */
+  total: number;
+  currency: string | null;
+  codes: Array<{ code: string; applicable: boolean }>;
+}
+
+/** The store's own cart API (Shopify), reached through the content script. */
+export interface CartApi {
+  info(): Promise<CartState | null>;
+  update(discount: string): Promise<CartState | { rateLimited: true } | null>;
+  reload(): Promise<void>;
+}
 
 export interface CouponPage {
   snapshot(): Promise<Snapshot>;
   act(action: Action): Promise<ActionResult>;
-}
-
-export interface CouponCandidate {
-  code: string;
-  /** Page the provider's web search returned that shows this code. */
-  sourceUrl: string;
+  cart?: CartApi;
 }
 
 export interface CouponAttempt {
   code: string;
-  sourceUrl: string;
-  /** Total read from the page after applying the code, or null if unreadable. */
+  origin: CandidateOrigin;
+  sourceUrl?: string;
+  /** Total after applying the code, or null if unreadable. */
   total: number | null;
   /** Baseline total minus this total; 0 means no saving. */
   saving: number | null;
+  /** Shopify: whether the store accepted the code. Page path: unknown (null). */
+  accepted: boolean | null;
   note: string;
 }
 
-export type CouponStatus = "done" | "no_form" | "no_codes" | "captcha" | "stopped" | "error";
+export type CouponStatus = "done" | "no_form" | "no_codes" | "captcha" | "stopped" | "rate_limited" | "error";
 
 // Plain-language status line for the popup; never shows the internal code.
 export function couponStatusText(status: CouponStatus): string {
   switch (status) {
     case "done": return "Coupon search finished.";
     case "no_form": return "Coupon search stopped: no coupon box on this page.";
-    case "no_codes": return "Coupon search found no sourced codes.";
+    case "no_codes": return "Coupon search found no codes to try.";
     case "captcha": return "Coupon search stopped at a CAPTCHA.";
     case "stopped": return "Coupon search stopped.";
+    case "rate_limited": return "Coupon search paused: the store asked to slow down.";
     case "error": return "Coupon search failed. Nothing was ordered.";
   }
 }
 
 export interface CouponOutcome {
   status: CouponStatus;
+  method: "shopify" | "page" | null;
   baseline: number | null;
   attempts: CouponAttempt[];
   best?: CouponAttempt;
-  /** True when the best code was re-applied and the page total matched. */
+  /** True when the best code was applied and a fresh read confirmed the total. */
   applied: boolean;
+  /** Codes left untested because the user stopped between batches. */
+  untested: number;
   message: string;
 }
 
-export const MAX_CODES = 10;
-const CODE_RE = /^[A-Z0-9][A-Z0-9_-]{2,19}$/;
-// Words a model tends to put in capitals that are not codes.
-const STOPWORDS = new Set(["NONE", "N/A", "CODE", "CODES", "COUPON", "SORRY", "NOTE", "THE", "AND"]);
+export const BATCH_SIZE = 25;
+export const MAX_TOTAL = 200;
 const INPUT_NAME = /coupon|promo|discount|voucher|gift\s*card|code/i;
 const APPLY_NAME = /^(apply|redeem|add|use)\b|apply\s+(code|coupon)/i;
 const TOTAL_RE = /(?:^|[^a-z])(?:order\s+|grand\s+|new\s+)?total\b[^$\d\n]{0,20}\$\s*([\d,]+(?:\.\d{1,2})?)/gi;
+const STOPWORDS = new Set(["NONE", "N/A", "CODE", "CODES", "COUPON", "SORRY", "NOTE", "THE", "AND"]);
 
 /** Candidate codes from free text: one per token, upper-cased, deduped, capped. */
-export function parseCodes(text: string, max = MAX_CODES): string[] {
+export function parseCodes(text: string, max = 10): string[] {
   const out: string[] = [];
   for (const raw of text.split(/[\s,;:()[\]"'`*]+/)) {
     const tok = raw.replace(/^[-.]+|[-.]+$/g, "");
@@ -103,13 +127,106 @@ function findForm(snap: Snapshot): { input: SnapElement; apply: SnapElement } | 
   return apply ? { input, apply } : null;
 }
 
-/** Largest positive saving; the earliest code wins ties. */
+/** Largest positive saving among accepted (or not rejected) codes; the earliest wins ties. */
 export function bestOf(attempts: CouponAttempt[]): CouponAttempt | undefined {
   let best: CouponAttempt | undefined;
   for (const a of attempts) {
+    if (a.accepted === false) continue;
     if (a.saving !== null && a.saving > 0 && (!best || a.saving > (best.saving ?? 0))) best = a;
   }
   return best;
+}
+
+interface TryResult {
+  total: number | null;
+  accepted: boolean | null;
+  note?: string;
+  captcha?: boolean;
+  rateLimited?: boolean;
+}
+
+interface Tester {
+  method: "shopify" | "page";
+  baseline: number;
+  tryCode(code: string): Promise<TryResult>;
+  /** Applies one code (or "" to clear) and returns the confirmed total. */
+  apply(code: string): Promise<number | null>;
+  /** Leaves the cart as the user expects: winner applied, or original codes back. */
+  finish(winner: string | null): Promise<void>;
+}
+
+async function shopifyTester(cart: CartApi): Promise<Tester | null> {
+  const start = await cart.info();
+  // Only a real cart (numeric total) counts; anything else falls back to the page path.
+  if (!start || typeof start.total !== "number" || !Array.isArray(start.codes)) return null;
+  const original = start.codes.map((c) => c.code).join(",");
+  return {
+    method: "shopify",
+    baseline: start.total,
+    async tryCode(code) {
+      const r = await cart.update(code);
+      if (!r) return { total: null, accepted: null, note: "The store did not answer." };
+      if ("rateLimited" in r) return { total: null, accepted: null, rateLimited: true, note: "The store asked to slow down." };
+      const hit = r.codes.find((c) => c.code.toUpperCase() === code.toUpperCase());
+      return { total: r.total, accepted: hit ? hit.applicable : false };
+    },
+    async apply(code) {
+      const r = await cart.update(code);
+      return r && !("rateLimited" in r) ? r.total : null;
+    },
+    async finish(winner) {
+      if (winner === null) await cart.update(original);
+      // The cart page shows stale totals after API changes; reload it.
+      await cart.reload();
+    },
+  };
+}
+
+async function pageTester(page: CouponPage, settleMs: number): Promise<Tester | { error: CouponStatus; message: string }> {
+  let snap: Snapshot;
+  try {
+    snap = await page.snapshot();
+  } catch {
+    return { error: "error", message: "Could not read the page." };
+  }
+  if (detectCaptcha(snap)) return { error: "captcha", message: "Stopped: the page asks for a CAPTCHA. Complete it yourself." };
+  const form = findForm(snap);
+  if (!form) return { error: "no_form", message: "No coupon box found on this page. Open the cart or checkout page first." };
+  const baseline = parseTotal(snap.text);
+  if (baseline === null) return { error: "error", message: "Could not read a total on this page, so savings cannot be measured." };
+  const tryCode = async (code: string): Promise<TryResult> => {
+    const typed = await page.act({ type: "type", ref: form.input.ref, text: code, clear: true });
+    if (!typed.ok) return { total: null, accepted: null, note: "Could not type the code: " + typed.message };
+    const clicked = await page.act({ type: "click", ref: form.apply.ref });
+    if (!clicked.ok) return { total: null, accepted: null, note: "Could not press Apply: " + clicked.message };
+    await page.act({ type: "wait", ms: settleMs });
+    let after: Snapshot;
+    try {
+      after = await page.snapshot();
+    } catch {
+      return { total: null, accepted: null, note: "Could not read the page after applying." };
+    }
+    if (detectCaptcha(after)) return { total: null, accepted: null, captcha: true };
+    const total = parseTotal(after.text);
+    return total === null ? { total: null, accepted: null, note: "Total not readable after applying." } : { total, accepted: null };
+  };
+  return {
+    method: "page",
+    baseline,
+    tryCode,
+    async apply(code) {
+      return (await tryCode(code)).total;
+    },
+    async finish() {
+      // The page path cannot clear a typed code reliably; the last one stays in the box.
+    },
+  };
+}
+
+export interface BatchState {
+  tried: number;
+  remaining: number;
+  best?: CouponAttempt;
 }
 
 export interface CouponInput {
@@ -118,92 +235,167 @@ export interface CouponInput {
   control?: AgentControl;
   signal?: AbortSignal;
   settleMs?: number;
-  onAttempt?: (a: CouponAttempt) => void;
+  /** Pause between codes, to be gentle with the store. */
+  delayMs?: number;
+  batchSize?: number;
+  /** Asked after each batch while codes remain; false stops. Absent: test everything. */
+  askMore?: (s: BatchState) => Promise<boolean>;
+  onAttempt?: (a: CouponAttempt, index: number, total: number) => void;
 }
 
 export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome> {
-  const { page, control, signal } = input;
+  const { control, signal } = input;
   const attempts: CouponAttempt[] = [];
-  const stop = (status: CouponStatus, message: string, baseline: number | null = null): CouponOutcome => {
-    const best = bestOf(attempts);
-    return { status, baseline, attempts, ...(best ? { best } : {}), applied: false, message };
-  };
   const halted = (): boolean => control?.isStopped === true || signal?.aborted === true;
 
-  let snap: Snapshot;
-  try {
-    snap = await page.snapshot();
-  } catch {
-    return stop("error", "Could not read the page.");
-  }
-  if (detectCaptcha(snap)) return stop("captcha", "Stopped: the page asks for a CAPTCHA. Complete it yourself.");
-  const form = findForm(snap);
-  if (!form) return stop("no_form", "No coupon box found on this page. Open the cart or checkout page first.");
-  const baseline = parseTotal(snap.text);
-  if (baseline === null) return stop("error", "Could not read a total on this page, so savings cannot be measured.");
   const codes: CouponCandidate[] = [];
   for (const c of input.codes) {
     const code = c.code.trim().toUpperCase();
-    if (!CODE_RE.test(code) || !/^https?:\/\//.test(c.sourceUrl) || codes.some((x) => x.code === code)) continue;
-    codes.push({ code, sourceUrl: c.sourceUrl });
-  }
-  codes.length = Math.min(codes.length, MAX_CODES);
-  if (codes.length === 0) {
-    return stop("no_codes", "No sourced codes found, so none were tried. AssistAnt does not guess codes.", baseline);
+    if (!CODE_RE.test(code) || codes.some((x) => x.code === code)) continue;
+    codes.push({ ...c, code });
+    if (codes.length >= MAX_TOTAL) break;
   }
 
-  // Each reading is compared to the baseline, so a code that did nothing shows
-  // saving 0. Returns the post-apply snapshot for the CAPTCHA check.
-  const tryCode = async (cand: CouponCandidate): Promise<{ attempt: CouponAttempt; after?: Snapshot }> => {
-    const { code, sourceUrl } = cand;
-    const typed = await page.act({ type: "type", ref: form.input.ref, text: code, clear: true });
-    if (!typed.ok) return { attempt: { code, sourceUrl, total: null, saving: null, note: "Could not type the code: " + typed.message } };
-    const clicked = await page.act({ type: "click", ref: form.apply.ref });
-    if (!clicked.ok) return { attempt: { code, sourceUrl, total: null, saving: null, note: "Could not press Apply: " + clicked.message } };
-    await page.act({ type: "wait", ms: input.settleMs ?? 400 });
-    let after: Snapshot;
-    try {
-      after = await page.snapshot();
-    } catch {
-      return { attempt: { code, sourceUrl, total: null, saving: null, note: "Could not read the page after applying." } };
-    }
-    const total = parseTotal(after.text);
-    if (total === null) return { attempt: { code, sourceUrl, total: null, saving: null, note: "Total not readable after applying." }, after };
-    const saving = Math.round((baseline - total) * 100) / 100;
+  const shopify = input.page.cart ? await shopifyTester(input.page.cart).catch(() => null) : null;
+  const tester = shopify ?? (await pageTester(input.page, input.settleMs ?? 400));
+  if ("error" in tester) {
+    return { status: tester.error, method: null, baseline: null, attempts, applied: false, untested: codes.length, message: tester.message };
+  }
+  const baseline = tester.baseline;
+  const result = (status: CouponStatus, message: string, extra: Partial<CouponOutcome> = {}): CouponOutcome => {
+    const best = bestOf(attempts);
     return {
-      attempt: { code, sourceUrl, total, saving, note: saving > 0 ? "Saved $" + saving.toFixed(2) + "." : "No saving." },
-      after,
+      status,
+      method: tester.method,
+      baseline,
+      attempts,
+      ...(best ? { best } : {}),
+      applied: false,
+      untested: codes.length - attempts.length,
+      message,
+      ...extra,
     };
   };
+  if (codes.length === 0) return result("no_codes", "No codes to try.");
 
-  for (const cand of codes) {
-    await control?.gate();
-    if (halted()) return stop("stopped", "Stopped.", baseline);
-    const { attempt, after } = await tryCode(cand);
-    attempts.push(attempt);
-    input.onAttempt?.(attempt);
-    // A CAPTCHA appearing mid-run is a hard stop; never solved or bypassed.
-    if (after && detectCaptcha(after)) {
-      return stop("captcha", "Stopped: the page asks for a CAPTCHA. Complete it yourself.", baseline);
+  const size = Math.max(1, input.batchSize ?? BATCH_SIZE);
+  let stoppedEarly: CouponStatus | null = null;
+  outer: for (let i = 0; i < codes.length; ) {
+    const batch = codes.slice(i, i + size);
+    for (const cand of batch) {
+      await control?.gate();
+      if (halted()) {
+        stoppedEarly = "stopped";
+        break outer;
+      }
+      const r = await tester.tryCode(cand.code);
+      if (r.captcha) {
+        // Recorded so the user sees which code was being tried; then a hard stop.
+        const attempt: CouponAttempt = {
+          code: cand.code,
+          origin: cand.origin,
+          ...(cand.sourceUrl ? { sourceUrl: cand.sourceUrl } : {}),
+          total: null,
+          saving: null,
+          accepted: null,
+          note: "The page asked for a CAPTCHA.",
+        };
+        attempts.push(attempt);
+        input.onAttempt?.(attempt, attempts.length, codes.length);
+        stoppedEarly = "captcha";
+        break outer;
+      }
+      if (r.rateLimited) {
+        stoppedEarly = "rate_limited";
+        break outer;
+      }
+      const saving = r.total === null ? null : Math.round((baseline - r.total) * 100) / 100;
+      const note =
+        r.note ??
+        (r.accepted === false
+          ? "Not accepted by the store."
+          : saving !== null && saving > 0
+            ? "Saves $" + saving.toFixed(2) + "."
+            : r.accepted
+              ? "Accepted, but no lower total."
+              : "No saving.");
+      const attempt: CouponAttempt = {
+        code: cand.code,
+        origin: cand.origin,
+        ...(cand.sourceUrl ? { sourceUrl: cand.sourceUrl } : {}),
+        total: r.total,
+        saving,
+        accepted: r.accepted,
+        note,
+      };
+      attempts.push(attempt);
+      input.onAttempt?.(attempt, attempts.length, codes.length);
+      if (input.delayMs) await new Promise((res) => setTimeout(res, input.delayMs));
+    }
+    i += batch.length;
+    if (i < codes.length && input.askMore) {
+      const best = bestOf(attempts);
+      const more = await input.askMore({ tried: i, remaining: codes.length - i, ...(best ? { best } : {}) });
+      if (!more || halted()) break;
     }
   }
 
   const best = bestOf(attempts);
-  if (!best || best.total === null || best.saving === null) {
-    return { status: "done", baseline, attempts, applied: false, message: "No code lowered the total." };
+  if (stoppedEarly === "captcha") {
+    return result("captcha", "Stopped: the page asks for a CAPTCHA. Complete it yourself.");
   }
-  // Re-apply the winner: later attempts replaced it in the box. Verified by a
-  // fresh read, never assumed. The order button is never touched.
-  const again = await tryCode({ code: best.code, sourceUrl: best.sourceUrl });
-  const applied = again.attempt.total !== null && again.attempt.total <= best.total + 0.005;
-  return {
-    status: "done",
-    baseline,
-    attempts,
-    best,
-    applied,
-    message: applied
-      ? "Best code " + best.code + " applied: total $" + best.total.toFixed(2) + ". Review the cart and place the order yourself."
-      : "Best code " + best.code + " would save $" + best.saving.toFixed(2) + " but could not be re-applied. Enter it yourself.",
-  };
+  if (!best || best.total === null) {
+    await tester.finish(null).catch(() => undefined);
+    return result(stoppedEarly ?? "done", stoppedEarly === "rate_limited" ? "The store asked to slow down." : "No code lowered the total.");
+  }
+  // Apply the winner (later attempts replaced it) and confirm with a fresh read.
+  const total = await tester.apply(best.code).catch(() => null);
+  const applied = total !== null && total <= best.total + 0.005;
+  await tester.finish(applied ? best.code : null).catch(() => undefined);
+  return result(stoppedEarly ?? "done", applied ? "Best code " + best.code + " applied." : "Best code " + best.code + " could not be re-applied.", { applied });
+}
+
+const money = (n: number): string => "$" + n.toFixed(2);
+
+/** Chat summary of a run, in the same plain style as other answers. Built in code, not by the model. */
+export function couponSummary(o: CouponOutcome): string {
+  const n = o.attempts.length;
+  const tested = "**" + n + " code" + (n === 1 ? "" : "s") + "**";
+  const lines: string[] = [];
+  if (o.status === "no_form" || o.status === "error" || o.status === "no_codes") return o.message;
+  if (o.status === "captcha") lines.push("I stopped after " + tested + " because the page asked for a CAPTCHA. Complete it yourself, then try again.");
+  else if (o.status === "rate_limited") lines.push("I stopped after " + tested + " because the store asked to slow down. Try again in a few minutes.");
+  if (o.best && o.best.total !== null && o.baseline !== null) {
+    const head =
+      "I tested " + tested + ". **" + o.best.code + "** is the best: your total drops from **" + money(o.baseline) + "** to **" +
+      money(o.best.total) + "** (you save " + money(o.baseline - o.best.total) + ").";
+    lines.unshift(
+      head +
+        (o.applied ? " It's applied to your cart, and I didn't go to checkout." : " I couldn't re-apply it, so enter it yourself in the coupon box."),
+    );
+  } else if (o.status === "done" || o.status === "stopped") {
+    lines.unshift(
+      "I tested " + tested + " and none lowered your total" + (o.baseline !== null ? " of " + money(o.baseline) : "") + "." +
+        (o.untested > 0 ? " " + o.untested + " more codes were left untested." : ""),
+    );
+  }
+  const worked = o.attempts.filter((a) => a.saving !== null && a.saving > 0 && a.accepted !== false).sort((a, b) => (b.saving ?? 0) - (a.saving ?? 0));
+  if (worked.length) {
+    lines.push("", "| Code | Result | Where it came from |", "|---|---|---|");
+    for (const a of worked) {
+      const where = a.sourceUrl && (a.origin === "sourced" || a.origin === "unverified") ? "[" + originLabel(a) + "](" + a.sourceUrl + ")" : originLabel(a);
+      lines.push("| " + a.code + " | saves " + money(a.saving ?? 0) + ", total " + money(a.total ?? 0) + " | " + where + " |");
+    }
+  }
+  const failed = o.attempts.filter((a) => !worked.includes(a));
+  if (failed.length) {
+    const named = failed.filter((a) => a.origin === "sourced" || a.origin === "unverified").map((a) => a.code);
+    const guesses = failed.length - named.length;
+    const parts: string[] = [];
+    if (named.length) parts.push(named.slice(0, 8).join(", ") + (named.length > 8 ? " and " + (named.length - 8) + " more found online" : ""));
+    if (guesses) parts.push(guesses + " guessed code" + (guesses === 1 ? "" : "s"));
+    lines.push("", "Didn't work: " + parts.join(", plus ") + ".");
+  }
+  if (o.best) lines.push("", "Checkout can still change the final price, for example tax, shipping, or whether the code applies to later orders.");
+  return lines.join("\n");
 }

@@ -1,12 +1,14 @@
 // Content script (T009). Injected on demand with `scripting.executeScript`;
-// never declared for all URLs. Exposes one handler for two requests: snapshot
-// the page, and perform one action by ref from the last snapshot. Page content
-// is untrusted data and only leaves via the return value.
+// never declared for all URLs. Exposes one handler: snapshot the page, perform
+// one action by ref from the last snapshot, and (T031) read or set the store's
+// Shopify cart discount. Page content is untrusted data and only leaves via the
+// return value.
 import { domPage } from "./actions/dom";
 import { executeAction, type ActionResult } from "./actions/executor";
 import { buildSnapshot, fromElement, type SnapNode, type Snapshot } from "./snapshot/snapshot";
 
 import { CONTENT_HANDLER as HANDLER, type ContentRequest } from "./content-api";
+import { shopifyCartInfo, shopifyCartUpdate } from "./coupons/shopify";
 
 const FLAG = "__assistAntContent";
 const g = globalThis as unknown as Record<string, unknown>;
@@ -34,9 +36,16 @@ if (!g[FLAG]) {
   // Called from the popup through scripting.executeScript, not runtime
   // messaging: on iOS Safari a tabs.sendMessage to this script went
   // unanswered (T018), while executeScript results arrive reliably.
-  g[HANDLER] = (req: ContentRequest): Promise<Snapshot | ActionResult> | Snapshot | null => {
+  g[HANDLER] = (req: ContentRequest): Promise<unknown> | Snapshot | null => {
     if (req.type === "assistant:snapshot") return snapshot();
-    if (req.type === "assistant:act") return executeAction(domPage(refs, window), req.action);
+    if (req.type === "assistant:act") return executeAction(domPage(refs, window), req.action) as Promise<ActionResult>;
+    if (req.type === "assistant:cart-info") return shopifyCartInfo();
+    if (req.type === "assistant:cart-update") return shopifyCartUpdate(String(req.discount ?? ""));
+    if (req.type === "assistant:reload") {
+      // Let the reply reach the popup first, then refresh the cart view.
+      setTimeout(() => location.reload(), 50);
+      return Promise.resolve(true);
+    }
     return null;
   };
 }

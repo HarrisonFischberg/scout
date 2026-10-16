@@ -182,3 +182,29 @@ describe("web search (T019)", () => {
     expect(JSON.parse(body).tools).toBeUndefined();
   });
 });
+
+describe("web search depth and fetch (T031)", () => {
+  it("sends max_uses and the web fetch tool when asked, and reports fetched pages as sources", async () => {
+    let body = "";
+    const stream = [
+      { type: "message_start", message: { usage: { input_tokens: 1, output_tokens: 1 } } },
+      { type: "content_block_start", index: 0, content_block: { type: "web_fetch_tool_result", content: { type: "web_fetch_result", url: "https://linktr.ee/example" } } },
+      { type: "content_block_stop", index: 0 },
+      { type: "message_stop" },
+    ].map((e) => "event: " + e.type + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
+    const p = createProvider("anthropic", {
+      apiKey: "sk-test-synthetic",
+      fetch: async (_u, init) => {
+        body = String(init.body);
+        return new Response(stream, { status: 200, headers: { "content-type": "text/event-stream" } });
+      },
+    });
+    const events = [];
+    for await (const ev of p.stream({ model: "m", messages: [{ role: "user", content: "x" }], maxTokens: 10, webSearch: true, webSearchMaxUses: 8, webFetch: true })) events.push(ev);
+    expect(JSON.parse(body).tools).toEqual([
+      { type: "web_search_20260209", name: "web_search", max_uses: 8 },
+      { type: "web_fetch_20260209", name: "web_fetch", max_uses: 8 },
+    ]);
+    expect(events).toContainEqual({ type: "source", url: "https://linktr.ee/example" });
+  });
+});

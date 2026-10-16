@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Shopify-style cart (synthetic)</title></head>
+  <body>
+    <h1>Cart</h1>
+    <p>6 x Maple 5 oz</p>
+    <p>Subtotal: $159.78</p>
+    <label for="CartPage-Discount">Discount code</label>
+    <input id="CartPage-Discount" name="discount" type="text" />
+    <button id="apply" type="button">Apply</button>
+    <p id="total">Total: …</p>
+    <button id="checkout" type="button">Check out</button>
+    <p id="status"></p>
+    <script>
+      const show = (c) => (document.getElementById("total").textContent = "Total: $" + (c.total_price / 100).toFixed(2));
+      fetch("/cart.js").then((r) => r.json()).then(show);
+      document.getElementById("apply").addEventListener("click", () =>
+        fetch("/cart/update.js", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ discount: document.getElementById("CartPage-Discount").value }) })
+          .then((r) => r.json()).then(show));
+      document.getElementById("checkout").addEventListener("click", () => (document.getElementById("status").textContent = "Checkout opened."));
+    </script>
+  </body>
+</html>

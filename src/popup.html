@@ -129,6 +129,9 @@
       .btn.primary { background: var(--accent); color: var(--accent-on); border-color: var(--accent); font-weight: 600; }
       .btn.danger { color: var(--danger); border-color: var(--danger); }
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .coupons-scroll { max-height: 220px; overflow-y: auto; margin: 6px 0; }
+      .more { margin: 8px 0; padding: 8px 10px; border-radius: 10px; background: var(--accent-soft); }
+      .more p { margin: 0 0 8px; }
       th, td { text-align: left; padding: 4px 6px 4px 0; border-bottom: 1px solid var(--hairline); }
 
       /* Empty and setup states */
@@ -281,12 +284,21 @@
         <section id="coupons" class="card" aria-labelledby="coupons-title" hidden>
           <h2 id="coupons-title">Coupon results</h2>
           <p id="coupons-summary" class="hint" role="status"></p>
-          <table id="coupons-table">
-            <caption class="hint">Codes tried one at a time, with the total read from the page after each.</caption>
-            <thead><tr><th scope="col">Code</th><th scope="col">Total</th><th scope="col">Result</th><th scope="col">Source</th></tr></thead>
-            <tbody id="coupons-rows"></tbody>
-          </table>
-          <p class="hint">Codes come from your provider's web search; each links to the page it was found on and may be expired. AssistAnt never places the order.</p>
+          <div class="coupons-scroll">
+            <table id="coupons-table">
+              <caption class="hint">Codes tried one at a time on your cart, with the total the store reported after each.</caption>
+              <thead><tr><th scope="col">Code</th><th scope="col">Total</th><th scope="col">Result</th><th scope="col">Source</th></tr></thead>
+              <tbody id="coupons-rows"></tbody>
+            </table>
+          </div>
+          <div id="coupons-more" class="more" role="group" aria-labelledby="coupons-more-text" hidden>
+            <p id="coupons-more-text"></p>
+            <div class="row">
+              <button id="coupons-more-yes" class="btn primary" type="button">Try 25 more</button>
+              <button id="coupons-more-no" class="btn" type="button">Stop here</button>
+            </div>
+          </div>
+          <p class="hint">Codes come from your provider's web search plus common guesses, labeled in the Source column. The store decides which ones work. AssistAnt never places the order.</p>
           <button id="coupons-stop" class="btn" type="button">Stop</button>
         </section>
       </div>
