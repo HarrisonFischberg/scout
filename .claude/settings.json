@@ -36,10 +36,12 @@
       "WebFetch(domain:developer.mozilla.org)",
       "WebFetch(domain:registry.npmjs.org)"
     ],
+    "ask": [
+      "Bash(git push:*)"
+    ],
     "deny": [
       "Bash(sudo:*)",
       "Bash(rm -rf:*)",
-      "Bash(git push:*)",
       "Bash(gh:*)",
       "Bash(curl:*)",
       "Bash(wget:*)",
