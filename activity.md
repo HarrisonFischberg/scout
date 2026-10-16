@@ -801,3 +801,23 @@ Timed out waiting 60s for the teardown for test suite to run
 - e2e not exercised: WebKit launch blocked in the sandbox (blocker 12); `tests/e2e/settings.spec.ts` has never run in a browser. Retention expiry and Delete-all logic are covered by unit tests with fake storage.
 - Supervised check: outside the sandbox, `npm run build && npm run e2e -- settings`. Xcode, supervised only (sandbox blocks `xcodebuild`, blocker 9; not run, no output to quote; no Swift edits in this task): `xcodebuild -project apple/AssistAnt.xcodeproj -scheme AssistAntTests -derivedDataPath build/DD test`.
 - Next task: T016 (draft privacy policy + terms; depends on T015).
+
+## 2026-10-15 - T016 privacy policy + terms drafts: needs supervised check
+
+- Task: T016 (lowest-numbered pending; T015 satisfied). Status `in progress`, then `needs supervised check`.
+- Files: `docs/legal/privacy-policy.md`, `docs/legal/terms.md` (new, both marked DRAFT); `docs/compliance-checklist.md` (T016 review checklist appended); `prd.md`.
+- Design: policy section 3 mirrors every `docs/data-inventory.md` row. Facts come only from the inventory, PRD, and launch-blockers. Entity, location, contact, effective date, minimum age, price, refunds, governing law, regional regimes, liability wording are marked UNKNOWN, not invented. Terms disclose coupon finder limits (no savings guarantee, codes are model suggestions per blocker 15) and agent approval rules.
+- No new dependency or data flow.
+- Check run (manual checklist, scripted grep), real output:
+
+```
+$ grep -c -e "Provider API key" -e "Provider and model" -e "Page content" -e "Screenshots" -e "Chat questions" -e "Sites you granted" -e "Coupon codes" -e "Coupon search queries" -e "autofill profile" docs/legal/privacy-policy.md
+9
+$ grep -c UNKNOWN docs/legal/privacy-policy.md docs/legal/terms.md
+docs/legal/privacy-policy.md:10
+docs/legal/terms.md:11
+```
+
+- Limits, honest: drafts are not legal review (blocker 8 open). In-app S09 legal screen is not built; drafts are docs only. Policy statements about runtime behavior (redaction, retention, Delete all data) rest on T008/T015 unit tests; the e2e for those never ran in a browser (blocker 12). Safeguard rows 1-4 left for T017.
+- Supervised check: owner/counsel reviews `docs/legal/` and supplies UNKNOWN facts.
+- Next task: T017 (safeguards sweep; depends on T006-T016, several still `needs supervised check`, which counts as satisfied).
