@@ -95,3 +95,24 @@ test("Delete all data needs a confirm, then clears storage, Keychain, and site a
   expect(after.keys).toEqual([]);
   expect(after.origins).toEqual(["https://api.anthropic.com/*"]);
 });
+
+test("legal drafts open from settings by keyboard and are marked DRAFT", async ({ page, context }) => {
+  await openPopup(page);
+  await page.route("**/privacy.html", (r) => r.fulfill({ path: "apple/Extension/Resources/privacy.html", contentType: "text/html" }));
+  await page.route("**/terms.html", (r) => r.fulfill({ path: "apple/Extension/Resources/terms.html", contentType: "text/html" }));
+  await page.getByRole("button", { name: "Settings" }).click();
+  for (const [name, heading] of [
+    ["Privacy policy (draft)", /Privacy/i],
+    ["Terms of service (draft)", /Terms/i],
+  ] as const) {
+    const link = page.getByRole("link", { name });
+    await link.focus();
+    await expect(link).toBeFocused();
+    const popup = context.waitForEvent("page");
+    await page.keyboard.press("Enter");
+    const legal = await popup;
+    await expect(legal.getByText("DRAFT. Not approved by legal review.")).toBeVisible();
+    await expect(legal.getByRole("heading", { level: 1 })).toHaveText(heading);
+    await legal.close();
+  }
+});

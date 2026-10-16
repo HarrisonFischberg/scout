@@ -906,3 +906,23 @@ $ npx playwright test coupons
 - Honest limits: e2e failed at WebKit launch, not on an assertion (blocker 12); the updated spec (source link per row) has not run. The request shapes (`web_search_20250305`, `web_search`) match the providers' documented tools from memory and were not checked against a live API (blockers 3, 15). `docs/data-inventory.md` already lists the web-search flow.
 - Supervised: run `npx playwright test coupons` outside the sandbox; one live search check with owner test keys.
 - Next task: T020 (pending).
+
+## 2026-10-15 - T020 in-app legal screen: needs supervised check
+
+- Task: T020 (lowest-numbered pending; depends on T016 `done`). Status `in progress`, then `needs supervised check`.
+- Files: `scripts/build.mjs` (renders `docs/legal/*.md` to escaped `privacy.html`/`terms.html` in Resources, DRAFT banner), `src/popup.html` (Legal section in S08 with two links), `apple/App/OnboardingView.swift` (S09 buttons + sheet reading bundled `.md`), `tests/e2e/settings.spec.ts` (keyboard focus + Enter opens each page, DRAFT text, h1), `prd.md`, `docs/launch-blockers.md` (19). No new dependency or data flow (static local pages).
+- Checks, real output:
+
+```
+$ npm run typecheck -> tsc -p tsconfig.json (no errors)
+$ npx tsc -p tsconfig.lint.json -> TypeScript: No errors found (lint=0)
+$ npm run build -> built extension to .../apple/Extension/Resources
+$ npm test -> Test Files 12 passed (12); Tests 114 passed (114)
+$ grep "<h1" Resources/privacy.html -> <h1>AssistAnt Privacy Policy (DRAFT)</h1>
+$ npx playwright test settings
+  4 failed  (settings.spec.ts:59, :71, :80 existing, :99 new legal-links)
+```
+
+- Honest limits: all 4 settings specs failed, including 3 that passed under supervision before and that this change does not touch. That matches the WebKit launch failure of blocker 12, but the failure-reason line was not captured in this run (output filtered), so it is not proven. The new spec has not passed. Host app Swift unbuilt (sandbox, blockers 9, 19).
+- Supervised: `npx playwright test settings` outside the sandbox; add legal `.md` to App Resources and build both schemes.
+- Next task: none pending.
