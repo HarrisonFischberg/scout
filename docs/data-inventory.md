@@ -25,3 +25,10 @@ AssistAnt. Any addition needs a new row and owner approval first.
 
 Vendors (user-selected, BYOK): Anthropic (Messages API), OpenAI (Responses
 API). Apple (App Store distribution) once released.
+
+Key test (T006, `apple/App/ProviderSetup.swift`): the host app sends one
+read-only GET to `api.anthropic.com/v1/models` or `api.openai.com/v1/models`
+with the user's key in a header, when the user presses "Test key". Nothing is
+logged or stored from the response; only the status code is used. The key is
+then written to Keychain on "Save key". No new recipient beyond the vendors
+above. The app sandbox gained `com.apple.security.network.client` for this.

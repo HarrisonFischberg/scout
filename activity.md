@@ -518,3 +518,28 @@ $ npm run build -> built extension to .../apple/Extension/Resources
 ```
 
 - Next task: T008 (snapshot builder, JS only) or T006/T007 (need T001/T004 done; T007 e2e is supervised).
+
+## 2026-10-15 — T006 host app onboarding + key setup: needs supervised check
+
+- Task: T006 (lowest-numbered pending; T001 done, T004 counts as satisfied). Status `in progress`, then `needs supervised check`.
+- Files: `apple/App/ProviderSetup.swift` (new: `Provider`, `KeyTesting`, `ProviderKeyTester`, `SetupViewModel`), `apple/App/OnboardingView.swift` (new: S01 macOS / S02 iOS enable steps, S03 provider picker, secure key field, Test key, Save key), `apple/App/ContentView.swift` (now hosts `OnboardingView`), `apple/App/AssistAnt.entitlements` (adds `com.apple.security.network.client`), `apple/AssistAnt.xcodeproj/project.pbxproj` (adds the two App sources plus `KeychainStore.swift` to both app targets; `plutil -lint` OK), `apple/Tests/ProviderSetupTests.swift` (XCTest, stub tester, synthetic keys, test-only Keychain service), `prd.md`, `docs/data-inventory.md`, `docs/launch-blockers.md` (#14).
+- Design: key is saved to Keychain only after a valid test, and the field is cleared after save. Editing the key resets the result. Status is always text, never colour alone. Test key calls a read-only `GET /v1/models` with the user's key; tests use a stub and never hit the network. No real key used or requested.
+- Accessibility: native controls (Picker, SecureField, Button), header traits on section titles, accessible key-status label, hint on the key field. Accessibility Inspector not run (supervised).
+- No new dependency.
+- Results, real output:
+
+```
+$ npm test
+ Test Files  3 passed (3)
+      Tests  24 passed (24)
+$ npm run typecheck -> TypeScript: No errors found
+$ npx tsc -p tsconfig.lint.json -> exit 0
+$ plutil -lint apple/AssistAnt.xcodeproj/project.pbxproj -> OK
+```
+
+- Not run: `xcodebuild test` and Accessibility Inspector (sandbox blocks, launch-blockers 9). Swift is uncompiled, so not `done`. Acceptance (screens render light/dark, Test key shows valid/invalid, Inspector clean, screenshots) is unverified.
+- Open issue: app and extension may not share the Keychain item until a shared access group is configured (launch-blockers 14).
+- Supervised check: add the unit-test target (blocker 13) including `ProviderSetupTests.swift`, then
+  `xcodebuild test -project apple/AssistAnt.xcodeproj -scheme "AssistAnt (macOS)" -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO`;
+  build `"AssistAnt (iOS)"` for `generic/platform=iOS Simulator`; capture light and dark screenshots to `ralph/evidence/`.
+- Next task: T008 (snapshot builder, JS only).
