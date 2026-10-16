@@ -406,3 +406,20 @@ EXIT=65
 - Turn 4 ran no new command. The sandbox state is unchanged since turn 2, so a further build would repeat the three attempts above.
 - Stop reason: no dependency-ready `pending` task exists while T002 is `blocked`. The only unblock is owner action on T002: run the Xcode builds (`apple/`, `-project apple/AssistAnt.xcodeproj` or from `apple/`) and the Safari extension load outside the sandbox, then set T002 to `done`. T003 then becomes the next runnable task.
 - Goal stopped at the 5-turn limit per PROMPT.md. Turn 5 is not used for a new attempt.
+
+## 2026-10-15 — /goal run (new run, turn 1 of 5): goal NOT met, recorded
+
+- Read PROMPT.md, prd.md, activity.md tail, docs/launch-blockers.md, docs/tool-environment.md.
+- Task scan: T001 `done`. T002 `blocked` (launch-blockers 9, 10). T003–T018 `pending`, all depend on T002 directly or transitively. No `pending` task is dependency-ready, so no row was set to `in progress`.
+- Re-ran T002's macOS verification command from `apple/`, with DerivedData moved to `$TMPDIR`. Real output, trimmed:
+
+```
+$ cd apple && xcodebuild -scheme "AssistAnt (macOS)" -destination 'generic/platform=macOS' -derivedDataPath "$TMPDIR/assistant-dd" CODE_SIGNING_ALLOWED=NO build
+Couldn't create workspace arena folder '/tmp/claude-501/assistant-dd': Unable to write to info file '...assistant-dd/info.plist'.
+Error saving log: Error Domain=NSCocoaErrorDomain Code=513 "You don't have permission to save the file "LogStoreManifest.plist" in the folder "Build"." ... NSUnderlyingError = "Operation not permitted"
+** BUILD FAILED **
+```
+
+- Result: same sandbox write block as blocker 9. Build cannot write its log store or info file. No `prd.md` row changed. Marking T002 `done` would misstate acceptance (both Xcode targets, iOS build, and Safari load).
+- `git status` was clean before this run.
+- Turns used: 1 of 5. Stopped: the only unblock is owner action on T002 (run the Xcode builds and the Safari extension load outside the sandbox, then set T002 to `done`). Further turns would repeat this check.
