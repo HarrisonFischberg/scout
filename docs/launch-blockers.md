@@ -10,6 +10,9 @@
 | 6 | `/goal` and Ralph loop | tool | Claude | Phase 4 | resolved 2026-10-15 |
 | 7 | REA web capture needs a CDP browser started with approval | tool | owner | further reference capture (optional) | open |
 | 8 | Privacy policy + terms drafts need qualified legal review | legal review | owner | release | open |
+| 9 | `xcodebuild` and `swiftc` cannot write build output or module cache under the session sandbox (EPERM on `Logs/Build/LogStoreManifest.plist`, tried DerivedData in `~/Library`, `$TMPDIR`, `/tmp/claude`, and repo `build/`). Needs owner to run the Xcode builds outside the sandbox or approve a writable path | tool | owner | T002 `xcodebuild` verification; every later Xcode build and XCTest task | open (T002 blocked) |
+| 10 | Safari runtime load cannot run here: CoreSimulatorService is not running (no iOS Simulator runtime or devices), and Launch Services (`open`) is blocked. Needs owner to start a simulator and load the extension in Safari macOS | tool | owner | T002 acceptance (extension loads); T006, T007, T018 | open (T002 blocked) |
+| 11 | Bundle identifier is a placeholder: `com.example.AssistAnt` (app) and `com.example.AssistAnt.Extension`. Owner must choose the reverse-DNS prefix before signing or the App Store | missing fact | owner | Apple Developer signing; App Store | open; placeholder in `apple/AssistAnt.xcodeproj` |
 
 ## Unknown business and legal inputs
 

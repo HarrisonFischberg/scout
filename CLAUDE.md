@@ -23,9 +23,9 @@ loop, Caveman. Verify each before claiming use: `docs/tool-environment.md`.
 | Check | Command |
 | --- | --- |
 | tests | TODO |
-| types | TODO |
+| types | `npx tsc -p tsconfig.json` (`npm run typecheck` arrives in T003) |
 | lint | TODO |
-| build | TODO |
+| build | `npm run build` (writes extension to `apple/Extension/Resources/`); Xcode: `xcodebuild -scheme "AssistAnt (macOS)" -destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO build` (blocked in sandbox, launch-blockers 9) |
 | e2e | TODO |
 
 ## Artifacts
