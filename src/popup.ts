@@ -321,6 +321,8 @@ async function main(): Promise<void> {
   const tabList = el("tab-list");
   const modeChip = el("mode-chip");
   const modelPill = el<HTMLButtonElement>("model-pill");
+  const modelPillText = el("model-pill-text");
+  const modelMenu = el("model-menu");
   const modeInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="mode"]'));
   const agentBox = el("agent");
   const agentPlan = el("agent-plan");
@@ -528,7 +530,7 @@ async function main(): Promise<void> {
     noKey.hidden = true;
     composer.hidden = false;
     const pill = prettyModel(session.settings.model) + (effort ? " · " + EFFORT_LABEL[effort] : "");
-    modelPill.textContent = pill;
+    modelPillText.textContent = pill;
     // Accessible name starts with the visible text (WCAG 2.5.3 Label in Name).
     modelPill.setAttribute("aria-label", pill + ", change model or effort");
     status.textContent =
@@ -572,6 +574,7 @@ async function main(): Promise<void> {
     if (focusButton) plus.focus();
   }
   plus.addEventListener("click", () => {
+    closeModelMenu();
     const open = plusMenu.hidden;
     plusMenu.hidden = !open;
     plus.setAttribute("aria-expanded", String(open));
@@ -584,13 +587,141 @@ async function main(): Promise<void> {
     }
   });
   document.addEventListener("click", (e) => {
-    if (!plusMenu.hidden && !plusMenu.contains(e.target as Node) && e.target !== plus && !plus.contains(e.target as Node)) closePlus();
+    const t = e.target as Node;
+    if (!plusMenu.hidden && !plusMenu.contains(t) && !plus.contains(t)) closePlus();
+    if (!modelMenu.hidden && !modelMenu.contains(t) && !modelPill.contains(t)) closeModelMenu();
+  });
+
+  // ---------- Model menu: pick the model and effort in place ----------
+  // A menu of radio items above the pill. Choosing one saves it and closes the
+  // menu; Settings keeps the full controls (custom model ID, refresh).
+  const CHECK_ICON = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
+  const menuItems = (): HTMLButtonElement[] => Array.from(modelMenu.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'));
+
+  function menuGroup(group: HTMLElement, heading: string, items: Array<{ key: string; label: string; checked: boolean; pick: () => void }>): void {
+    const head = document.createElement("div");
+    head.className = "menu-head";
+    head.setAttribute("aria-hidden", "true");
+    head.textContent = heading;
+    group.replaceChildren(
+      head,
+      ...items.map((item) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.tabIndex = -1;
+        b.dataset.key = item.key;
+        b.setAttribute("role", "menuitemradio");
+        b.setAttribute("aria-checked", String(item.checked));
+        const text = document.createElement("span");
+        text.textContent = item.label;
+        b.append(text);
+        b.insertAdjacentHTML("beforeend", CHECK_ICON);
+        b.addEventListener("click", item.pick);
+        return b;
+      }),
+    );
+  }
+
+  // The session's provider and model: after a fallback, those of the key in use.
+  const activeSettings = (): Settings => session?.settings ?? settings;
+
+  function renderModelMenu(): void {
+    const cur = activeSettings();
+    const list = withModel(knownModels[cur.provider], cur.provider, cur.model);
+    const levels = list.find((m) => m.id === cur.model)?.efforts ?? [];
+    const effort = levels.includes(cur.effort as Effort) ? cur.effort : "default";
+    const focused = modelMenu.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset.key : undefined;
+    menuGroup(el("model-menu-models"), "Model", list.map((m) => ({ key: "model:" + m.id, label: m.name, checked: m.id === cur.model, pick: () => void pickModel(m.id) })));
+    menuGroup(
+      el("model-menu-efforts"),
+      "Effort",
+      (["default", ...levels] as EffortSetting[]).map((v) => ({
+        key: "effort:" + v,
+        label: EFFORT_LABEL[v] + (v === "default" ? " (model decides)" : ""),
+        checked: v === effort,
+        pick: () => void pickEffort(v),
+      })),
+    );
+    el("model-menu-sep").hidden = el("model-menu-efforts").hidden = levels.length === 0;
+    if (focused) menuItems().find((b) => b.dataset.key === focused)?.focus();
+  }
+
+  // Cached list, else the provider's list (no tokens billed), as in Settings.
+  async function refreshMenuModels(): Promise<void> {
+    const p = activeSettings().provider;
+    let key: string | null = null;
+    try {
+      key = await keychain.getKey(p);
+    } catch {
+      key = null;
+    }
+    const list = await loadModelList(storage, p, key, (i, init) => fetch(i, init), Date.now());
+    const changed = JSON.stringify(list.models) !== JSON.stringify(knownModels[p]);
+    rememberModels(p, list.models);
+    if (changed && !modelMenu.hidden && activeSettings().provider === p) renderModelMenu();
+  }
+
+  function openModelMenu(focus: "checked" | "last" = "checked"): void {
+    closePlus();
+    renderModelMenu();
+    // Fits the space above the composer, which grows with the text and chips.
+    modelMenu.style.maxHeight = Math.max(160, composer.getBoundingClientRect().top - 12) + "px";
+    modelMenu.hidden = false;
+    modelPill.setAttribute("aria-expanded", "true");
+    const items = menuItems();
+    (focus === "last" ? items[items.length - 1] : items.find((b) => b.getAttribute("aria-checked") === "true"))?.focus();
+    void refreshMenuModels();
+  }
+  function closeModelMenu(focusPill = false): void {
+    modelMenu.hidden = true;
+    modelPill.setAttribute("aria-expanded", "false");
+    if (focusPill) modelPill.focus();
+  }
+
+  /** Saves a model from the menu; an effort the new model does not support goes back to Default. */
+  async function pickModel(id: string): Promise<void> {
+    const cur = activeSettings();
+    const levels = withModel(knownModels[cur.provider], cur.provider, id).find((m) => m.id === id)?.efforts ?? [];
+    closeModelMenu(true);
+    await persist({ ...settings, provider: cur.provider, model: id, effort: levels.includes(cur.effort as Effort) ? cur.effort : "default" });
+  }
+  async function pickEffort(effort: EffortSetting): Promise<void> {
+    const cur = activeSettings();
+    closeModelMenu(true);
+    await persist({ ...settings, provider: cur.provider, model: cur.model, effort });
+  }
+
+  modelPill.addEventListener("click", () => (modelMenu.hidden ? openModelMenu() : closeModelMenu(true)));
+  modelPill.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      openModelMenu(e.key === "ArrowUp" ? "last" : "checked");
+    }
+  });
+  modelMenu.addEventListener("keydown", (e) => {
+    const items = menuItems();
+    const at = items.indexOf(document.activeElement as HTMLButtonElement);
+    const go = (i: number): void => {
+      e.preventDefault();
+      items[(i + items.length) % items.length]?.focus();
+    };
+    if (e.key === "ArrowDown") go(at + 1);
+    else if (e.key === "ArrowUp") go(at - 1);
+    else if (e.key === "Home") go(0);
+    else if (e.key === "End") go(items.length - 1);
+    else if (e.key === "Escape") {
+      e.preventDefault();
+      closeModelMenu(true);
+    }
+    // Tab leaves the menu from the pill, so focus moves on to the next control.
+    else if (e.key === "Tab") closeModelMenu(true);
   });
 
   function setBusy(busy: boolean): void {
     send.hidden = busy;
     stop.hidden = !busy;
-    plus.disabled = busy;
+    plus.disabled = modelPill.disabled = busy;
+    if (busy) closeModelMenu();
     question.disabled = busy;
     for (const i of modeInputs) i.disabled = busy;
     for (const c of empty.querySelectorAll<HTMLButtonElement>("button")) c.disabled = busy;
@@ -750,7 +881,8 @@ async function main(): Promise<void> {
     agentBox.hidden = false;
     agentPause.textContent = "Pause";
     send.hidden = true;
-    plus.disabled = true;
+    plus.disabled = modelPill.disabled = true;
+    closeModelMenu();
     status.textContent = "Agent running.";
     scrollToEnd();
     agentStop.focus();
@@ -796,7 +928,7 @@ async function main(): Promise<void> {
     await saveEntry("agent", trimmed, outcome.message);
     status.textContent = "Agent " + outcome.status + ". " + formatRunCost(s.settings.model, outcome.usage);
     send.hidden = false;
-    plus.disabled = false;
+    plus.disabled = modelPill.disabled = false;
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
   }
 
@@ -893,7 +1025,8 @@ async function main(): Promise<void> {
     couponsBox.hidden = false;
     couponsSummary.textContent = "Searching the web for codes…";
     send.hidden = true;
-    plus.disabled = true;
+    plus.disabled = modelPill.disabled = true;
+    closeModelMenu();
     status.textContent = "Finding coupons. This can take up to a minute.";
     scrollToEnd();
     couponsStop.focus();
@@ -948,7 +1081,7 @@ async function main(): Promise<void> {
     couponsStop.removeEventListener("click", onStop);
     control = null;
     send.hidden = false;
-    plus.disabled = false;
+    plus.disabled = modelPill.disabled = false;
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
   }
 
@@ -1154,7 +1287,6 @@ async function main(): Promise<void> {
     settingsOpen.focus();
   }
   settingsOpen.addEventListener("click", () => void openSettings());
-  modelPill.addEventListener("click", () => void openSettings());
   el("no-key-open").addEventListener("click", () => void openSettings(true));
   el("settings-back").addEventListener("click", closeSettings);
   settingsView.addEventListener("keydown", (e) => {
