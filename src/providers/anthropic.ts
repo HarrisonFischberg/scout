@@ -193,6 +193,12 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
                   throw new ProviderError("anthropic", "stream_error");
                 }
               }
+              // The page the model asked the fetch tool for: the coupon finder
+              // checks it against the pages it listed, loaded or not.
+              if (kept?.type === "server_tool_use" && kept.name === "web_fetch") {
+                const url = (kept.input as { url?: unknown } | undefined)?.url;
+                if (typeof url === "string" && url) yield { type: "fetch", url };
+              }
               if (b?.kind === "tool_use") {
                 let input: unknown;
                 try {

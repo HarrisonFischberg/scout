@@ -200,19 +200,23 @@ describe("suggestCodes when the search does not finish", () => {
 describe("suggestCodes request and evidence", () => {
   it("names the store, asks for searches and page reads, and for each code as soon as it is seen", async () => {
     const seen: { req?: ChatRequest } = {};
-    await suggestCodes(provider([], undefined, seen), "m", "www.tackform.test");
+    await suggestCodes(provider([], undefined, seen), "m", "www.tackform.test", undefined, { followUp: false });
     expect(String(seen.req?.messages[0]?.content)).toContain("Store: tackform\nStore website: tackform.test");
     expect(String(seen.req?.messages[0]?.content)).not.toContain("Also written as");
     const olipop: { req?: ChatRequest } = {};
-    await suggestCodes(provider([], undefined, olipop), "m", "www.drinkolipop.com");
+    await suggestCodes(provider([], undefined, olipop), "m", "www.drinkolipop.com", undefined, { followUp: false });
     expect(String(olipop.req?.messages[0]?.content)).toContain("Store: drinkolipop\nStore website: drinkolipop.com\nAlso written as: olipop");
     expect(seen.req).toMatchObject({ webSearch: true, webSearchMaxUses: 10, webFetch: true, webFetchMaxUses: 10 });
     expect(seen.req?.system).toContain("as soon as you see it");
-    // Live sweep 2026-10-17: Melin's search stopped at 6 masked codes; pages that print codes are named.
+    // Live sweep 2026-10-17: Melin's search stopped at 6 masked codes; pages that print codes are named,
+    // the ones that printed working codes most often first, and the model is told to open them all.
     expect(String(seen.req?.messages[0]?.content)).toContain(
-      "https://www.wethrift.com/tackform https://www.wethrift.com/codes/tackform.test https://us.hotdeals.com/store/tackform-coupon https://tackform.tenereteam.com/coupons https://www.dealdrop.com/tackform",
+      "Open every one of them with web_fetch before your first search; one that does not exist just fails to load: " +
+        "https://www.wethrift.com/tackform https://www.wethrift.com/codes/tackform.test https://us.hotdeals.com/store/tackform-coupon " +
+        "https://www.dontpayfull.com/at/tackform.test https://www.couponbind.com/coupons/tackform.test https://tackform.tenereteam.com/coupons " +
+        "https://usa.coupert.com/coupons/tackform-test-discount-code https://dealhack.com/coupons/tackform",
     );
-    expect(String(seen.req?.messages[0]?.content)).toContain("https://usa.coupert.com/coupons/tackform-test-discount-code");
+    expect(seen.req?.system).toContain("open every one of them with web_fetch before your first search");
     expect(seen.req?.system).toContain("hide codes behind a 'Get code' button");
     expect(seen.req?.system).toContain("Never invent, complete, or vary a code");
     expect(seen.req?.system).not.toMatch(/guess/i);
@@ -243,6 +247,9 @@ describe("suggestCodes request and evidence", () => {
       ]),
       "m",
       "www.shop.test",
+      undefined,
+      // This fake replays the same stream on every call; the follow-up is tested on its own.
+      { followUp: false },
     );
     expect(r.codes.map((c) => [c.code, c.origin])).toEqual([
       ["SAVE20", "verified"],
@@ -277,13 +284,121 @@ describe("likelyCodePages", () => {
     const { likelyCodePages } = await import("../../src/coupons/codes");
     const { identifyMerchant } = await import("../../src/coupons/merchant");
     const pages = likelyCodePages(identifyMerchant("https://www.heartandsoil.co/cart", { siteName: "Heart & Soil" }));
-    expect(pages).toContain("https://www.wethrift.com/heartandsoil");
-    expect(pages).toContain("https://www.wethrift.com/heart-and-soil");
-    expect(pages).toContain("https://www.dealdrop.com/heart-and-soil");
+    expect(pages[0]).toBe("https://www.wethrift.com/heartandsoil");
+    expect(pages[1]).toBe("https://www.wethrift.com/heart-and-soil");
     expect(pages).toContain("https://heartandsoil.tenereteam.com/coupons");
     expect(pages).toContain("https://www.dontpayfull.com/at/heartandsoil.co");
+    expect(pages).toContain("https://www.couponbind.com/coupons/heartandsoil.co");
     expect(new Set(pages).size).toBe(pages.length);
-    expect(pages.length).toBeLessThanOrEqual(12);
+    // Few enough that one request opens them all (FETCH_USES is 10).
+    expect(pages.length).toBeLessThanOrEqual(8);
     expect(likelyCodePages(identifyMerchant("http://127.0.0.1:4317/cart"))).toEqual([]);
+  });
+});
+
+// Live sweep 2026-10-17: Tackform's working code (STREETDEALX) was printed on a
+// listed page the model never opened in three runs.
+describe("listed pages the search skipped", () => {
+  const listedFor = async (store: string): Promise<string[]> => {
+    const { likelyCodePages } = await import("../../src/coupons/codes");
+    const { identifyMerchant } = await import("../../src/coupons/merchant");
+    return likelyCodePages(identifyMerchant("https://" + store + "/"));
+  };
+
+  it("opens them in one follow-up, without searching, and verifies the codes read there", async () => {
+    const reqs: ChatRequest[] = [];
+    const p: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        reqs.push(req);
+        if (!String(req.messages[0]?.content).includes("You did not open these pages")) {
+          yield { type: "fetch", url: "https://wethrift.com/tackform/" };
+          yield { type: "source", url: "https://www.wethrift.com/tackform", title: "Tackform", page: "No Tackform codes right now." };
+          yield { type: "fetch", url: "https://www.dealdrop.com/tackform" };
+          yield { type: "text", delta: "NONE\n" };
+          return;
+        }
+        yield { type: "fetch", url: "https://www.couponbind.com/coupons/tackform.test" };
+        yield { type: "source", url: "https://www.couponbind.com/coupons/tackform.test", title: "Tackform codes", page: "STREETDEALX: 10% off at Tackform" };
+        yield { type: "text", delta: 'STREETDEALX | https://www.couponbind.com/coupons/tackform.test | "STREETDEALX: 10% off" | -\n' };
+      },
+    };
+    const r = await suggestCodes(p, "m", "www.tackform.test");
+    const listed = await listedFor("www.tackform.test");
+    expect(reqs).toHaveLength(2);
+    expect(reqs[0]).toMatchObject({ webFetch: true, webSearchMaxUses: 10, webFetchMaxUses: 10 });
+    // Only the listed pages not opened (wethrift.com/tackform was, with or without "www." and a slash).
+    expect(reqs[1]).toMatchObject({ webFetch: true, webSearchMaxUses: 1, webFetchMaxUses: listed.length - 1 });
+    const asked = String(reqs[1]?.messages[0]?.content).split("You did not open these pages")[1] ?? "";
+    expect(asked).toContain("Do not search");
+    expect(asked).toContain("https://www.couponbind.com/coupons/tackform.test");
+    expect(asked).not.toContain("https://www.wethrift.com/tackform ");
+    expect(r.followedUp).toBe(true);
+    expect(r.pagesListed).toBe(listed.length);
+    expect(r.pagesOpened).toBe(2);
+    expect(r.error).toBeUndefined();
+    expect(r.codes.map((c) => [c.code, c.origin])).toEqual([["STREETDEALX", "verified"]]);
+  });
+
+  it("runs no follow-up on a provider without a page fetch tool", async () => {
+    let calls = 0;
+    const openai: ProviderClient = {
+      id: "openai",
+      async *stream() {
+        calls++;
+        yield { type: "source", url: "https://deals.test/o" };
+        yield { type: "text", delta: "OPEN10 | https://deals.test/o\n" };
+      },
+    };
+    const r = await suggestCodes(openai, "m", "www.tackform.test");
+    expect(calls).toBe(1);
+    expect(r.followedUp).toBeUndefined();
+    expect(r.codes.map((c) => c.code)).toEqual(["OPEN10"]);
+  });
+
+  it("runs no follow-up when every listed page was opened, nor after a failed search", async () => {
+    const listed = await listedFor("www.tackform.test");
+    let calls = 0;
+    const all: ProviderClient = {
+      id: "anthropic",
+      async *stream() {
+        calls++;
+        for (const u of listed) yield { type: "fetch", url: u };
+        yield { type: "text", delta: "NONE\n" };
+      },
+    };
+    const r = await suggestCodes(all, "m", "www.tackform.test");
+    expect(calls).toBe(1);
+    expect(r.followedUp).toBeUndefined();
+    expect(r.pagesOpened).toBe(listed.length);
+    let failed = 0;
+    const broke: ProviderClient = {
+      id: "anthropic",
+      async *stream() {
+        failed++;
+        throw new ProviderError("anthropic", "no_credit");
+      },
+    };
+    const r2 = await suggestCodes(broke, "m", "www.tackform.test");
+    expect(failed).toBe(1);
+    expect(r2.error?.code).toBe("no_credit");
+  });
+
+  it("a follow-up that runs out of time keeps what the search found and is not an error", async () => {
+    const p: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        if (String(req.messages[0]?.content).includes("You did not open these pages")) {
+          await new Promise((_res, rej) => req.signal?.addEventListener("abort", () => rej(new ProviderError("anthropic", "network"))));
+          return;
+        }
+        yield { type: "source", url: "https://deals.test/a", page: "FIRST10 10% off" };
+        yield { type: "text", delta: "FIRST10 | https://deals.test/a\n" };
+      },
+    };
+    const r = await suggestCodes(p, "m", "www.tackform.test", undefined, { followUpTimeoutMs: 20 });
+    expect(r.followedUp).toBe(true);
+    expect(r.error).toBeUndefined();
+    expect(r.codes.map((c) => c.code)).toEqual(["FIRST10"]);
   });
 });

@@ -119,13 +119,22 @@ from the cart API falls back to the page (1c2b867, Nomad); a cart with a
 Checkout button and no coupon box says where the field is (0a2fd0f); on a
 store with no remove control, the page path keeps testing when the store
 swaps the kept code for the next working one and stops only when it stacks
-them, saying so (after the sweep; Brumate had tested 1 code of 24).
+them, saying so (after the sweep; Brumate had tested 1 code of 24); an
+applied code shown as a "× CODE" pill is a remove control (Brumate's
+drawer); the request lists the eight pages that printed working codes most
+often, ordered by how often, tells the model to open every one before its
+first search, and a short follow-up (75 s, no searching) opens the listed
+pages the search skipped, because Tackform's STREETDEALX sat in plain text
+on a listed CouponBind page the model never opened in three runs (the
+provider's fetch requests now travel on the stream, so the engine knows
+which listed pages were asked for, loaded or not).
 
 Still open: Tackform's STREETDEALX (verified by hand against its cart API,
 $60 → $54) was never found by the engine in three runs (masked codes only,
-or the search timed out); OLIPOP's 48 codes were all refused; four more
+or the search timed out), and the re-run on the follow-up build is pending;
+OLIPOP's 48 codes were all refused; four more
 stores ended with masked codes only; Brumate's re-run on the swap-aware
-page path is pending; the seven remaining checkout-only
+page path (with its pill as the remove control) is pending; the seven remaining checkout-only
 stores await the owner-run checkout-step pass (`--checkout-step`; the
 sandbox's policy forbids opening checkout from the agent's side); the
 runner cannot add Dr. Squatch's, Paleovalley's, Pura's or Chubbies' products
