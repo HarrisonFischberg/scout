@@ -23,6 +23,8 @@ export interface DiagRun {
   startedAt: number;
   provider?: string;
   model?: string;
+  /** Debug builds: the local mock server answered instead of the provider. */
+  mock?: boolean;
   /** Hostname only, never the full URL. */
   pageHost?: string;
   question?: string;
@@ -119,11 +121,12 @@ export class Diagnostics {
     return this.data.runs;
   }
 
-  start(kind: RunKind, meta: { provider?: string; model?: string; question?: string } = {}): RunHandle {
+  start(kind: RunKind, meta: { provider?: string; model?: string; question?: string; mock?: boolean } = {}): RunHandle {
     const startedAt = this.now();
     const run: DiagRun = { id: this.data.nextId++, kind, startedAt, events: [], errors: [] };
     if (meta.provider) run.provider = meta.provider;
     if (meta.model) run.model = meta.model;
+    if (meta.mock) run.mock = true;
     if (meta.question && this.data.includeQuestion) run.question = scrub(meta.question);
     this.data.runs.push(run);
     if (this.data.runs.length > MAX_RUNS) this.data.runs.splice(0, this.data.runs.length - MAX_RUNS);
@@ -195,7 +198,7 @@ export function buildReport(runs: readonly DiagRun[], env: ReportEnv): string {
   lines.push(
     `- Run: ${last.kind} (#${last.id}) at ${clock(last.startedAt)}${env.tz ? " " + env.tz : ""}`,
     `- Build: Scout for Safari ${env.version} (${env.build}) · ${env.browser}`,
-    `- Provider: ${last.provider ?? "none"}${last.model ? " / " + last.model : ""}`,
+    `- Provider: ${last.provider ?? "none"}${last.model ? " / " + last.model : ""}${last.mock ? " · local mock server" : ""}`,
     `- Page: ${last.pageHost ?? "not read"}`,
     `- Outcome: ${last.outcome ? `${last.outcome.status} — "${last.outcome.message}"` : "did not finish (popup closed or still running)"}`,
   );

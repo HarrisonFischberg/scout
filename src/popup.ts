@@ -142,7 +142,7 @@ async function activeTab(): Promise<ActiveTab> {
 let diag: Diagnostics | null = null;
 let current: RunHandle = disabledRun;
 
-function startRun(kind: RunKind, meta: { provider?: string; model?: string; question?: string } = {}): RunHandle {
+function startRun(kind: RunKind, meta: { provider?: string; model?: string; question?: string; mock?: boolean } = {}): RunHandle {
   current = diag ? diag.start(kind, meta) : disabledRun;
   return current;
 }
@@ -286,6 +286,8 @@ interface Session {
   /** The effort actually sent: the setting when the model supports it. */
   effort?: Effort;
   fellBackFrom?: Provider;
+  /** Debug builds: Settings > Diagnostics > local mock server is on. */
+  mock?: boolean;
 }
 
 // Display names from the provider's model list (or the built-in one), filled
@@ -574,6 +576,7 @@ async function main(): Promise<void> {
     session = {
       settings: found.settings,
       provider: createProvider(found.settings.provider, { apiKey: found.apiKey, fetch: providerFetch, ...(mockUrl ? { baseUrl: mockUrl } : {}) }),
+      ...(mockUrl ? { mock: true } : {}),
       ...(effort ? { effort } : {}),
       ...(found.fellBackFrom ? { fellBackFrom: found.fellBackFrom } : {}),
     };
@@ -1353,7 +1356,7 @@ async function main(): Promise<void> {
       granted = await browser.permissions.request({ origins }).catch(() => false);
     }
     const isSummary = trimmed === SUMMARIZE_QUESTION;
-    startRun(isSummary ? "summarize" : "ask", { provider: s.settings.provider, model: s.settings.model, question: cont ? cont.question : trimmed });
+    startRun(isSummary ? "summarize" : "ask", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model, question: cont ? cont.question : trimmed });
     if (!port) {
       addMessage("error", "Scout for Safari's background worker is not running. Close Scout for Safari and open it again.");
       current.finish("error", "No worker port.");
@@ -1671,7 +1674,7 @@ async function main(): Promise<void> {
       trace("task:cancelled");
       return;
     }
-    startRun("agent", { provider: s.settings.provider, model: s.settings.model, question: trimmed });
+    startRun("agent", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model, question: trimmed });
     addMessage("user", trimmed, { mode: "Scout mode" });
     question.value = "";
     autosize();
@@ -1808,7 +1811,7 @@ async function main(): Promise<void> {
     if (activeChat || control || task || !session) return;
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
-    startRun("coupons", { provider: s.settings.provider, model: s.settings.model });
+    startRun("coupons", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model });
     const page = await tabAgentPage().catch(() => null);
     if (!page) {
       addMessage("error", "Could not reach this page. Reload it and try again.");
