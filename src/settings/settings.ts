@@ -40,14 +40,20 @@ export interface StorageArea {
 }
 
 export const DEFAULT_MODEL: Record<Provider, string> = {
-  anthropic: "claude-sonnet-5-5",
+  anthropic: "claude-haiku-5-5",
   openai: "gpt-5",
+};
+
+/** Effort that goes with each provider's default model (owner decision 2026-10-17: Haiku 5.5 at High). */
+export const DEFAULT_EFFORT: Record<Provider, EffortSetting> = {
+  anthropic: "high",
+  openai: "default",
 };
 
 export const DEFAULT_SETTINGS: Settings = {
   provider: "anthropic",
   model: DEFAULT_MODEL.anthropic,
-  effort: "default",
+  effort: DEFAULT_EFFORT.anthropic,
   retention: "7",
 };
 
@@ -72,9 +78,11 @@ function isEffortSetting(v: unknown): v is EffortSetting {
 export function parseSettings(raw: unknown): Settings {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const provider = isProvider(r.provider) ? r.provider : DEFAULT_SETTINGS.provider;
-  const model =
-    typeof r.model === "string" && r.model.trim() ? r.model.trim() : DEFAULT_MODEL[provider];
-  const effort = isEffortSetting(r.effort) ? r.effort : DEFAULT_SETTINGS.effort;
+  const hasModel = typeof r.model === "string" && !!r.model.trim();
+  const model = hasModel ? (r.model as string).trim() : DEFAULT_MODEL[provider];
+  // A missing effort takes the default model's effort only when the model is
+  // also the default; a model chosen before efforts existed keeps "default".
+  const effort = isEffortSetting(r.effort) ? r.effort : hasModel ? "default" : DEFAULT_EFFORT[provider];
   const retention = isRetention(r.retention) ? r.retention : DEFAULT_SETTINGS.retention;
   return { provider, model, effort, retention };
 }
