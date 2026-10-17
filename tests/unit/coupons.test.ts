@@ -394,6 +394,9 @@ describe("Shopify cart path", () => {
     expect(out.applied).toBe(true);
     expect(cart.codes).toEqual(["BEEFY15", "KETO"]);
     expect(couponSummary(out)).toContain("**BEEFY15** + **KETO** together is the best");
+    // The pair has no page of its own: its row says what it is, not "seen on its page".
+    expect(originLabel(combo!)).toBe("both codes, applied together");
+    expect(couponSummary(out)).toMatch(/\| BEEFY15 \+ KETO \| [^|]+ \| both codes, applied together \|/);
   });
 
   it("keeps the single best code when the store refuses the pair", async () => {

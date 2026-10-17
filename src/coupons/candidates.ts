@@ -121,7 +121,9 @@ export function rankCandidates(cands: CouponCandidate[], m?: MerchantNames): Cou
 }
 
 /** Short label for a code's evidence in the results list and summary. */
-export function originLabel(c: { origin: CandidateOrigin; sourceUrl?: string }): string {
+export function originLabel(c: { origin: CandidateOrigin; sourceUrl?: string; combo?: string[] }): string {
+  // A pair of codes has no page of its own; each code's row names its page.
+  if (c.combo) return "both codes, applied together";
   const host = c.sourceUrl ? safeHost(c.sourceUrl) : "";
   switch (c.origin) {
     case "store":

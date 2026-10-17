@@ -146,14 +146,18 @@ test("coupon run tests every code found online, applies the best, never clicks o
   await expect(page.locator("#coupons-more")).toBeHidden();
   // The trace is folded by default: open it to read the code lines.
   await page.locator("#task .trace-head").click();
+  // Tested in rank order, not the model's listing order: "welcome" reads as a
+  // first-order restriction (candidates.ts RESTRICTED), so WELCOME5 goes last.
   const rows = page.locator("#task .attempt");
   await expect(rows).toHaveCount(5);
-  await expect(rows.nth(0)).toContainText("WELCOME5");
-  await expect(rows.nth(0)).toContainText("$100.00");
-  await expect(rows.nth(1)).toContainText("SAVE10");
-  await expect(rows.nth(1)).toContainText("$90.00");
-  await expect(rows.nth(3)).toContainText("SAVE20");
-  await expect(rows.nth(3)).toContainText("$80.00");
+  await expect(rows.nth(0)).toContainText("SAVE10");
+  await expect(rows.nth(0)).toContainText("$90.00");
+  await expect(rows.nth(1)).toContainText("FREESHIP");
+  await expect(rows.nth(1)).toContainText("$100.00");
+  await expect(rows.nth(2)).toContainText("SAVE20");
+  await expect(rows.nth(2)).toContainText("$80.00");
+  await expect(rows.nth(4)).toContainText("WELCOME5");
+  await expect(rows.nth(4)).toContainText("$100.00");
   for (let i = 0; i < 5; i++) {
     await expect(rows.nth(i).getByRole("link", { name: "seen on deals.test" })).toHaveAttribute("href", "https://deals.test/codes");
   }
@@ -179,7 +183,8 @@ test("no winning code: offers to search again, searches without repeating codes,
   // The second web search names the codes already tried and looks in other places.
   expect(asks).toHaveLength(2);
   expect(asks[1]).toContain("Already tried, do not list these again");
-  expect(asks[1]).toContain("WELCOME5, SAVE10, FREESHIP, SAVE20, BOGUS99");
+  // In the order they were tested (WELCOME5 ranks last as a first-order code).
+  expect(asks[1]).toContain("SAVE10, FREESHIP, SAVE20, BOGUS99, WELCOME5");
   expect(asks[1]).toContain("second search");
   // The trace is folded by default: open it to read the code lines.
   await page.locator("#task .trace-head").click();
