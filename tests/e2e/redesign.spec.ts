@@ -107,6 +107,8 @@ test("Scout mode shows a bold chip and switches the send action", async ({ page 
   await expect(page.locator("#mode-chip")).toBeVisible();
   await expect(page.locator("#mode-chip span")).toHaveText("Scout mode");
   expect(await page.locator("#mode-chip").evaluate((n) => getComputedStyle(n).fontWeight)).toBe("700");
+  // With text in the box the button is Send (Start task); empty, it may be the voice button.
+  await page.getByLabel("Ask about this page").fill("Add the blue one to the cart");
   await expect(page.getByRole("button", { name: "Start task" })).toBeVisible();
   await expect(page.getByLabel("Ask about this page")).toHaveAttribute("placeholder", "Tell Scout for Safari what to do on this page…");
   await page.getByRole("button", { name: "Back to Chat mode" }).click();

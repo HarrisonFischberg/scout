@@ -235,7 +235,8 @@ test("Find coupons turns Send into Stop next to the model picker, and Stop ends 
   await expect(page.locator("#coupons-more-text")).toBeVisible(BATCH_WAIT);
   await composerStop.click();
   await expect(page.locator("#coupons-more")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+  // Back to Send, or the voice button where Safari can listen (the box is empty).
+  await expect(page.locator(".composer-foot").getByRole("button", { name: /^(Send|Start voice chat)$/ })).toBeVisible();
   await expect(composerStop).toBeHidden();
   await expect(page.locator("#task .trace-head")).toContainText(/Finished|Stopped/);
 });
