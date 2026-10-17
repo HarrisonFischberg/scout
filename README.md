@@ -19,7 +19,7 @@ Keychain. There is no Scout for Safari server.
   never checks out.
 - **Settings**: pick the model and effort level from dropdowns.
 
-Each tab keeps its own conversation. Scout for Safari is off in Private Browsing.
+Each tab keeps its own conversation. Scout for Safari works in Private Browsing; chats in a private tab are deleted when the tab closes.
 Settings > Permissions lists every permission with its default; all of them are
 enforced on the device.
 Shortcut on Mac: Control-Shift-S opens and closes it.

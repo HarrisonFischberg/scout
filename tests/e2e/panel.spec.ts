@@ -122,11 +122,16 @@ test("an off-page question goes out as a normal chat message, with the page only
   expect(body.messages?.[body.messages.length - 1]?.content).toContain("User message: hey, I want to take vitamin D");
 });
 
-test("the panel is off in Private Browsing, with a short explanation", async ({ page }) => {
+test("the panel works in Private Browsing like in any other tab, and marks the chat as private", async ({ page }) => {
   await openPanel(page, { id: 3, incognito: true });
-  await expect(page.getByRole("heading", { name: "Off in Private Browsing" })).toBeVisible();
-  await expect(page.locator("#status")).toHaveText("Scout for Safari is off in Private Browsing.");
-  await expect(page.locator("#composer")).toBeHidden();
-  await expect(page.getByRole("button", { name: "Settings" })).toBeHidden();
-  expect(await portHellos(page)).toEqual([]);
+  await expect(page.getByRole("heading", { name: "How can I help?" })).toBeVisible();
+  await expect(page.locator("#composer")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
+  const hellos = await portHellos(page);
+  expect(hellos.map((h) => [h.name, h.type, h.payload.tabId])).toEqual([["scout-panel", "panel.hello", 3]]);
+  // Its conversation is listed for deletion when the tab closes (src/panel/state.ts).
+  const stored = await page.evaluate(() => (globalThis as unknown as { __fake: { data: Record<string, unknown> } }).__fake.data);
+  const conv = (stored.tabState as Record<string, { conv: string }>)["3"]?.conv;
+  expect(conv).toBeTruthy();
+  expect(stored.privateConversations).toEqual({ "3": [conv] });
 });
