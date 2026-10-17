@@ -195,6 +195,28 @@ export const REQUESTS = {
   },
   /** Recent tool calls for Settings > Activity. */
   "tools.log": { senders: ["panel"], payload: { object: {} } },
+  // ---------- Part 3: Scout mode ----------
+  /** Starts a task on a tab (src/agent/task.ts in the worker). Events follow on the port after task.watch. */
+  "task.start": {
+    senders: ["panel"],
+    payload: {
+      object: {
+        tab_id: "number",
+        goal: "string",
+        /** Conversation the outcome is saved to. */
+        conv: "string",
+        /** "chat": requested by the Scout server mid-answer (run_task); "panel": the user's Scout mode. */
+        source: { enum: ["panel", "chat"] },
+      },
+      optional: ["conv", "source"],
+    },
+  },
+  /** Take control (pause), Resume, Stop. From the panel, or from the overlay's pill in the task's own tab. */
+  "task.control": { senders: ["panel", "content"], payload: { object: { task_id: "string", command: { enum: ["pause", "resume", "stop"] } } } },
+  /** The user's answer to a sensitive-action confirmation. */
+  "task.decide": { senders: ["panel"], payload: { object: { task_id: "string", prompt_id: "string", decision: { enum: ["once", "always", "deny"] } } } },
+  /** The task on a tab, if any, with its log so far (a reopened panel catches up). */
+  "task.status": { senders: ["panel"], payload: { object: { tab_id: "number" } } },
 } as const satisfies Record<string, RequestSpec>;
 
 export type RequestType = keyof typeof REQUESTS;
@@ -205,6 +227,8 @@ export const PANEL_EVENTS = {
   "panel.hello": { object: { tabId: "number", windowId: "number" }, optional: ["windowId"] },
   /** Part 2: stream this answer's events after `after_seq` (0 = from the start). Sent again after a reconnect. */
   "chat.subscribe": { object: { message_id: "string", after_seq: "number" } },
+  /** Part 3: send this port the task events of a tab. Sent again after a reconnect. */
+  "task.watch": { object: { tab_id: "number" } },
 } as const satisfies Record<string, Schema>;
 
 /** Port events (worker to panel), for streaming progress and task state. */
@@ -238,7 +262,28 @@ export const WORKER_EVENTS = {
   },
   /** The worker no longer knows this answer (it restarted): nothing more will come. */
   "chat.lost": { object: { message_id: "string" } },
-  // Part 3: "task.progress", "task.state", ...
+  /** Part 3: one Scout mode task event (flat, per kind: started, state, log, confirm, done). */
+  "task.event": {
+    object: {
+      task_id: "string",
+      tab_id: "number",
+      seq: "number",
+      kind: { enum: ["started", "state", "log", "confirm", "done"] },
+      goal: "string",
+      state: { enum: ["running", "paused", "waiting"] },
+      text: "string",
+      status: "string",
+      prompt_id: "string",
+      what: "string",
+      site: "string",
+      reason: "string",
+      preapproved: "boolean",
+      summary: "string",
+      input_tokens: "number",
+      output_tokens: "number",
+    },
+    optional: ["goal", "state", "text", "status", "prompt_id", "what", "site", "reason", "preapproved", "summary", "input_tokens", "output_tokens"],
+  },
 } as const satisfies Record<string, Schema>;
 
 let counter = 0;

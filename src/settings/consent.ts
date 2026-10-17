@@ -154,9 +154,9 @@ export function consentText(p: Provider): ConsentText {
       "Each time you use Scout for Safari, " + name + " receives:",
     items: [
       "Your messages and the tasks you type.",
-      "When a request uses the page (questions, Summarize, Control Browser, Find coupons): the page's address, title, description, and text. " +
+      "When a request uses the page (questions, Summarize, Scout mode, Find coupons): the page's address, title, description, and text. " +
         "What you typed into forms, password fields, and hidden fields are left out, and passwords, keys, and tokens found on the page are removed. " +
-        "Control Browser and Find coupons also send the page's links, buttons, and form fields, with password and card fields hidden.",
+        "Scout mode and Find coupons also send the page's links, buttons, and form fields, with password and card fields hidden. Scout mode sends them again after each step it takes.",
       "Other tabs only when you attach them.",
       "A screenshot of the visible page, only when you allow it for that site. It shows everything on screen, including anything typed into the page.",
       "Titles and addresses of your open tabs, only if you turn on tab search in Settings.",

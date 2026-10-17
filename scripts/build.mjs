@@ -16,6 +16,7 @@ await build({
     popup: join(src, "popup.ts"),
     content: join(src, "content.ts"),
     edge: join(src, "edge.ts"),
+    overlay: join(src, "overlay.ts"),
   },
   outdir: out,
   bundle: true,

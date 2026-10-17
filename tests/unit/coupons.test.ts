@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AgentControl } from "../../src/agent/loop";
+import { AgentControl } from "../../src/agent/control";
 import type { Action, ActionResult } from "../../src/actions/executor";
 import { suggestCodes } from "../../src/coupons/codes";
 import { brandTokens, mergeCandidates, originLabel, patternCodes } from "../../src/coupons/candidates";

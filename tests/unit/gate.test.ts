@@ -1,18 +1,22 @@
 // Part 2 permission gate (spec 10a): blocklists, screenshots per site, defaults.
 import { describe, expect, it } from "vitest";
 import {
+  alwaysAllowed,
   blockedBy,
   DEFAULT_PAGE_ACCESS,
   normalizeSite,
   parsePageAccess,
   parsePolicy,
   screenshotDecision,
+  taskDecision,
+  withAlwaysAllow,
+  withoutAlwaysAllow,
 } from "../../src/permissions/gate";
 
 describe("page access defaults", () => {
   it("reads the current page, keeps history search off, and blocks nothing", () => {
     expect(parsePageAccess(undefined)).toEqual(DEFAULT_PAGE_ACCESS);
-    expect(DEFAULT_PAGE_ACCESS).toEqual({ readCurrent: true, searchTabs: false, screenshots: {}, blocked: [] });
+    expect(DEFAULT_PAGE_ACCESS).toEqual({ readCurrent: true, searchTabs: false, screenshots: {}, blocked: [], scoutMode: "ask", alwaysAllow: {} });
   });
 
   it("treats malformed stored values as defaults and drops bad rules", () => {
@@ -75,5 +79,37 @@ describe("parsePolicy", () => {
     expect(parsePolicy({ ok: true, blocked: ["Corp.test", "bad host", 3] })).toEqual(["corp.test"]);
     expect(parsePolicy({ ok: false, error: "unknown_type" })).toEqual([]);
     expect(parsePolicy(null)).toEqual([]);
+  });
+});
+
+// Part 3 (spec 10): Scout mode per task, "Always allow" sites, revocation.
+describe("Scout mode gate", () => {
+  it("asks per task by default, is off when turned off, and never acts on a blocked site", () => {
+    const a = parsePageAccess({ blocked: ["bank.test"] });
+    expect(a.scoutMode).toBe("ask");
+    expect(taskDecision("https://shop.test/cart", a, [])).toBe("ask");
+    expect(taskDecision("https://bank.test/", a, [])).toBe("blocked-user");
+    expect(taskDecision("https://hr.corp.test/", a, ["corp.test"])).toBe("blocked-admin");
+    expect(taskDecision("https://shop.test/", parsePageAccess({ scoutMode: "off" }), [])).toBe("off");
+    expect(taskDecision("file:///x", a, [])).toBe("blocked-user");
+  });
+
+  it("parses only known kinds and hosts for always-allow, and has no switch for the confirmation itself", () => {
+    const a = parsePageAccess({ alwaysAllow: { "Shop.Test": ["payment", "bogus"], "not a host": ["send"], "x.test": [] }, sensitiveConfirm: false });
+    expect(a.alwaysAllow).toEqual({ "shop.test": ["payment"] });
+    expect(Object.keys(a)).not.toContain("sensitiveConfirm");
+  });
+
+  it("always-allow is per site and per kind, covers subdomains, and can be revoked", () => {
+    let a = withAlwaysAllow(DEFAULT_PAGE_ACCESS, "www.shop.test", "payment");
+    expect(alwaysAllowed("https://www.shop.test/checkout", "payment", a)).toBe(true);
+    expect(alwaysAllowed("https://m.www.shop.test/checkout", "payment", a)).toBe(true);
+    expect(alwaysAllowed("https://www.shop.test/checkout", "send", a)).toBe(false);
+    expect(alwaysAllowed("https://other.test/", "payment", a)).toBe(false);
+    a = withAlwaysAllow(a, "www.shop.test", "send");
+    expect(a.alwaysAllow["www.shop.test"]).toEqual(["payment", "send"]);
+    a = withoutAlwaysAllow(a, "www.shop.test");
+    expect(alwaysAllowed("https://www.shop.test/", "payment", a)).toBe(false);
+    expect(withAlwaysAllow(a, "???", "payment")).toEqual(a);
   });
 });

@@ -64,16 +64,22 @@ const TOOL_LABEL: Record<string, string> = {
   close_tabs: "Closed tabs",
   group_tabs: "Grouped tabs",
   ungroup_tabs: "Ungrouped tabs",
-  run_task: "Agent task",
+  run_task: "Scout mode task",
 };
 
 export function toolLabel(name: string): string {
   return TOOL_LABEL[name] ?? "Unknown tool";
 }
 
+/** Part 3: one Scout mode action in the log is "action:<type>" (rejected ones included). */
+function activityTool(tool: string): string {
+  if (tool.startsWith("unknown:")) return "Unknown tool (" + tool.slice(8) + ")";
+  if (tool.startsWith("action:")) return "Action (" + tool.slice(7) + ")";
+  return toolLabel(tool);
+}
+
 /** One Settings > Activity row: time, tool, site, result, duration. */
 export function activityLine(e: ToolLogEntry, locale?: string): string {
   const time = new Date(e.at).toLocaleString(locale, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  const tool = e.tool.startsWith("unknown:") ? "Unknown tool (" + e.tool.slice(8) + ")" : toolLabel(e.tool);
-  return [time, tool, e.site || "no site", e.status, e.ms + " ms"].join(" · ");
+  return [time, activityTool(e.tool), e.site || "no site", e.status, e.ms + " ms"].join(" · ");
 }

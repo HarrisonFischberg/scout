@@ -234,3 +234,36 @@ export async function loadConversation(
 export async function clearHistory(storage: StorageArea): Promise<void> {
   await storage.set({ [HISTORY_KEY]: [] });
 }
+
+/** Part 3, spec 10: what each conversation shared (tabs, screenshots, tools), for Settings > Permissions. */
+export interface SharedSummary {
+  conv: string;
+  /** Newest entry in the conversation. */
+  at: number;
+  items: NonNullable<HistoryEntry["shared"]>;
+}
+
+export function summarizeShared(entries: HistoryEntry[]): SharedSummary[] {
+  const byConv = new Map<string, SharedSummary>();
+  for (const e of entries) {
+    if (!e.shared?.length) continue;
+    const key = e.conv ?? "";
+    const cur = byConv.get(key) ?? { conv: key, at: e.at, items: [] };
+    cur.at = Math.max(cur.at, e.at);
+    cur.items.push(...e.shared);
+    byConv.set(key, cur);
+  }
+  return [...byConv.values()].sort((a, b) => b.at - a.at);
+}
+
+/** Forgets what was shared in one conversation (all of them when `conv` is undefined); the messages stay. */
+export async function clearShared(storage: StorageArea, conv?: string): Promise<void> {
+  const got = await storage.get(HISTORY_KEY);
+  const all = parseHistory(got[HISTORY_KEY]);
+  const next = all.map((e) => {
+    if (!e.shared || (conv !== undefined && (e.conv ?? "") !== conv)) return e;
+    const { shared: _s, ...rest } = e;
+    return rest;
+  });
+  await storage.set({ [HISTORY_KEY]: next });
+}
