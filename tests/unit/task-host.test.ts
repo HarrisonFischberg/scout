@@ -153,6 +153,16 @@ describe("task host", () => {
     expect(await f.host.control({ task_id, command: "stop" })).toEqual({ ok: false });
   });
 
+  it("relays the overlay toast's Stop for a coupon run to the panel watching that tab, and only from that tab", async () => {
+    const f = fake(scripted([[finish("x")]]));
+    f.host.watch(f.port, 1);
+    await expect(f.host.control({ task_id: "coupons:1", command: "stop" }, { kind: "content", raw: { tab: { id: 2 } } })).rejects.toBeInstanceOf(BridgeError);
+    expect(await f.host.control({ task_id: "coupons:1", command: "stop" }, { kind: "content", raw: { tab: { id: 1 } } })).toEqual({ ok: true });
+    expect(f.posted).toEqual([{ task_id: "coupons:1", tab_id: 1, seq: 1, kind: "stop" }]);
+    expect(await f.host.control({ task_id: "coupons:7", command: "stop" })).toEqual({ ok: false });
+    expect(await f.host.control({ task_id: "coupons:1", command: "pause" })).toEqual({ ok: false });
+  });
+
   it("one task per tab, and a closed tab ends its task", async () => {
     const f = fake(scripted([[act([{ type: "wait", ms: 5000 }])]]));
     const { task_id } = await f.host.start({ tab_id: 1, goal: "wait" });

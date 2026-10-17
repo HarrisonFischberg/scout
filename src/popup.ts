@@ -8,7 +8,8 @@
 import { AgentControl } from "./agent/control";
 import type { Action, ActionResult } from "./actions/executor";
 import type { Snapshot } from "./snapshot/snapshot";
-import { CONTENT_HANDLER, type ContentRequest } from "./content-api";
+import { CONTENT_HANDLER, OVERLAY_HANDLER, type ContentRequest, type OverlayRequest } from "./content-api";
+import { callInjected } from "./content-call";
 import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { renderMarkdown } from "./chat/markdown";
 import { ConversationStore } from "./chat/store";
@@ -345,10 +346,6 @@ async function main(): Promise<void> {
   const confirmOnce = el<HTMLButtonElement>("confirm-once");
   const confirmAlways = el<HTMLButtonElement>("confirm-always");
   const confirmDeny = el<HTMLButtonElement>("confirm-deny");
-  const couponsBox = el("coupons");
-  const couponsRows = el("coupons-rows");
-  const couponsSummary = el("coupons-summary");
-  const couponsStop = el<HTMLButtonElement>("coupons-stop");
 
   const storage: StorageArea | undefined = browser.storage?.local;
   const keychain = createKeychain(nativeSend);
@@ -499,7 +496,7 @@ async function main(): Promise<void> {
   }
 
   function updateEmpty(): void {
-    const busyCards = !!task || !confirmBox.hidden || !couponsBox.hidden;
+    const busyCards = !!task || !!couponRun || !confirmBox.hidden;
     empty.hidden = !session || log.childElementCount > 0 || busyCards;
   }
 
@@ -533,8 +530,7 @@ async function main(): Promise<void> {
     store.clear();
     views.clear();
     log.replaceChildren();
-    couponsRows.replaceChildren();
-    confirmBox.hidden = couponsBox.hidden = true;
+    confirmBox.hidden = true;
     history.length = 0;
     updateEmpty();
   }
@@ -1568,7 +1564,7 @@ async function main(): Promise<void> {
   }
 
   /** Builds the inline trace under the user's message and returns it. */
-  function buildTrace(entries: Entry[], state: string, startedAt: number): Omit<TaskUi, "id" | "goal" | "source" | "promptId" | "resolve" | "finished"> {
+  function buildTrace(entries: Entry[], state: string, startedAt: number, opts: { takeControl?: boolean } = {}): Omit<TaskUi, "id" | "goal" | "source" | "promptId" | "resolve" | "finished"> {
     const node = document.createElement("div");
     node.className = "trace";
     node.id = "task";
@@ -1588,6 +1584,7 @@ async function main(): Promise<void> {
     });
     const steps = document.createElement("details");
     steps.className = "steps";
+    if (opts.takeControl === false) steps.hidden = true;
     const stepsSummary = document.createElement("summary");
     stepsSummary.textContent = "Steps (0)";
     const stepsList = document.createElement("ol");
@@ -1603,7 +1600,8 @@ async function main(): Promise<void> {
     stopBtn.type = "button";
     stopBtn.className = "btn";
     stopBtn.textContent = "Stop";
-    controls.append(take, stopBtn);
+    if (opts.takeControl !== false) controls.append(take);
+    controls.append(stopBtn);
     body.append(controls, steps);
     node.append(head, body);
     log.appendChild(node);
@@ -1621,7 +1619,6 @@ async function main(): Promise<void> {
     t.timer = setInterval(refreshHead, 1000);
     t.take.addEventListener("click", onTakeControl);
     t.stopBtn.addEventListener("click", onStopTask);
-    couponsBox.hidden = true;
     send.hidden = true;
     plus.disabled = modelPill.disabled = true;
     for (const i of modeInputs) i.disabled = true;
@@ -1694,6 +1691,11 @@ async function main(): Promise<void> {
 
   function onTaskEvent(p: Record<string, unknown>): void {
     const id = p.task_id as string;
+    if (p.kind === "stop") {
+      // The overlay toast's Stop, relayed by the worker for a run this panel drives (Find coupons).
+      if (couponRun && couponRun.id === id) couponRun.stop();
+      return;
+    }
     if (!task || task.id !== id) return;
     switch (p.kind) {
       case "log": {
@@ -1833,49 +1835,52 @@ async function main(): Promise<void> {
   // ---------- Coupons (S07, T031): find many codes, test them in batches of 25. ----------
   // Owner, 2026-10-16: a batch that finds a saving applies the best code and
   // ends; a batch with none asks whether to find and test 25 more.
-  const couponsMore = el("coupons-more");
-  const couponsMoreText = el("coupons-more-text");
-  const couponsMoreYes = el<HTMLButtonElement>("coupons-more-yes");
-  const couponsMoreNo = el<HTMLButtonElement>("coupons-more-no");
+  // Owner, 2026-10-17: no results card. The run shows inline like Scout mode
+  // (a Working line, one line per code as it is tested, the question for more
+  // codes inline, then the summary), and the page glows with the same overlay
+  // while it runs; its toast's Stop reaches this panel through the worker.
+  interface CouponRun {
+    id: string;
+    stop(): void;
+  }
+  let couponRun: CouponRun | null = null;
+  const COUPON_SNAPSHOT = { maxElements: 600, maxTextChars: 100_000 };
 
-  function askMoreCodes(state: BatchState): Promise<boolean> {
-    return new Promise((resolve) => {
-      couponsMoreText.textContent =
-        "We've tried " + state.tried + " codes and none lowered your total. Would you like Scout for Safari to find " + state.next + " more to test?";
-      couponsMoreYes.textContent = "Find " + state.next + " more";
-      couponsMore.hidden = false;
-      status.textContent = "Waiting for you: try more codes?";
-      scrollToEnd();
-      couponsMoreYes.focus();
-      trace("coupons:ask-more tried=" + state.tried + " remaining=" + state.remaining + " next=" + state.next);
-      const done = (ok: boolean): void => {
-        couponsMore.hidden = true;
-        couponsMoreYes.removeEventListener("click", yes);
-        couponsMoreNo.removeEventListener("click", no);
-        couponsStop.removeEventListener("click", no);
-        trace("coupons:more " + (ok ? "yes" : "no"));
-        if (ok) couponsStop.focus();
-        resolve(ok);
-      };
-      const yes = (): void => done(true);
-      const no = (): void => done(false);
-      couponsMoreYes.addEventListener("click", yes);
-      couponsMoreNo.addEventListener("click", no);
-      couponsStop.addEventListener("click", no);
-    });
+  /** The scouting overlay on the current tab, for a run the panel drives itself. */
+  function tabOverlay(tabId: number, id: string): { show(): Promise<void>; state(state: "running" | "waiting"): Promise<void>; hide(): Promise<void> } {
+    const call = async (req: OverlayRequest): Promise<void> => {
+      try {
+        await callInjected(tabId, "overlay.js", OVERLAY_HANDLER, req);
+      } catch {
+        trace("coupons:overlay-failed");
+      }
+    };
+    return {
+      show: () => call({ type: "overlay:show", taskId: id, state: "running" }),
+      state: (state) => call({ type: "overlay:state", state }),
+      hide: () => call({ type: "overlay:hide" }),
+    };
   }
 
-  function addAttemptRow(
-    a: { code: string; total: number | null; note: string; origin: Parameters<typeof originLabel>[0]["origin"]; sourceUrl?: string },
-    currency?: string,
+  /** One inline line per code: "SAVE20 · $80.00 · Works, 20% off · deals.test". */
+  function attemptRow(
+    a: { code: string; total: number | null; saving: number | null; accepted: boolean | null; note: string; origin: Parameters<typeof originLabel>[0]["origin"]; sourceUrl?: string },
+    currency: string | undefined,
+    t: { body: HTMLElement; controls: HTMLElement },
   ): void {
-    const tr = document.createElement("tr");
-    for (const t of [a.code, a.total === null ? "unknown" : formatMoney(a.total, currency), a.note]) {
-      const td = document.createElement("td");
-      td.textContent = t;
-      tr.appendChild(td);
-    }
-    const src = document.createElement("td");
+    const row = document.createElement("div");
+    const good = a.saving !== null && a.saving > 0 && a.accepted !== false;
+    row.className = "attempt" + (good ? " good" : "");
+    row.dataset.code = a.code;
+    const code = document.createElement("span");
+    code.className = "code";
+    code.textContent = a.code;
+    const text = document.createElement("span");
+    const parts = [a.total === null ? "total unknown" : formatMoney(a.total, currency)];
+    if (good && a.saving !== null) parts.push("saves " + formatMoney(a.saving, currency));
+    parts.push(a.note);
+    text.textContent = " · " + parts.join(" · ") + " · ";
+    row.append(code, text);
     const label = originLabel(a);
     if (a.sourceUrl && (a.origin === "sourced" || a.origin === "unverified")) {
       const link = document.createElement("a");
@@ -1883,21 +1888,61 @@ async function main(): Promise<void> {
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       link.textContent = label;
-      src.appendChild(link);
-    } else src.textContent = label;
-    tr.appendChild(src);
-    couponsRows.appendChild(tr);
+      row.appendChild(link);
+    } else row.append(label);
+    t.body.insertBefore(row, t.controls);
+    scrollToEnd();
   }
 
-  const COUPON_SNAPSHOT = { maxElements: 600, maxTextChars: 100_000 };
+  function askMoreCodes(state: BatchState, t: { body: HTMLElement; controls: HTMLElement; stopBtn: HTMLButtonElement }): Promise<boolean> {
+    return new Promise((resolve) => {
+      const box = document.createElement("div");
+      box.className = "more";
+      box.id = "coupons-more";
+      box.setAttribute("role", "group");
+      box.setAttribute("aria-labelledby", "coupons-more-text");
+      const p = document.createElement("p");
+      p.id = "coupons-more-text";
+      p.textContent = "We've tried " + state.tried + " codes and none lowered your total. Would you like Scout for Safari to find " + state.next + " more to test?";
+      const row = document.createElement("div");
+      row.className = "row";
+      const yesBtn = document.createElement("button");
+      yesBtn.type = "button";
+      yesBtn.className = "btn primary";
+      yesBtn.textContent = "Find " + state.next + " more";
+      const noBtn = document.createElement("button");
+      noBtn.type = "button";
+      noBtn.className = "btn";
+      noBtn.textContent = "Stop here";
+      row.append(yesBtn, noBtn);
+      box.append(p, row);
+      t.body.insertBefore(box, t.controls);
+      status.textContent = "Waiting for you: try more codes?";
+      scrollToEnd();
+      yesBtn.focus();
+      trace("coupons:ask-more tried=" + state.tried + " remaining=" + state.remaining + " next=" + state.next);
+      const done = (ok: boolean): void => {
+        box.remove();
+        t.stopBtn.removeEventListener("click", no);
+        trace("coupons:more " + (ok ? "yes" : "no"));
+        if (ok) t.stopBtn.focus();
+        resolve(ok);
+      };
+      const yes = (): void => done(true);
+      const no = (): void => done(false);
+      yesBtn.addEventListener("click", yes);
+      noBtn.addEventListener("click", no);
+      t.stopBtn.addEventListener("click", no);
+    });
+  }
 
   async function runCoupons(): Promise<void> {
-    if (activeChat || control || task || !session) return;
+    if (activeChat || control || task || couponRun || !session) return;
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     startRun("coupons", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model });
     const page = await tabAgentPage().catch(() => null);
-    if (!page) {
+    if (!page || tab.id === undefined) {
       addMessage("error", "Could not reach this page. Reload it and try again.");
       current.finish("error", "Could not reach this page.");
       return;
@@ -1905,26 +1950,43 @@ async function main(): Promise<void> {
     const ask = "Find the best coupon for this cart.";
     addMessage("user", ask, { mode: "Find coupons" });
     control = new AgentControl();
-    couponsRows.replaceChildren();
-    couponsMore.hidden = true;
-    couponsBox.hidden = false;
-    couponsSummary.textContent = "Searching the web for codes…";
+    const run = control;
+    const runId = "coupons:" + tab.id;
+    couponRun = { id: runId, stop: () => run.stop() };
+    const overlay = tabOverlay(tab.id, runId);
+    watchTab();
+    const t = buildTrace([], "running", Date.now(), { takeControl: false });
+    const say = (text: string): void => {
+      const p = document.createElement("p");
+      p.className = "say";
+      p.textContent = text;
+      t.body.insertBefore(p, t.controls);
+      scrollToEnd();
+    };
+    const timer = setInterval(() => (t.headText.textContent = "Working " + elapsedText(Date.now() - t.startedAt)), 1000);
+    t.headText.textContent = "Working 0s";
     send.hidden = true;
     plus.disabled = modelPill.disabled = true;
+    for (const i of modeInputs) i.disabled = true;
     closeModelMenu();
     status.textContent = "Finding coupons. The web search can take a couple of minutes.";
+    updateEmpty();
     scrollToEnd();
-    couponsStop.focus();
-    const onStop = (): void => control?.stop();
-    couponsStop.addEventListener("click", onStop);
+    t.stopBtn.focus();
+    const onStop = (): void => run.stop();
+    t.stopBtn.addEventListener("click", onStop);
+    void overlay.show();
+    say("Searching the web for codes…");
     let used: Usage = { inputTokens: 0, outputTokens: 0 };
     let summary = "";
     let searchNote = "";
+    let statusOf = "done";
     try {
       const snap = await page.snapshot();
       const merchant = new URL(snap.url).hostname;
       const ac = new AbortController();
-      couponsStop.addEventListener("click", () => ac.abort(), { once: true });
+      t.stopBtn.addEventListener("click", () => ac.abort(), { once: true });
+      run.signal.addEventListener("abort", () => ac.abort(), { once: true });
       // Codes the store advertises itself (banner, announcement bar): this page
       // and its home page, read on the device. Tried first, search or not.
       const onSite = [...new Set([...codesInText(snap.text), ...(await page.storeCodes().catch(() => []))])].slice(0, MAX_STORE_CODES);
@@ -1959,9 +2021,10 @@ async function main(): Promise<void> {
       );
       const found = codes.filter((c) => c.origin === "sourced" || c.origin === "unverified").length;
       trace("coupons:candidates found=" + found + " guessed=" + sug.guessed + " store=" + onSite.length);
-      couponsSummary.textContent =
+      say(
         (sug.error && sug.error.code !== "stopped" ? sug.error.message + " " : "") +
-        "Found " + found + " code" + (found === 1 ? "" : "s") + " online and " + sug.guessed + " common guesses. Testing them on your cart…";
+          "Found " + found + " code" + (found === 1 ? "" : "s") + " online and " + sug.guessed + " common guesses. Testing them on your cart…",
+      );
       const outcome = await runCouponSearch({
         // Checkout summaries sit late in big pages: read more of them than the agent does.
         // Waits run here, not in the page, so they outlast a page that reloads.
@@ -1981,12 +2044,17 @@ async function main(): Promise<void> {
           trace("coupons:locate " + (r.hints ? Object.keys(r.hints).join(",") : "none"));
           return r.hints;
         },
-        control,
+        control: run,
         delayMs: 250,
-        askMore: askMoreCodes,
+        askMore: async (state) => {
+          void overlay.state("waiting");
+          const more = await askMoreCodes(state, t);
+          void overlay.state("running");
+          return more;
+        },
         findMore: async (known) => {
           trace("coupons:find-more known=" + known.length);
-          couponsSummary.textContent = "Searching the web for more codes…";
+          say("Searching the web for more codes…");
           status.textContent = "Finding more coupons. The web search can take a couple of minutes.";
           const more = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
             exclude: known,
@@ -1995,41 +2063,41 @@ async function main(): Promise<void> {
           addUsage(more);
           if (more.error) trace("coupons:search-error " + more.error.code);
           trace("coupons:candidates found=" + more.found + " guessed=" + more.guessed);
-          couponsSummary.textContent =
-            more.codes.length > 0 ? "Found " + more.codes.length + " more codes to try. Testing them on your cart…" : "No more codes found.";
+          say(more.codes.length > 0 ? "Found " + more.codes.length + " more codes to try. Testing them on your cart…" : "No more codes found.");
           return more.codes;
         },
         onAttempt: (a, index, total, currency) => {
           trace("coupons:attempt " + index + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none"));
-          couponsSummary.textContent = "Testing code " + index + " of " + total + "…";
-          addAttemptRow(a, currency);
-          scrollToEnd();
+          status.textContent = "Testing code " + index + " of " + total + "…";
+          attemptRow(a, currency, t);
         },
       });
       trace("coupons:method " + (outcome.method ?? "none") + " status " + outcome.status);
+      statusOf = outcome.status === "stopped" ? "stopped" : outcome.status === "done" ? "done" : "error";
       summary = (searchNote && outcome.status !== "no_form" && outcome.status !== "error" ? searchNote + "\n\n" : "") + couponSummary(outcome);
-      couponsSummary.textContent = outcome.best
-        ? "Best: " + outcome.best.code + (outcome.applied ? " (applied)" : "")
-        : outcome.status === "done" || outcome.status === "stopped"
-          ? "No code lowered the total."
-          : outcome.message;
       status.textContent = formatCostLine(s.settings.model, used);
       current.finish(outcome.status, outcome.message, used);
       if (outcome.status === "no_form" || outcome.status === "error" || outcome.status === "no_codes") addMessage("error", summary);
       else addMessage("assistant", summary);
     } catch {
+      statusOf = "error";
       summary = "Could not finish the coupon search. Nothing was ordered.";
-      couponsSummary.textContent = summary;
       status.textContent = couponStatusText("error");
       addMessage("error", summary);
       current.finish("error", summary, used);
     }
-    couponsMore.hidden = true;
+    clearInterval(timer);
+    t.stopBtn.removeEventListener("click", onStop);
+    t.controls.remove();
+    t.headText.textContent = (statusOf === "done" ? "Finished " : statusOf === "stopped" ? "Stopped " : "Ended ") + elapsedText(Date.now() - t.startedAt);
+    void overlay.hide();
     await saveEntry("coupons", ask, summary);
-    couponsStop.removeEventListener("click", onStop);
     control = null;
+    couponRun = null;
     send.hidden = false;
     plus.disabled = modelPill.disabled = false;
+    for (const i of modeInputs) i.disabled = false;
+    updateEmpty();
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
   }
 
