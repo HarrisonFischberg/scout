@@ -228,13 +228,36 @@ describe("the page path on different kinds of checkout", () => {
     expect(p.applied).toEqual(["SAVE20"]);
   });
 
-  it("stops at the first working code when the store keeps it and offers no safe remove button", async () => {
-    const p = store({ pct: { SAVE10: 10, SAVE20: 20 }, stack: true });
-    const out = await runCouponSearch({ page: p, codes: codes("SAVE10", "SAVE20", "NOPE"), settleMs: 300 });
-    expect(out.attempts.map((a) => a.code)).toEqual(["SAVE10"]);
+  it("stops when the store stacks the next code on a kept one it offers no safe remove button for", async () => {
+    const p = store({ pct: { SAVE10: 10, SAVE20: 20 }, stack: true, message: true });
+    const out = await runCouponSearch({ page: p, codes: codes("SAVE10", "NOPE", "SAVE20", "NOPE2"), settleMs: 300 });
+    // A refused code leaves the kept one on: not the kept code's total, and not a reason to stop.
+    expect(out.attempts.map((a) => [a.code, a.total, a.accepted])).toEqual([
+      ["SAVE10", 90, null],
+      ["NOPE", null, false],
+    ]);
+    expect(out.attempts[1]?.note).toBe("The store kept SAVE10 on the order and did not take this code in its place.");
     expect(out.best?.code).toBe("SAVE10");
     expect(out.applied).toBe(true);
-    expect(couponSummary(out)).toContain("stopped testing there");
+    expect(couponSummary(out)).toContain("added SAVE20 on top of it, so the total now counts both codes");
+  });
+
+  // Live sweep 2026-10-17, Brumate: a drawer with no remove control that swaps
+  // the applied code for the next working one. Testing used to stop at code 1 of 24.
+  it("keeps testing when the store swaps a kept code for the next working one", async () => {
+    const p = store({ pct: { SAVE10: 10, SAVE20: 20 }, message: true });
+    const out = await runCouponSearch({ page: p, codes: codes("SAVE10", "NOPE", "SAVE20", "NOPE2"), settleMs: 300 });
+    expect(out.attempts.map((a) => [a.code, a.total])).toEqual([
+      ["SAVE10", 90],
+      ["NOPE", null],
+      ["SAVE20", 80],
+      ["NOPE2", null],
+    ]);
+    expect(out.note).toBeUndefined();
+    expect(out.best?.code).toBe("SAVE20");
+    expect(out.applied).toBe(true);
+    expect(p.applied).toEqual(["SAVE20"]);
+    expect(p.ordered).toBe(0);
   });
 
   it("measures savings in euros and says them in euros", async () => {

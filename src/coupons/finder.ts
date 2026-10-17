@@ -226,6 +226,8 @@ export function noBoxMessage(snap: Snapshot): string {
 }
 const EPS = 0.004;
 const KEPT_NOTE = "The store kept the earlier code on the order and shows no remove button I can use safely, so I stopped testing there.";
+const stackedNote = (kept: string, code: string): string =>
+  "The store kept " + kept + " on the order and added " + code + " on top of it, so the total now counts both codes. Codes cannot be measured one at a time here, so I stopped testing.";
 
 async function pageTester(
   page: CouponPage,
@@ -313,7 +315,9 @@ async function pageTester(
     let before = await look();
     if (!before) return { total: null, accepted: null, note: "Could not read the page." };
     if (detectCaptcha(before)) return { total: null, accepted: null, captcha: true };
-    // Measure codes one at a time: take the last working code off first.
+    // Measure codes one at a time: take the last working code off first. A
+    // store with no remove control keeps it on; the read after Apply then
+    // tells whether this code replaced it (see below).
     if (kept) {
       const off = await takeOff(before, kept.code);
       if (off === null) return { total: null, accepted: null, halt: true, note: KEPT_NOTE };
@@ -367,10 +371,21 @@ async function pageTester(
     if (answeredAt !== null) answerMs = Math.max(answerMs ?? 0, answeredAt);
     const total = totalOf(after)?.amount ?? null;
     if (total === null) return { total: null, accepted: null, note: "Total not readable after applying." };
-    // The earlier code is still on (same total, or still listed) and nothing could
-    // take it off: this total would count both codes, so stop measuring here.
-    if (kept && kept.code !== code && (Math.abs(total - kept.total) <= EPS || showsCode(after.text, kept.code))) {
-      return { total: null, accepted: null, halt: true, note: KEPT_NOTE };
+    // The earlier code could not be taken off first (no remove control). Its
+    // line gone from the page, with a different total or a sign this one was
+    // taken, means the store swapped it for this code: this total is this
+    // code's alone. Still listed with a lower total, the store stacked them,
+    // and no single code can be measured here. Otherwise the store kept the
+    // earlier code and did not take this one in its place.
+    if (kept && kept.code !== code) {
+      const keptOn = showsCode(after.text, kept.code);
+      const same = Math.abs(total - kept.total) <= EPS;
+      const back = Math.abs(total - baseline) <= EPS;
+      const swapped = !keptOn && (back || (reply !== "rejected" && (!same || reply === "accepted" || showsCode(after.text, code))));
+      if (!swapped) {
+        if (keptOn && total < kept.total - EPS) return { total: null, accepted: null, halt: true, note: stackedNote(kept.code, code) };
+        return { total: null, accepted: reply === "rejected" ? false : null, note: "The store kept " + kept.code + " on the order and did not take this code in its place." };
+      }
     }
     const lowered = total < baseline - EPS;
     kept = lowered ? { code, total } : null;
