@@ -56,7 +56,7 @@ interface Fake {
   port: { postMessage(m: unknown): void };
 }
 
-function fake(provider: ProviderClient, opts: { tabs?: TabRef[]; access?: Partial<PageAccess> } = {}): Fake {
+function fake(provider: ProviderClient, opts: { tabs?: TabRef[]; access?: Partial<PageAccess>; confirmTimeoutMs?: number } = {}): Fake {
   const storage = memStorage();
   storage.data.pageAccess = parsePageAccess(opts.access ?? {});
   const tabs = opts.tabs ?? [{ id: 1, url: "https://shop.test/a", title: "Shop", windowId: 1, active: true }];
@@ -81,6 +81,7 @@ function fake(provider: ProviderClient, opts: { tabs?: TabRef[]; access?: Partia
     provider: async () => provider,
     settings: async () => ({ provider: "anthropic", model: "m" }),
     log: { add: async () => undefined },
+    confirmTimeoutMs: opts.confirmTimeoutMs,
     setIcon: async (tabId, active) => void f.icons.push([tabId, active]),
     openPanel: async () => void f.panelOpens++,
     save: async (e) => void f.saved.push({ conv: e.conv, question: e.question, answer: e.answer }),
@@ -137,6 +138,15 @@ describe("task host", () => {
     const out = await f.host.outcome(task_id);
     expect(out?.status).toBe("done");
     expect(f.content.filter((c) => c.type === "scout:task-act")).toHaveLength(1);
+  });
+
+  it("a confirmation nobody answers counts as Deny after the timeout", async () => {
+    const f = fake(scripted([[act([{ type: "click", target: { ref: "e1" } }])], [finish("gave up")]]), { confirmTimeoutMs: 40 });
+    const { task_id } = await f.host.start({ tab_id: 1, goal: "Buy it" });
+    const out = await f.host.outcome(task_id);
+    expect(out?.status).toBe("done");
+    expect(f.content.filter((c) => c.type === "scout:task-act")).toHaveLength(0);
+    expect(f.host.status(1).task?.log.some((l) => l.status === "denied")).toBe(true);
   });
 
   it("the overlay's pill may control only its own tab's task; Stop hides the overlay at once and denies an open prompt", async () => {
