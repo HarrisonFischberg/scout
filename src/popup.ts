@@ -56,6 +56,7 @@ import {
   appendHistory,
   clearHistory,
   clearShared,
+  DEFAULT_EFFORT,
   DEFAULT_MODEL,
   deleteAllData,
   deleteReportText,
@@ -103,7 +104,7 @@ async function findKey(
       const same = provider === chosen.provider;
       const model = same ? chosen.model : DEFAULT_MODEL[provider];
       return {
-        settings: { ...chosen, provider, model, effort: same ? chosen.effort : "default" },
+        settings: { ...chosen, provider, model, effort: same ? chosen.effort : DEFAULT_EFFORT[provider] },
         apiKey,
         ...(provider !== chosen.provider ? { fellBackFrom: chosen.provider } : {}),
       };
@@ -2712,7 +2713,7 @@ async function main(): Promise<void> {
       keyInput.value = "";
       keyError.textContent = "";
       keyInput.removeAttribute("aria-invalid");
-      const effort = effortForId(p, DEFAULT_MODEL[p], settings.effort, knownModels[p]) ?? "default";
+      const effort = effortForId(p, DEFAULT_MODEL[p], DEFAULT_EFFORT[p], knownModels[p]) ?? "default";
       void persist({ ...settings, provider: p, model: DEFAULT_MODEL[p], effort }).then(refreshSettings);
     });
   }
