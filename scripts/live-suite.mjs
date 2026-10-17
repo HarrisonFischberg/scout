@@ -34,6 +34,7 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createRequire } from "node:module";
+import { createHash } from "node:crypto";
 
 const require = createRequire(import.meta.url);
 const { webkit, chromium } = require("playwright");
@@ -342,7 +343,9 @@ async function runMerchant(browser, m) {
       timeline.push({ t: Math.round((Date.now() - started) / 100) / 10, stage: s });
     },
   };
-  const result = { name: m.name, url: m.url, group: m.group, outcome: "", notes: [], stages, timeline, startedAt: new Date(started).toISOString() };
+  // Which popup build this merchant ran on (the Resources folder can be rebuilt during a long sweep).
+  const build = createHash("sha1").update(readFileSync(join(RES, "popup.js"))).digest("hex").slice(0, 10);
+  const result = { name: m.name, url: m.url, group: m.group, outcome: "", notes: [], stages, timeline, build, startedAt: new Date(started).toISOString() };
   const dir = join(out, slug(m.name));
   mkdirSync(dir, { recursive: true });
   let context = null;
@@ -377,6 +380,13 @@ async function runMerchant(browser, m) {
       return result;
     }
     result.cart = { how: added.how, url: shop.url() };
+    // The cart page too can render late (Paleovalley, True Classic): wait for its text before anything reads it.
+    for (let tries = 0; tries < 6; tries++) {
+      const text = (await evalWithin(shop, () => document.body.innerText).catch(() => "")) || "";
+      if (text.trim().length > 80) break;
+      await wait(2500);
+      if (tries === 5) result.notes.push("the cart page showed little or no text after 15 s");
+    }
     await wait(1500);
     const before = await readShopifyCart(shop);
     if (before) result.cartBefore = before;
