@@ -1363,3 +1363,9 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Fix: the results travel in the same user turn as the next observation (`pendingResults` in `src/agent/task.ts`); the mock looks for "Action results" anywhere in the last turn; a model that proposes the identical batch three times in a row now stops the task ("the same actions were proposed 3 times in a row", `MAX_REPEATS`).
 - Evidence: unit 338/338 (new runner case), e2e scout 8/8 (Chromium); the mock scenario driven directly finishes on round 2 with "Mock task finished: 1 action(s) done, 1 not done."
 - Open: whether the border and pill showed on the Mac during run #35 (the owner's build predates the overlay-failure trace, 5ba8868).
+
+## 2026-10-17 — Overlay look: full-page wash instead of a border (owner request)
+
+- Owner screenshot (Mac, mock run): the overlay works: thin gold-to-green ring, pill at the bottom, ripples on clicks. Owner wants the glow to take over the whole page: a colored wash, darker at the edges, lighter but still present in the middle, so the page reads as controlled by the agent.
+- Change: `.glow` now covers the page with the same conic sweep, faded by a radial mask (20% in the center, 30% halfway, 72% at the edges, 90% in the corners; `GLOW_*` in `src/overlay.ts`) and a wider blur. Ring mask removed. Pill, ripple, reduced motion, hidden-tab pause unchanged. PRD T043 notes the departure from spec 9's "border".
+- Evidence: e2e overlay 7/7 (Chromium) with the mask assertion added.
