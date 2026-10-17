@@ -1,7 +1,8 @@
 // Page button (owner request 2026-10-16): a small Scout tab on the edge of the
 // page, for iPhone and iPad, where Safari keeps extension buttons in the page
-// menu. Off until the user turns it on; runs only on sites Scout can access and
-// never in Private Browsing. Tapping it opens the toolbar panel. Pure helpers
+// menu. On from a fresh install (owner request 2026-10-17); the user can turn
+// it off in Settings. Runs only on sites Scout can access and never in Private
+// Browsing. Tapping it opens the toolbar panel. Pure helpers
 // shared by the content script (src/edge.ts), the worker, Settings, and tests.
 
 export const PAGE_BUTTON_KEY = "pageButton";
@@ -15,7 +16,7 @@ export interface PageButton {
   y: number;
 }
 
-export const DEFAULT_PAGE_BUTTON: PageButton = { on: false, side: "right", y: 0.45 };
+export const DEFAULT_PAGE_BUTTON: PageButton = { on: true, side: "right", y: 0.45 };
 
 /** Keeps the tab clear of the page's own header and of Safari's bottom bar. */
 export const Y_MIN = 0.12;
@@ -30,7 +31,7 @@ export function clampY(y: number): number {
 export function parsePageButton(raw: unknown): PageButton {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   return {
-    on: r.on === true,
+    on: typeof r.on === "boolean" ? r.on : DEFAULT_PAGE_BUTTON.on,
     side: r.side === "left" ? "left" : "right",
     y: typeof r.y === "number" ? clampY(r.y) : DEFAULT_PAGE_BUTTON.y,
   };
@@ -50,6 +51,47 @@ export function isDrag(dx: number, dy: number): boolean {
 
 /** The tab shrinks to a sliver after this long without use. */
 export const TUCK_AFTER_MS = 2500;
+
+/**
+ * Set once the tab has shown itself open on a page. After that it starts
+ * tucked on every page and opens only when the user reaches for it (owner
+ * request 2026-10-17: popping open while browsing was annoying).
+ */
+export const PAGE_BUTTON_INTRO_KEY = "pageButtonIntroduced";
+
+/**
+ * A tap on a tucked tab (touch or pen) only brings it out; the next tap opens
+ * Scout (owner request 2026-10-17). A mouse wakes it on hover, and a key press
+ * on a focused tab, so both open at once.
+ */
+export function tapOnlyWakes(pointerType: string, wasTucked: boolean): boolean {
+  return wasTucked && (pointerType === "touch" || pointerType === "pen");
+}
+
+export interface ViewportInfo {
+  /** Touch-first device (iPhone, iPad): Safari may zoom the whole page out. */
+  coarse: boolean;
+  /** Width in CSS px the device shows at 100% (iOS: the screen width in the current orientation). */
+  idealWidth: number;
+  /** visualViewport.width: CSS px currently on screen. */
+  visualWidth: number;
+  /** CSS zoom on the root element, which the tab inherits. */
+  pageZoom: number;
+}
+
+/**
+ * How much to scale the tab so it stays its intended size on screen. On iPhone
+ * Safari zooms a page with wide content out to fit (citizenfreepress.com,
+ * owner report 2026-10-17), and fixed elements shrink with it; a root `zoom`
+ * shrinks it everywhere. Never scaled down for a pinch-zoom in, and capped.
+ */
+export function tabScale(v: ViewportInfo): number {
+  const shown = v.coarse && v.idealWidth > 0 && v.visualWidth > 0 ? Math.min(1, v.idealWidth / v.visualWidth) : 1;
+  const zoom = Number.isFinite(v.pageZoom) && v.pageZoom > 0 ? v.pageZoom : 1;
+  const k = 1 / (shown * zoom);
+  return Math.round(Math.min(MAX_TAB_SCALE, Math.max(1 / MAX_TAB_SCALE, k)) * 1000) / 1000;
+}
+export const MAX_TAB_SCALE = 4;
 
 /** Arrow keys move a focused tab by this fraction of the viewport height. */
 export const KEY_STEP = 0.05;
