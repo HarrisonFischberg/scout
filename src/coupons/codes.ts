@@ -434,6 +434,9 @@ export async function suggestCodes(
       ...(p.fetch ? { webFetchMaxUses: p.fetches ?? FETCH_USES } : {}),
       signal: ac.signal,
     };
+    // Each pass starts on a line of its own: a reply that ended without a
+    // newline must not run its last code line into the next pass's first.
+    if (text && !text.endsWith("\n")) text += "\n";
     try {
       for await (const ev of provider.stream(req)) {
         if (ev.type === "text") text += ev.delta;
