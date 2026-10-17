@@ -55,6 +55,45 @@ describe("executeAction", () => {
     expect(e.value).toBe("xyz");
   });
 
+  it("shows the pointer before a click when the page draws one", async () => {
+    const e = el({ tag: "button" });
+    e.showClick = async () => void e.log.push("show");
+    const res = await executeAction(page({ e1: e }), { type: "click", ref: "e1" });
+    expect(res.ok).toBe(true);
+    expect(e.log).toEqual(["scroll", "show", "click"]);
+  });
+
+  it("does not click an element that left the page while the pointer moved", async () => {
+    const e = el({ tag: "button" });
+    e.showClick = async () => void Object.defineProperty(e, "connected", { value: false });
+    const res = await executeAction(page({ e1: e }), { type: "click", ref: "e1" });
+    expect(res).toMatchObject({ ok: false, error: "stale_ref" });
+    expect(e.log).not.toContain("click");
+  });
+
+  it("types visibly from an empty box, or after the current text when clear is false", async () => {
+    const e = el({ value: "OLD" });
+    const typed: string[] = [];
+    e.typeVisibly = async (start, text) => {
+      typed.push(start + "|" + text);
+      e.value = start + text;
+    };
+    const p = page({ e1: e });
+    await executeAction(p, { type: "type", ref: "e1", text: "SAVE10" });
+    expect(e.value).toBe("SAVE10");
+    await executeAction(p, { type: "type", ref: "e1", text: "X", clear: false });
+    expect(typed).toEqual(["|SAVE10", "SAVE10|X"]);
+    expect(e.log).not.toContain("set:SAVE10");
+  });
+
+  it("clears a box at once, without typing, when the text is empty", async () => {
+    const e = el({ value: "SAVE10" });
+    e.typeVisibly = async () => void e.log.push("typed");
+    await executeAction(page({ e1: e }), { type: "type", ref: "e1", text: "" });
+    expect(e.value).toBe("");
+    expect(e.log).not.toContain("typed");
+  });
+
   it("does not echo typed text in the result message", async () => {
     const res = await executeAction(page({ e1: el() }), { type: "type", ref: "e1", text: "s3cret-value" });
     expect(res.message).not.toContain("s3cret-value");
