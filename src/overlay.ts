@@ -2,9 +2,10 @@
 // the tab Scout is controlling (spec 11 fallback: Safari has no browser-level
 // overlay view for extensions). A full-screen layer that lets every click
 // through (pointer-events: none) except on the control pill, an animated
-// conic-gradient border (CSS @property angle, 2.5 s sweep, soft blur), a
-// ripple at the point of each click, and the pill: binoculars, "Scouting…",
-// Take control, Stop. Static border under prefers-reduced-motion; the
+// conic-gradient wash over the whole page (strongest at the edges, lighter in
+// the middle; owner changed this from the spec's thin border on 2026-10-17;
+// CSS @property angle, 2.5 s sweep, soft blur), a ripple at the point of each
+// click, and the pill: binoculars, "Scouting…", Take control, Stop. Static border under prefers-reduced-motion; the
 // animation pauses while the tab is hidden; the glow renders at half
 // resolution and is scaled up. The worker drives it through one handler
 // global; the pill's buttons ask the worker to pause or stop the task.
@@ -15,6 +16,12 @@ import { OVERLAY_HANDLER, type OverlayRequest } from "./content-api";
 
 const FLAG = "__safariScoutOverlayLoaded";
 const g = globalThis as unknown as Record<string, unknown>;
+
+// How much of the color wash shows: center of the page, halfway out, the edges, the corners.
+export const GLOW_CENTER = "20%";
+export const GLOW_MID = "30%";
+export const GLOW_EDGE = "72%";
+export const GLOW_CORNER = "90%";
 
 export const FADE_IN_MS = 600;
 export const FADE_OUT_MS = 400;
@@ -50,14 +57,16 @@ const STYLE_TEXT = `
 :host { all: initial; }
 .layer { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity ${FADE_OUT_MS}ms ease; overflow: hidden; }
 .layer.on { opacity: 1; transition-duration: ${FADE_IN_MS}ms; }
-/* Rendered at half size and scaled up: caps the blur's raster to a quarter of the pixels. */
+/* A soft wash over the whole page (owner, 2026-10-17): strongest at the edges,
+   lighter but never gone in the middle, so the page reads as "being scouted".
+   Rendered at half size and scaled up: caps the blur's raster to a quarter of the pixels. */
 .glow {
   position: absolute; left: 0; top: 0; width: 50%; height: 50%; transform: scale(2); transform-origin: 0 0;
-  padding: 3px; box-sizing: border-box; pointer-events: none;
+  pointer-events: none;
   background: conic-gradient(from var(--scout-angle), #E0A526, #C9781E, #6E8B3D, #E0A526);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
-  filter: blur(1.5px); animation: scout-sweep ${SWEEP_MS}ms linear infinite;
+  -webkit-mask-image: radial-gradient(ellipse at center, rgb(0 0 0 / ${GLOW_CENTER}) 0%, rgb(0 0 0 / ${GLOW_MID}) 45%, rgb(0 0 0 / ${GLOW_EDGE}) 85%, rgb(0 0 0 / ${GLOW_CORNER}) 100%);
+  mask-image: radial-gradient(ellipse at center, rgb(0 0 0 / ${GLOW_CENTER}) 0%, rgb(0 0 0 / ${GLOW_MID}) 45%, rgb(0 0 0 / ${GLOW_EDGE}) 85%, rgb(0 0 0 / ${GLOW_CORNER}) 100%);
+  filter: blur(8px); animation: scout-sweep ${SWEEP_MS}ms linear infinite;
 }
 .layer.paused .glow { opacity: 0.5; }
 .layer.hidden-tab .glow { animation-play-state: paused; }

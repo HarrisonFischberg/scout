@@ -168,6 +168,8 @@ test("the border sweeps on a 2.5 s loop and pauses while the tab is hidden", asy
     document.dispatchEvent(new Event("visibilitychange"));
   });
   await expect.poll(() => inShadow(page, (root) => getComputedStyle(root.querySelector(".glow")!).animationPlayState)).toBe("paused");
+  // The wash covers the whole page, faded by a radial mask (lighter in the middle, strong at the edges).
+  expect(await inShadow(page, (root) => getComputedStyle(root.querySelector(".glow")!).maskImage || (getComputedStyle(root.querySelector(".glow")!) as unknown as { webkitMaskImage: string }).webkitMaskImage)).toContain("radial-gradient");
   // The glow is drawn at half size and scaled up: a quarter of the pixels.
   const size = await inShadow(page, (root) => {
     const g = root.querySelector(".glow") as HTMLElement;
