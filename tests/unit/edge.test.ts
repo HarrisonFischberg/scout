@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { clampY, coversAllSites, edgeMatches, isDrag, MAX_TAB_SCALE, parsePageButton, reachText, sameMatches, snapSide, tabScale, tapOnlyWakes, Y_MAX, Y_MIN } from "../../src/panel/edge";
+import { clampY, coversAllSites, edgeMatches, isDrag, MAX_TAB_SCALE, pageButtonOffered, parsePageButton, reachText, sameMatches, snapSide, tabScale, tapOnlyWakes, Y_MAX, Y_MIN } from "../../src/panel/edge";
 import { openPanel } from "../../src/panel/toolbar";
 
 describe("page button settings", () => {
@@ -51,6 +51,12 @@ describe("page button settings", () => {
 });
 
 describe("where the edge script runs", () => {
+  it("is offered on iPhone and iPad, not on Mac", () => {
+    expect(pageButtonOffered("ios")).toBe(true);
+    expect(pageButtonOffered(undefined)).toBe(true);
+    expect(pageButtonOffered("mac")).toBe(false);
+  });
+
   it("uses only granted web origins, never the AI provider hosts", () => {
     expect(
       edgeMatches(["https://shop.test/*", "https://api.anthropic.com/*", "https://api.openai.com/*", "file:///*", "not a pattern"]),
