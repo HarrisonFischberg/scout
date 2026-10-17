@@ -59,6 +59,7 @@ import {
   appendHistory,
   clearHistory,
   clearShared,
+  DEFAULT_EFFORT,
   DEFAULT_MODEL,
   deleteAllData,
   deleteReportText,
@@ -106,7 +107,7 @@ async function findKey(
       const same = provider === chosen.provider;
       const model = same ? chosen.model : DEFAULT_MODEL[provider];
       return {
-        settings: { ...chosen, provider, model, effort: same ? chosen.effort : "default" },
+        settings: { ...chosen, provider, model, effort: same ? chosen.effort : DEFAULT_EFFORT[provider] },
         apiKey,
         ...(provider !== chosen.provider ? { fellBackFrom: chosen.provider } : {}),
       };
@@ -2792,7 +2793,7 @@ async function main(): Promise<void> {
   }
 
   // ---------- Button on webpages (src/edge.ts) ----------
-  // Off until turned on here. Turning it on asks Safari for site access; the
+  // On from a fresh install; it shows on sites Scout can access. Turning it on here asks Safari for site access; the
   // user may grant every site or fewer, and the button shows where granted.
   const pageOn = el<HTMLInputElement>("pagebutton-on");
   const pageSides = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="pagebutton-side"]'));
@@ -2882,7 +2883,7 @@ async function main(): Promise<void> {
       keyInput.value = "";
       keyError.textContent = "";
       keyInput.removeAttribute("aria-invalid");
-      const effort = effortForId(p, DEFAULT_MODEL[p], settings.effort, knownModels[p]) ?? "default";
+      const effort = effortForId(p, DEFAULT_MODEL[p], DEFAULT_EFFORT[p], knownModels[p]) ?? "default";
       void persist({ ...settings, provider: p, model: DEFAULT_MODEL[p], effort }).then(refreshSettings);
     });
   }
