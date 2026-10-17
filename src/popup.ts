@@ -3,8 +3,8 @@
 // Part 1: the Scout panel ("scout-panel"). One conversation per tab, a port to
 // the background worker while open, and no use in Private Browsing.
 // Part 3: Scout mode runs in the worker (src/server/task-host.ts); the panel
-// shows its action log, Take control / Stop, and the sensitive-action
-// confirmation, and the Permissions screen in Settings.
+// shows its action log, Take control, and the sensitive-action confirmation
+// (Stop is the composer's button), and the Permissions screen in Settings.
 import { AgentControl } from "./agent/control";
 import type { Action, ActionResult } from "./actions/executor";
 import type { Snapshot } from "./snapshot/snapshot";
@@ -784,9 +784,18 @@ async function main(): Promise<void> {
     else if (e.key === "Tab") closeModelMenu(true);
   });
 
+  // Owner, 2026-10-17: one button next to the model picker starts and stops
+  // everything. It is the blue Send arrow, and the blue Stop square while an
+  // answer streams, a Scout mode task runs, or Find coupons runs. The chat
+  // itself never shows its own Stop.
+  function syncComposer(): void {
+    const running = !!activeChat || !!task || !!couponRun;
+    send.hidden = running;
+    stop.hidden = !running;
+  }
+
   function setBusy(busy: boolean): void {
-    send.hidden = busy;
-    stop.hidden = !busy;
+    syncComposer();
     plus.disabled = modelPill.disabled = busy;
     if (busy) closeModelMenu();
     question.disabled = busy;
@@ -1477,8 +1486,8 @@ async function main(): Promise<void> {
   // The trace sits inline in the thread under the user's message (owner
   // reference 2026-10-17): a "Working 11s" line, the model's own short
   // narration, muted "Browsed" rows for each batch of actions, rejected or
-  // denied actions in red, and Take control / Stop while it runs. When the
-  // task ends the line becomes "Finished 1m 43s" with a chevron that folds
+  // denied actions in red, and Take control while it runs (Stop is the
+  // composer's button, next to the model picker). When the task ends the line becomes "Finished 1m 43s" with a chevron that folds
   // the trace, and the outcome follows as a normal message. The plain-language
   // action log (spec 8.5) is kept under a collapsed "Steps" row. Events arrive
   // on the port (task.event) for this tab; a reopened panel catches up with
@@ -1500,7 +1509,6 @@ async function main(): Promise<void> {
     stepsSummary: HTMLElement;
     controls: HTMLElement;
     take: HTMLButtonElement;
-    stopBtn: HTMLButtonElement;
     /** The current "Browsed" row, while consecutive actions are grouped into it. */
     group: { row: HTMLElement; label: HTMLElement; count: number } | null;
     state: string;
@@ -1619,17 +1627,13 @@ async function main(): Promise<void> {
     take.type = "button";
     take.className = "btn";
     take.textContent = state === "paused" ? "Resume" : "Take control";
-    const stopBtn = document.createElement("button");
-    stopBtn.type = "button";
-    stopBtn.className = "btn";
-    stopBtn.textContent = "Stop";
-    if (opts.takeControl !== false) controls.append(take);
-    controls.append(stopBtn);
+    controls.append(take);
     body.append(steps);
     // Controls sit outside the folded part, so they are always reachable.
-    node.append(head, body, controls);
+    node.append(head, body);
+    if (opts.takeControl !== false) node.append(controls);
     log.appendChild(node);
-    const t = { entries: [] as Entry[], startedAt, node, head, headText, body, stepsList, stepsSummary, controls, take, stopBtn, group: null, state, timer: null } as Omit<TaskUi, "id" | "goal" | "source" | "promptId" | "resolve" | "finished">;
+    const t = { entries: [] as Entry[], startedAt, node, head, headText, body, stepsList, stepsSummary, controls, take, group: null, state, timer: null } as Omit<TaskUi, "id" | "goal" | "source" | "promptId" | "resolve" | "finished">;
     for (const e of entries) {
       t.entries.push(e);
       renderEntry(t as TaskUi, e);
@@ -1642,8 +1646,7 @@ async function main(): Promise<void> {
     refreshHead();
     t.timer = setInterval(refreshHead, 1000);
     t.take.addEventListener("click", onTakeControl);
-    t.stopBtn.addEventListener("click", onStopTask);
-    send.hidden = true;
+    syncComposer();
     plus.disabled = modelPill.disabled = true;
     for (const i of modeInputs) i.disabled = true;
     closeModelMenu();
@@ -1662,7 +1665,7 @@ async function main(): Promise<void> {
     hideConfirm();
     // A task asked for mid-answer (run_task) ends while the answer still streams: the composer stays busy then.
     const busy = !!activeChat;
-    send.hidden = busy;
+    syncComposer();
     plus.disabled = modelPill.disabled = busy;
     for (const i of modeInputs) i.disabled = busy;
     updateEmpty();
@@ -1701,7 +1704,7 @@ async function main(): Promise<void> {
     setTaskState("running");
     status.textContent = "Scout mode is running.";
     void request(toWorker, "task.decide", { task_id: task.id, prompt_id: promptId, decision }).catch(() => undefined);
-    task.stopBtn.focus();
+    stop.focus();
   }
   confirmOnce.addEventListener("click", () => decide("once"));
   confirmAlways.addEventListener("click", () => decide("always"));
@@ -1786,7 +1789,7 @@ async function main(): Promise<void> {
     const finished = new Promise<{ status: string; summary: string; usage: Usage }>((r) => (resolve = r));
     const t: TaskUi = { ...buildTrace([], "running", Date.now()), id: started.task_id, goal, source, promptId: null, resolve, finished };
     showTrace(t);
-    t.stopBtn.focus();
+    stop.focus();
     const out = await finished;
     task = null;
     finishTrace(t, out.status);
@@ -1931,7 +1934,8 @@ async function main(): Promise<void> {
     scrollToEnd();
   }
 
-  function askMoreCodes(state: BatchState, t: { body: HTMLElement; controls: HTMLElement; stopBtn: HTMLButtonElement }): Promise<boolean> {
+  /** The question after a batch with no saving; the composer's Stop (or the overlay's) answers it "no". */
+  function askMoreCodes(state: BatchState, t: { node: HTMLElement }, stopped: AbortSignal): Promise<boolean> {
     return new Promise((resolve) => {
       const box = document.createElement("div");
       box.className = "more";
@@ -1957,23 +1961,24 @@ async function main(): Promise<void> {
       noBtn.textContent = "Stop here";
       row.append(yesBtn, noBtn);
       box.append(p, row);
-      t.controls.insertAdjacentElement("beforebegin", box);
+      t.node.appendChild(box);
       status.textContent = "Waiting for you: try more codes?";
       scrollToEnd();
       yesBtn.focus();
       trace("coupons:ask-more tried=" + state.tried + " remaining=" + state.remaining + " next=" + state.next);
       const done = (ok: boolean): void => {
         box.remove();
-        t.stopBtn.removeEventListener("click", no);
+        stopped.removeEventListener("abort", no);
         trace("coupons:more " + (ok ? "yes" : "no"));
-        if (ok) t.stopBtn.focus();
+        if (ok) stop.focus();
         resolve(ok);
       };
       const yes = (): void => done(true);
       const no = (): void => done(false);
+      if (stopped.aborted) return done(false);
       yesBtn.addEventListener("click", yes);
       noBtn.addEventListener("click", no);
-      t.stopBtn.addEventListener("click", no);
+      stopped.addEventListener("abort", no, { once: true });
     });
   }
 
@@ -2006,16 +2011,14 @@ async function main(): Promise<void> {
     };
     const timer = setInterval(() => (t.headText.textContent = "Working " + elapsedText(Date.now() - t.startedAt)), 1000);
     t.headText.textContent = "Working 0s";
-    send.hidden = true;
+    syncComposer();
     plus.disabled = modelPill.disabled = true;
     for (const i of modeInputs) i.disabled = true;
     closeModelMenu();
     status.textContent = "Finding coupons. The web search can take a couple of minutes.";
     updateEmpty();
     scrollToEnd();
-    t.stopBtn.focus();
-    const onStop = (): void => run.stop();
-    t.stopBtn.addEventListener("click", onStop);
+    stop.focus();
     void overlay.show();
     let used: Usage = { inputTokens: 0, outputTokens: 0 };
     let summary = "";
@@ -2036,7 +2039,6 @@ async function main(): Promise<void> {
       const merchant = identifyMerchant(snap.url, meta ?? {});
       trace("coupons:merchant " + (merchant.host === merchant.domain ? "store-host" : "other-host") + (meta?.siteName ? " named" : ""));
       const ac = new AbortController();
-      t.stopBtn.addEventListener("click", () => ac.abort(), { once: true });
       run.signal.addEventListener("abort", () => ac.abort(), { once: true });
       // Checkout summaries sit late in big pages: read more of them than the agent does.
       // Waits run here, not in the page, so they outlast a page that reloads.
@@ -2145,7 +2147,7 @@ async function main(): Promise<void> {
             delayMs: 250,
             askMore: async (state) => {
               void overlay.state("waiting");
-              const more = await askMoreCodes(state, t);
+              const more = await askMoreCodes(state, t, run.signal);
               void overlay.state("running");
               return more;
             },
@@ -2188,14 +2190,12 @@ async function main(): Promise<void> {
       current.finish("error", summary, used);
     }
     clearInterval(timer);
-    t.stopBtn.removeEventListener("click", onStop);
-    t.controls.remove();
     t.headText.textContent = (statusOf === "done" ? "Finished " : statusOf === "stopped" ? "Stopped " : "Ended ") + elapsedText(Date.now() - t.startedAt);
     void overlay.hide();
     await saveEntry("coupons", ask, summary);
     control = null;
     couponRun = null;
-    send.hidden = false;
+    syncComposer();
     plus.disabled = modelPill.disabled = false;
     for (const i of modeInputs) i.disabled = false;
     updateEmpty();
@@ -2232,7 +2232,14 @@ async function main(): Promise<void> {
       else void ask(p);
     });
   }
+  // The composer's Stop halts whatever runs: a coupon run, a Scout mode task,
+  // and the answer streaming around a task the model asked for.
   stop.addEventListener("click", () => {
+    if (couponRun) {
+      trace("ui:stop-click coupons");
+      couponRun.stop();
+    }
+    if (task) onStopTask();
     const id = activeChat;
     if (!id) return;
     trace("ui:stop-click chat");
