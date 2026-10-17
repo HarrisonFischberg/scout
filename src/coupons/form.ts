@@ -95,18 +95,28 @@ export function revealTargets(snap: Snapshot, hints?: FormHints): SnapElement[] 
   return [...new Set([...named, ...hinted, ...summary])];
 }
 
+// An applied code shown as a pill with an x-mark and nothing else: "× SAVE10",
+// "SAVE10 ×" (Shopify cart drawers; live sweep 2026-10-17, Brumate). Only the
+// exact code counts, so "× Synthetic bracket" (a product) never does.
+function isCodePill(name: string, want: string): boolean {
+  const bare = name.trim();
+  const lead = /^(?:[×✕✖✗]|x\s)\s*(.+)$/i.exec(bare);
+  const trail = /^(.+?)\s*(?:[×✕✖✗]|\sx)$/i.exec(bare);
+  return (lead?.[1] ?? "").trim().toUpperCase() === want || (trail?.[1] ?? "").trim().toUpperCase() === want;
+}
+
 /** The control that removes `code` (or any applied coupon) from the order, or null when none is safe to click. */
 export function removeTarget(snap: Snapshot, code: string): SnapElement | null {
   const want = code.toUpperCase();
+  const clickable = (e: SnapElement): boolean => (isButton(e) || e.role === "link") && !e.disabled && !isOrderLike(e, snap);
   const candidates = snap.elements.filter(
     (e) =>
-      (isButton(e) || e.role === "link") &&
-      !e.disabled &&
+      clickable(e) &&
       (REMOVE_WORD.test(e.name.trim()) || REMOVE_HREF.test(e.href ?? "")) &&
-      (e.name.toUpperCase().includes(want) || COUPON_WORD.test(e.name) || REMOVE_HREF.test(e.href ?? "")) &&
-      !isOrderLike(e, snap),
+      (e.name.toUpperCase().includes(want) || COUPON_WORD.test(e.name) || REMOVE_HREF.test(e.href ?? "")),
   );
-  return candidates.find((e) => e.name.toUpperCase().includes(want)) ?? candidates[0] ?? null;
+  const pill = snap.elements.find((e) => clickable(e) && isCodePill(e.name, want));
+  return candidates.find((e) => e.name.toUpperCase().includes(want)) ?? pill ?? candidates[0] ?? null;
 }
 
 /** Lines in `after` that were not in `before`: messages the store just showed. */

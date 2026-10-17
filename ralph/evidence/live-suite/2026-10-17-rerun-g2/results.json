@@ -1,0 +1,86 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T17-29-26",
+  "results": [
+    {
+      "name": "Brumate",
+      "url": "https://brumate.com",
+      "group": "extra",
+      "outcome": "no codes found",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method page",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:pages listed=8 opened=8",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=3",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 17.7,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 17.8,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 17.8,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 21.2,
+          "stage": "coupons:method page"
+        },
+        {
+          "t": 22.6,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 22.6,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 141.8,
+          "stage": "coupons:pages listed=8 opened=8"
+        },
+        {
+          "t": 141.8,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=3"
+        },
+        {
+          "t": 141.8,
+          "stage": "coupons:status no_codes"
+        },
+        {
+          "t": 141.8,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "d48645c2fd",
+      "startedAt": "2026-10-17T17:29:27.024Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.brumate.com/"
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for BruMate codes. No code posted for BruMate could be found. 3 codes shown masked or behind a button could not be read, so they were not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Found the coupon box. Searching the web for BruMate codes…",
+        "I searched the web for BruMate codes. No code posted for BruMate could be found. 3 codes shown masked or behind a button could not be read, so they were not tested."
+      ],
+      "attempts": [],
+      "seconds": 146
+    }
+  ]
+}

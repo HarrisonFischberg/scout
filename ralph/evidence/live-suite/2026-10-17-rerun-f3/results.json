@@ -1,0 +1,100 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T17-14-30",
+  "results": [
+    {
+      "name": "Brumate",
+      "url": "https://brumate.com",
+      "group": "extra",
+      "outcome": "applied",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method page",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:pages listed=8 opened=8",
+        "coupons:candidates store=0 verified=14 reported=2 dropped=0 masked=6",
+        "coupons:attempt 1 saving",
+        "coupons:status done best applied",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 17.4,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 17.5,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 17.5,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 21.5,
+          "stage": "coupons:method page"
+        },
+        {
+          "t": 22.4,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 22.4,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 111.5,
+          "stage": "coupons:pages listed=8 opened=8"
+        },
+        {
+          "t": 111.5,
+          "stage": "coupons:candidates store=0 verified=14 reported=2 dropped=0 masked=6"
+        },
+        {
+          "t": 113.2,
+          "stage": "coupons:attempt 1 saving"
+        },
+        {
+          "t": 113.5,
+          "stage": "coupons:status done best applied"
+        },
+        {
+          "t": 113.5,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "44d043d3f4",
+      "startedAt": "2026-10-17T17:14:30.326Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.brumate.com/"
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for BruMate codes. Found 16 codes: 14 codes read on the pages that post them and 2 codes the search reported from pages it returned. 6 codes shown masked or behind a button could not be read, so they were not tested. I tested 1 code. LL10-XEEG0MNF is the best: your total drops from $149.99 to $139.99 (you save $10.00, 7% off). It's applied to your cart, and I didn't go to checkout. Conditions seen with it: $10 off; cannot be stacked; excludes sale items and gift cards.\n\nCode\tResult\tWhere it was found\nLL10-XEEG0MNF\tsaves $10.00, total $139.99\tseen on brumate.tenereteam.com\n\nThe store kept the earlier code on the order and shows no remove button I can use safely, so I stopped testing there.\n\nCheckout can still change the final price, for example tax, shipping, or whether the code applies to later orders.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Found the coupon box. Searching the web for BruMate codes…",
+        "I searched the web for BruMate codes. Found 16 codes: 14 codes read on the pages that post them and 2 codes the search reported from pages it returned. 6 codes shown masked or behind a button could not be read, so they were not tested.",
+        "Testing 16 codes on your cart, one at a time…"
+      ],
+      "attempts": [
+        {
+          "code": "LL10-XEEG0MNF",
+          "text": "LL10-XEEG0MNF · $139.99 · saves $10.00 · Saves $10.00. · seen on brumate.tenereteam.com",
+          "source": "https://brumate.tenereteam.com/coupons",
+          "evidence": "LL10-XEEG0MNF ... 10$ cheaper at least when using Brumate discount code. ($10 off; cannot be stacked; excludes sale items and gift cards)",
+          "good": true
+        }
+      ],
+      "seconds": 118
+    }
+  ]
+}

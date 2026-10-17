@@ -47,6 +47,8 @@ export interface ChatRequest {
   webSearchMaxUses?: number;
   /** Also let the model read pages it found (Anthropic web fetch). */
   webFetch?: boolean;
+  /** Max page fetches per request (Anthropic `max_uses`). Default: `webSearchMaxUses`. */
+  webFetchMaxUses?: number;
   signal?: AbortSignal;
 }
 
@@ -60,8 +62,19 @@ export interface Usage {
 export type StreamEvent =
   | { type: "text"; delta: string }
   | { type: "tool_call"; id: string; name: string; input: unknown }
-  /** A page the provider's web search returned or cited; `text` is the quoted passage of a citation (Anthropic). */
-  | { type: "source"; url: string; title?: string; text?: string }
+  /**
+   * A page the provider's web search returned, fetched, or cited. `text` is
+   * the quoted passage of a citation; `page` is the text of a page the
+   * model fetched (Anthropic web fetch); `age` is the search result's age.
+   */
+  | { type: "source"; url: string; title?: string; text?: string; page?: string; age?: string }
+  /**
+   * The outcome of a page the model asked the provider to fetch (Anthropic
+   * web fetch): `ok` with the text length, or the provider's error code
+   * ("url_not_accessible" for a 403, "unavailable", …). A failed fetch is
+   * never a source.
+   */
+  | { type: "fetch"; url: string; ok: boolean; chars?: number; error?: string }
   | { type: "usage"; usage: Usage }
   | { type: "done" };
 

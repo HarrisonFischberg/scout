@@ -28,6 +28,16 @@ describe("totals in any currency and format", () => {
     expect(readTotal("Zwischensumme 120,00 €\nGesamtsumme 1.234,56 €")).toEqual({ amount: 1234.56, currency: "€" });
     expect(readTotal("Total\nUSD $170.00")).toEqual({ amount: 170, currency: "$" });
     expect(readTotal("Order total: £89")).toEqual({ amount: 89, currency: "£" });
+    // Live sweep 2026-10-17 (Brumate): a cart drawer whose only total sits on the Checkout button.
+    expect(readTotal("BrüMate E-Gift Card $10\nYou're only $80 away from free shipping!\nAdd Discount Code\nCheckout - $10")).toEqual({ amount: 10, currency: "$" });
+    expect(readTotal("CHECKOUT+ · $25.69")).toEqual({ amount: 25.69, currency: "$" });
+    expect(readTotal("Pay now €12,50")).toEqual({ amount: 12.5, currency: "€" });
+    // A labelled total wins over the button amount (order protection can sit in the button's figure);
+    // the button amount wins over a Subtotal; a Subtotal alone is still not a total.
+    expect(readTotal("Total $20.00\nCHECKOUT+ · $25.69")).toEqual({ amount: 20, currency: "$" });
+    expect(readTotal("Subtotal $20.00\nCHECKOUT+ · $25.69")).toEqual({ amount: 25.69, currency: "$" });
+    expect(readTotal("Subtotal $20.00\nShipping calculated at checkout")).toBeNull();
+    expect(readTotal("You're only $80 away from free shipping!")).toBeNull();
     expect(readTotal("Total ¥12,800")).toEqual({ amount: 12800, currency: "¥" });
     expect(readTotal("Amount due CHF 99.00")).toEqual({ amount: 99, currency: "CHF" });
     expect(readTotal("Total 499,00 kr")).toEqual({ amount: 499, currency: "kr" });
@@ -91,6 +101,15 @@ describe("finding the coupon box", () => {
     const shopify = snap([el("e1", "button", "Remove Synthetic bracket"), el("e2", "button", "Remove SAVE10")]);
     expect(removeTarget(shopify, "SAVE10")?.ref).toBe("e2");
     expect(removeTarget(snap([el("e1", "button", "Remove")]), "SAVE10")).toBeNull();
+    // Live sweep 2026-10-17, Brumate: the applied code is a "× CODE" pill with no "Remove" text.
+    const drawer = snap([el("e1", "button", "× Synthetic bracket"), el("e2", "button", "× LL10-XEEG0MNF"), el("e3", "button", "SAVE10 ×")]);
+    expect(removeTarget(drawer, "LL10-XEEG0MNF")?.ref).toBe("e2");
+    expect(removeTarget(drawer, "SAVE10")?.ref).toBe("e3");
+    expect(removeTarget(drawer, "XMAS20")).toBeNull();
+    // Brumate's drawer, as the snapshot names it: the × button's SVG title, next to a product's remove button.
+    const brumate = snap([el("e1", "button", "Close cart drawer"), el("e2", "button", "Remove Paragon Hydration Pack from cart"), el("e3", "button", "Remove discount"), el("e4", "button", "Checkout - $139.99")]);
+    expect(removeTarget(brumate, "LL10-XEEG0MNF")?.ref).toBe("e3");
+    expect(removeTarget(snap([el("e1", "button", "Xtra 20")]), "TRA 20")).toBeNull();
   });
 
   it("reads what the store just said", () => {
@@ -118,6 +137,10 @@ interface StoreOpts {
   stack?: boolean;
   /** Each applied code gets a "Remove CODE" button. */
   removable?: boolean;
+  /** The "Remove CODE" button does nothing. */
+  brokenRemove?: boolean;
+  /** The coupon box disappears while a code is applied (a drawer that shows a pill instead). */
+  boxGoneWhenApplied?: boolean;
   inputName?: string;
   applyName?: string;
 }
@@ -142,8 +165,8 @@ function store(o: StoreOpts): CouponPage & { applied: string[]; clicks: string[]
       }
       const els: SnapElement[] = [];
       if (!open) els.push(el("t1", "button", "Have a promo code?", { expanded: false }));
-      if (open) els.push(el("i1", "textbox", o.inputName ?? "Discount code"), el("a1", "button", o.applyName ?? "Apply"));
-      if (o.removable) s.applied.forEach((c, i) => els.push(el("r" + (i + 1), "button", "Remove " + c)));
+      if (open && !(o.boxGoneWhenApplied && s.applied.length)) els.push(el("i1", "textbox", o.inputName ?? "Discount code"), el("a1", "button", o.applyName ?? "Apply"));
+      if (o.removable || o.brokenRemove) s.applied.forEach((c, i) => els.push(el("r" + (i + 1), "button", "Remove " + c)));
       els.push(el("p1", "button", "Place order"));
       // Like real stores, each applied code is listed in the order summary.
       const lines = s.applied.map((c) => "Discount (" + c + ")");
@@ -171,7 +194,7 @@ function store(o: StoreOpts): CouponPage & { applied: string[]; clicks: string[]
         } else if (o.message) msg = "Sorry, " + typed + " isn't a valid code.";
         settle();
       }
-      if (a.ref.startsWith("r")) {
+      if (a.ref.startsWith("r") && !o.brokenRemove) {
         s.applied.splice(Number(a.ref.slice(1)) - 1, 1);
         settle();
       }
@@ -181,7 +204,7 @@ function store(o: StoreOpts): CouponPage & { applied: string[]; clicks: string[]
   return s;
 }
 
-const codes = (...list: string[]) => list.map((code) => ({ code, origin: "sourced" as const, sourceUrl: "https://deals.test/" }));
+const codes = (...list: string[]) => list.map((code) => ({ code, origin: "verified" as const, sourceUrl: "https://deals.test/" }));
 
 describe("the page path on different kinds of checkout", () => {
   it("opens a coupon box hidden behind a toggle", async () => {
@@ -218,13 +241,53 @@ describe("the page path on different kinds of checkout", () => {
     expect(p.applied).toEqual(["SAVE20"]);
   });
 
-  it("stops at the first working code when the store keeps it and offers no safe remove button", async () => {
-    const p = store({ pct: { SAVE10: 10, SAVE20: 20 }, stack: true });
-    const out = await runCouponSearch({ page: p, codes: codes("SAVE10", "SAVE20", "NOPE"), settleMs: 300 });
-    expect(out.attempts.map((a) => a.code)).toEqual(["SAVE10"]);
+  it("stops when the store stacks the next code on a kept one it offers no safe remove button for", async () => {
+    const p = store({ pct: { SAVE10: 10, SAVE20: 20 }, stack: true, message: true });
+    const out = await runCouponSearch({ page: p, codes: codes("SAVE10", "NOPE", "SAVE20", "NOPE2"), settleMs: 300 });
+    // A refused code leaves the kept one on: not the kept code's total, and not a reason to stop.
+    expect(out.attempts.map((a) => [a.code, a.total, a.accepted])).toEqual([
+      ["SAVE10", 90, null],
+      ["NOPE", null, false],
+    ]);
+    expect(out.attempts[1]?.note).toBe("The store kept SAVE10 on the order and did not take this code in its place.");
     expect(out.best?.code).toBe("SAVE10");
     expect(out.applied).toBe(true);
-    expect(couponSummary(out)).toContain("stopped testing there");
+    expect(couponSummary(out)).toContain("added SAVE20 on top of it, so the total now counts both codes");
+  });
+
+  // Live sweep 2026-10-17, Brumate (second run): the summary must say which step
+  // failed when a code stays on, so the next diagnosis needs no screenshot.
+  it("names the step that failed when a kept code cannot be taken off", async () => {
+    const broken = store({ pct: { SAVE10: 10, SAVE20: 20 }, brokenRemove: true, message: true });
+    const a = await runCouponSearch({ page: broken, codes: codes("SAVE10", "SAVE20"), settleMs: 300, maxSettleMs: 300 });
+    expect(a.attempts.map((x) => x.code)).toEqual(["SAVE10"]);
+    expect(a.note).toBe("The store kept the earlier code on the order: I pressed its remove control, but the total did not go back, so I stopped testing there.");
+    const gone = store({ pct: { SAVE10: 10, SAVE20: 20 }, boxGoneWhenApplied: true, message: true });
+    const b = await runCouponSearch({ page: gone, codes: codes("SAVE10", "SAVE20"), settleMs: 300 });
+    expect(b.attempts.map((x) => x.code)).toEqual(["SAVE10"]);
+    expect(b.note).toBe(
+      "The store kept the earlier code on the order and shows no remove button I can use safely, and its coupon box is not available while that code is on, so I stopped testing there.",
+    );
+    expect(b.best?.code).toBe("SAVE10");
+    expect(b.applied).toBe(true);
+  });
+
+  // Live sweep 2026-10-17, Brumate: a drawer with no remove control that swaps
+  // the applied code for the next working one. Testing used to stop at code 1 of 24.
+  it("keeps testing when the store swaps a kept code for the next working one", async () => {
+    const p = store({ pct: { SAVE10: 10, SAVE20: 20 }, message: true });
+    const out = await runCouponSearch({ page: p, codes: codes("SAVE10", "NOPE", "SAVE20", "NOPE2"), settleMs: 300 });
+    expect(out.attempts.map((a) => [a.code, a.total])).toEqual([
+      ["SAVE10", 90],
+      ["NOPE", null],
+      ["SAVE20", 80],
+      ["NOPE2", null],
+    ]);
+    expect(out.note).toBeUndefined();
+    expect(out.best?.code).toBe("SAVE20");
+    expect(out.applied).toBe(true);
+    expect(p.applied).toEqual(["SAVE20"]);
+    expect(p.ordered).toBe(0);
   });
 
   it("measures savings in euros and says them in euros", async () => {

@@ -40,11 +40,11 @@ const entry = (daysAgo: number, q = "q"): HistoryEntry => ({ at: NOW - daysAgo *
 
 describe("settings", () => {
   it("defaults when storage is empty or malformed", async () => {
-    expect(parseSettings(undefined)).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5", effort: "default", retention: "7" });
+    expect(parseSettings(undefined)).toEqual({ provider: "anthropic", model: "claude-haiku-5-5", effort: "high", retention: "7" });
     expect(parseSettings({ provider: "evil", model: 5, effort: "turbo", retention: "999" })).toEqual({
       provider: "anthropic",
-      model: "claude-sonnet-5-5",
-      effort: "default",
+      model: "claude-haiku-5-5",
+      effort: "high",
       retention: "7",
     });
     expect(await loadSettings(fakeStorage())).toEqual(parseSettings({}));
@@ -52,6 +52,11 @@ describe("settings", () => {
 
   it("uses the provider's default model when the model is blank", () => {
     expect(parseSettings({ provider: "openai", model: "  " }).model).toBe("gpt-5");
+    expect(parseSettings({ provider: "openai" }).effort).toBe("default");
+  });
+
+  it("keeps a model saved before efforts existed at its own default effort", () => {
+    expect(parseSettings({ provider: "anthropic", model: "claude-sonnet-5-5" })).toMatchObject({ model: "claude-sonnet-5-5", effort: "default" });
   });
 
   it("round-trips a saved choice", async () => {

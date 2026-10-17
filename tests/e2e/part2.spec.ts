@@ -238,7 +238,8 @@ test("Stop ends a streaming answer and keeps what arrived", async ({ page }) => 
   await openPopup(page);
   await ask(page, "Count slowly [mock:slow]");
   await expect(lastAnswer(page)).toContainText("One two");
-  await page.getByRole("button", { name: "Stop" }).click();
+  await expect(page.getByRole("button", { name: "Send" })).toBeHidden();
+  await page.locator(".composer-foot").getByRole("button", { name: "Stop" }).click();
   await expect(page.getByRole("log").getByText("Stopped.", { exact: true })).toBeVisible();
   await expect(lastAnswer(page)).not.toContainText("sixteen");
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
