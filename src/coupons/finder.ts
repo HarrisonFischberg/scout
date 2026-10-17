@@ -755,7 +755,7 @@ export interface DiscoveryInfo {
   /** Pages opened in a background Safari tab because the web reader could not load them, and codes found there. */
   browserOpened?: number;
   browserCodes?: number;
-  /** Pages that needed the browser and were not opened, because the user said no. */
+  /** Pages that needed the browser and were not opened: Scout has no access to those sites in Safari. */
   browserDeclined?: number;
 }
 
@@ -781,7 +781,11 @@ export function discoveryLine(d: DiscoveryInfo): string {
       " The web reader couldn't load " + plural(d.browserOpened, "page") + ", so I opened " + (d.browserOpened === 1 ? "it" : "them") + " in Safari and found " +
       (d.browserCodes ? plural(d.browserCodes, "code") + " there (found on the page, not yet tested)." : "no code there.");
   }
-  if (d.browserDeclined) line += " " + plural(d.browserDeclined, "page") + " the web reader couldn't load " + (d.browserDeclined === 1 ? "was" : "were") + " not opened in Safari.";
+  if (d.browserDeclined) {
+    line +=
+      " " + plural(d.browserDeclined, "page") + " the web reader couldn't load " + (d.browserDeclined === 1 ? "was" : "were") +
+      " not opened in Safari, because Scout for Safari isn't allowed on " + (d.browserDeclined === 1 ? "that site" : "those sites") + " (Safari Settings, Extensions).";
+  }
   return line;
 }
 
