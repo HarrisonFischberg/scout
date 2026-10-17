@@ -14,8 +14,10 @@ export type ContentRequest =
   // Store cart API (Shopify, WooCommerce, BigCommerce), T031/T040: same-origin, user's session, never checkout.
   | { type: "scout:cart-info" }
   | { type: "scout:cart-update"; discount: string }
-  // Codes the store's home page advertises (same origin); only the codes come back.
+  // Codes the store's home page advertises (same origin); only the codes and the words around them come back.
   | { type: "scout:store-codes" }
+  // How the page names the store (meta tags), to identify the merchant behind a checkout host.
+  | { type: "scout:page-meta" }
   | { type: "scout:reload" };
 
 /** Global the content script registers its handler under (isolated world). */

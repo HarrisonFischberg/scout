@@ -1,14 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Drives the built popup (run `npm run build` first). The mock model suggests
-// 5 synthetic codes; common-pattern guesses follow (T031). A fake tab simulates
-// a non-Shopify shop (SAVE10 = 10%, SAVE20 = 20%, the rest refused with a
-// message, as real stores do), so the page path (coupon box) is used. No live provider call, no merchant site.
+// Drives the built popup (run `npm run build` first). The mock search returns
+// one page (searched and fetched, with its text) and the model lists 5
+// synthetic codes from it; nothing is guessed (owner rule 2026-10-17). A fake
+// tab simulates a non-Shopify shop (SAVE10 = 10%, SAVE20 = 20%, the rest
+// refused with a message, as real stores do), so the page path (coupon box)
+// is used. No live provider call, no merchant site.
 // Not run in the sandbox (launch-blockers 12).
 function sse(events: Array<Record<string, unknown>>): string {
   return events.map((e) => "event: " + String(e.type) + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
 }
 
+const CODES = ["WELCOME5", "SAVE10", "FREESHIP", "SAVE20", "BOGUS99"];
 const CODES_TURN = sse([
   { type: "message_start", message: { usage: { input_tokens: 15, output_tokens: 1 } } },
   {
@@ -20,16 +23,30 @@ const CODES_TURN = sse([
     },
   },
   { type: "content_block_stop", index: 0 },
-  { type: "content_block_start", index: 1, content_block: { type: "text", text: "" } },
+  // The page, fetched: its text names every code, so each counts as verified.
   {
-    type: "content_block_delta",
+    type: "content_block_start",
     index: 1,
-    delta: {
-      type: "text_delta",
-      text: ["WELCOME5", "SAVE10", "FREESHIP", "SAVE20", "BOGUS99"].map((c) => c + " | https://deals.test/codes").join("\n"),
+    content_block: {
+      type: "web_fetch_tool_result",
+      content: {
+        type: "web_fetch_result",
+        url: "https://deals.test/codes",
+        content: { type: "document", source: { type: "text", media_type: "text/plain", data: "Synthetic deals\n" + CODES.map((c) => "Use code " + c + " at checkout").join("\n") }, title: "Synthetic deals" },
+      },
     },
   },
   { type: "content_block_stop", index: 1 },
+  { type: "content_block_start", index: 2, content_block: { type: "text", text: "" } },
+  {
+    type: "content_block_delta",
+    index: 2,
+    delta: {
+      type: "text_delta",
+      text: CODES.map((c) => c + ' | https://deals.test/codes | "Use code ' + c + ' at checkout" | -').join("\n"),
+    },
+  },
+  { type: "content_block_stop", index: 2 },
   { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 12 } },
   { type: "message_stop" },
 ]);
@@ -114,27 +131,23 @@ async function openPopup(
   return { clicks, asks };
 }
 
-// The page path waits ~0.65 s per code (settle + polite pause), so 25 codes take ~16 s.
+// The page path waits ~0.65 s per code (settle + polite pause).
 const BATCH_WAIT = { timeout: 45_000 };
 
-// Owner, 2026-10-16: after 25 codes, a saving means the best code is applied
-// with no prompt; no saving means "find 25 more?".
-test("coupon run tests a batch of 25, applies the best without asking, never clicks order", async ({ page }) => {
+test("coupon run tests every code found online, applies the best, never clicks order, and names each code's page", async ({ page }) => {
   test.setTimeout(90_000);
   const { clicks } = await openPopup(page);
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
-  await expect(answer).toContainText(
-    "I tested 25 codes. SAVE20 is the best: your total drops from $100.00 to $80.00 (you save $20.00, 20% off).",
-    BATCH_WAIT,
-  );
+  await expect(answer).toContainText("I searched the web for shop codes. Found 5 codes read on the pages that post them.", BATCH_WAIT);
+  await expect(answer).toContainText("I tested 5 codes. SAVE20 is the best: your total drops from $100.00 to $80.00 (you save $20.00, 20% off).");
   await expect(answer).toContainText("It's applied to your cart, and I didn't go to checkout.");
+  await expect(answer).not.toContainText("guess");
   await expect(page.locator("#coupons-more")).toBeHidden();
   // The trace is folded by default: open it to read the code lines.
   await page.locator("#task .trace-head").click();
   const rows = page.locator("#task .attempt");
-  await expect(rows).toHaveCount(25);
-  // Codes found online come first and link to their page; guesses are labeled.
+  await expect(rows).toHaveCount(5);
   await expect(rows.nth(0)).toContainText("WELCOME5");
   await expect(rows.nth(0)).toContainText("$100.00");
   await expect(rows.nth(1)).toContainText("SAVE10");
@@ -142,56 +155,50 @@ test("coupon run tests a batch of 25, applies the best without asking, never cli
   await expect(rows.nth(3)).toContainText("SAVE20");
   await expect(rows.nth(3)).toContainText("$80.00");
   for (let i = 0; i < 5; i++) {
-    await expect(rows.nth(i).getByRole("link", { name: "deals.test" })).toHaveAttribute("href", "https://deals.test/codes");
+    await expect(rows.nth(i).getByRole("link", { name: "seen on deals.test" })).toHaveAttribute("href", "https://deals.test/codes");
   }
-  await expect(rows.nth(5)).toContainText("Guess (common pattern)");
   // e3 is "Place order": it must never be clicked.
   expect(clicks).not.toContain("e3");
-  // 25 tries plus one re-apply of the winner, all on Apply (e2).
-  expect(clicks).toHaveLength(26);
+  // 5 tries plus one re-apply of the winner, all on Apply (e2).
+  expect(clicks).toHaveLength(6);
   expect(new Set(clicks)).toEqual(new Set(["e2"]));
 });
 
-test("no winning code: asks to find 25 more, searches again without repeating codes, stops on request", async ({ page }) => {
+test("no winning code: offers to search again, searches without repeating codes, says the cart is unchanged", async ({ page }) => {
   test.setTimeout(150_000);
   const { asks } = await openPopup(page, { pct: {} });
   await page.getByRole("button", { name: "Find coupons" }).click();
   await expect(page.locator("#coupons-more-text")).toHaveText(
-    "We've tried 25 codes and none lowered your total. Would you like Scout for Safari to find 25 more to test?",
+    "We've tried 5 codes and none lowered your total. Would you like Scout for Safari to search the web again, in other places, for more codes to test?",
     BATCH_WAIT,
   );
-  await expect(page.getByRole("button", { name: "Find 25 more" })).toBeFocused();
-  await page.getByRole("button", { name: "Find 25 more" }).click();
-  await expect(page.locator("#coupons-more-text")).toHaveText(
-    "We've tried 50 codes and none lowered your total. Would you like Scout for Safari to find 25 more to test?",
-    BATCH_WAIT,
-  );
-  // The second web search names the codes already tried so it looks for others.
+  await expect(page.getByRole("button", { name: "Search again" })).toBeFocused();
+  await page.getByRole("button", { name: "Search again" }).click();
+  const answer = page.getByRole("log").locator(".msg.assistant").last();
+  await expect(answer).toContainText("I tested 5 codes and none lowered your total of $100.00, so your cart is unchanged. I couldn't find any more codes to try.", BATCH_WAIT);
+  // The second web search names the codes already tried and looks in other places.
   expect(asks).toHaveLength(2);
   expect(asks[1]).toContain("Already tried, do not list these again");
   expect(asks[1]).toContain("WELCOME5, SAVE10, FREESHIP, SAVE20, BOGUS99");
+  expect(asks[1]).toContain("second search");
   // The trace is folded by default: open it to read the code lines.
   await page.locator("#task .trace-head").click();
   const rows = page.locator("#task .attempt");
-  await expect(rows).toHaveCount(50);
+  await expect(rows).toHaveCount(5);
   const codes = await rows.locator(".code").allTextContents();
-  expect(new Set(codes).size).toBe(50);
-  await page.getByRole("button", { name: "Stop here" }).click();
-  const answer = page.getByRole("log").locator(".msg.assistant").last();
-  await expect(answer).toContainText("I tested 50 codes and none lowered your total of $100.00.", BATCH_WAIT);
+  expect(new Set(codes).size).toBe(5);
 });
 
-// Owner report 2026-10-16 (tackform.com): a failed web search ended the run
-// before any code was tried. Now the guesses are still tested.
-test("a failed web search still tests guesses and says why the search failed", async ({ page }) => {
+// Owner rule 2026-10-17: a failed web search means nothing is tested; no guesses stand in for it.
+test("a failed web search tests nothing and says why", async ({ page }) => {
   test.setTimeout(90_000);
-  await openPopup(page, { status: 401 });
+  const { clicks } = await openPopup(page, { status: 401 });
   await page.getByRole("button", { name: "Find coupons" }).click();
-  const answer = page.getByRole("log").locator(".msg.assistant").last();
+  const answer = page.getByRole("log").locator(".msg.error").last();
   await expect(answer).toContainText(
-    "The web search failed. The API key was rejected. Check the key in Scout for Safari settings. I tested common guesses instead.",
+    "The web search ended early (The web search failed. The API key was rejected. Check the key in Scout for Safari settings). No code posted for shop could be found. Nothing was tested, and your cart is unchanged.",
     BATCH_WAIT,
   );
-  await expect(answer).toContainText("SAVE20 is the best: your total drops from $100.00 to $80.00");
-  await expect(page.locator("#task .attempt").first()).toContainText("Guess (common pattern)");
+  await expect(page.locator("#task .attempt")).toHaveCount(0);
+  expect(clicks).toEqual([]);
 });

@@ -33,7 +33,9 @@ type RawBlock = Record<string, unknown>;
  * often before the model has written its answer. The turn goes on when it is
  * sent back unchanged as the last assistant message; at most this many times.
  */
-export const MAX_RESUMES = 3;
+export const MAX_RESUMES = 4;
+/** Longest page the fetch tool hands the model (tokens). */
+export const FETCH_MAX_CONTENT_TOKENS = 40_000;
 
 /** The assistant turn as the API expects it back: no empty text blocks or null fields. */
 function resumable(content: Array<RawBlock | undefined>): RawBlock[] {
@@ -59,8 +61,18 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
         input_schema: t.parameters,
       }));
       if (req.webSearch) tools.push({ type: "web_search_20260209", name: "web_search", max_uses: req.webSearchMaxUses ?? 3 });
-      // Web fetch only opens URLs already in the conversation (e.g. search results).
-      if (req.webSearch && req.webFetch) tools.push({ type: "web_fetch_20260209", name: "web_fetch", max_uses: req.webSearchMaxUses ?? 3 });
+      // Web fetch only opens URLs already in the conversation (e.g. search
+      // results). Citations on, so quoted passages come back as page text;
+      // page size bounded so one long page cannot eat the budget.
+      if (req.webSearch && req.webFetch) {
+        tools.push({
+          type: "web_fetch_20260209",
+          name: "web_fetch",
+          max_uses: req.webFetchMaxUses ?? req.webSearchMaxUses ?? 3,
+          citations: { enabled: true },
+          max_content_tokens: FETCH_MAX_CONTENT_TOKENS,
+        });
+      }
       let inputTokens = 0;
       let outputTokens = 0;
       let webSearches = 0;
@@ -120,12 +132,26 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
             case "content_block_start": {
               const cb = ev.content_block ?? {};
               if (cb.type === "web_fetch_tool_result" && typeof cb.content?.url === "string") {
-                yield { type: "source", url: cb.content.url };
+                // The fetched document's text travels with the result: page
+                // text the coupon finder checks codes against.
+                const doc = cb.content.content ?? {};
+                const data = doc?.source?.data;
+                yield {
+                  type: "source",
+                  url: cb.content.url,
+                  ...(typeof doc?.title === "string" ? { title: doc.title } : {}),
+                  ...(typeof data === "string" && doc?.source?.type === "text" ? { page: data } : {}),
+                };
               }
               if (cb.type === "web_search_tool_result" && Array.isArray(cb.content)) {
                 for (const r of cb.content) {
                   if (r?.type === "web_search_result" && typeof r.url === "string") {
-                    yield { type: "source", url: r.url, ...(typeof r.title === "string" ? { title: r.title } : {}) };
+                    yield {
+                      type: "source",
+                      url: r.url,
+                      ...(typeof r.title === "string" ? { title: r.title } : {}),
+                      ...(typeof r.page_age === "string" ? { age: r.page_age } : {}),
+                    };
                   }
                 }
               }
