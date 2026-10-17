@@ -8,8 +8,10 @@ import type { Page } from "@playwright/test";
 // addInitScript so it extends that stub. Run `npm run build` first.
 //
 // Test hooks on window: __scoutDropPorts() disconnects every port from the
-// worker side (as when Safari unloads the worker page), and
-// __scoutPortCount() says how many ports were opened. Every message the panel
+// worker side (as when Safari unloads the worker page),
+// __scoutPortCount() says how many ports were opened, and
+// __scoutSendAs(message, sender) delivers a message with another sender (a
+// content script in a tab, Part 3). Every message the panel
 // posts on a port is also logged to sessionStorage "__scoutPortLog" (kept
 // across reloads) as { name, type, payload }.
 export async function withWorker(page: Page): Promise<void> {
@@ -37,14 +39,17 @@ export async function withWorker(page: Page): Promise<void> {
       },
     };
     runtime.onConnect = { addListener: (f: Fn) => connectListeners.push(f) };
-    runtime.sendMessage = async (m: unknown) => {
+    const deliver = async (m: unknown, sender: unknown): Promise<unknown> => {
       await workerReady;
       for (const f of messageListeners) {
-        const r = await (f as (m: unknown, s: unknown) => unknown)(copy(m), { id, url: location.href });
+        const r = await (f as (m: unknown, s: unknown) => unknown)(copy(m), copy(sender));
         if (r !== undefined) return copy(r);
       }
       return undefined;
     };
+    runtime.sendMessage = (m: unknown) => deliver(m, { id, url: location.href });
+    // Part 3: a content script in a tab sends with the tab's sender (the overlay pill's commands).
+    g.__scoutSendAs = (m: unknown, sender: Record<string, unknown>) => deliver(m, { id, ...sender });
 
     const ports: Array<{ disconnect(): void }> = [];
     runtime.connect = ({ name }: { name: string }) => {

@@ -29,6 +29,43 @@ import { createServer } from "node:http";
 
 const port = Number(process.argv[2] ?? process.env.MOCK_PORT ?? 4318);
 
+// ---------- Part 3: Scout mode ----------
+// A request whose tools include "act" is a Scout task. The goal (inside
+// <user_goal>) picks the scenario:
+//   [mock:scout actions=[...]]   turn 1 proposes this batch (a target may be
+//                                {"name":"Send"}, resolved to the ref of the element
+//                                with that name in the page structure); turn 2
+//                                finishes with a summary that echoes the results.
+//   [mock:scout slow]            every turn proposes five 400 ms waits (for Take
+//                                control and Stop).
+//   nothing                      finish at once.
+function scoutPlan(body) {
+  const messages = Array.isArray(body.messages) ? body.messages : [];
+  const first = textOf(messages[0]?.content);
+  const goal = /<user_goal>([\s\S]*?)<\/user_goal>/.exec(first)?.[1] ?? "";
+  const lastText = textOf(messages[messages.length - 1]?.content);
+  const turn = messages.filter((m) => m.role === "assistant").length;
+  const refs = new Map();
+  for (const m of lastText.matchAll(/^(e\d+) [\w-]+ "((?:[^"\\]|\\.)*)"/gm)) refs.set(JSON.parse('"' + m[2] + '"'), m[1]);
+  const resolve = (t) => (t && typeof t === "object" && typeof t.name === "string" ? { ref: refs.get(t.name) ?? "e0" } : t);
+  if (/\[mock:scout slow\]/.test(goal)) {
+    return { text: "Waiting a while.", tool: { name: "act", input: { note: "Waiting", actions: Array.from({ length: 5 }, () => ({ type: "wait", ms: 400 })) } } };
+  }
+  const m = /\[mock:scout actions=(\[[\s\S]*?\])\]/.exec(goal);
+  if (m && turn === 0) {
+    let actions = [];
+    try {
+      actions = JSON.parse(m[1]);
+    } catch {
+      actions = [];
+    }
+    actions = actions.map((a) => ({ ...a, ...(a.target !== undefined ? { target: resolve(a.target) } : {}), ...(a.from !== undefined ? { from: resolve(a.from) } : {}), ...(a.to !== undefined ? { to: resolve(a.to) } : {}) }));
+    return { text: "Mock plan: run the batch.", tool: { name: "act", input: { note: "Running the mock batch", actions } } };
+  }
+  const results = /Results of your last actions[^\n]*\n([\s\S]*?)\n\n/.exec(lastText)?.[1] ?? "";
+  return { text: "", tool: { name: "finish", input: { outcome: "done", summary: "Mock task finished." + (results ? " Results: " + results.replace(/\s+/g, " ") : "") } } };
+}
+
 const DEFAULT_INPUT = {
   read_page: {},
   search_tabs: { query: "fixture" },
@@ -94,14 +131,33 @@ function plan(body) {
   }
   // Continue after a drop: the rest of the answer, without the start again.
   if (/^Continue your previous answer/.test(lastText)) return { text: ["and the rest ", "of the answer."] };
-  const tool = /\[mock:tool=([\w-]+)(?:\s+(\{[^\]]*\}))?\]/.exec(all);
+  const tool = /\[mock:tool=([\w-]+)(\s+\{)?/.exec(all);
   if (tool) {
+    // The input is the balanced JSON object after the name (it may nest brackets).
+    let json = null;
+    if (tool[2]) {
+      const start = tool.index + tool[0].length - 1;
+      let depth = 0;
+      let inString = false;
+      for (let i = start; i < all.length; i++) {
+        const ch = all[i];
+        if (inString) {
+          if (ch === "\\") i++;
+          else if (ch === '"') inString = false;
+        } else if (ch === '"') inString = true;
+        else if (ch === "{") depth++;
+        else if (ch === "}" && --depth === 0) {
+          json = all.slice(start, i + 1);
+          break;
+        }
+      }
+    }
     // close_tabs closes the tab an earlier open_tab answer named, when there was one.
     const history = messages.map((m) => textOf(m.content)).join("\n");
     const opened = [...history.matchAll(/Opened tab (\d+)/g)].pop();
     let input = tool[1] === "close_tabs" && opened ? { tab_ids: [Number(opened[1])] } : DEFAULT_INPUT[tool[1]] ?? {};
     try {
-      if (tool[2]) input = JSON.parse(tool[2]);
+      if (json) input = JSON.parse(json);
     } catch {
       // keep the default input
     }
@@ -233,7 +289,7 @@ createServer(async (req, res) => {
   }
   if (process.env.MOCK_LOG) appendFileSync(process.env.MOCK_LOG, JSON.stringify({ at: new Date().toISOString(), body }) + "\n");
   if (Array.isArray(body.tools) && body.tools.some((t) => String(t?.type).startsWith("web_search"))) return couponStream(res, body);
-  const p = plan(body);
+  const p = Array.isArray(body.tools) && body.tools.some((t) => t?.name === "act") ? scoutPlan(body) : plan(body);
   if (p.status) return res.writeHead(p.status, { ...CORS, "content-type": "application/json" }).end("{}");
   await stream(res, p);
 }).listen(port, "127.0.0.1", () => console.log("mock Scout server on http://127.0.0.1:" + port + "/v1/messages"));

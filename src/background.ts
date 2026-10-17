@@ -21,7 +21,13 @@ syncIcon();
 dark?.addEventListener?.("change", syncIcon);
 
 // ---------- Request/response ----------
-const scout = createScoutWorker(storage);
+// Part 3: the filled-lens icon on a tab while a Scout task runs there; the
+// theme sync above sets the global icon only, so per-tab icons survive it.
+const scout = createScoutWorker(storage, {
+  setActiveIcon: async (tabId, active) => {
+    await browser.action?.setIcon?.({ tabId, path: toolbarIcon(dark?.matches === true, active) });
+  },
+});
 const route = createRouter(
   {
     ...scout.handlers,

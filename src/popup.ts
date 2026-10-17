@@ -2,7 +2,7 @@
 // Browser mode switch, saved conversation, and an in-popup Settings view.
 // Part 1: the Scout panel ("scout-panel"). One conversation per tab, a port to
 // the background worker while open, and no use in Private Browsing.
-import { AgentControl, runAgent, type AgentPage, type ApprovalRequest, type StepRecord } from "./agent/loop";
+import { AgentControl, type AgentPage } from "./agent/loop";
 import type { Action, ActionResult } from "./actions/executor";
 import type { Snapshot } from "./snapshot/snapshot";
 import { CONTENT_HANDLER, type ContentRequest } from "./content-api";
@@ -24,6 +24,9 @@ import { connectPanelPort, type PanelPort } from "./bridge/port";
 import type { ReadStatus, SharedTab } from "./context/gather";
 import { activityLine, dropMention, mentionAt, sharedLabel, suggestTabs, toolLabel } from "./panel/attach";
 import { hostOf, loadPageAccess, normalizeSite, parsePolicy, savePageAccess, screenshotDecision, type PageAccess } from "./permissions/gate";
+import { loadScoutAccess, saveScoutAccess, withoutAlwaysAllow } from "./scout/permissions";
+import { statusText, taskFromWire, type Decision, type StepStatus, type TaskState } from "./scout/protocol";
+import type { SensitiveKind } from "./scout/sensitive";
 import { DEV_MOCK_KEY, DEV_MOCK_URL, mockServerUrl } from "./server/dev";
 import { fromWire } from "./server/protocol";
 import type { ToolDecision, ToolResult } from "./tools/host";
@@ -37,6 +40,7 @@ import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } f
 import {
   appendHistory,
   clearHistory,
+  clearSharedForConversation,
   DEFAULT_MODEL,
   deleteAllData,
   deleteReportText,
@@ -45,6 +49,7 @@ import {
   loadSettings,
   parseSettings,
   saveSettings,
+  sharedByConversation,
   type EffortSetting,
   type HistoryKind,
   type Settings,
@@ -250,13 +255,6 @@ async function tabAgentPage(): Promise<(AgentPage & { cart: CartApi; storeCodes(
   };
 }
 
-function describeStep(step: StepRecord): string {
-  const a = step.action;
-  const what = a ? a.type + ("ref" in a && a.ref ? " " + a.ref : "") : "finish";
-  const res = step.result ? (step.result.ok ? "ok" : "failed: " + step.result.message) : "done";
-  return (step.note ? step.note + " " : "") + "(" + what + ", " + res + ")";
-}
-
 // Granted site origins, minus the provider API hosts the manifest always holds.
 async function listOrigins(): Promise<string[]> {
   try {
@@ -329,16 +327,19 @@ async function main(): Promise<void> {
   const modelPillText = el("model-pill-text");
   const modelMenu = el("model-menu");
   const modeInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="mode"]'));
-  const agentBox = el("agent");
-  const agentPlan = el("agent-plan");
-  const steps = el<HTMLOListElement>("steps");
-  const agentPause = el<HTMLButtonElement>("agent-pause");
-  const agentStop = el<HTMLButtonElement>("agent-stop");
-  const approvalBox = el("approval");
-  const approvalWhat = el("approval-what");
-  const approvalReason = el("approval-reason");
-  const approvalAllow = el<HTMLButtonElement>("approval-allow");
-  const approvalDeny = el<HTMLButtonElement>("approval-deny");
+  // Part 3: Scout mode task card and the sensitive-action confirmation.
+  const taskBox = el("task");
+  const taskTitle = el("task-title");
+  const taskSite = el("task-site");
+  const taskPlan = el("task-plan");
+  const taskSteps = el<HTMLOListElement>("task-steps");
+  const taskControl = el<HTMLButtonElement>("task-control");
+  const taskStop = el<HTMLButtonElement>("task-stop");
+  const taskConfirm = el("task-confirm");
+  const taskConfirmWhat = el("task-confirm-what");
+  const taskAllowOnce = el<HTMLButtonElement>("task-allow-once");
+  const taskAllowSite = el<HTMLButtonElement>("task-allow-site");
+  const taskDeny = el<HTMLButtonElement>("task-deny");
   const couponsBox = el("coupons");
   const couponsRows = el("coupons-rows");
   const couponsSummary = el("coupons-summary");
@@ -376,6 +377,18 @@ async function main(): Promise<void> {
   // event the panel has, so nothing is shown twice.
   const store = new ConversationStore();
   let conv = storage ? await conversationForTab(storage, tab.id, Date.now()).catch(() => "") : "";
+  /** The Scout task shown on this tab (Part 3), if one runs. */
+  interface TaskView {
+    id: string;
+    goal: string;
+    site: string;
+    lastSeq: number;
+    steps: Map<number, HTMLLIElement>;
+    state: TaskState;
+    /** The confirmation waiting for an answer, by request id. */
+    confirm: string | null;
+  }
+  let task: TaskView | null = null;
   let port: PanelPort | null = null;
   if (browser.runtime.connect && tab.id !== undefined) {
     const tabId = tab.id;
@@ -385,6 +398,7 @@ async function main(): Promise<void> {
         hello: () => envelope("panel.hello", { tabId, ...(tab.windowId !== undefined ? { windowId: tab.windowId } : {}) }),
         onOpen: (post) => {
           for (const m of store.open()) post("chat.subscribe", { message_id: m.id, after_seq: m.lastSeq });
+          if (task) post("task.subscribe", { task_id: task.id, after_seq: task.lastSeq });
         },
         onEvent: (env) => onWorkerEvent(env),
         onState: (state) => trace("port:" + state),
@@ -491,7 +505,7 @@ async function main(): Promise<void> {
   }
 
   function updateEmpty(): void {
-    const busyCards = !agentBox.hidden || !approvalBox.hidden || !couponsBox.hidden;
+    const busyCards = !taskBox.hidden || !taskConfirm.hidden || !couponsBox.hidden;
     empty.hidden = !session || log.childElementCount > 0 || busyCards;
   }
 
@@ -507,7 +521,7 @@ async function main(): Promise<void> {
     const entries = await loadConversation(storage, settings.retention, Date.now(), conv).catch(() => []);
     history.length = 0;
     for (const e of entries) {
-      const mode = e.kind === "agent" ? "Control Browser" : e.kind === "coupons" ? "Find coupons" : undefined;
+      const mode = e.kind === "agent" ? "Scout" : e.kind === "coupons" ? "Find coupons" : undefined;
       const isSummary = e.question === SUMMARIZE_QUESTION || LEGACY_SUMMARIZE_QUESTIONS.includes(e.question);
       addMessage("user", isSummary ? "Summarize page" : e.question, mode ? { mode } : {});
       const answer = addMessage("assistant", e.answer);
@@ -525,9 +539,10 @@ async function main(): Promise<void> {
     store.clear();
     views.clear();
     log.replaceChildren();
-    steps.replaceChildren();
+    taskSteps.replaceChildren();
     couponsRows.replaceChildren();
-    agentBox.hidden = approvalBox.hidden = couponsBox.hidden = true;
+    couponsBox.hidden = true;
+    if (!task) taskBox.hidden = taskConfirm.hidden = true;
     history.length = 0;
     updateEmpty();
   }
@@ -1128,6 +1143,7 @@ async function main(): Promise<void> {
   }
 
   function onWorkerEvent(env: Envelope): void {
+    if (env.type === "task.event" || env.type === "task.lost") return onTaskEvent(env);
     if (env.type === "chat.lost") {
       const id = (env.payload as { message_id: string }).message_id;
       store.lose(id, "Scout for Safari restarted before this answer finished.");
@@ -1263,6 +1279,13 @@ async function main(): Promise<void> {
     let decision: ToolDecision | undefined;
     if (ev.name === "close_tabs") decision = await confirmClose(ev.input);
     else if (ev.name === "screenshot_visible") decision = await askScreenshot(v.model);
+    else if (ev.name === "run_task") {
+      // Scout mode is asked per task (spec 10), whoever asks for it.
+      const goal = (ev.input as { goal?: unknown } | null)?.goal;
+      const r = await confirmTaskStart(typeof goal === "string" ? goal.slice(0, 2000) : "");
+      if (r.ok) decision = "confirmed";
+      else if (r.declined) decision = "declined";
+    }
     // The answer ended (Stop, error) or the server timed the request out while asking.
     if (store.get(id)?.status !== "streaming" || !store.pendingTools(id).some((t) => t.request_id === ev.request_id)) return;
     let result: ToolResult;
@@ -1277,6 +1300,7 @@ async function main(): Promise<void> {
           tabs: v.scope,
           ...(tab.id !== undefined ? { current_tab: tab.id } : {}),
           ...(decision ? { decision } : {}),
+          ...(conv ? { conv } : {}),
         },
         { timeoutMs: 30_000 },
       );
@@ -1288,6 +1312,11 @@ async function main(): Promise<void> {
       };
     }
     if (result.opened_tab !== undefined) v.scope.push(result.opened_tab);
+    if (result.task_id && !task) {
+      const goal = (ev.input as { goal?: unknown } | null)?.goal;
+      showTask(result.task_id, typeof goal === "string" ? goal : "", result.site);
+      subscribeTask(result.task_id, 0);
+    }
     if (result.status === "ok") {
       if (result.shared) v.shared.push({ ...result.shared, status: "read" });
       else if (ev.name !== "search_tabs") v.shared.push({ title: toolLabel(ev.name), host: result.site, status: "tool" });
@@ -1317,7 +1346,7 @@ async function main(): Promise<void> {
 
   async function ask(text: string, opts: { continueOf?: { bubble: HTMLElement; question: string; partial: string; shared: MessageView["shared"] } } = {}): Promise<void> {
     const trimmed = text.trim();
-    if (!trimmed || activeChat || control || !session) return;
+    if (!trimmed || activeChat || control || task || !session) return;
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     const cont = opts.continueOf;
@@ -1436,125 +1465,251 @@ async function main(): Promise<void> {
     }
   }
 
-  // ---------- Approval (S06): the run waits here. Deny is the default focus. ----------
-  function askApproval(req: ApprovalRequest): Promise<boolean> {
-    return new Promise((resolve) => {
-      const a = req.action;
-      approvalWhat.textContent =
-        "Agent wants to " + a.type + (req.target ? ' "' + req.target + '"' : "") + ("ref" in a && a.ref ? " (" + a.ref + ")" : "") + ".";
-      approvalReason.textContent = req.classification.reason ?? "";
-      approvalBox.hidden = false;
-      scrollToEnd();
-      status.textContent = "Waiting for your approval.";
-      approvalDeny.focus();
-      trace("approval:asked " + a.type + " " + (req.classification.kind ?? "sensitive"));
-      const done = (ok: boolean): void => {
-        trace("approval:" + (ok ? "allowed" : "denied"));
-        approvalAllow.removeEventListener("click", onAllow);
-        approvalDeny.removeEventListener("click", onDeny);
-        agentStop.removeEventListener("click", onDeny);
-        approvalBox.hidden = true;
-        status.textContent = "Agent running.";
-        resolve(ok);
-      };
-      const onAllow = (): void => done(true);
-      const onDeny = (): void => done(false);
-      approvalAllow.addEventListener("click", onAllow);
-      approvalDeny.addEventListener("click", onDeny);
-      agentStop.addEventListener("click", onDeny);
-    });
-  }
+  // ---------- Scout mode (Part 3): the task runs in the worker; the panel shows and steers it ----------
+  const STEP_LABEL: Record<StepStatus, string> = { running: "…", ok: "done", failed: "failed", rejected: "rejected", denied: "not allowed", skipped: "skipped" };
 
-  // ---------- Control Browser ----------
-  async function runTask(goal: string): Promise<void> {
-    const trimmed = goal.trim();
-    if (!trimmed || activeChat || control || !session) return;
-    const s = session;
-    if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
-    startRun("agent", { provider: s.settings.provider, model: s.settings.model, question: trimmed });
-    const page = await tabAgentPage().catch(() => null);
-    if (!page) {
-      addMessage("error", "Could not reach this page. Reload it and try again.");
-      current.finish("error", "Could not reach this page.");
-      return;
-    }
-    addMessage("user", trimmed, { mode: "Control Browser" });
-    question.value = "";
-    autosize();
-    control = new AgentControl();
-    steps.replaceChildren();
-    agentPlan.textContent = "";
+  function showTask(id: string, goal: string, site = ""): void {
+    task = { id, goal, site, lastSeq: 0, steps: new Map(), state: "running", confirm: null };
+    taskSteps.replaceChildren();
+    taskPlan.textContent = "";
+    taskSite.textContent = site ? "On " + site : "";
+    taskTitle.textContent = "Scouting…";
+    taskControl.textContent = "Take control";
+    taskConfirm.hidden = true;
     couponsBox.hidden = true;
-    agentBox.hidden = false;
-    agentPause.textContent = "Pause";
+    taskBox.hidden = false;
     send.hidden = true;
     plus.disabled = modelPill.disabled = true;
     closeModelMenu();
-    status.textContent = "Agent running.";
+    status.textContent = "Scout is working on the page.";
+    updateEmpty();
     scrollToEnd();
-    agentStop.focus();
-    let outcome: Awaited<ReturnType<typeof runAgent>>;
-    try {
-      outcome = await runAgent({
-        provider: s.provider,
-        model: s.settings.model,
-        ...(s.effort ? { effort: s.effort } : {}),
-        goal: trimmed,
-        page,
-        control,
-        trace,
-        webSearch: true,
-        approve: askApproval,
-        onEvent: (e) => {
-          if (e.type === "plan") agentPlan.textContent = e.text;
-          else if (e.type === "step_end") {
-            const li = document.createElement("li");
-            li.textContent = describeStep(e.step);
-            steps.appendChild(li);
-            scrollToEnd();
-            const a = e.step.action;
-            trace(
-              "step " + e.step.index + " " + (a ? a.type : "finish") +
-                (e.step.result ? (e.step.result.ok ? " ok" : " failed:" + (e.step.result.error ?? "")) : ""),
-            );
-          }
-        },
-      });
-    } catch {
-      // Never leave the popup stuck on "Agent running." (seen on iOS, T018).
-      outcome = {
-        status: "error",
-        steps: [],
-        usage: { inputTokens: 0, outputTokens: 0 },
-        message: "The task stopped because of an unexpected error. Nothing more was done on the page.",
-      };
-    }
-    control = null;
-    addMessage(outcome.status === "done" ? "assistant" : "error", outcome.message);
-    current.finish(outcome.status, outcome.message, outcome.usage);
-    await saveEntry("agent", trimmed, outcome.message);
-    status.textContent = formatCostLine(s.settings.model, outcome.usage);
-    send.hidden = false;
-    plus.disabled = modelPill.disabled = false;
-    if (!matchMedia("(pointer: coarse)").matches) question.focus();
+    taskStop.focus();
   }
 
-  agentPause.addEventListener("click", () => {
-    if (!control) return;
-    if (control.isPaused) {
-      control.resume();
-      agentPause.textContent = "Pause";
-      status.textContent = "Agent running.";
-    } else {
-      control.pause();
-      agentPause.textContent = "Resume";
-      status.textContent = "Agent paused after the current step.";
+  function endTask(outcome: string, message: string): void {
+    if (!task) return;
+    const steps = task.steps.size;
+    task = null;
+    taskBox.hidden = true;
+    taskConfirm.hidden = true;
+    const node = addMessage(outcome === "done" ? "assistant" : "error", statusText(outcome as Parameters<typeof statusText>[0], message));
+    // The action log stays readable under the result (spec 8.5).
+    if (steps) {
+      const details = document.createElement("details");
+      details.className = "task-log";
+      details.open = true;
+      const summary = document.createElement("summary");
+      summary.textContent = "Action log (" + steps + (steps === 1 ? " step)" : " steps)");
+      const list = taskSteps.cloneNode(true) as HTMLOListElement;
+      list.removeAttribute("id");
+      details.append(summary, list);
+      node.appendChild(details);
+    }
+    current.finish(outcome, message);
+    send.hidden = activeChat !== null;
+    plus.disabled = modelPill.disabled = activeChat !== null;
+    updateEmpty();
+    if (!activeChat && !matchMedia("(pointer: coarse)").matches) question.focus();
+  }
+
+  function subscribeTask(id: string, after: number): void {
+    try {
+      port?.post("task.subscribe", { task_id: id, after_seq: after });
+    } catch {
+      // Not connected: the port resubscribes when it reconnects.
+    }
+  }
+
+  function onTaskEvent(env: Envelope): void {
+    const payload = env.payload as Record<string, unknown>;
+    if (env.type === "task.lost") {
+      if (task && payload.task_id === task.id) {
+        trace("task:lost");
+        endTask("error", "Scout for Safari restarted before the task finished. Nothing more was done on the page.");
+      }
+      return;
+    }
+    const w = taskFromWire(payload);
+    if (!w || !task || w.task_id !== task.id || w.seq <= task.lastSeq) return;
+    if (w.seq > task.lastSeq + 1) return subscribeTask(task.id, task.lastSeq);
+    task.lastSeq = w.seq;
+    const e = w.event;
+    switch (e.kind) {
+      case "start":
+        task.site = e.site;
+        taskSite.textContent = e.site ? "On " + e.site : "";
+        break;
+      case "plan":
+        taskPlan.textContent = e.text;
+        break;
+      case "step": {
+        let li = task.steps.get(e.index);
+        if (!li) {
+          li = document.createElement("li");
+          task.steps.set(e.index, li);
+          taskSteps.appendChild(li);
+        }
+        li.className = e.status;
+        const state = document.createElement("span");
+        state.className = "state";
+        state.textContent = "(" + STEP_LABEL[e.status] + (e.detail ? ": " + e.detail : "") + ")";
+        li.replaceChildren(document.createTextNode(e.text + " "), state);
+        scrollToEnd();
+        break;
+      }
+      case "confirm":
+        task.confirm = e.request_id;
+        taskConfirmWhat.textContent = e.description + " on " + (e.site || "this page") + ".";
+        taskConfirm.hidden = false;
+        status.textContent = "Waiting for your answer.";
+        trace("task:confirm " + e.sensitive_kind);
+        scrollToEnd();
+        taskDeny.focus();
+        break;
+      case "confirm_done":
+        if (task.confirm === e.request_id) {
+          task.confirm = null;
+          taskConfirm.hidden = true;
+        }
+        break;
+      case "state":
+        task.state = e.state;
+        taskControl.textContent = e.state === "paused" ? "Resume" : "Take control";
+        taskTitle.textContent = e.state === "paused" ? "Paused. You have control." : e.state === "waiting" ? "Waiting for your answer" : "Scouting…";
+        if (e.state === "paused") status.textContent = "Paused. Use the page, then press Resume.";
+        else if (e.state === "running") status.textContent = "Scout is working on the page.";
+        trace("task:state " + e.state);
+        break;
+      case "usage":
+        status.textContent = formatCostLine(activeSettings().model, e.usage);
+        break;
+      case "done":
+        trace("task:done " + e.status);
+        endTask(e.status, e.message);
+        break;
+    }
+  }
+
+  function decideTask(decision: Decision): void {
+    if (!task?.confirm) return;
+    const request_id = task.confirm;
+    task.confirm = null;
+    taskConfirm.hidden = true;
+    trace("task:decide " + decision);
+    void request(toWorker, "task.decide", { task_id: task.id, request_id, decision }, { timeoutMs: 5_000 }).catch(() => undefined);
+    taskStop.focus();
+  }
+  taskAllowOnce.addEventListener("click", () => decideTask("once"));
+  taskAllowSite.addEventListener("click", () => decideTask("always"));
+  taskDeny.addEventListener("click", () => decideTask("deny"));
+  taskConfirm.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      decideTask("deny");
     }
   });
-  agentStop.addEventListener("click", () => {
-    trace("ui:stop-click " + (control ? "has-control" : "no-control"));
-    control?.stop();
+  taskControl.addEventListener("click", () => {
+    if (!task) return;
+    const command = task.state === "paused" ? "resume" : "take_control";
+    trace("ui:task-" + command);
+    void request(toWorker, "task.control", { task_id: task.id, command }, { timeoutMs: 5_000 }).catch(() => undefined);
   });
+  taskStop.addEventListener("click", () => {
+    if (!task) return;
+    trace("ui:stop-click task");
+    const id = task.id;
+    void request(toWorker, "task.control", { task_id: id, command: "stop" }, { timeoutMs: 5_000 }).catch(() => {
+      // The worker is gone: end it here.
+      endTask("error", "Could not reach Scout for Safari to stop the task. Reload the page to be sure nothing more happens.");
+    });
+  });
+
+  /** Asks per task (spec 10) after the worker's own check (Private Browsing, blocklists, Scout mode off). */
+  async function confirmTaskStart(goal: string): Promise<{ ok: true; screenshots: boolean } | { ok: false; reason?: string; declined?: boolean }> {
+    if (tab.id === undefined) return { ok: false, reason: "There is no page to act on." };
+    const check = await request<{ ok: true; site: string; screenshots: "allow" | "ask" | "deny" } | { ok: false; reason: string }>(toWorker, "task.check", { tab_id: tab.id }, { timeoutMs: 5_000 }).catch(
+      () => null,
+    );
+    if (!check) return { ok: false, reason: "Could not reach Scout for Safari. Close it, open it again, and try again." };
+    if (!check.ok) return { ok: false, reason: check.reason };
+    const site = check.site || "this page";
+    const provider = PROVIDER_NAME[activeSettings().provider];
+    const items = [
+      "Click, type, scroll, and fill in fields on " + site + (goal ? " to: " + goal : "."),
+      "Stop and ask you before anything sensitive: submitting, paying, sending, deleting, signing in, changing account settings, or downloading or running a file.",
+      check.screenshots === "deny"
+        ? "Send no screenshots of " + site + " (you chose Never for it). It works from the page's structure only."
+        : "Send screenshots of " + site + " to " + provider + " while it works. A screenshot shows everything on screen, including anything typed into the page.",
+      "Show a Scouting border on the page with Take control and Stop.",
+    ];
+    const d = await askTool({
+      title: "Start a Scout task on " + site + "?",
+      what: "Scout for Safari will:",
+      items,
+      choices: [
+        { label: "Start task", value: "confirmed", primary: true },
+        { label: "Cancel", value: "declined", safe: true },
+      ],
+    });
+    return d === "confirmed" ? { ok: true, screenshots: check.screenshots !== "deny" } : { ok: false, declined: true };
+  }
+
+  async function startScoutTask(goal: string): Promise<void> {
+    const trimmed = goal.trim();
+    if (!trimmed || activeChat || control || task || !session || tab.id === undefined) return;
+    const s = session;
+    if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
+    startRun("agent", { provider: s.settings.provider, model: s.settings.model, question: trimmed });
+    const r = await confirmTaskStart(trimmed);
+    if (!r.ok) {
+      if (r.reason) addMessage("error", r.reason);
+      else status.textContent = "Task not started.";
+      current.finish(r.reason ? "refused" : "declined", r.reason ?? "Task not started.");
+      return;
+    }
+    addMessage("user", trimmed, { mode: "Scout" });
+    question.value = "";
+    autosize();
+    const id = newRequestId();
+    try {
+      await request(
+        toWorker,
+        "task.start",
+        {
+          task_id: id,
+          conv,
+          tab_id: tab.id,
+          provider: s.settings.provider,
+          model: s.settings.model,
+          ...(s.effort ? { effort: s.effort } : {}),
+          goal: trimmed,
+          screenshots: r.screenshots,
+        },
+        { timeoutMs: 10_000 },
+      );
+    } catch (err) {
+      const text = err instanceof BridgeError ? err.message : "Could not start the task. Close Scout for Safari, open it again, and try again.";
+      addMessage("error", text);
+      current.finish("error", text);
+      return;
+    }
+    trace("task:start");
+    showTask(id, trimmed);
+    subscribeTask(id, 0);
+  }
+
+  /** A reopened panel picks up the task running on this tab. */
+  async function resumeTask(): Promise<void> {
+    if (tab.id === undefined || !port) return;
+    const got = await request<{ task: { task_id: string; goal: string; last_seq: number; state: TaskState } | null }>(toWorker, "task.active", { tab_id: tab.id }, { timeoutMs: 3_000 }).catch(() => null);
+    const t = got?.task;
+    if (!t || task) return;
+    addMessage("user", t.goal, { mode: "Scout" });
+    showTask(t.task_id, t.goal);
+    subscribeTask(t.task_id, 0);
+    trace("task:resumed");
+  }
 
   // ---------- Coupons (S07, T031): find many codes, test them in batches of 25. ----------
   // Owner, 2026-10-16: a batch that finds a saving applies the best code and
@@ -1618,7 +1773,7 @@ async function main(): Promise<void> {
   const COUPON_SNAPSHOT = { maxElements: 600, maxTextChars: 100_000 };
 
   async function runCoupons(): Promise<void> {
-    if (activeChat || control || !session) return;
+    if (activeChat || control || task || !session) return;
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     startRun("coupons", { provider: s.settings.provider, model: s.settings.model });
@@ -1633,7 +1788,7 @@ async function main(): Promise<void> {
     control = new AgentControl();
     couponsRows.replaceChildren();
     couponsMore.hidden = true;
-    agentBox.hidden = true;
+    taskBox.hidden = true;
     couponsBox.hidden = false;
     couponsSummary.textContent = "Searching the web for codes…";
     send.hidden = true;
@@ -1764,7 +1919,7 @@ async function main(): Promise<void> {
   composer.addEventListener("submit", (event) => {
     event.preventDefault();
     closePlus();
-    if (mode() === "control") void runTask(question.value);
+    if (mode() === "control") void startScoutTask(question.value);
     else void ask(question.value);
   });
   question.addEventListener("keydown", (event) => {
@@ -1801,7 +1956,7 @@ async function main(): Promise<void> {
     });
   });
   el("new-chat").addEventListener("click", () => {
-    if (activeChat || control) return;
+    if (activeChat || control || task) return;
     clearThread();
     if (storage) {
       void startNewConversation(storage, tab.id, Date.now())
@@ -1994,6 +2149,8 @@ async function main(): Promise<void> {
     }
     await renderPageButton(origins);
     await renderAccess();
+    await renderScout();
+    await renderShared();
     await renderActivity();
   }
 
@@ -2108,6 +2265,95 @@ async function main(): Promise<void> {
   blockCurrent.addEventListener("click", () => {
     if (currentHost) blockSite(currentHost);
   });
+
+  // ---------- Part 3: Scout mode permissions (spec 10) and what each conversation shared ----------
+  const scoutModeSel = el<HTMLSelectElement>("scout-mode");
+  const alwaysList = el("always-list");
+  const alwaysStatus = el("always-status");
+  const sharedList = el("shared-list");
+  const sharedStatus = el("shared-status");
+  const KIND_LABEL: Record<SensitiveKind, string> = {
+    submit: "submit forms",
+    purchase: "place orders and pay",
+    send: "send and publish",
+    delete: "delete and remove",
+    sign_in: "sign in",
+    account: "change account settings",
+    download: "download and run files",
+  };
+
+  async function renderScout(): Promise<void> {
+    const a = await loadScoutAccess(storage);
+    scoutModeSel.value = a.mode;
+    const sites = Object.entries(a.alwaysAllow);
+    alwaysList.replaceChildren(
+      ...(sites.length
+        ? sites.map(([host, kinds]) =>
+            listRow(host + ": " + kinds.map((k) => KIND_LABEL[k]).join(", "), {
+              label: "Revoke",
+              aria: "Revoke always allow on " + host,
+              onClick: () => {
+                void (async () => {
+                  if (!storage) return;
+                  await saveScoutAccess(storage, withoutAlwaysAllow(await loadScoutAccess(storage), host));
+                  alwaysStatus.textContent = "Revoked. Scout for Safari asks again before sensitive actions on " + host + ".";
+                  await renderScout();
+                })().catch(() => (alwaysStatus.textContent = "Could not save the change. Try again."));
+              },
+            }),
+          )
+        : [listRow("No sites yet.")]),
+    );
+  }
+  scoutModeSel.addEventListener("change", () => {
+    const mode = scoutModeSel.value === "off" ? "off" : "ask";
+    void (async () => {
+      if (!storage) return;
+      await saveScoutAccess(storage, { ...(await loadScoutAccess(storage)), mode });
+      alwaysStatus.textContent = mode === "off" ? "Scout mode is off." : "Scout for Safari asks before each task.";
+      trace("access:scout-mode " + mode);
+    })().catch(() => (alwaysStatus.textContent = "Could not save the change. Try again."));
+  });
+
+  async function renderShared(): Promise<void> {
+    const store = storage;
+    if (!store) {
+      sharedList.replaceChildren(listRow("Nothing shared yet."));
+      return;
+    }
+    const entries = await loadHistory(store, settings.retention, Date.now()).catch(() => []);
+    const groups = sharedByConversation(entries);
+    sharedList.replaceChildren(
+      ...(groups.length
+        ? groups.map((g) => {
+            const li = listRow(g.conv === conv ? "This tab's conversation" : "Conversation from " + new Date(g.at).toLocaleDateString(), {
+              label: "Clear",
+              aria: "Clear what this conversation shared",
+              onClick: () => {
+                void clearSharedForConversation(store, g.conv)
+                  .then(async () => {
+                    sharedStatus.textContent = "Cleared. The messages stay.";
+                    if (g.conv === conv) {
+                      log.replaceChildren();
+                      await restoreConversation();
+                    }
+                    await renderShared();
+                  })
+                  .catch(() => (sharedStatus.textContent = "Could not clear it. Try again."));
+              },
+            });
+            const ul = document.createElement("ul");
+            for (const item of g.items) {
+              const x = document.createElement("li");
+              x.textContent = sharedLabel(item);
+              ul.appendChild(x);
+            }
+            li.appendChild(ul);
+            return li;
+          })
+        : [listRow("Nothing shared yet.")]),
+    );
+  }
 
   async function renderActivity(): Promise<void> {
     const got = await request<{ entries: ToolLogEntry[] }>(toWorker, "tools.log", {}, { timeoutMs: 3_000 }).catch(() => null);
@@ -2352,6 +2598,7 @@ async function main(): Promise<void> {
   if (session) {
     await restoreConversation();
     await resumeActive();
+    await resumeTask();
     await loadTabs();
     // On touch devices focusing the field on open raises the keyboard over the
     // small popup; let the user tap into it instead.

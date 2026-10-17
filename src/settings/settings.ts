@@ -234,3 +234,29 @@ export async function loadConversation(
 export async function clearHistory(storage: StorageArea): Promise<void> {
   await storage.set({ [HISTORY_KEY]: [] });
 }
+
+/** Part 3 (spec 10): what each conversation shared, newest conversation first, so the user can see and clear it. */
+export function sharedByConversation(entries: HistoryEntry[]): Array<{ conv: string; at: number; items: Array<{ title: string; host: string; status: string }> }> {
+  const byConv = new Map<string, { conv: string; at: number; items: Array<{ title: string; host: string; status: string }> }>();
+  for (const e of entries) {
+    if (!e.conv || !e.shared?.length) continue;
+    const group = byConv.get(e.conv) ?? { conv: e.conv, at: e.at, items: [] };
+    group.at = Math.max(group.at, e.at);
+    for (const s of e.shared) {
+      if (!group.items.some((i) => i.title === s.title && i.host === s.host)) group.items.push(s);
+    }
+    byConv.set(e.conv, group);
+  }
+  return [...byConv.values()].sort((a, b) => b.at - a.at);
+}
+
+/** Removes the shared-with-provider records of one conversation; its messages stay. */
+export async function clearSharedForConversation(storage: StorageArea, conv: string): Promise<void> {
+  const got = await storage.get(HISTORY_KEY);
+  const next = parseHistory(got[HISTORY_KEY]).map((e) => {
+    if (e.conv !== conv || !e.shared) return e;
+    const { shared: _shared, ...rest } = e;
+    return rest;
+  });
+  await storage.set({ [HISTORY_KEY]: next });
+}

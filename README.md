@@ -8,10 +8,15 @@ Keychain. There is no Scout for Safari server.
 - **Chat** about anything. When a question is about the page you are on,
   Scout for Safari uses the page; otherwise it answers like any chat window.
 - **Summarize** a page, or ask across other open tabs.
-- **Control Browser**: a supervised agent that acts on the page, and asks
-  before anything sensitive.
+- **Scout mode**: Scout carries out a task on the page (click, type, scroll,
+  fill in fields) with your permission. It asks before each task and before
+  anything sensitive (submitting, paying, sending, deleting, signing in,
+  changing account settings, downloading), shows a Scouting border on the
+  page with Take control and Stop, and keeps an action log in plain language.
+  Off in Private Browsing and on blocked sites.
 - **Find coupons** on supported store carts.
-- **Settings**: pick the model and effort level from dropdowns.
+- **Settings**: pick the model and effort level from dropdowns; the Permissions
+  screen lists every control, all enforced on the device.
 
 Each tab keeps its own conversation. Scout for Safari is off in Private Browsing.
 Shortcut on Mac: Control-Shift-S opens and closes it.

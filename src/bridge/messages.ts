@@ -187,14 +187,46 @@ export const REQUESTS = {
         input: "unknown",
         tabs: { array: "number" },
         current_tab: "number",
-        /** The user's answer when the tool needed one (close_tabs, screenshots). */
+        /** The user's answer when the tool needed one (close_tabs, screenshots, run_task). */
         decision: { enum: ["confirmed", "declined", "once", "always", "never"] },
+        /** Part 3: the conversation a run_task result is saved under. */
+        conv: "string",
       },
-      optional: ["current_tab", "decision"],
+      optional: ["current_tab", "decision", "conv"],
     },
   },
   /** Recent tool calls for Settings > Activity. */
   "tools.log": { senders: ["panel"], payload: { object: {} } },
+  // ---------- Part 3: Scout mode ----------
+  /** Starts a task on a tab (src/scout/runner.ts). Events follow on the port as "task.event". */
+  "task.start": {
+    senders: ["panel"],
+    payload: {
+      object: {
+        task_id: "string",
+        conv: "string",
+        tab_id: "number",
+        provider: { enum: ["anthropic", "openai"] },
+        model: "string",
+        effort: { enum: EFFORTS },
+        goal: "string",
+        /** The per-task question was answered; screenshots of this site may go with the task. */
+        screenshots: "boolean",
+      },
+      optional: ["effort"],
+    },
+  },
+  /** The user's answer to a sensitive-action confirmation (spec 8.4). */
+  "task.decide": { senders: ["panel"], payload: { object: { task_id: "string", request_id: "string", decision: { enum: ["once", "always", "deny"] } } } },
+  /** Take control / Resume / Stop from the panel (by task) or from the overlay pill (by the sender's tab). */
+  "task.control": {
+    senders: ["panel", "content"],
+    payload: { object: { task_id: "string", command: { enum: ["take_control", "resume", "stop"] } }, optional: ["task_id"] },
+  },
+  /** The task running on a tab, if any, so a reopened panel can resume showing it. */
+  "task.active": { senders: ["panel"], payload: { object: { tab_id: "number" } } },
+  /** Whether a task may start on a tab (Private Browsing, blocklists, Scout mode off) and what the per-task question should say. */
+  "task.check": { senders: ["panel"], payload: { object: { tab_id: "number" } } },
 } as const satisfies Record<string, RequestSpec>;
 
 export type RequestType = keyof typeof REQUESTS;
@@ -205,6 +237,8 @@ export const PANEL_EVENTS = {
   "panel.hello": { object: { tabId: "number", windowId: "number" }, optional: ["windowId"] },
   /** Part 2: stream this answer's events after `after_seq` (0 = from the start). Sent again after a reconnect. */
   "chat.subscribe": { object: { message_id: "string", after_seq: "number" } },
+  /** Part 3: stream a task's events after `after_seq`. */
+  "task.subscribe": { object: { task_id: "string", after_seq: "number" } },
 } as const satisfies Record<string, Schema>;
 
 /** Port events (worker to panel), for streaming progress and task state. */
@@ -238,7 +272,35 @@ export const WORKER_EVENTS = {
   },
   /** The worker no longer knows this answer (it restarted): nothing more will come. */
   "chat.lost": { object: { message_id: "string" } },
-  // Part 3: "task.progress", "task.state", ...
+  /** Part 3: one numbered task event (src/scout/protocol.ts checks the fields per kind). */
+  "task.event": {
+    object: {
+      task_id: "string",
+      seq: "number",
+      kind: { enum: ["start", "state", "plan", "step", "confirm", "confirm_done", "usage", "done"] },
+      goal: "string",
+      site: "string",
+      state: "string",
+      text: "string",
+      index: "number",
+      status: "string",
+      detail: "string",
+      request_id: "string",
+      description: "string",
+      sensitive_kind: "string",
+      decision: "string",
+      message: "string",
+      input_tokens: "number",
+      output_tokens: "number",
+      web_searches: "number",
+    },
+    optional: [
+      "goal", "site", "state", "text", "index", "status", "detail", "request_id", "description", "sensitive_kind", "decision", "message",
+      "input_tokens", "output_tokens", "web_searches",
+    ],
+  },
+  /** The worker no longer knows this task (it restarted). */
+  "task.lost": { object: { task_id: "string" } },
 } as const satisfies Record<string, Schema>;
 
 let counter = 0;

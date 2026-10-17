@@ -21,6 +21,8 @@ export interface ToolRequest {
   tabs: number[];
   current_tab?: number;
   decision?: ToolDecision;
+  /** Part 3: the conversation a run_task result is saved under. */
+  conv?: string;
 }
 
 export interface ToolImage {
@@ -39,6 +41,8 @@ export interface ToolResult {
   opened_tab?: number;
   /** read_page / screenshot_visible: what was shared, for the chips under the message. */
   shared?: { title: string; host: string };
+  /** run_task: the task that started, so the panel can show it. */
+  task_id?: string;
 }
 
 export interface ToolHostDeps {
@@ -60,6 +64,11 @@ export interface ToolHostDeps {
   searchHistory?: (query: string, max: number) => Promise<Array<{ url: string; title: string }>>;
   /** Absent where the browser has no sessions API. */
   recentlyClosed?: (max: number) => Promise<Array<{ url: string; title: string }>>;
+  /**
+   * Part 3: starts a Scout task on the current tab after the panel asked the
+   * user (decision "confirmed"). Resolves with the task id, or a refusal text.
+   */
+  startTask?: (goal: string, tabId: number, conv: string) => Promise<{ task_id: string } | { refused: string }>;
   now(): number;
 }
 
@@ -200,9 +209,24 @@ async function run(req: ToolRequest, deps: ToolHostDeps): Promise<ToolResult> {
       return result("ok", (name === "group_tabs" ? "Grouped " : "Ungrouped ") + ids.length + " tabs.", sitesOf(tabs));
     }
 
-    case "run_task":
-      // Stub until the agent runner (Part 3).
-      return result("unsupported", "Agent tasks are not available here yet. The user can switch to Control Browser mode.");
+    case "run_task": {
+      // Part 3: Scout mode is asked per task (spec 10); the panel asks and passes the answer.
+      const id = req.current_tab;
+      const tab = id === undefined ? null : await deps.tab(id);
+      if (!tab || !tab.url) return result("error", "There is no current tab to act on.");
+      const site = hostOf(tab.url) ?? "";
+      if (!deps.startTask) return result("unsupported", "Scout mode is not available here.");
+      if (tab.incognito) return result("blocked-by-user", "Scout mode is off in Private Browsing.", site);
+      if (blockedBy(tab.url, access, admin)) return result("blocked-by-user", "The user does not allow Scout on this site.", site);
+      if (req.decision === "declined") return result("declined", "The user chose not to start this task.", site);
+      if (req.decision !== "confirmed") return result("error", "Starting a task needs the user's permission first.", site);
+      const started = await deps.startTask(String(input.goal).slice(0, 2000), tab.id, req.conv ?? "");
+      if ("refused" in started) return result("blocked-by-user", started.refused, site);
+      return result("ok", "Started the task (" + started.task_id + ") on " + site + ". The user watches it in the panel and sees its result there; you need not wait for it.", site, {
+        shared: { title: "Scout task", host: site },
+        task_id: started.task_id,
+      });
+    }
   }
 }
 
