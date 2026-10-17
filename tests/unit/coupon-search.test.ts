@@ -244,6 +244,8 @@ describe("suggestCodes request and evidence", () => {
     expect(String(olipop.req?.messages[0]?.content)).toContain("Store: drinkolipop\nStore website: drinkolipop.com\nAlso written as: olipop");
     expect(seen.req?.system).toContain("as soon as you see it");
     expect(seen.req?.system).toContain("open each with web_fetch and list what they print before anything else");
+    // Tackform run i: full codes next to "Get Code" labels were all reported as masked.
+    expect(seen.req?.system).toContain("A code printed in full next to a 'Get Code', 'Show Code', 'Copy' or 'Verified' label is shown: list it.");
     expect(seen.req?.system).toContain("hide codes behind a 'Get code' button");
     expect(seen.req?.system).toContain("Never invent, complete, or vary a code");
     expect(seen.req?.system).not.toMatch(/guess/i);
@@ -436,6 +438,45 @@ describe("listed pages are read first", () => {
     const r2 = await suggestCodes(broke, "m", "www.tackform.test");
     expect(calls).toBe(1);
     expect(r2.error?.code).toBe("no_credit");
+  });
+
+  // Tackform run i: CouponBind, HotDeals and Tenere answered with the codes printed in full next
+  // to "Get Code" labels, and the model reported every one as masked. The page text itself is
+  // evidence: codes printed on a page about the store are read from it, model or no model.
+  it("reads codes printed on a page about the store from its text, even when the model calls them masked", async () => {
+    const couponbind = "https://www.couponbind.com/coupons/tackform.test";
+    const p: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        if (!isRead(req)) return;
+        yield { type: "fetch", url: couponbind, ok: true, chars: 400 };
+        yield {
+          type: "source",
+          url: couponbind,
+          title: "Tackform Coupon Codes",
+          page:
+            "Tackform Coupon Codes & Discount Code FAQ. 10% off sitewide. expires 01/09/2027 185 Verified Get Code STREETDEALX. " +
+            "12% off: Get Code TFLD26. Free shipping on orders over $50: no code needed. Promo code TACKFORM is not a code. Show Code GIFT15.",
+        };
+        yield { type: "fetch", url: "https://news.test/best-coupons-this-week", ok: true, chars: 100 };
+        yield { type: "source", url: "https://news.test/best-coupons-this-week", page: "Ridge wallets: use code RIDGE20 for 20% off." };
+        yield { type: "text", delta: "MASKED | " + couponbind + " | codes behind Get Code buttons\n" };
+      },
+    };
+    const r = await suggestCodes(p, "m", "www.tackform.test");
+    expect(r.masked).toBe(1);
+    expect(r.readFromPages).toBe(3);
+    expect(r.codes.map((c) => [c.code, c.origin, c.sourceUrl])).toEqual([
+      ["STREETDEALX", "verified", couponbind],
+      ["TFLD26", "verified", couponbind],
+      ["GIFT15", "verified", couponbind],
+    ]);
+    expect(r.codes[0]?.context).toContain("Get Code STREETDEALX");
+    // "FAQ" and the store's own name are words, not codes; a page that is not about this store is not read.
+    expect(r.codes.map((c) => c.code)).not.toContain("FAQ");
+    expect(r.codes.map((c) => c.code)).not.toContain("TACKFORM");
+    expect(r.codes.map((c) => c.code)).not.toContain("RIDGE20");
+    expect(r.verified).toBe(3);
   });
 
   // Brumate run h: the search wrote one line of prose and no code before its time ran out, and

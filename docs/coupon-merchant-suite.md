@@ -135,7 +135,12 @@ page before searching read 140 000 characters and wrote nothing in four
 minutes (Brumate run h); every page fetch's outcome (text length or the
 provider's error code) and the reply lines the parser could not read are
 traced per run; the search-only retry now runs when no code line was
-written, not only when nothing at all was.
+written, not only when nothing at all was; codes printed on a fetched page
+about the store are read from the page text itself (the same rule that
+reads a store's own banner), because in Tackform's run i three listed pages
+answered with the codes printed in full next to "Get Code" labels and the
+model reported every one as masked; the masking rule now says a code is
+masked only when its characters are not shown.
 
 Still open: OLIPOP's 48 codes were all refused; four stores ended with
 masked codes only (IQBAR, Mid-Day Squares, True Classic, WORN), two more on

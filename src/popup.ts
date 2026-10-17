@@ -2113,7 +2113,7 @@ async function main(): Promise<void> {
         };
         trace("coupons:pages listed=" + sug.pagesListed + " opened=" + sug.pagesOpened + (sug.pagesRead ? " read-first" : ""));
         for (const p of sug.pages) trace("coupons:page " + pageLabel(p.url) + " " + (p.ok ? "ok" : p.error ?? "error") + " " + (p.chars ?? 0));
-        trace("coupons:candidates store=" + onSite.length + " verified=" + sug.verified + " reported=" + sug.reported + " dropped=" + sug.dropped + " masked=" + sug.masked + " ignored=" + sug.ignored);
+        trace("coupons:candidates store=" + onSite.length + " verified=" + sug.verified + " reported=" + sug.reported + " dropped=" + sug.dropped + " masked=" + sug.masked + " ignored=" + sug.ignored + " read=" + sug.readFromPages);
         say(discoveryLine(discovery));
         if (codes.length === 0) {
           // Nothing to test: say so plainly; the cart stays as it was.
