@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  PRIVATE_CONVS_KEY,
   TAB_STATE_KEY,
   clearTabStates,
   conversationForTab,
@@ -77,6 +78,34 @@ describe("per-tab conversations", () => {
     await setPanelOpen(s, 4, true, 1300);
     await clearTabStates(s);
     expect(await loadTabStates(s)).toEqual({});
+  });
+
+  it("deletes a private tab's chats from history when the tab closes, and every private chat at startup", async () => {
+    const s = fakeStorage();
+    const regular = await conversationForTab(s, 1, 1000);
+    const priv = await conversationForTab(s, 2, 1000, true);
+    const priv2 = await startNewConversation(s, 2, 1100, true);
+    const other = await conversationForTab(s, 3, 1000, true);
+    for (const [conv, q] of [[regular, "regular"], [priv, "private 1"], [priv2, "private 2"], [other, "other private"]] as const) {
+      await appendHistory(s, "7", { at: 1200, question: q, answer: "a", conv });
+    }
+    await forgetTab(s, 2);
+    expect(await loadConversation(s, "7", 1300, priv)).toEqual([]);
+    expect(await loadConversation(s, "7", 1300, priv2)).toEqual([]);
+    expect((await loadConversation(s, "7", 1300, regular)).map((e) => e.question)).toEqual(["regular"]);
+    expect((await loadConversation(s, "7", 1300, other)).map((e) => e.question)).toEqual(["other private"]);
+    await forgetTab(s, 1);
+    expect((await loadConversation(s, "7", 1300, regular)).map((e) => e.question)).toEqual(["regular"]);
+    await clearTabStates(s);
+    expect(await loadConversation(s, "7", 1300, other)).toEqual([]);
+    expect((await loadConversation(s, "7", 1300, regular)).map((e) => e.question)).toEqual(["regular"]);
+    expect((await s.get(PRIVATE_CONVS_KEY))[PRIVATE_CONVS_KEY]).toEqual({});
+  });
+
+  it("a private tab never adopts chats saved before per-tab chats", async () => {
+    const s = fakeStorage({ history: [{ at: 900, question: "legacy", answer: "a" }] });
+    const conv = await conversationForTab(s, 4, 1000, true);
+    expect(await loadConversation(s, "7", 1000, conv)).toEqual([]);
   });
 
   it("drops malformed stored rows", async () => {

@@ -114,6 +114,7 @@ async function run(req: ToolRequest, deps: ToolHostDeps): Promise<ToolResult> {
       const allowed = (t: { url: string }): boolean => !blockedBy(t.url, access, admin);
       const lines: string[] = [];
       const found: Array<{ url: string }> = [];
+      // Private tabs are never listed: a search from a regular window must not reveal them.
       for (const t of (await deps.allTabs()).filter((t) => !t.incognito && allowed(t) && matches(query, t))) {
         if (found.length >= limit) break;
         found.push(t);
@@ -145,7 +146,7 @@ async function run(req: ToolRequest, deps: ToolHostDeps): Promise<ToolResult> {
     case "screenshot_visible": {
       const id = req.current_tab;
       const tab = id === undefined ? null : await deps.tab(id);
-      if (!tab || !tab.url || tab.incognito) return result("error", "There is no current tab to capture.");
+      if (!tab || !tab.url) return result("error", "There is no current tab to capture.");
       const site = hostOf(tab.url) ?? "";
       const decision = screenshotDecision(tab.url, access, admin);
       if (decision === "deny") return result("blocked-by-user", "The user does not allow screenshots of this site.", site);

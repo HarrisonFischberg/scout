@@ -48,7 +48,7 @@ directly; engineering will copy changes into the app word for word.
 - Password and card fields are replaced with `[REDACTED]` before a page
   snapshot leaves the device. Other text on the page is sent as is, and may
   include personal, financial, or health information.
-- Private Browsing: the extension is off; nothing is sent.
+- Private Browsing: the extension is off; nothing is sent. (Changed 2026-10-17 at the owner's request, after this review: Scout for Safari now works in Private Browsing like in any other tab, under the same consent; chats from a private tab are deleted from the device when the tab closes. Launch blocker 34.)
 
 ## 3. Safari extension: consent dialog (exact text)
 

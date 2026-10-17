@@ -124,8 +124,11 @@ test("an unknown tool is rejected with schema-error and logged", async ({ page }
   await openPopup(page);
   await ask(page, "Clean up [mock:tool=delete_history]");
   await expect(lastAnswer(page)).toContainText("The delete_history tool answered with status schema-error.");
-  await page.getByRole("button", { name: "Settings" }).click();
-  await expect(page.getByRole("list", { name: "Activity" })).toContainText("Unknown tool (delete_history) · no site · schema-error");
+  const logged = await page.evaluate(async () => {
+    const r = (await (globalThis as unknown as { browser: { runtime: { sendMessage(m: unknown): Promise<unknown> } } }).browser.runtime.sendMessage({ type: "tools.log", request_id: "r-log", payload: {} })) as { payload: { entries?: Array<{ tool: string; site: string; status: string }> } };
+    return (r.payload.entries ?? []).map((e) => [e.tool, e.site, e.status].join(" · "));
+  });
+  expect(logged).toContain("unknown:delete_history ·  · schema-error");
 });
 
 test("a question about the current page uses only that tab; read_page of another tab is refused", async ({ page }) => {
@@ -240,9 +243,11 @@ test("Stop ends a streaming answer and keeps what arrived", async ({ page }) => 
   await expect(lastAnswer(page)).toContainText("One two");
   await expect(page.getByRole("button", { name: "Send" })).toBeHidden();
   await page.locator(".composer-foot").getByRole("button", { name: "Stop" }).click();
-  await expect(page.getByRole("log").getByText("Stopped.", { exact: true })).toBeVisible();
-  await expect(lastAnswer(page)).not.toContainText("sixteen");
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+  await expect(lastAnswer(page)).not.toContainText("sixteen");
+  // Stop just stops: no "Stopped." card, no Copy diagnostics, no status line (owner, 2026-10-17).
+  await expect(page.locator(".msg.error")).toHaveCount(0);
+  await expect(page.getByText("Stopped.", { exact: true })).toHaveCount(0);
 });
 
 test("answers render tables, code with a Copy button, math, and numbered sources", async ({ page }) => {

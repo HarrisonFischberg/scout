@@ -144,5 +144,19 @@ export function reachText(on: boolean, origins: readonly string[]): string {
   return "On for " + n + (n === 1 ? " site" : " sites") + " Scout for Safari can access (listed under Site access).";
 }
 
+/**
+ * The button is for iPhone and iPad only (owner request 2026-10-17): Mac Safari
+ * has Scout in the toolbar, so the button and its setting are not offered
+ * there. Safari reports "mac" or "ios" (iPadOS too); unknown counts as offered.
+ */
+export function pageButtonOffered(os: string | undefined): boolean {
+  return os !== "mac";
+}
+
+/** The platform Safari reports, or undefined where it cannot be read. */
+export async function platformOs(): Promise<string | undefined> {
+  return (await browser.runtime.getPlatformInfo?.().catch(() => undefined))?.os;
+}
+
 /** Permission asked for when the user turns the button on. Safari lets them pick a narrower grant. */
 export const ALL_SITES = ["http://*/*", "https://*/*"];
