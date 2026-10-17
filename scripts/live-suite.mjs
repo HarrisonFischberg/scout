@@ -21,6 +21,10 @@
 //     --out ralph/evidence/live-suite/<stamp>
 //     --summarize <dir>           rewrite <dir>/summary.md from its results.json (a partial run) and exit
 //     --cart-only                 stop after the item is in the cart (no popup, no API call): checks the harness
+//     --checkout-step             when the cart has no discount field, open the checkout's first step (the
+//                                 information page) and run the popup there. Owner's decision 2026-10-17:
+//                                 nothing is typed into any field, Continue / Pay / Place order are never
+//                                 pressed, no account is created; a sign-in wall, CAPTCHA or payment page stops it.
 //     --single-process            Chromium in one process (the only browser that starts inside the
 //                                 Claude Code sandbox on macOS; WebKit cannot)
 //   When HTTPS_PROXY is set in the shell, the browser's traffic goes through it (the sandbox's proxy).
@@ -61,6 +65,7 @@ const effort = flag("effort", "");
 const secondPass = !has("no-second-pass");
 const singleProcess = has("single-process");
 const cartOnly = has("cart-only");
+const checkoutStep = has("checkout-step");
 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 const out = resolve(flag("out", join("ralph", "evidence", "live-suite", stamp)));
 
@@ -170,7 +175,7 @@ async function addViaProductJson(shop, origin) {
 const PRODUCT_LINKS = 'a[href*="/product/"], a[href*="/products/"], a[href*="/shop/"], a[href*="/store/"], a[href*="/item/"]';
 /** The first product link that is not a gift card (Dr. Squatch's home page leads with one). */
 async function firstProductLink(shop) {
-  for (const a of await shop.$(PRODUCT_LINKS)) {
+  for (const a of await shop.$$(PRODUCT_LINKS)) {
     const href = (await a.getAttribute("href")) || "";
     const text = ((await a.textContent().catch(() => "")) || "").trim();
     if (/gift[-\s]?card|e-?gift/i.test(href + " " + text)) continue;
@@ -178,6 +183,35 @@ async function firstProductLink(shop) {
   }
   return null;
 }
+const DISCOUNT_INPUTS = 'input[name*="discount" i], input[name*="coupon" i], input[name*="promo" i], input[placeholder*="discount" i], input[placeholder*="coupon" i], input[placeholder*="promo" i], input[aria-label*="discount" i], input[aria-label*="promo" i]';
+
+/** Opens the checkout's first step from the cart and checks it is the information page. Never fills or submits anything. */
+async function openCheckoutStep(shop) {
+  const btn = shop
+    .locator('button, a, [role="button"]')
+    .filter({ hasText: /check ?out/i })
+    .filter({ hasNotText: /without|coverage|protection|continue shopping|express/i })
+    .first();
+  if (!(await btn.count())) return { ok: false, reason: "no Checkout button on the cart" };
+  await btn.scrollIntoViewIfNeeded().catch(() => null);
+  await btn.click({ timeout: 10_000 }).catch(() => null);
+  await shop.waitForURL(/checkout/i, { timeout: 30_000 }).catch(() => null);
+  await wait(3000);
+  let text = "";
+  for (let i = 0; i < 6; i++) {
+    text = (await evalWithin(shop, () => document.body.innerText).catch(() => "")) || "";
+    if (text.trim().length > 80) break;
+    await wait(2500);
+  }
+  const url = shop.url();
+  if (!/checkout/i.test(url)) return { ok: false, reason: "Checkout button did not open a checkout page", url };
+  if (BOT_WALL.test(text)) return { ok: false, reason: "bot check on the checkout page", url };
+  const contactForm = (await shop.locator('input[type="email"], input[name*="email" i], input[autocomplete="email"], input[autocomplete*="address" i], input[name*="address" i]').count().catch(() => 0)) > 0;
+  if (/\/payment|\/thank_you|\/orders\//i.test(url) || (!contactForm && /card number|credit card/i.test(text))) return { ok: false, reason: "checkout went straight to a payment page", url };
+  if (!contactForm && /sign in|log in/i.test(text)) return { ok: false, reason: "sign-in wall on the checkout page", url };
+  return { ok: true, url, step: contactForm ? "information" : "unknown" };
+}
+
 /** A size or other option to pick before Add to cart appears (BYLT "Select a size", Cuts "Select Size"). */
 async function pickFirstOption(shop) {
   const picker = shop.getByRole("button", { name: /select (a |your )?(size|option)/i }).first();
@@ -406,8 +440,21 @@ async function runMerchant(browser, m) {
     const before = await readShopifyCart(shop);
     if (before) result.cartBefore = before;
     await shop.screenshot({ path: join(dir, "cart-before.png"), fullPage: false }).catch(() => null);
+    if (checkoutStep) {
+      const boxes = await shop.locator(DISCOUNT_INPUTS).count().catch(() => 0);
+      if (boxes > 0) result.notes.push("the cart has a discount field; checkout not opened");
+      else {
+        const step = await openCheckoutStep(shop);
+        result.checkout = step;
+        await shop.screenshot({ path: join(dir, "checkout-step.png"), fullPage: false }).catch(() => null);
+        if (!step.ok) {
+          result.outcome = "blocked: " + step.reason;
+          return result;
+        }
+      }
+    }
     if (cartOnly) {
-      result.outcome = "cart ok (" + added.how + (before ? ", shopify cart " + before.total : ", no shopify cart") + ")";
+      result.outcome = "cart ok (" + added.how + (before ? ", shopify cart " + before.total : ", no shopify cart") + (result.checkout ? "; checkout " + result.checkout.step : "") + ")";
       return result;
     }
 
@@ -481,9 +528,11 @@ async function runMerchant(browser, m) {
     }
     await shop.screenshot({ path: join(dir, "cart-after.png"), fullPage: false }).catch(() => null);
     result.outcome = summary ? classify(summary, verified) : "error: run did not finish in time";
+    if (result.checkout && result.outcome === "applied" && verified === null) result.outcome = "applied (checkout page; no cart API to confirm)";
     return result;
   } catch (e) {
     result.outcome = "error: " + String(e && e.message ? e.message : e).slice(0, 120);
+    result.errorStack = String(e && e.stack ? e.stack : "").split("\n").slice(0, 4).join(" | ");
     return result;
   } finally {
     result.seconds = Math.round((Date.now() - started) / 1000);
