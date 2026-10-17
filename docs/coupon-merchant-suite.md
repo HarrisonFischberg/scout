@@ -68,6 +68,27 @@ was tested in a cart. "Checkout outcome" stays empty until a live run.
 | 47 | Dr. Squatch | help center: hero discount 10%, first subscription 20%; aggregator 10% / 5% codes; "45% off" pages look unreliable | https://help.drsquatch.com/articles/promotions-and-discount-codes-300238, https://www.coupons.com/coupon-codes/drsquatch | not run |
 | 50 | Pura | wetriedpromo (15%), PURA25OFF (25%, unreliable page), newsletter 10% | https://wetried.it/pura-promo-code-2/, https://slickdeals.net/promo-codes/pura | not run |
 
+## Running the live suite
+
+On a Mac with network access and the owner's key in the shell (never in chat
+or in a file):
+
+```
+npm ci && npm run build
+ANTHROPIC_API_KEY=... node scripts/live-suite.mjs            # all merchants, WebKit
+node scripts/live-suite.mjs --only "Chomps,Rumpl" --headed   # a few, visibly
+node scripts/live-suite.mjs --browser chromium --limit 10
+```
+
+`scripts/live-suite.mjs` runs the real built popup and content script against
+each store in `scripts/live-merchants.json`: fresh browser context, one item
+added to the cart (Shopify stores through their own cart API, others by
+clicking Add to cart), the cart page opened, Find coupons pressed, the
+"Search again" question answered once, the result read from the panel and,
+on Shopify stores, checked against the cart's own total and codes. Results,
+screenshots and a Markdown table land in `ralph/evidence/live-suite/<stamp>/`;
+append the table rows to the run log below. It never opens checkout.
+
 ## The 50 test targets
 
 Food, beverages, and supplements: Carnivore Snax, Carnivore Crisps, MASA,
