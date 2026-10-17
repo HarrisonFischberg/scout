@@ -18,6 +18,7 @@
 //     --effort medium             effort setting (default: the extension's default)
 //     --no-second-pass            answer "Stop here" instead of "Search again"
 //     --out ralph/evidence/live-suite/<stamp>
+//     --summarize <dir>           rewrite <dir>/summary.md from its results.json (a partial run) and exit
 //
 // Safety: cart pages only. The suite never opens checkout, never clicks buy,
 // pay or place order (the engine's classifier refuses those controls too),
@@ -54,6 +55,19 @@ const secondPass = !has("no-second-pass");
 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 const out = resolve(flag("out", join("ralph", "evidence", "live-suite", stamp)));
 
+if (flag("summarize", "")) {
+  const dir = resolve(flag("summarize", ""));
+  const saved = JSON.parse(readFileSync(join(dir, "results.json"), "utf8"));
+  writeSummary(dir, saved.results, {
+    browser: saved.browser,
+    model: saved.model === "default" ? "" : saved.model,
+    effort: saved.effort === "default" ? "" : saved.effort,
+    secondPass: saved.secondPass !== false,
+    stamp: saved.startedAt || stamp,
+  });
+  process.exit(0);
+}
+
 const key = process.env.SCOUT_LIVE_KEY || process.env.ANTHROPIC_API_KEY || "";
 if (!key) {
   console.error("SCOUT_LIVE_KEY is not set in this shell (the Anthropic API key). Nothing was run.");
@@ -73,34 +87,39 @@ if (limit) merchants = merchants.slice(0, limit);
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const EVAL_TIMEOUT_MS = 30_000;
+/** page.evaluate with a deadline: Playwright's default timeout does not cover it, and a store that
+ * never answers a fetch inside it hung the 2026-10-17 sweep for five hours. */
+function evalWithin(page, fn, arg, ms = EVAL_TIMEOUT_MS) {
+  const run = page.evaluate(fn, arg);
+  run.catch(() => null);
+  return Promise.race([run, new Promise((_, reject) => setTimeout(() => reject(new Error("evaluate timed out after " + ms + " ms")), ms))]);
+}
 const BOT_WALL = /just a moment|access denied|attention required|verify you are human|are you a robot|captcha|request blocked|pardon our interruption/i;
 
 /** Adds one item to the cart and lands on the cart page. Returns how, or a reason it could not. */
 async function addToCart(shop, origin) {
   // Shopify: the store's own JSON catalog and cart API, the same calls its Add to cart button makes.
   for (const path of ["/products.json?limit=24", "/collections/all/products.json?limit=24"]) {
-    const products = await shop
-      .evaluate(async (p) => {
-        const r = await fetch(p, { credentials: "same-origin", headers: { accept: "application/json" } });
+    const products = await evalWithin(shop, async (p) => {
+        const r = await fetch(p, { credentials: "same-origin", headers: { accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
         if (!r.ok) return null;
         const j = await r.json().catch(() => null);
         return j && Array.isArray(j.products) ? j.products : null;
-      }, path)
-      .catch(() => null);
+      }, path).catch(() => null);
     if (!products) continue;
     const variant = products.flatMap((p) => (Array.isArray(p.variants) ? p.variants : [])).find((v) => v && v.available !== false && typeof v.id === "number" && Number(v.price) > 0);
     if (!variant) return { ok: false, reason: "shopify catalog has no available variant" };
-    const added = await shop
-      .evaluate(async (id) => {
+    const added = await evalWithin(shop, async (id) => {
         const r = await fetch("/cart/add.js", {
           method: "POST",
           credentials: "same-origin",
+          signal: AbortSignal.timeout(20_000),
           headers: { "content-type": "application/json", accept: "application/json" },
           body: JSON.stringify({ items: [{ id, quantity: 1 }] }),
         });
         return r.ok;
-      }, variant.id)
-      .catch(() => false);
+      }, variant.id).catch(() => false);
     if (!added) return { ok: false, reason: "shopify /cart/add.js refused" };
     await shop.goto(origin + "/cart", { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
     return { ok: true, how: "shopify cart api", product: variant.id };
@@ -111,8 +130,13 @@ async function addToCart(shop, origin) {
   const href = await productLink.getAttribute("href");
   await shop.goto(new URL(href, origin).toString(), { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
   await wait(1500);
-  const addBtn = shop.getByRole("button", { name: /add to (cart|bag|basket)/i }).first();
+  // The button's accessible name, or Shopify's product form submit when the name is an icon or a price.
+  const addBtn = shop
+    .getByRole("button", { name: /add to (cart|bag|basket)/i })
+    .or(shop.locator('button[name="add"], form[action*="/cart/add"] [type="submit"]'))
+    .first();
   if (!(await addBtn.count())) return { ok: false, reason: "no Add to cart button on the product page" };
+  await addBtn.scrollIntoViewIfNeeded().catch(() => null);
   await addBtn.click({ timeout: 10_000 }).catch(() => null);
   await wait(2500);
   for (const path of ["/cart", "/cart/", "/basket", "/bag", "/checkout/cart"]) {
@@ -124,14 +148,12 @@ async function addToCart(shop, origin) {
 
 /** The Shopify cart, when the store has one, for independent verification of the result. */
 const readShopifyCart = (shop) =>
-  shop
-    .evaluate(async () => {
-      const r = await fetch("/cart.js", { credentials: "same-origin", headers: { accept: "application/json" } });
+  evalWithin(shop, async () => {
+      const r = await fetch("/cart.js", { credentials: "same-origin", headers: { accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
       if (!r.ok) return null;
       const j = JSON.parse(await r.text());
       return typeof j.total_price === "number" ? { total: j.total_price / 100, codes: (j.discount_codes ?? []).map((d) => ({ code: d.code, applicable: d.applicable })) } : null;
-    })
-    .catch(() => null);
+    }).catch(() => null);
 
 /** The popup page wired to `shop` as the active tab, like tests/e2e/checkout.spec.ts. */
 async function openPopup(context, shop, shopUrl, stages) {
@@ -232,7 +254,15 @@ function classify(summary, verify) {
 async function runMerchant(browser, m) {
   const started = Date.now();
   const stages = [];
-  const result = { name: m.name, url: m.url, group: m.group, outcome: "", notes: [], stages, startedAt: new Date(started).toISOString() };
+  // Seconds from the merchant's start to each stage, for search-vs-testing timings.
+  const timeline = [];
+  const stageSink = {
+    push: (s) => {
+      stages.push(s);
+      timeline.push({ t: Math.round((Date.now() - started) / 100) / 10, stage: s });
+    },
+  };
+  const result = { name: m.name, url: m.url, group: m.group, outcome: "", notes: [], stages, timeline, startedAt: new Date(started).toISOString() };
   const context = await browser.newContext({ bypassCSP: true, viewport: { width: 1280, height: 900 } });
   context.setDefaultTimeout(30_000);
   const shop = await context.newPage();
@@ -246,13 +276,21 @@ async function runMerchant(browser, m) {
     }
     await wait(2000);
     const origin = new URL(shop.url()).origin;
-    const body = (await shop.evaluate(() => document.title + "\n" + document.body.innerText.slice(0, 2000)).catch(() => "")) || "";
+    // Some storefronts render late; a blank page (True Classic, 2026-10-17) must not count as "no coupon box".
+    let body = "";
+    for (let tries = 0; tries < 6; tries++) {
+      body = (await evalWithin(shop, () => document.title + "\n" + document.body.innerText.slice(0, 2000)).catch(() => "")) || "";
+      if (body.trim().length > 80) break;
+      await wait(2500);
+    }
+    if (body.trim().length <= 80) result.notes.push("the page showed little or no text after 15 s");
     if (BOT_WALL.test(body)) {
       result.outcome = "blocked: bot check on the site";
       return result;
     }
     const added = await addToCart(shop, origin);
     if (!added.ok) {
+      await shop.screenshot({ path: join(dir, "add-failed.png"), fullPage: false }).catch(() => null);
       result.outcome = "blocked: could not add to cart (" + added.reason + ")";
       return result;
     }
@@ -262,7 +300,7 @@ async function runMerchant(browser, m) {
     if (before) result.cartBefore = before;
     await shop.screenshot({ path: join(dir, "cart-before.png"), fullPage: false }).catch(() => null);
 
-    const popup = await openPopup(context, shop, shop.url(), stages);
+    const popup = await openPopup(context, shop, shop.url(), stageSink);
     const button = popup.locator('button.chip[data-prompt="coupons"]');
     if (await button.isVisible().catch(() => false)) await button.click();
     else await popup.locator("#coupons-run").click({ force: true });
@@ -316,10 +354,13 @@ async function runMerchant(browser, m) {
     const after = await readShopifyCart(shop);
     if (after) result.cartAfter = after;
     let verified = null;
-    if (before && after && /It's applied to your cart/.test(summary)) {
+    if (after && /It's applied to your cart/.test(summary)) {
       const m2 = /is the best: your total drops from \*?\*?([^*]+?)\*?\*? to \*?\*?([^*\s]+)/.exec(summary);
-      verified = after.total < before.total - 0.004 && after.codes.some((c) => c.applicable);
-      result.verify = { before: before.total, after: after.total, codes: after.codes, claimed: m2 ? m2[2] : null, confirmed: verified };
+      const claimed = m2 ? Number(m2[2].replace(/[^0-9.]/g, "")) : NaN;
+      const codeOn = after.codes.some((c) => c.applicable);
+      // Without a before-read (Just Ingredients, 2026-10-17) the claim is checked against the cart's own total.
+      verified = before ? after.total < before.total - 0.004 && codeOn : Number.isFinite(claimed) && Math.abs(after.total - claimed) < 0.005 && codeOn;
+      result.verify = { before: before ? before.total : null, after: after.total, codes: after.codes, claimed: m2 ? m2[2] : null, confirmed: verified };
     }
     await shop.screenshot({ path: join(dir, "cart-after.png"), fullPage: false }).catch(() => null);
     result.outcome = summary ? classify(summary, verified) : "error: run did not finish in time";
@@ -341,36 +382,47 @@ for (const m of merchants) {
   const r = await runMerchant(browser, m);
   results.push(r);
   console.log("- " + m.name + ": " + r.outcome + (r.verify ? " (cart " + r.verify.before + " -> " + r.verify.after + ")" : "") + " [" + r.seconds + " s]");
-  writeFileSync(join(out, "results.json"), JSON.stringify({ browser: browserName, model: model || "default", effort: effort || "default", startedAt: stamp, results }, null, 2));
+  writeFileSync(join(out, "results.json"), JSON.stringify({ browser: browserName, model: model || "default", effort: effort || "default", secondPass, startedAt: stamp, results }, null, 2));
   await wait(3000);
 }
 await browser.close();
 
-const counts = {};
-for (const r of results) counts[r.outcome.split(" (")[0]] = (counts[r.outcome.split(" (")[0]] ?? 0) + 1;
-const applied = results.filter((r) => r.outcome === "applied").length;
-const testable = results.filter((r) => !/^blocked|^error/.test(r.outcome)).length;
-const lines = [
-  "# Live coupon suite " + stamp,
-  "",
-  "Browser " + browserName + ", model " + (model || "extension default") + ", effort " + (effort || "default") + ", second pass " + (secondPass ? "on" : "off") + ".",
-  "",
-  "Applied: " + applied + " of " + results.length + " merchants (" + Math.round((100 * applied) / Math.max(results.length, 1)) + "%); of the " + testable + " where testing ran: " + Math.round((100 * applied) / Math.max(testable, 1)) + "%.",
-  "",
-  "| Outcome | Count |",
-  "|---|---|",
-  ...Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([k, v]) => "| " + k + " | " + v + " |"),
-  "",
-  "| Date | Merchant | Cart / checkout page | Method (cart API / page) | Codes found (store / verified / reported / masked / dropped) | Best code, saving | Outcome |",
-  "| --- | --- | --- | --- | --- | --- | --- |",
-  ...results.map((r) => {
-    const method = (r.stages || []).find((s) => s.startsWith("coupons:method ")) || "";
-    const cand = (r.stages || []).find((s) => s.startsWith("coupons:candidates ")) || "";
-    const best = /\*\*([^*]+)\*\* is the best: your total drops from \*\*([^*]+)\*\* to \*\*([^*]+)\*\*/.exec(r.summary || "") || /([A-Z0-9,+ _-]+) is the best: your total drops from (\S+) to (\S+)/.exec(r.summary || "");
-    return "| " + stamp.slice(0, 10) + " | " + r.name + " | " + (r.cart ? r.cart.url : r.url) + " | " + method.replace("coupons:method ", "") + " | " + cand.replace("coupons:candidates ", "") + " | " + (best ? best[1] + ", " + best[2] + " → " + best[3] : "") + " | " + r.outcome + " |";
-  }),
-  "",
-];
-writeFileSync(join(out, "summary.md"), lines.join("\n"));
-console.log("\n" + lines.slice(0, 5).join("\n"));
-console.log("\nTable for docs/coupon-merchant-suite.md in " + join(out, "summary.md"));
+writeSummary(out, results, { browser: browserName, model, effort, secondPass, stamp });
+
+/** summary.md: the tally and the rows for docs/coupon-merchant-suite.md's run log. */
+function writeSummary(dir, results, meta) {
+  const { browser: browserName, model, effort, secondPass, stamp } = meta;
+  const counts = {};
+  for (const r of results) counts[r.outcome.split(" (")[0]] = (counts[r.outcome.split(" (")[0]] ?? 0) + 1;
+  const applied = results.filter((r) => r.outcome === "applied").length;
+  const testable = results.filter((r) => !/^blocked|^error/.test(r.outcome)).length;
+  // Runs where the discovery step itself worked (no timeout, stream error or API rejection).
+  const searched = results.filter((r) => (r.stages || []).includes("coupons:search") && !(r.stages || []).some((x) => x.startsWith("coupons:search-error")));
+  const searchedApplied = searched.filter((r) => r.outcome === "applied").length;
+  const lines = [
+    "# Live coupon suite " + stamp,
+    "",
+    "Browser " + browserName + ", model " + (model || "extension default") + ", effort " + (effort || "default") + ", second pass " + (secondPass ? "on" : "off") + ".",
+    "",
+    "Applied: " + applied + " of " + results.length + " merchants (" + Math.round((100 * applied) / Math.max(results.length, 1)) + "%); of the " + testable + " where testing ran: " + Math.round((100 * applied) / Math.max(testable, 1)) + "%.",
+    "",
+    "Web search completed without error on " + searched.length + " merchants; applied among them: " + searchedApplied + " (" + Math.round((100 * searchedApplied) / Math.max(searched.length, 1)) + "%).",
+    "",
+    "| Outcome | Count |",
+    "|---|---|",
+    ...Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([k, v]) => "| " + k + " | " + v + " |"),
+    "",
+    "| Date | Merchant | Cart / checkout page | Method (cart API / page) | Codes found (store / verified / reported / masked / dropped) | Best code, saving | Outcome |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
+    ...results.map((r) => {
+      const method = (r.stages || []).find((s) => s.startsWith("coupons:method ")) || "";
+      const cand = (r.stages || []).find((s) => s.startsWith("coupons:candidates ")) || "";
+      const best = /\*\*([^*]+)\*\* is the best: your total drops from \*\*([^*]+)\*\* to \*\*([^*]+)\*\*/.exec(r.summary || "") || /([A-Z0-9,+ _-]+) is the best: your total drops from (\S+) to (\S+)/.exec(r.summary || "");
+      return "| " + stamp.slice(0, 10) + " | " + r.name + " | " + (r.cart ? r.cart.url : r.url) + " | " + method.replace("coupons:method ", "") + " | " + cand.replace("coupons:candidates ", "") + " | " + (best ? best[1] + ", " + best[2] + " → " + best[3] : "") + " | " + r.outcome + " |";
+    }),
+    "",
+  ];
+  writeFileSync(join(dir, "summary.md"), lines.join("\n"));
+  console.log("\n" + lines.slice(0, 5).join("\n"));
+  console.log("\nTable for docs/coupon-merchant-suite.md in " + join(dir, "summary.md"));
+}
