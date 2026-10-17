@@ -11,6 +11,7 @@ and so on.
 | Date | Where | What ran | Result |
 | --- | --- | --- | --- |
 | 2026-10-17 | cloud build session | discovery research only (web search from the session's own tools; the container's network policy denied every merchant and coupon site, the npm registry, and page fetches) | 14 merchants searched; see table below. **No cart was opened and no code was applied anywhere: 0 of 50 checkout-validated.** |
+| 2026-10-17 | owner's Mac: WebKit smoke run and sweep 1 in the owner's Terminal, then re-sweeps A–C, E in the Claude Code sandbox (Chromium, single-process, through the sandbox proxy), real Anthropic key, each merchant in a fresh browser context | 118 merchant runs over 7 run folders (`ralph/evidence/live-suite/`), latest real result per merchant kept | **34 of 56 carts had a code found online applied (61%): 77% of the 44 carts where a code could be tested, 78% of the 41 whose web search completed.** 33 confirmed by the store's cart API, 1 read from the page (Brumate). See "Results, 2026-10-17" below. |
 
 Checkout validation of this suite needs a Safari build on the owner's Mac or
 iPhone with a real key (launch blocker 33): open each store, add an item,
@@ -68,6 +69,72 @@ was tested in a cart. "Checkout outcome" stays empty until a live run.
 | 47 | Dr. Squatch | help center: hero discount 10%, first subscription 20%; aggregator 10% / 5% codes; "45% off" pages look unreliable | https://help.drsquatch.com/articles/promotions-and-discount-codes-300238, https://www.coupons.com/coupon-codes/drsquatch | not run |
 | 50 | Pura | wetriedpromo (15%), PURA25OFF (25%, unreliable page), newsletter 10% | https://wetried.it/pura-promo-code-2/, https://slickdeals.net/promo-codes/pura | not run |
 
+## Results, 2026-10-17 (live carts)
+
+Target: a code found live online applied on 80% of carts. **Reached 77% of
+the carts where a code could be entered (34 of 44), 78% of the carts whose
+web search completed (34 of 41), and 61% of all 56 carts.** The 80% target
+was not met; the 75% fallback was, on the carts where testing was possible.
+
+| Category | Count | Merchants |
+| --- | --- | --- |
+| applied, confirmed by the store's cart API | 33 | Ancestral Supplements, Breezy Golf, BUBS Naturals, Carnivore Aurelius, Carnivore Bar, Carnivore Crisps, Carnivore Snax, Catalina Crunch, Chomps, Clevr Blends, Duke Cannon, Ekster, Equip Foods, Fly By Jing, Four Sigmatic, Fresh Clean Threads, Good Good Golf, Groove Life, Heart & Soil, Huron, Just Ingredients (after-state only; the before-read failed), Kettle & Fire, Kion, Lineage Provisions, Magic Spoon, MASA, Melin, MUD\WTR, Perfect Keto, Quad Lock, Santa Cruz Paleo, Trayvax, Viori |
+| applied, read from the page (no cart API) | 1 | Brumate (drawer; LL10-XEEG0MNF $149.99 → $139.99; only 1 of 24 codes tested because the drawer kept the applied code) |
+| no working code (codes found, the store refused all) | 5 | Grip6 (40 codes), Luno (32), Matador (37), OLIPOP (48, three runs), Rumpl (50) |
+| no codes found (only masked codes on the pages reached) | 5 | IQBAR, Mid-Day Squares, Tackform, True Classic, WORN |
+| discount field only at checkout (cart or drawer has none; the engine never opens checkout) | 10 | Bombas, BYLT Basics, Caraway, Chubbies, Cuts, Javvy Coffee, Nomad, Paleovalley, Peak Design, Pura |
+| blocked by the harness or the site | 2 | Dr. Squatch (the runner cannot add its product), Ridge (bot wall) |
+
+Counting rule: the latest run per merchant counts; a run that failed inside
+the runner itself never replaces an earlier real result. Every "applied" row
+names the code, the cart total before and after, and the page the code was
+read from (`results.json`, `attempts[].source`); the cart API confirmation
+is `verify.confirmed`. Builds: popup `472377364d` = engine c6e04ee,
+`86113aba63` = ca11f85, `f3c5f1c539` = 1c2b867; sweep 1 ran before the
+hash existed (engine 389193f).
+
+Timing (latest results): applied: median 154 s over 34; no codes found: median 129 s over 5; no working code: median 257 s over 5; checkout-only: median 21 s over 10; blocked: median 23 s over 2. Web search, from the request to the
+candidate list: median 115 s (n=34); testing, per code
+on a cart API: median 0.9 s.
+The popup's own cost line ran $0.16 (nothing found) to $0.36 (two searches,
+50 codes) per merchant in the smoke run; the runner does not record cost, so
+the day's total is only known from the console.
+
+What the data changed in the engine (all on this branch): every found code
+is tested after a saving instead of stopping at the first batch (62d69c2);
+the search budget is four minutes and a search that times out with nothing
+written is retried once from search results alone (9b1874b, 760522e: MASA
+and Ancestral Supplements went from "discovery failed" twice to applied);
+the request names the pages that print codes in full, ordered by what the
+sweeps found productive (b7138e2, ceeda5c: Melin, Ekster, Clevr Blends,
+Good Good Golf, Trayvax, Quad Lock, Huron, Kettle & Fire, Four Sigmatic
+applied only after it); an account out of credit says so (c6e04ee; sweep 1
+lost 20 merchants to "The provider rejected the request" before the cause
+was known); a $0 cart is refused before any search (b9268b7); a drawer's
+total is read from its Checkout button (ca11f85, Brumate); an empty answer
+from the cart API falls back to the page (1c2b867, Nomad); a cart with a
+Checkout button and no coupon box says where the field is (0a2fd0f).
+
+Still open: Tackform's STREETDEALX (verified by hand against its cart API,
+$60 → $54) was never found by the engine in three runs (masked codes only,
+or the search timed out); OLIPOP's 48 codes were all refused; four more
+stores ended with masked codes only; the page path stops after the first
+applied code when the store keeps it (Brumate); the ten checkout-only
+stores await the owner-run checkout-step pass (`--checkout-step`; the
+sandbox's policy forbids opening checkout from the agent's side); the
+runner cannot add Dr. Squatch's, Paleovalley's, Pura's or Chubbies' products
+(gift-card-first catalogs, custom platforms, subscription-first pages).
+
+Harness notes: WebKit and multi-process Chromium cannot start inside the
+Claude Code sandbox; `--single-process` Chromium through the sandbox proxy
+can, so re-sweeps ran there (Chromium is now the suite's default; the e2e
+specs stay on WebKit). Sweep 1 hung for five hours on a `fetch` inside
+`page.evaluate` (now bounded). Lineage Provisions and WORN empty an
+API-added cart from the cart page (an app's `/cart/update.js`, Lineage also
+`/cart/change.js` quantity 0); the runner refills through the store's own
+button. Every run's folder holds `results.json`, `summary.md` and, per
+merchant, `cart-before.png`, `popup.png`, `cart-after.png`.
+
 ## Running the live suite
 
 On a Mac with network access and the owner's Anthropic key in the shell as
@@ -76,10 +143,21 @@ which makes the Claude CLI refuse Remote Control):
 
 ```
 npm ci && npm run build
-SCOUT_LIVE_KEY=... node scripts/live-suite.mjs               # all merchants, WebKit
+SCOUT_LIVE_KEY=... node scripts/live-suite.mjs               # all merchants, Chromium
 node scripts/live-suite.mjs --only "Chomps,Rumpl" --headed   # a few, visibly
-node scripts/live-suite.mjs --browser chromium --limit 10
+node scripts/live-suite.mjs --browser webkit --limit 10       # WebKit, like Safari
+node scripts/live-suite.mjs --cart-only --only "Pura"         # the cart step only: no popup, no API call
+node scripts/live-suite.mjs --checkout-step --only "Nomad"    # carts with no discount field: the checkout's
+                                                              # information page (owner's decision 2026-10-17;
+                                                              # nothing typed, nothing submitted)
+node scripts/live-suite.mjs --summarize ralph/evidence/live-suite/<dir>   # summary.md from a partial run
+node scripts/live-suite-tally.mjs ralph/evidence/live-suite/<dir> ...      # latest result per merchant
 ```
+
+Inside the Claude Code sandbox on macOS only Chromium starts, and only as
+`--single-process`; the browser's traffic goes through the shell's
+`HTTPS_PROXY` automatically. The sandbox's policy refuses commands that open
+checkout pages, so `--checkout-step` runs are the owner's.
 
 `scripts/live-suite.mjs` runs the real built popup and content script against
 each store in `scripts/live-merchants.json`: fresh browser context, one item
@@ -108,7 +186,63 @@ Quad Lock, Peak Design, Luno, Rumpl, Matador.
 
 Personal care and home: Viori, Dr. Squatch, Duke Cannon, Huron, Pura.
 
-## Live run log (fill in on a device)
+## Live run log
 
 | Date | Merchant | Cart / checkout page | Method (cart API / page) | Codes found (store / verified / reported / masked / dropped) | Best code, saving | Outcome (applied / no working code / no codes found / discovery failed / no coupon box / blocked: captcha, rate limit, unreadable total) |
 | --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-17 | Ancestral Supplements | ancestralsupplements.com/cart | shopify | store=0 verified=4 reported=16 masked=4 | HOMEGROWN, $44.00 → $37.40 (cart API confirmed) | applied (build f3c5f1c539, run-rerun-e) |
+| 2026-10-17 | Bombas | bombas.com/cart | none | - |  | no coupon box (discount field only at checkout) (build 472377364d, run-rerun-b) |
+| 2026-10-17 | Breezy Golf | breezygolf.com/cart | shopify | store=1 verified=0 reported=0 masked=5 | FAIRWAY10, $36.00 → $32.40 (cart API confirmed) | applied (build 472377364d, run-rerun-a) |
+| 2026-10-17 | Brumate | www.brumate.com/ | page | store=0 verified=11 reported=13 masked=7 | LL10-XEEG0MNF, $149.99 → $139.99 (page read; no cart API) | applied (build f3c5f1c539, run-rerun-e) |
+| 2026-10-17 | BUBS Naturals | www.bubsnaturals.com/cart | shopify | store=0 verified=0 reported=40 masked=0 | AIM725, $35.00 → $26.25 (cart API confirmed) | applied (build pre-hash, runT07-36-10) |
+| 2026-10-17 | BYLT Basics | byltbasics.com/cart | none | - |  | no coupon box (discount field only at checkout) (build 472377364d, run-rerun-a) |
+| 2026-10-17 | Caraway | www.carawayhome.com/cart | none | - |  | no coupon box (discount field only at checkout) (build 472377364d, run-rerun-b) |
+| 2026-10-17 | Carnivore Aurelius | carnivoreaurelius.com/cart | shopify | store=0 verified=21 reported=18 masked=3 | CALVIN02710, $94.99 → $80.75 (cart API confirmed) | applied (build 472377364d, run-rerun-a) |
+| 2026-10-17 | Carnivore Bar | carnivorebar.com/cart | shopify | store=0 verified=32 reported=3 masked=0 | CDCADAM, $75.00 → $67.50 (cart API confirmed) | applied (build pre-hash, runT07-36-10) |
+| 2026-10-17 | Carnivore Crisps | carnivorecrisps.com/cart | shopify | store=0 verified=0 reported=40 masked=0 | WELCOME15, $53.00 → $45.05 (cart API confirmed) | applied (build pre-hash, runT07-36-10) |
+| 2026-10-17 | Carnivore Snax | carnivoresnax.com/cart | shopify | store=0 verified=12 reported=28 masked=0 | TRASHCHEESE, $28.02 → $23.82 (cart API confirmed) | applied (build pre-hash, runT07-36-10) |
+| 2026-10-17 | Catalina Crunch | us.catalinacrunch.com/cart | shopify | store=0 verified=5 reported=34 masked=5 | DONTGO, $8.99 → $7.65 (cart API confirmed) | applied (build 472377364d, run-rerun-a) |
+| 2026-10-17 | Chomps | chomps.com/cart | shopify | store=0 verified=14 reported=2 masked=0 | TOPFAN25, $30.00 → $22.50 (cart API confirmed) | applied (build pre-hash, runT07-36-10) |
+| 2026-10-17 | Chubbies | www.chubbiesshorts.com/cart | none | - |  | no coupon box (discount field only at checkout) (build 472377364d, run-rerun-b) |
+| 2026-10-17 | Clevr Blends | clevrblends.com/cart | shopify | store=1 verified=5 reported=32 masked=5 | SHOPHANNAH, $52.00 → $44.20 (cart API confirmed) | applied (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | Cuts | www.cutsclothing.com/cart | none | - |  | no coupon box (discount field only at checkout) (build 472377364d, run-rerun-a) |
+| 2026-10-17 | Dr. Squatch | www.drsquatch.com | - | - |  | blocked: could not add to cart (no Add to cart button on the produc… (build f3c5f1c539, run-rerun-e) |
+| 2026-10-17 | Duke Cannon | dukecannon.com/cart | shopify | store=0 verified=9 reported=1 masked=0 | PUCK20, $40.00 → $32.00 (cart API confirmed) | applied (build 472377364d, run-rerun-b) |
+| 2026-10-17 | Ekster | www.ekster.com/cart | shopify | store=0 verified=22 reported=17 masked=7 | AJS, $110.00 → $99.00 (cart API confirmed) | applied (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | Equip Foods | www.equipfoods.com/cart | shopify | store=1 verified=0 reported=0 masked=0 | AFFILIATE30, $134.99 → $94.50 (cart API confirmed) | applied (build pre-hash, runT07-36-10) |
+| 2026-10-17 | Fly By Jing | flybyjing.com/cart | shopify | store=0 verified=25 reported=14 masked=3 | FLYBYJING15, $30.00 → $25.50 (cart API confirmed) | applied (build 472377364d, run-rerun-a) |
+| 2026-10-17 | Four Sigmatic | us.foursigmatic.com/?action=open-cart-drawer | shopify | store=0 verified=28 reported=11 masked=5 | HAMZA30871, $30.00 → $24.00 (cart API confirmed) | applied (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | Fresh Clean Threads | freshcleantees.com/cart | shopify | store=1 verified=0 reported=0 masked=0 | TEES25, $60.00 → $45.00 (cart API confirmed) | applied (build pre-hash, runT07-36-10) |
+| 2026-10-17 | Good Good Golf | goodgoodgolf.com/cart | shopify | store=0 verified=28 reported=8 masked=2 | PVGG5W8RSZ04, $47.19 → $37.76 (cart API confirmed) | applied (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | Grip6 | grip6.com/cart | shopify | store=0 verified=16 reported=24 masked=0 |  | no working code (build 472377364d, run-rerun-b) |
+| 2026-10-17 | Groove Life | www.groovelife.com/#cart | shopify | store=0 verified=22 reported=18 masked=0 | REW-6FC5E2AEA176, $34.95 → $33.95 (cart API confirmed) | applied (build 472377364d, run-rerun-a) |
+| 2026-10-17 | Heart & Soil | shop.heartandsoil.co/cart | shopify | store=0 verified=5 reported=35 masked=0 | GETSOME10, $311.00 → $279.90 (cart API confirmed) | applied (build f3c5f1c539, run-rerun-e) |
+| 2026-10-17 | Huron | usehuron.com/ | shopify | store=0 verified=4 reported=5 masked=6 | HURON20, $96.00 → $76.80 (cart API confirmed) | applied (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | IQBAR | www.eatiqbar.com/cart | shopify | store=0 verified=0 reported=0 masked=3 |  | no codes found (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | Javvy Coffee | javvycoffee.com/?openCart=true | none | - |  | no coupon box (discount field only at checkout) (build 472377364d, run-rerun-a) |
+| 2026-10-17 | Just Ingredients | justingredients.com/cart | shopify | store=0 verified=21 reported=19 masked=0 | PROTEIN20, $64.99 → $52.00 (page read; no cart API) | applied (build pre-hash, runT07-36-10) |
+| 2026-10-17 | Kettle & Fire | www.kettleandfire.com/cart | shopify | store=0 verified=0 reported=39 masked=5 | HIGHFALUTIN20, $57.96 → $46.37 (cart API confirmed) | applied (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | Kion | www.getkion.com/cart | shopify | store=0 verified=14 reported=22 masked=5 | DREW, $119.95 → $107.96 (cart API confirmed) | applied (build pre-hash, runT07-36-10) |
+| 2026-10-17 | Lineage Provisions | lineageprovisions.com/cart | shopify | store=0 verified=14 reported=26 masked=0 | MADS, $49.00 → $41.65 (cart API confirmed) | applied (build f3c5f1c539, run-rerun-e) |
+| 2026-10-17 | Luno | lunolife.com/cart | shopify | store=0 verified=3 reported=29 masked=6 |  | no working code (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | Magic Spoon | magicspoon.com/cart | shopify | store=0 verified=16 reported=24 masked=0 | MAGICSTART15, $100.00 → $85.00 (cart API confirmed) | applied (build pre-hash, runT07-36-10) |
+| 2026-10-17 | MASA | www.masachips.com/cart | shopify | store=0 verified=14 reported=26 masked=0 | FAMILY35, $26.00 → $16.90 (cart API confirmed) | applied (build f3c5f1c539, run-rerun-e) |
+| 2026-10-17 | Matador | www.matadorequipment.com/cart | shopify | store=0 verified=29 reported=8 masked=3 |  | no working code (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | Melin | melin.com/cart | shopify | store=0 verified=13 reported=0 masked=7 | MELIN10, $89.00 → $80.10 (cart API confirmed) | applied (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | Mid-Day Squares | www.middaysquares.com/cart | shopify | store=0 verified=0 reported=0 masked=4 |  | no codes found (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | MUD\WTR | mudwtr.com/?cart=open | shopify | store=1 verified=2 reported=38 masked=0 | AMBASSADOR-01, $20.00 → $15.00 (cart API confirmed) | applied (build 472377364d, run-rerun-a) |
+| 2026-10-17 | Nomad | nomadgoods.com/?openCart=true | none | - |  | no coupon box (discount field only at checkout) (build 472377364d, run-rerun-b) |
+| 2026-10-17 | OLIPOP | drinkolipop.com/collections/drinks | shopify | store=10 verified=0 reported=0 masked=3 |  | no working code (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | Paleovalley | paleovalley.com/store | none | - |  | no coupon box (discount field only at checkout) (build 472377364d, run-rerun-a) |
+| 2026-10-17 | Peak Design | www.peakdesign.com/?show=cart | none | - |  | no coupon box (discount field only at checkout) (build 472377364d, run-rerun-b) |
+| 2026-10-17 | Perfect Keto | shop.perfectketo.com/cart | shopify | store=0 verified=4 reported=32 masked=4 | WALKINGANDCOUNTING, $11.99 → $9.60 (cart API confirmed) | applied (build 472377364d, run-rerun-a) |
+| 2026-10-17 | Pura | pura.com/cart | none | - |  | no coupon box (discount field only at checkout) (build 472377364d, run-rerun-b) |
+| 2026-10-17 | Quad Lock | www.quadlockcase.com/cart | shopify | store=0 verified=6 reported=34 masked=0 | MANON10, $34.99 → $31.50 (cart API confirmed) | applied (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | Ridge | ridge.com | - | - |  | blocked: bot check on the site (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | Rumpl | www.rumpl.com/cart | shopify | store=0 verified=5 reported=30 masked=3 |  | no working code (build 472377364d, run-rerun-b) |
+| 2026-10-17 | Santa Cruz Paleo | santacruzpaleo.com/cart | shopify | store=0 verified=4 reported=9 masked=0 | DADDY, $14.99 → $12.75 (cart API confirmed) | applied (build 472377364d, run-rerun-a) |
+| 2026-10-17 | Tackform | www.tackform.com/cart | shopify | store=0 verified=0 reported=0 masked=3 |  | no codes found (build f3c5f1c539, run-rerun-e) |
+| 2026-10-17 | Trayvax | www.trayvax.com/cart | shopify | store=0 verified=6 reported=0 masked=25 | LUCKYSHOPGEO, $39.00 → $35.10 (cart API confirmed) | applied (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | True Classic | www.trueclassictees.com/?cart-open=1 | shopify | store=0 verified=0 reported=0 masked=5 |  | no codes found (build 86113aba63, run-rerun-c) |
+| 2026-10-17 | Viori | viori.com/ | shopify | store=1 verified=5 reported=34 masked=6 | PRO50, $26.99 → $13.50 (cart API confirmed) | applied (build 472377364d, run-rerun-b) |
+| 2026-10-17 | WORN | wornbrand.com/cart | shopify | store=0 verified=0 reported=0 masked=3 |  | no codes found (build f3c5f1c539, run-rerun-e) |
