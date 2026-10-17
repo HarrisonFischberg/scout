@@ -18,7 +18,7 @@ function sse(text: string): string {
   return ev.map((e) => "event: " + e.type + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
 }
 
-async function openPopup(page: Page, opts: { keys?: Record<string, string>; data?: Record<string, unknown> } = {}): Promise<void> {
+async function openPopup(page: Page, opts: { keys?: Record<string, string>; data?: Record<string, unknown>; pageData?: typeof PAGE } = {}): Promise<void> {
   await page.addInitScript(
     ({ keys, data, pageData }) => {
       const g = globalThis as unknown as Record<string, unknown>;
@@ -55,7 +55,7 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
       };
     },
     // Sharing with the providers already allowed (consent.spec.ts covers asking).
-    { keys: opts.keys ?? {}, data: { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } }, ...(opts.data ?? {}) }, pageData: PAGE },
+    { keys: opts.keys ?? {}, data: { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } }, ...(opts.data ?? {}) }, pageData: opts.pageData ?? PAGE },
   );
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
@@ -133,6 +133,29 @@ test("the conversation is saved and comes back when the popup reopens; New chat 
   await expect(page.getByRole("heading", { name: "How can I help?" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("log").getByText("How much is the widget?")).toHaveCount(0);
+});
+
+test("on a shopping site the empty chat lists store actions with the store's tile; elsewhere the general chips stay", async ({ page }) => {
+  await openPopup(page, {
+    keys: { anthropic: GOOD_KEY },
+    pageData: { url: "https://www.amazon.com/dp/B000TEST", title: "Synthetic widget", text: "Widget costs $10. 4.5 stars from 12 reviews." },
+  });
+  const list = page.getByRole("list", { name: "Suggestions for Amazon" });
+  await expect(list).toBeVisible();
+  await expect(list.getByRole("button")).toHaveText(["Compare prices across sites", "Find similar products", "Summarize product reviews", "Find coupons"]);
+  await expect(list.locator(".site-tile").first()).toHaveAttribute("data-letter", "A");
+  await expect(page.getByRole("button", { name: "Explain the key points" })).toBeHidden();
+
+  await list.getByRole("button", { name: "Summarize product reviews" }).click();
+  await expect(page.getByRole("log").getByText("Summarize the customer reviews for the product on this page")).toBeVisible();
+  await expect(page.getByRole("log").getByText("The widget costs")).toBeVisible();
+  await expect(list).toBeHidden();
+});
+
+test("a page that is not a known store keeps the general chips", async ({ page }) => {
+  await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+  await expect(page.getByRole("button", { name: "Explain the key points" })).toBeVisible();
+  await expect(page.locator("#site-suggestions")).toBeHidden();
 });
 
 test("the + menu opens by keyboard, Escape closes it and returns focus", async ({ page }) => {

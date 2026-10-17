@@ -148,6 +148,22 @@
         border: 1px solid var(--hairline); background: var(--bg-surface); color: var(--text-primary); font-size: 14px;
       }
       .chip:hover { border-color: var(--border-control); }
+      #site-suggestions {
+        list-style: none; margin: 0; padding: 6px; width: 100%; max-width: 360px; text-align: left;
+        background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 16px;
+      }
+      #site-suggestions button {
+        display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 6px 8px;
+        border: 0; border-radius: 10px; background: transparent; color: var(--text-secondary); font-size: 15px; text-align: left;
+      }
+      #site-suggestions button:hover:not(:disabled) { background: var(--bg-subtle); color: var(--text-primary); }
+      #site-suggestions button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+      .site-tile {
+        flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px;
+        color: #fff; font-size: 13px; font-weight: 700; line-height: 1;
+      }
+      /* Drawn from CSS so the letter is not part of the button's text. */
+      .site-tile::before { content: attr(data-letter); }
 
       /* Composer */
       #status { padding: 0 16px 4px; min-height: 20px; }
@@ -370,6 +386,8 @@
             <button class="chip" type="button" data-prompt="Explain the most important points on this page.">Explain the key points</button>
             <button class="chip" type="button" data-prompt="coupons">Find coupons</button>
           </div>
+          <!-- On a known shopping site the chips give way to this list (src/panel/suggestions.ts). Filled from script. -->
+          <ul id="site-suggestions" aria-label="Suggestions for this store" hidden></ul>
         </section>
 
         <div id="log" role="log" aria-label="Conversation" aria-live="polite"></div>

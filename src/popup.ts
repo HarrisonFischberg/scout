@@ -51,6 +51,7 @@ import { conversationForTab, startNewConversation } from "./panel/state";
 import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/consent";
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
+import { suggestionsFor } from "./panel/suggestions";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
   appendHistory,
@@ -2224,6 +2225,29 @@ async function main(): Promise<void> {
     closePlus();
     void runCoupons();
   });
+  // On a known shopping site, store actions replace the general chips.
+  const shop = suggestionsFor(tab.url);
+  if (shop) {
+    const list = el<HTMLUListElement>("site-suggestions");
+    for (const s of shop.items) {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.prompt = s.prompt;
+      const tile = document.createElement("span");
+      tile.className = "site-tile";
+      tile.setAttribute("aria-hidden", "true");
+      tile.title = shop.site.name;
+      tile.style.background = shop.site.color;
+      tile.dataset.letter = shop.site.name.replace(/^The /, "").charAt(0);
+      b.append(tile, s.label);
+      li.appendChild(b);
+      list.appendChild(li);
+    }
+    list.setAttribute("aria-label", "Suggestions for " + shop.site.name);
+    list.hidden = false;
+    empty.querySelector<HTMLElement>(".chips")!.hidden = true;
+  }
   for (const chip of empty.querySelectorAll<HTMLButtonElement>("button[data-prompt]")) {
     chip.addEventListener("click", () => {
       const p = chip.dataset.prompt ?? "";
