@@ -149,6 +149,10 @@ describe("suggestCodes request and evidence", () => {
     const seen: { req?: ChatRequest } = {};
     await suggestCodes(provider([], undefined, seen), "m", "www.tackform.test");
     expect(String(seen.req?.messages[0]?.content)).toContain("Store: tackform\nStore website: tackform.test");
+    expect(String(seen.req?.messages[0]?.content)).not.toContain("Also written as");
+    const olipop: { req?: ChatRequest } = {};
+    await suggestCodes(provider([], undefined, olipop), "m", "www.drinkolipop.com");
+    expect(String(olipop.req?.messages[0]?.content)).toContain("Store: drinkolipop\nStore website: drinkolipop.com\nAlso written as: olipop");
     expect(seen.req).toMatchObject({ webSearch: true, webSearchMaxUses: 10, webFetch: true, webFetchMaxUses: 8 });
     expect(seen.req?.system).toContain("as soon as you see it");
     expect(seen.req?.system).toContain("Never invent, complete, or vary a code");

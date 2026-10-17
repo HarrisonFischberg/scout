@@ -264,7 +264,9 @@ export async function suggestCodes(
     const onAbort = (): void => ac.abort();
     if (signal?.aborted) ac.abort();
     else signal?.addEventListener("abort", onAbort, { once: true });
-    const aka = merchant.names.filter((n) => n !== merchant.brand.toLowerCase() && n !== merchant.domain);
+    // Other spellings worth searching with (the brand inside the domain label), not the domain itself.
+    const plain = (v: string): string => v.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const aka = merchant.names.filter((n) => n !== plain(merchant.brand) && n !== plain(merchant.domain) && n !== plain(merchant.brand).replace(/\s+/g, ""));
     const req = {
       model,
       system: CODES_SYSTEM_PROMPT,
