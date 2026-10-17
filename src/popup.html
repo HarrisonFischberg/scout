@@ -285,8 +285,45 @@
       .msg .shared ul { display: inline; margin: 0; padding: 0; list-style: none; }
       .msg .shared li { display: inline; }
       .msg .shared li + li::before { content: " · "; }
-      .msg .sources { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: var(--text-muted); }
-      .msg sup a { text-decoration: none; font-size: 11px; }
+      /* Items 10 and 12: source chips at the end of a paragraph, their card, and the row under an answer. */
+      .msg a.cite {
+        display: inline-block; padding: 0 6px; border-radius: 6px; background: var(--bg-subtle); color: var(--text-secondary);
+        font: 12px/20px ui-monospace, SFMono-Regular, Menlo, monospace; text-decoration: none; vertical-align: 1px; white-space: nowrap;
+      }
+      .msg a.cite:hover, .msg a.cite[aria-describedby] { background: var(--selected); color: var(--text-primary); }
+      .site-icon {
+        display: inline-grid; place-items: center; width: 16px; height: 16px; flex: none; border-radius: 50%;
+        background: hsl(var(--site-hue, 210) 55% 30%); color: #fff; font: 600 9px/1 -apple-system, system-ui, sans-serif;
+      }
+      #source-card {
+        position: fixed; z-index: 30; width: min(300px, calc(100vw - 16px)); padding: 10px 12px; border-radius: 12px;
+        border: 1px solid var(--hairline); background: var(--bg-surface); color: var(--text-primary); box-shadow: var(--shadow); font-size: 13px;
+      }
+      #source-card .cite-site { display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+      #source-card .cite-title { display: block; margin-top: 6px; font-weight: 600; color: var(--text-primary); text-decoration: none; overflow-wrap: anywhere; }
+      #source-card .cite-title:hover { text-decoration: underline; }
+      #source-card .cite-snippet {
+        margin: 4px 0 0; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+      }
+      #source-card .cite-kind { margin: 8px 0 0; padding-top: 6px; border-top: 1px solid var(--hairline); color: var(--text-muted); font-size: 12px; }
+      .answer-foot { margin-top: 6px; }
+      .answer-actions { display: flex; align-items: center; gap: 2px; margin: 6px 0 0 -6px; flex-wrap: wrap; }
+      .answer-foot .answer-actions { margin-top: 0; }
+      .answer-actions .icon-btn[aria-pressed="true"] { color: var(--accent-text); }
+      .sources-toggle {
+        display: inline-flex; align-items: center; gap: 6px; min-height: 32px; margin-left: 6px; padding: 0 8px; border: 0; border-radius: 8px;
+        background: transparent; color: var(--text-secondary); font-size: 13px;
+      }
+      .sources-toggle:hover, .sources-toggle[aria-expanded="true"] { background: var(--bg-subtle); color: var(--text-primary); }
+      .site-stack { display: inline-flex; }
+      .site-stack .site-icon { box-shadow: 0 0 0 2px var(--bg-canvas); }
+      .site-stack .site-icon + .site-icon { margin-left: -5px; }
+      .source-list { margin: 4px 0 0; padding: 0; list-style: none; font-size: 13px; }
+      .source-list li { margin: 0; }
+      .source-list a { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 2px 6px; border-radius: 8px; color: var(--text-primary); text-decoration: none; }
+      .source-list a:hover { background: var(--bg-subtle); }
+      .source-list .source-site { flex: none; color: var(--text-muted); }
+      .source-list .source-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .msg .code-block { margin: 0 0 10px; border-radius: 8px; background: var(--bg-subtle); }
       .msg .code-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 0 10px; font-size: 12px; color: var(--text-secondary); }
       .msg .code-copy { min-height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--accent-text); font-size: 12px; }

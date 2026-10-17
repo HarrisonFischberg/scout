@@ -15,6 +15,7 @@ import { loadPageAccess, parsePolicy, savePageAccess, type ScreenshotChoice } fr
 import { createProvider, ProviderError, type Effort } from "../providers";
 import { effortForId, loadModelList } from "../providers/models";
 import { Consent, gatedFetch } from "../settings/consent";
+import { savedUrl } from "../chat/sources";
 import { appendHistory, loadSettings, type StorageArea } from "../settings/settings";
 import { runTool, type ToolDecision, type ToolHostDeps } from "../tools/host";
 import { shrinkScreenshot } from "../tools/image";
@@ -153,6 +154,8 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
         kind: "chat",
         conv: e.conv,
         ...(e.shared.length ? { shared: e.shared } : {}),
+        // Addresses without query or fragment, which can hold session tokens.
+        ...(e.sources.length ? { sources: e.sources.map((x) => ({ ...x, url: savedUrl(x.url) })).filter((x) => x.url) } : {}),
       });
     },
     now: () => Date.now(),
@@ -213,6 +216,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
       shared?: SharedRef[];
       display_question?: string;
       answer_prefix?: string;
+      prefix_sources?: Array<{ url: string; title: string }>;
     }) => {
       server.start(p);
       return { message_id: p.message_id };
