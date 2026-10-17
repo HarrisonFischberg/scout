@@ -155,12 +155,17 @@ test("a WooCommerce store: tests codes through its Store API and applies the bes
   const shop = await open(page, { shopify: false, fixture: "/woo-cart.html", codes: ["SAVE10", "SAVE20", "NOPE1"] });
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
-  await expect(answer).toContainText("SAVE20 is the best: your total drops from €150.00 to €120.00 (you save €30.00, 20% off).", RUN_WAIT);
+  // Codes stack in WooCommerce: each one is tested alone (the previous one removed
+  // first), then the best is tried together with the next winners and the pair
+  // stands when the store takes both and the total drops further.
+  await expect(answer).toContainText("SAVE20 + SAVE10 together is the best: your total drops from €150.00 to €105.00 (you save €45.00, 30% off).", RUN_WAIT);
   await expect(answer).toContainText("It's applied to your cart");
-  // Codes stack in WooCommerce; the finder took each one off before the next, so only the winner is left.
+  await page.locator("#task .trace-head").click();
+  await expect(page.locator("#task .attempt").last()).toContainText("SAVE20 + SAVE10");
+  await expect(page.locator("#task .attempt").last()).toContainText("Together: saves €45.00.");
   await shop.waitForLoadState("load");
   const cart = await shop.evaluate(() => fetch("/wp-json/wc/store/v1/cart").then((r) => r.json()));
-  expect(cart.coupons.map((c: { code: string }) => c.code)).toEqual(["save20"]);
+  expect(cart.coupons.map((c: { code: string }) => c.code).sort()).toEqual(["save10", "save20"]);
   await expect(shop.locator("#status")).toHaveText("");
 });
 
