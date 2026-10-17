@@ -529,8 +529,11 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
       if (input.delayMs) await new Promise((res) => setTimeout(res, input.delayMs));
     }
     i += batch.length;
-    // A batch with a saving ends the search; the best code is applied below.
-    if (bestOf(attempts)) break;
+    // Once a code saves money, every code already found is still tested (the
+    // best of all of them wins, not the first), but no further search is
+    // offered: the batches and the "search again" question are for runs
+    // where nothing has worked yet.
+    if (bestOf(attempts)) continue;
     if (!input.askMore) continue;
     const canFind = input.findMore !== undefined && codes.length < MAX_TOTAL;
     if (i >= codes.length && !canFind) break;
