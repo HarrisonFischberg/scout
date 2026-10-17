@@ -1,4 +1,4 @@
-import { ProviderError, errorFromStatus } from "./errors";
+import { ProviderError, errorDetail, errorFromStatus } from "./errors";
 import { readSse } from "./sse";
 import type { ChatMessage, ChatRequest, ProviderClient, ProviderConfig, StreamEvent } from "./types";
 
@@ -113,7 +113,7 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
           if (err instanceof ProviderError) throw err;
           throw new ProviderError("anthropic", "network");
         }
-        if (!res.ok) throw errorFromStatus("anthropic", res);
+        if (!res.ok) throw errorFromStatus("anthropic", res, await errorDetail(res));
         if (!res.body) throw new ProviderError("anthropic", "stream_error");
 
         const blocks = new Map<number, Block>();

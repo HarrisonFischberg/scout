@@ -113,6 +113,7 @@ describe.each(["anthropic", "openai"] as const)("%s error mapping", (id) => {
     expect(err).toBeInstanceOf(ProviderError);
     expect(err.code).toBe(code);
     expect(err.userMessage).not.toContain("secret provider body");
+    expect(err.detail).toBeUndefined();
     if (code === "rate_limited") expect(err.retryAfterSeconds).toBe(7);
   });
 
@@ -239,6 +240,28 @@ describe("web search depth and fetch (T031)", () => {
     ]);
     expect(events).toContainEqual({ type: "source", url: "https://linktr.ee/example", title: "Example links", page: "Use code CREATOR10 for 10% off" });
     expect(events).toContainEqual({ type: "source", url: "https://deals.test/x", title: "Deals", age: "June 7, 2026" });
+  });
+});
+
+// Live sweep 2026-10-17: every search answered 400 for an hour and the user
+// saw only "The provider rejected the request". The provider's own reason
+// (a credit balance, a model the account cannot use) now travels with it.
+describe("rejected requests carry the provider's reason", () => {
+  const search = { model: "m", messages: [{ role: "user" as const, content: "find codes" }], maxTokens: 64 };
+  it.each(["anthropic", "openai"] as const)("%s: a JSON 400 names the reason, without key-like strings", async (id) => {
+    const body = JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "Your credit balance is too low to access the API.\n  Key sk-ant-abcdefghijklmnop was used." } });
+    const f: FetchLike = async () => new Response(body, { status: 400, headers: { "content-type": "application/json" } });
+    const err = await collect(createProvider(id, { apiKey: "k", fetch: f }).stream(search)).catch((e) => e);
+    expect(err).toBeInstanceOf(ProviderError);
+    expect(err.code).toBe("bad_request");
+    expect(err.userMessage).toBe("The provider rejected the request. The provider said: Your credit balance is too low to access the API. Key [removed] was used.");
+    expect(err.userMessage).not.toContain("sk-ant");
+  });
+
+  it("a 429 or 500 keeps its plain message", async () => {
+    const f: FetchLike = async () => new Response(JSON.stringify({ error: { message: "Overloaded" } }), { status: 529 });
+    const err = await collect(createProvider("anthropic", { apiKey: "k", fetch: f }).stream(search)).catch((e) => e);
+    expect(err.userMessage).toBe("The provider is having problems. Try again shortly.");
   });
 });
 

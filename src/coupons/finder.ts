@@ -162,10 +162,14 @@ export interface TesterError {
   message: string;
 }
 
-async function cartTester(cart: CartApi): Promise<CouponTester | null> {
+async function cartTester(cart: CartApi): Promise<CouponTester | TesterError | null> {
   const start = await cart.info();
   // Only a real cart (numeric total) counts; anything else falls back to the page path.
   if (!start || typeof start.total !== "number" || !Array.isArray(start.codes)) return null;
+  // Nothing to lower: an empty cart, or one whose price the store sets at checkout.
+  if (start.total <= 0) {
+    return { error: "error", message: "The cart total is " + formatMoney(0, start.currency) + ", so no code could lower it. Add an item to the cart first." };
+  }
   const original = start.codes.map((c) => c.code).join(",");
   const outcome = (r: CartState | { rateLimited: true } | null, asked: string[]): TryResult => {
     if (!r) return { total: null, accepted: null, note: "The store did not answer." };
