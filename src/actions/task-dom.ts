@@ -219,6 +219,16 @@ export function taskDomPage(refs: Map<string, Element>, win: Window): TaskPage {
         else if (el instanceof HTMLElement && (el.tagName === "BUTTON" || el.tagName === "A")) el.click();
       } else if (down && key === " " && el instanceof HTMLElement && (el.tagName === "BUTTON" || el.getAttribute("role") === "button" || el.getAttribute("role") === "checkbox")) {
         el.click();
+      } else if (down && key === "Backspace" && (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) {
+        // Synthetic key events have no default action: emulate the ones a task needs.
+        setValue(el, el.value.slice(0, -1));
+      } else if (down && key === "Tab") {
+        const focusables = Array.from(doc.querySelectorAll<HTMLElement>("a[href],button,input,select,textarea,[tabindex]:not([tabindex='-1'])")).filter(
+          (f) => !(f as HTMLButtonElement).disabled && f.getClientRects().length > 0,
+        );
+        const i = focusables.indexOf(el as HTMLElement);
+        const next = modifiers.includes("shift") ? (i - 1 + focusables.length) % Math.max(1, focusables.length) : (i + 1) % Math.max(1, focusables.length);
+        focusables[next]?.focus();
       }
       el.dispatchEvent(new KeyboardEvent("keyup", init));
       return true;

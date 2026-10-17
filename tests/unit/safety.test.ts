@@ -85,6 +85,12 @@ describe("task action classifier", () => {
     expect(classifyTaskAction({ type: "key", key: "Tab", modifiers: [] }, field).sensitive).toBe(false);
   });
 
+  it("asks for a coordinate click on something the structure cannot name, but not for a named one", () => {
+    expect(classifyTaskAction({ type: "click", target: { x: 10, y: 20 } }, { name: "", role: "generic", tag: "div" })).toMatchObject({ sensitive: true, kind: "personal_data" });
+    expect(classifyTaskAction({ type: "click", target: { x: 10, y: 20 } }, { name: "Show more", role: "button", tag: "button" }).sensitive).toBe(false);
+    expect(classifyTaskAction({ type: "click", target: { ref: "e1" } }, { name: "", role: "generic", tag: "div" }).sensitive).toBe(false);
+  });
+
   it("never confirms scrolling, waiting, screenshots, dragging, right-clicks, or a missing target", () => {
     expect(classifyTaskAction({ type: "scroll", direction: "down" }, null).sensitive).toBe(false);
     expect(classifyTaskAction({ type: "wait", ms: 10 }, null).sensitive).toBe(false);

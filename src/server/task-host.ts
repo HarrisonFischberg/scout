@@ -19,6 +19,9 @@ import type { StorageArea } from "../settings/settings";
 import type { SizedImage } from "../tools/image";
 import type { ToolLog } from "../tools/log";
 
+/** No answer to a confirmation within this time counts as Deny. */
+export const CONFIRM_TIMEOUT_MS = 120_000;
+
 export interface TaskHostDeps {
   storage: StorageArea | undefined;
   tab(id: number): Promise<TabRef | null>;
@@ -40,6 +43,8 @@ export interface TaskHostDeps {
   now(): number;
   /** How long a finished task stays available for task.status. Default 2 minutes. */
   keepMs?: number;
+  /** How long a confirmation waits for an answer before it counts as Deny. Default 2 minutes. */
+  confirmTimeoutMs?: number;
   setTimer?: (fn: () => void, ms: number) => unknown;
   clearTimer?: (h: unknown) => void;
 }
@@ -188,8 +193,16 @@ export class TaskHost {
       }
     };
     const confirm = (req: ConfirmRequest): Promise<ConfirmDecision> =>
-      new Promise((resolve) => {
+      new Promise((resolveDecision) => {
         const prompt: PendingPrompt = { prompt_id: task_id + "." + (record.log.length + 1), what: req.what, site: req.site, reason: req.reason, preapproved: req.preapproved };
+        // Unanswered for two minutes (panel closed, user away): denied, so the task cannot hang.
+        const timer = this.set(() => {
+          if (record.pending?.prompt === prompt) this.decide({ task_id, prompt_id: prompt.prompt_id, decision: "deny" });
+        }, deps.confirmTimeoutMs ?? CONFIRM_TIMEOUT_MS);
+        const resolve = (d: ConfirmDecision): void => {
+          (deps.clearTimer ?? ((h) => clearTimeout(h as ReturnType<typeof setTimeout>)))(timer);
+          resolveDecision(d);
+        };
         record.pending = { prompt, resolve };
         record.prompt = prompt;
         this.emit(record, { kind: "confirm", prompt_id: prompt.prompt_id, what: prompt.what, site: prompt.site, reason: prompt.reason, preapproved: prompt.preapproved });

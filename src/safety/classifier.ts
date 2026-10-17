@@ -134,7 +134,17 @@ export function classifyAction(action: Action, snap: Snapshot): Classification {
  */
 export function classifyTaskAction(action: TaskAction, target: TargetInfo | null): Classification {
   if (action.type === "right_click") return { sensitive: false };
-  if (ACTIVATES.has(action.type)) return target ? classifyActivation(target) : { sensitive: false };
+  if (ACTIVATES.has(action.type)) {
+    if (!target) return { sensitive: false };
+    const c = classifyActivation(target);
+    // A coordinate click on something the page's structure cannot name: there
+    // was no way to check it, so ask (ported from the parallel Part 3 branch).
+    const t = (action as { target?: unknown }).target;
+    if (!c.sensitive && typeof t === "object" && t !== null && "x" in t && !target.name.trim()) {
+      return { sensitive: true, kind: "personal_data", reason: "This clicks something the page's structure does not identify." };
+    }
+    return c;
+  }
   if (INPUTS.has(action.type)) {
     if (target?.redacted) return { sensitive: true, kind: "login", reason: "This field holds a password, card number, or similar secret." };
     return { sensitive: false };
