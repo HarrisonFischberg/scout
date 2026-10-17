@@ -14,11 +14,13 @@
 //     --headed                    show the browser
 //     --only "Chomps,Rumpl"       run some merchants only (name substrings)
 //     --limit N                   first N merchants
+//     --skip N                    skip the first N merchants (with --limit: a slice of the list)
 //     --model claude-sonnet-5-5   model for the search (default: the extension's default)
 //     --effort medium             effort setting (default: the extension's default)
 //     --no-second-pass            answer "Stop here" instead of "Search again"
 //     --out ralph/evidence/live-suite/<stamp>
 //     --summarize <dir>           rewrite <dir>/summary.md from its results.json (a partial run) and exit
+//     --cart-only                 stop after the item is in the cart (no popup, no API call): checks the harness
 //     --single-process            Chromium in one process (the only browser that starts inside the
 //                                 Claude Code sandbox on macOS; WebKit cannot)
 //   When HTTPS_PROXY is set in the shell, the browser's traffic goes through it (the sandbox's proxy).
@@ -52,10 +54,12 @@ const browserName = flag("browser", "webkit");
 const headed = has("headed");
 const only = (flag("only", "") || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 const limit = Number(flag("limit", "0")) || 0;
+const skip = Number(flag("skip", "0")) || 0;
 const model = flag("model", "");
 const effort = flag("effort", "");
 const secondPass = !has("no-second-pass");
 const singleProcess = has("single-process");
+const cartOnly = has("cart-only");
 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 const out = resolve(flag("out", join("ralph", "evidence", "live-suite", stamp)));
 
@@ -73,7 +77,7 @@ if (flag("summarize", "")) {
 }
 
 const key = process.env.SCOUT_LIVE_KEY || process.env.ANTHROPIC_API_KEY || "";
-if (!key) {
+if (!key && !cartOnly) {
   console.error("SCOUT_LIVE_KEY is not set in this shell (the Anthropic API key). Nothing was run.");
   process.exit(2);
 }
@@ -87,6 +91,7 @@ mkdirSync(out, { recursive: true });
 
 const list = JSON.parse(readFileSync(join(root, "scripts", "live-merchants.json"), "utf8")).merchants;
 let merchants = only.length ? list.filter((m) => only.some((o) => m.name.toLowerCase().includes(o) || m.url.includes(o))) : list;
+if (skip) merchants = merchants.slice(skip);
 if (limit) merchants = merchants.slice(0, limit);
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -102,20 +107,20 @@ function evalWithin(page, fn, arg, ms = EVAL_TIMEOUT_MS) {
 const BOT_WALL = /just a moment|access denied|attention required|verify you are human|are you a robot|captcha|request blocked|pardon our interruption/i;
 
 /** Adds one item to the cart and lands on the cart page. Returns how, or a reason it could not. */
-async function addToCart(shop, origin) {
-  // Shopify: the store's own JSON catalog and cart API, the same calls its Add to cart button makes.
+/** Shopify's own JSON catalog and cart API on `origin`, the same calls its Add to cart button makes; null when not Shopify. */
+async function addViaShopify(shop, origin) {
   for (const path of ["/products.json?limit=24", "/collections/all/products.json?limit=24"]) {
     const products = await evalWithin(shop, async (p) => {
         const r = await fetch(p, { credentials: "same-origin", headers: { accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
         if (!r.ok) return null;
         const j = await r.json().catch(() => null);
         return j && Array.isArray(j.products) ? j.products : null;
-      }, path).catch(() => null);
+      }, origin + path).catch(() => null);
     if (!products) continue;
     const variant = products.flatMap((p) => (Array.isArray(p.variants) ? p.variants : [])).find((v) => v && v.available !== false && typeof v.id === "number" && Number(v.price) > 0);
     if (!variant) return { ok: false, reason: "shopify catalog has no available variant" };
-    const added = await evalWithin(shop, async (id) => {
-        const r = await fetch("/cart/add.js", {
+    const added = await evalWithin(shop, async ([o, id]) => {
+        const r = await fetch(o + "/cart/add.js", {
           method: "POST",
           credentials: "same-origin",
           signal: AbortSignal.timeout(20_000),
@@ -123,28 +128,99 @@ async function addToCart(shop, origin) {
           body: JSON.stringify({ items: [{ id, quantity: 1 }] }),
         });
         return r.ok;
-      }, variant.id).catch(() => false);
+      }, [origin, variant.id]).catch(() => false);
     if (!added) return { ok: false, reason: "shopify /cart/add.js refused" };
     await shop.goto(origin + "/cart", { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
     return { ok: true, how: "shopify cart api", product: variant.id };
   }
-  // Other stores: open the first product link, press Add to cart, open the cart.
-  const productLink = await shop.$('a[href*="/product/"], a[href*="/products/"], a[href*="/shop/"], a[href*="/item/"]');
-  if (!productLink) return { ok: false, reason: "no product link found on the home page" };
-  const href = await productLink.getAttribute("href");
-  await shop.goto(new URL(href, origin).toString(), { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
-  await wait(1500);
+  return null;
+}
+
+/** On a Shopify product page whose store hides /products.json (BYLT, Cuts): the page's own
+ * /products/<handle>.js is still public; add its first available variant through /cart/add.js. */
+async function addViaProductJson(shop, origin) {
+  if (!/\/products\/[^/?#]+/.test(new URL(shop.url()).pathname)) return null;
+  const added = await evalWithin(shop, async () => {
+      const path = location.pathname.replace(/\/$/, "");
+      const r = await fetch(path + ".js", { credentials: "same-origin", headers: { accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
+      if (!r.ok) return null;
+      const p = await r.json().catch(() => null);
+      const v = p && Array.isArray(p.variants) ? p.variants.find((x) => x && x.available !== false && typeof x.id === "number" && Number(x.price) > 0) : null;
+      if (!v) return null;
+      const a = await fetch("/cart/add.js", {
+        method: "POST",
+        credentials: "same-origin",
+        signal: AbortSignal.timeout(20_000),
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ items: [{ id: v.id, quantity: 1 }] }),
+      });
+      return a.ok ? v.id : null;
+    }).catch(() => null);
+  if (!added) return null;
+  await shop.goto(origin + "/cart", { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
+  return { ok: true, how: "shopify product json", product: added };
+}
+
+const PRODUCT_LINKS = 'a[href*="/product/"], a[href*="/products/"], a[href*="/shop/"], a[href*="/store/"], a[href*="/item/"]';
+/** A size or other option to pick before Add to cart appears (BYLT "Select a size", Cuts "Select Size"). */
+async function pickFirstOption(shop) {
+  const picker = shop.getByRole("button", { name: /select (a |your )?(size|option)/i }).first();
+  if (await picker.count()) await picker.click({ timeout: 5_000 }).catch(() => null);
+  const option = shop
+    .locator('button, label, [role="radio"], [role="option"]')
+    .filter({ hasText: /^\s*(XXS|XS|S|M|L|XL|XXL|2XL|3XL|One Size|OS)\s*$/i })
+    .filter({ hasNot: shop.locator("[disabled]") })
+    .first();
+  if (!(await option.count())) return false;
+  await option.click({ timeout: 5_000 }).catch(() => null);
+  await wait(800);
+  return true;
+}
+
+async function addToCart(shop, origin) {
+  const viaApi = await addViaShopify(shop, origin);
+  if (viaApi) return viaApi;
+  // Other stores: open a product page (a product link, or a "Shop now" / collection link and then
+  // a product link on that page), press Add to cart, open the cart.
+  let productLink = await shop.$(PRODUCT_LINKS);
+  if (!productLink) {
+    const entry = await shop.$('a:has-text("shop now"), a:has-text("buy now"), a[href*="/collections/"], a[href*="/collection/"]');
+    if (!entry) return { ok: false, reason: "no product link found on the home page" };
+    const entryHref = await entry.getAttribute("href");
+    await shop.goto(new URL(entryHref, origin).toString(), { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
+    await wait(1500);
+    productLink = await shop.$(PRODUCT_LINKS);
+  }
+  const onProductPage = !productLink && /\/(products?|store|item)\//.test(shop.url());
+  if (!productLink && !onProductPage) return { ok: false, reason: "no product link found on the home page" };
+  const href = productLink ? await productLink.getAttribute("href") : shop.url();
+  if (productLink) {
+    await shop.goto(new URL(href, shop.url()).toString(), { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
+    await wait(1500);
+  }
+  // A marketing site in front of a shop on another host (perfectketo.com -> shop.perfectketo.com):
+  // the cart lives where the product page lives, and that host may be Shopify after all.
+  const shopOrigin = new URL(shop.url()).origin;
+  if (shopOrigin !== origin) {
+    const viaShopApi = await addViaShopify(shop, shopOrigin);
+    if (viaShopApi) return viaShopApi;
+  }
+  const viaProduct = await addViaProductJson(shop, shopOrigin);
+  if (viaProduct) return viaProduct;
   // The button's accessible name, or Shopify's product form submit when the name is an icon or a price.
   const addBtn = shop
     .getByRole("button", { name: /add to (cart|bag|basket)/i })
     .or(shop.locator('button[name="add"], form[action*="/cart/add"] [type="submit"]'))
     .first();
-  if (!(await addBtn.count())) return { ok: false, reason: "no Add to cart button on the product page" };
+  if (!(await addBtn.count())) {
+    await pickFirstOption(shop);
+    if (!(await addBtn.count())) return { ok: false, reason: "no Add to cart button on the product page" };
+  }
   await addBtn.scrollIntoViewIfNeeded().catch(() => null);
   await addBtn.click({ timeout: 10_000 }).catch(() => null);
   await wait(2500);
   for (const path of ["/cart", "/cart/", "/basket", "/bag", "/checkout/cart"]) {
-    const r = await shop.goto(origin + path, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
+    const r = await shop.goto(shopOrigin + path, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
     if (r && r.ok()) return { ok: true, how: "clicked add to cart", product: href };
   }
   return { ok: false, reason: "cart page not found after adding" };
@@ -267,12 +343,14 @@ async function runMerchant(browser, m) {
     },
   };
   const result = { name: m.name, url: m.url, group: m.group, outcome: "", notes: [], stages, timeline, startedAt: new Date(started).toISOString() };
-  const context = await browser.newContext({ bypassCSP: true, viewport: { width: 1280, height: 900 } });
-  context.setDefaultTimeout(30_000);
-  const shop = await context.newPage();
   const dir = join(out, slug(m.name));
   mkdirSync(dir, { recursive: true });
+  let context = null;
+  let shop;
   try {
+    context = await browser.newContext({ bypassCSP: true, viewport: { width: 1280, height: 900 } });
+    context.setDefaultTimeout(30_000);
+    shop = await context.newPage();
     const nav = await shop.goto(m.url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch((e) => ({ error: e }));
     if (!nav || nav.error) {
       result.outcome = "blocked: site unreachable";
@@ -303,6 +381,10 @@ async function runMerchant(browser, m) {
     const before = await readShopifyCart(shop);
     if (before) result.cartBefore = before;
     await shop.screenshot({ path: join(dir, "cart-before.png"), fullPage: false }).catch(() => null);
+    if (cartOnly) {
+      result.outcome = "cart ok (" + added.how + (before ? ", shopify cart " + before.total : ", no shopify cart") + ")";
+      return result;
+    }
 
     const popup = await openPopup(context, shop, shop.url(), stageSink);
     // What the provider answered when a search failed (status and error body; never the key).
@@ -380,7 +462,7 @@ async function runMerchant(browser, m) {
     return result;
   } finally {
     result.seconds = Math.round((Date.now() - started) / 1000);
-    await context.close().catch(() => null);
+    if (context) await context.close().catch(() => null);
   }
 }
 
@@ -393,17 +475,21 @@ if (proxyUrl) {
   console.log("Browser traffic goes through the shell's HTTPS_PROXY (" + proxy.server + ").");
 }
 const launchArgs = singleProcess && browserName === "chromium" ? ["--no-sandbox", "--single-process", "--no-zygote", "--disable-gpu"] : [];
-const browser = await engine.launch({ headless: !headed, ...(proxy ? { proxy } : {}), ...(launchArgs.length ? { args: launchArgs } : {}) });
+const launchOpts = { headless: !headed, ...(proxy ? { proxy } : {}), ...(launchArgs.length ? { args: launchArgs } : {}) };
+// One-process Chromium does not survive its context closing, so it is relaunched per merchant.
+const shared = singleProcess ? null : await engine.launch(launchOpts);
 const results = [];
 console.log("Live coupon suite: " + merchants.length + " merchants, " + browserName + (headed ? " (headed)" : "") + ", results in " + out);
 for (const m of merchants) {
+  const browser = shared ?? (await engine.launch(launchOpts));
   const r = await runMerchant(browser, m);
+  if (!shared) await browser.close().catch(() => null);
   results.push(r);
   console.log("- " + m.name + ": " + r.outcome + (r.verify ? " (cart " + r.verify.before + " -> " + r.verify.after + ")" : "") + " [" + r.seconds + " s]");
   writeFileSync(join(out, "results.json"), JSON.stringify({ browser: browserName, model: model || "default", effort: effort || "default", secondPass, startedAt: stamp, results }, null, 2));
   await wait(3000);
 }
-await browser.close();
+if (shared) await shared.close();
 
 writeSummary(out, results, { browser: browserName, model, effort, secondPass, stamp });
 
