@@ -18,7 +18,7 @@ function sse(text: string): string {
   return ev.map((e) => "event: " + e.type + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
 }
 
-async function openPopup(page: Page, opts: { keys?: Record<string, string>; data?: Record<string, unknown>; pageData?: typeof PAGE } = {}): Promise<void> {
+async function openPopup(page: Page, opts: { keys?: Record<string, string>; data?: Record<string, unknown>; pageData?: typeof PAGE & { favIconUrl?: string } } = {}): Promise<void> {
   await page.addInitScript(
     ({ keys, data, pageData }) => {
       const g = globalThis as unknown as Record<string, unknown>;
@@ -39,7 +39,7 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
           },
           onMessage: { addListener() {} },
         },
-        tabs: { query: async () => [{ id: 1, url: pageData.url, title: pageData.title, active: true }] },
+        tabs: { query: async () => [{ id: 1, url: pageData.url, title: pageData.title, active: true, favIconUrl: (pageData as { favIconUrl?: string }).favIconUrl }] },
         permissions: { request: async () => true, getAll: async () => ({ origins: [] }), remove: async () => true },
         scripting: { executeScript: async () => [{ result: pageData }] },
         storage: {
@@ -135,21 +135,41 @@ test("the conversation is saved and comes back when the popup reopens; New chat 
   await expect(page.getByRole("log").getByText("How much is the widget?")).toHaveCount(0);
 });
 
-test("on a shopping site the empty chat lists store actions with the store's tile; elsewhere the general chips stay", async ({ page }) => {
+test("on a shopping site the composer lists store actions with the store's icon above the field, until the chat starts", async ({ page }) => {
   await openPopup(page, {
     keys: { anthropic: GOOD_KEY },
     pageData: { url: "https://www.amazon.com/dp/B000TEST", title: "Synthetic widget", text: "Widget costs $10. 4.5 stars from 12 reviews." },
   });
   const list = page.getByRole("list", { name: "Suggestions for Amazon" });
   await expect(list).toBeVisible();
-  await expect(list.getByRole("button")).toHaveText(["Compare prices across sites", "Find similar products", "Summarize product reviews", "Find coupons"]);
-  await expect(list.locator(".site-tile").first()).toHaveAttribute("data-letter", "A");
+  await expect(list.getByRole("button")).toHaveText(["Compare prices across sites", "Find similar products", "Summarize product reviews"]);
+  // Inside the composer box, above the question field.
+  await expect(page.locator(".composer-box > #site-suggestions")).toHaveCount(1);
+  const listBox = await list.boundingBox();
+  const fieldBox = await page.getByLabel("Ask about this page").boundingBox();
+  expect(listBox!.y + listBox!.height).toBeLessThanOrEqual(fieldBox!.y);
+  // The icon stub serves an empty image, so each row falls back to the letter tile.
+  await expect(list.locator(".site-icon.tile")).toHaveCount(3);
+  await expect(list.locator(".site-icon.tile").first()).toHaveAttribute("data-letter", "A");
   await expect(page.getByRole("button", { name: "Explain the key points" })).toBeHidden();
 
   await list.getByRole("button", { name: "Summarize product reviews" }).click();
   await expect(page.getByRole("log").getByText("Summarize the customer reviews for the product on this page")).toBeVisible();
   await expect(page.getByRole("log").getByText("The widget costs")).toBeVisible();
   await expect(list).toBeHidden();
+});
+
+test("the store's own icon shows when it loads", async ({ page }) => {
+  // Safari's favicon for the tab (this sandbox's browser cannot reach real store hosts, even routed).
+  await page.route("https://icons.test/target.png", (r) => r.fulfill({ status: 200, contentType: "image/png", path: "src/icons/icon-128.png" }));
+  await openPopup(page, {
+    keys: { anthropic: GOOD_KEY },
+    pageData: { url: "https://www.target.com/p/widget", title: "Widget", text: "Widget $10.", favIconUrl: "https://icons.test/target.png" },
+  });
+  const list = page.getByRole("list", { name: "Suggestions for Target" });
+  await expect(list.locator("img.site-icon")).toHaveCount(3);
+  await expect(list.locator("img.site-icon").first()).toHaveAttribute("src", "https://icons.test/target.png");
+  await expect(list.locator(".site-icon.tile")).toHaveCount(0);
 });
 
 test("a page that is not a known store keeps the general chips", async ({ page }) => {

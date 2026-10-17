@@ -1,18 +1,18 @@
 // Empty-chat suggestions for the page the panel opened on. On a known shopping
-// site the panel offers shopping actions, each marked with the store's tile; on
-// any other page it keeps the general chips in popup.html. Pure functions only,
-// so they are unit-tested without a browser.
+// site the composer lists shopping actions, each marked with the store's own
+// icon; on any other page the general chips in popup.html stay. Pure functions
+// only, so they are unit-tested without a browser.
 
 export interface ShoppingSite {
   /** Shown to assistive tech and as the tile's tooltip. */
   name: string;
-  /** Tile background, dark enough for white text (4.5:1); the tile shows the store's first letter, never its logo. */
+  /** Background of the letter tile shown when the store's icon cannot load; dark enough for white text (4.5:1). */
   color: string;
 }
 
 export interface Suggestion {
   label: string;
-  /** A question for the chat, or "coupons" for the Find coupons run. */
+  /** The question sent to the chat. */
   prompt: string;
 }
 
@@ -79,11 +79,24 @@ export const SHOPPING_SUGGESTIONS: readonly Suggestion[] = [
       "Summarize the customer reviews for the product on this page: the overall rating and how many reviews, what people like most, " +
       "the most common complaints, and who it suits. Say if the reviews shown on the page are too few to judge.",
   },
-  { label: "Find coupons", prompt: "coupons" },
 ];
 
 /** The suggestions for a page, with the store they belong to; null means keep the general chips. */
 export function suggestionsFor(url: string | undefined): { site: ShoppingSite; items: readonly Suggestion[] } | null {
   const site = shoppingSite(url);
   return site ? { site, items: SHOPPING_SUGGESTIONS } : null;
+}
+
+/**
+ * The store's own icon: the tab's favicon when Safari reports one, else the
+ * site's /favicon.ico (the site the tab is already on; no other host is asked).
+ */
+export function siteIconUrl(url: string | undefined, favIconUrl?: string): string | null {
+  if (favIconUrl && /^(https:|data:image\/)/.test(favIconUrl)) return favIconUrl;
+  try {
+    const u = new URL(url ?? "");
+    return u.protocol === "https:" ? u.origin + "/favicon.ico" : null;
+  } catch {
+    return null;
+  }
 }

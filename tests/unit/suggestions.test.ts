@@ -1,6 +1,6 @@
 // Empty-chat suggestions: shopping actions on known stores, general chips elsewhere.
 import { describe, expect, it } from "vitest";
-import { SHOPPING_SUGGESTIONS, shoppingSite, suggestionsFor } from "../../src/panel/suggestions";
+import { SHOPPING_SUGGESTIONS, shoppingSite, siteIconUrl, suggestionsFor } from "../../src/panel/suggestions";
 
 describe("shopping site detection", () => {
   it("recognizes known stores on their own domains and subdomains", () => {
@@ -31,13 +31,24 @@ describe("suggestions for a page", () => {
       "Compare prices across sites",
       "Find similar products",
       "Summarize product reviews",
-      "Find coupons",
     ]);
     expect(suggestionsFor("https://en.wikipedia.org/wiki/Safari")).toBeNull();
   });
 
-  it("keeps Find coupons on the coupon run and every other prompt a real question", () => {
-    expect(SHOPPING_SUGGESTIONS.find((s) => s.label === "Find coupons")?.prompt).toBe("coupons");
-    for (const s of SHOPPING_SUGGESTIONS.filter((x) => x.prompt !== "coupons")) expect(s.prompt.length).toBeGreaterThan(40);
+  it("sends a full question for each row", () => {
+    for (const s of SHOPPING_SUGGESTIONS) expect(s.prompt.length).toBeGreaterThan(40);
+  });
+});
+
+describe("store icon", () => {
+  it("uses the tab's favicon when Safari gives one, else the site's own /favicon.ico", () => {
+    expect(siteIconUrl("https://www.amazon.com/dp/1", "https://www.amazon.com/favicon.ico?v=2")).toBe("https://www.amazon.com/favicon.ico?v=2");
+    expect(siteIconUrl("https://www.target.com/p/1")).toBe("https://www.target.com/favicon.ico");
+  });
+
+  it("never loads an icon over plain http or from a script URL", () => {
+    expect(siteIconUrl("http://www.target.com/p/1")).toBeNull();
+    expect(siteIconUrl("https://www.target.com/", "javascript:alert(1)")).toBe("https://www.target.com/favicon.ico");
+    expect(siteIconUrl(undefined)).toBeNull();
   });
 });
