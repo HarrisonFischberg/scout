@@ -6,9 +6,9 @@
 // duplicates). It keeps running when the popover closes and saves the answer
 // to history when it completes.
 //
-// Tool turns are written back to the model as plain text, as the agent loop
-// does (src/agent/loop.ts), so no provider-specific reasoning blocks have to
-// be echoed between rounds.
+// Tool turns are written back to the model as plain text, as the Scout task
+// runner does (src/scout/runner.ts), so no provider-specific reasoning blocks
+// have to be echoed between rounds.
 import { BridgeError } from "../bridge/messages";
 import { buildMessages, SYSTEM_PROMPT, TOOL_RULES, type PageContext } from "../chat/prompt";
 import { CHAT_MAX_TOKENS } from "../chat/session";

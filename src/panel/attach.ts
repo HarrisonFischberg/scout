@@ -74,6 +74,7 @@ export function toolLabel(name: string): string {
 /** One Settings > Activity row: time, tool, site, result, duration. */
 export function activityLine(e: ToolLogEntry, locale?: string): string {
   const time = new Date(e.at).toLocaleString(locale, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  const tool = e.tool.startsWith("unknown:") ? "Unknown tool (" + e.tool.slice(8) + ")" : toolLabel(e.tool);
+  // Part 3: Scout actions are logged as "scout:<action>", rejected ones included.
+  const tool = e.tool.startsWith("unknown:") ? "Unknown tool (" + e.tool.slice(8) + ")" : e.tool.startsWith("scout:") ? "Scout action (" + e.tool.slice(6) + ")" : toolLabel(e.tool);
   return [time, tool, e.site || "no site", e.status, e.ms + " ms"].join(" · ");
 }

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Scout fixture (synthetic)</title>
+<style>body{margin:0;font:16px system-ui}main{padding:16px}</style></head>
+<body><main><h1>Scout fixture</h1>
+<form id="f" onsubmit="event.preventDefault(); document.getElementById('submitted').textContent = String(Number(document.getElementById('submitted').textContent) + 1)">
+  <label for="name">Name</label><input id="name" name="name" type="text">
+  <label for="topic">Topic</label>
+  <select id="topic" name="topic"><option>General</option><option>Support</option></select>
+  <label for="pw">Password</label><input id="pw" name="pw" type="password">
+  <button type="submit">Send</button>
+</form>
+<p><button id="signin" type="button" onclick="document.getElementById('signed-in').textContent = String(Number(document.getElementById('signed-in').textContent) + 1)">Sign in</button></p>
+<p><button id="more" type="button" onclick="window.__clicks = (window.__clicks || 0) + 1; window.__lastClickAt = performance.now(); document.getElementById('extra').hidden = false">Show more</button></p>
+<p id="extra" hidden>Extra details.</p>
+<p><a href="/files/report.pdf">Download report</a></p>
+<p>Submitted: <span id="submitted">0</span>. Signed in: <span id="signed-in">0</span></p>
+<div style="height:3000px"></div>
+</main></body></html>

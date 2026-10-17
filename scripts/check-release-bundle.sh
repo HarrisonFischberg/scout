@@ -13,6 +13,8 @@ if grep -q 'id="diag"\|debug:start\|diag-mock' apple/Extension/Resources/popup.h
 for f in popup.js background.js; do
   if grep -q "devMockServer\|127.0.0.1:4318" "apple/Extension/Resources/$f"; then echo "release $f contains the mock server switch"; bad=1; fi
 done
+# Part 3: the overlay's e2e hook exists only in debug builds.
+if grep -q "__scoutOverlayRoot" apple/Extension/Resources/content.js; then echo "release content.js contains the overlay test hook"; bad=1; fi
 npm run --silent build
 [ $bad -eq 0 ] && echo "release bundle clean"
 exit $bad

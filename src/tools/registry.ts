@@ -88,8 +88,9 @@ export const TOOLS: Record<ToolName, ToolDef> = {
     changes: "low",
   },
   run_task: {
-    description: "Start the browser agent on a task. Not available yet.",
-    parameters: { type: "object", properties: { goal: { type: "string" } }, required: ["goal"], additionalProperties: false },
+    description:
+      "Start Scout mode on the current page: Scout carries out a task in the browser (clicking, typing, scrolling) with the user's permission, and asks before anything sensitive. Use only when the user asks you to do something on the page, not to read it.",
+    parameters: { type: "object", properties: { goal: { type: "string", description: "What to do on the page, in the user's words." } }, required: ["goal"], additionalProperties: false },
     input: { object: { goal: "string" } },
     changes: "yes",
   },
@@ -104,17 +105,20 @@ export interface ToolCaps {
   searchTabs: boolean;
   /** The browser has a tab-group API (Safari does not). */
   tabGroups: boolean;
+  /** Part 3: Scout mode may start on the current tab (not Private Browsing, not blocked, not turned off). */
+  scoutMode?: boolean;
 }
 
 /**
  * Tools offered to the model. search_tabs only when the user turned it on,
- * tab groups only where the browser supports them, and run_task never until
- * the agent exists (Part 3). The host still enforces all of this.
+ * tab groups only where the browser supports them, and run_task only where
+ * Scout mode may run (Part 3). The host still enforces all of this.
  */
 export function offeredTools(caps: ToolCaps): ToolSpec[] {
   return TOOL_NAMES.filter((n) => {
     if (n === "search_tabs") return caps.searchTabs;
     if (n === "group_tabs" || n === "ungroup_tabs") return caps.tabGroups;
-    return n !== "run_task";
+    if (n === "run_task") return caps.scoutMode === true;
+    return true;
   }).map((name) => ({ name, description: TOOLS[name].description, parameters: TOOLS[name].parameters }));
 }

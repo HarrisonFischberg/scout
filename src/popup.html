@@ -287,6 +287,17 @@
       #settings-view .list { margin: 0; padding-left: 18px; overflow-wrap: anywhere; font-size: 14px; }
       #settings-view .list li { margin: 4px 0; }
       #activity-list { font-size: 13px; }
+      /* Part 3: Scout task card and its action log. */
+      #task-steps { margin: 6px 0; padding-left: 20px; font-size: 14px; }
+      #task-steps li { margin: 3px 0; }
+      #task-steps li .state { color: var(--text-muted); font-size: 12px; }
+      #task-steps li.failed .state, #task-steps li.rejected .state, #task-steps li.denied .state { color: var(--danger); }
+      #task-confirm { border-color: var(--accent); }
+      .msg .task-log { margin-top: 6px; font-size: 13px; }
+      .msg .task-log summary { cursor: pointer; color: var(--text-secondary); }
+      .msg .task-log ol { margin: 4px 0 0; padding-left: 20px; }
+      .msg .task-log .state { color: var(--text-muted); font-size: 12px; }
+      #shared-list ul { margin: 2px 0 0; padding-left: 16px; font-size: 13px; color: var(--text-secondary); }
 
       @media (prefers-reduced-motion: no-preference) {
         .icon-btn, .chip, .segmented label, #plus-menu button, #model-menu button { transition: background-color 150ms, color 150ms, border-color 150ms; }
@@ -344,23 +355,26 @@
 
         <div id="log" role="log" aria-label="Conversation" aria-live="polite"></div>
 
-        <section id="agent" class="card" aria-labelledby="agent-title" hidden>
-          <h2 id="agent-title">Controlling the browser</h2>
-          <p id="agent-plan" class="hint"></p>
-          <ol id="steps"></ol>
+        <!-- Part 3: Scout mode. The task runs in the background worker (src/scout/runner.ts); this card shows its action log. -->
+        <section id="task" class="card" aria-labelledby="task-title" hidden>
+          <h2 id="task-title">Scouting…</h2>
+          <p id="task-site" class="hint"></p>
+          <p id="task-plan" class="hint"></p>
+          <ol id="task-steps" aria-label="Action log"></ol>
           <div class="row">
-            <button id="agent-pause" class="btn" type="button">Pause</button>
-            <button id="agent-stop" class="btn" type="button">Stop</button>
+            <button id="task-control" class="btn" type="button">Take control</button>
+            <button id="task-stop" class="btn" type="button">Stop</button>
           </div>
         </section>
 
-        <section id="approval" class="card" role="alertdialog" aria-labelledby="approval-title" aria-describedby="approval-what approval-reason" hidden>
-          <h2 id="approval-title">Approve this action?</h2>
-          <p id="approval-what"></p>
-          <p id="approval-reason" class="hint"></p>
+        <!-- Part 3: a sensitive action waits here (spec 8.4). Deny has focus. -->
+        <section id="task-confirm" class="card" role="alertdialog" aria-labelledby="task-confirm-title" aria-describedby="task-confirm-what" hidden>
+          <h2 id="task-confirm-title">Scout for Safari wants to:</h2>
+          <p id="task-confirm-what"></p>
           <div class="row">
-            <button id="approval-allow" class="btn primary" type="button">Allow once</button>
-            <button id="approval-deny" class="btn" type="button">Don't allow</button>
+            <button id="task-allow-once" class="btn primary" type="button">Allow once</button>
+            <button id="task-allow-site" class="btn" type="button">Always allow on this site</button>
+            <button id="task-deny" class="btn" type="button">Deny</button>
           </div>
         </section>
 
@@ -416,7 +430,7 @@
         <div class="composer-box">
           <div id="mode-chip" hidden>
             <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 7 16 2-7 7-2Z"/></svg>
-            <span>Control Browser</span>
+            <span>Scout mode</span>
             <button id="mode-clear" class="icon-btn" type="button" aria-label="Back to Chat mode">
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
             </button>
@@ -436,7 +450,7 @@
             <fieldset class="segmented">
               <legend>Mode</legend>
               <label><input type="radio" name="mode" value="chat" checked />Chat</label>
-              <label><input type="radio" name="mode" value="control" />Control Browser</label>
+              <label><input type="radio" name="mode" value="control" />Scout</label>
             </fieldset>
             <button id="model-pill" type="button" aria-label="Change model" aria-haspopup="menu" aria-expanded="false" aria-controls="model-menu">
               <span id="model-pill-text"></span>
@@ -534,17 +548,34 @@
           <ul id="site-list" aria-labelledby="sites-title"></ul>
         </section>
 
+        <!-- Full permissions screen (Part 3, spec 10). Every control is enforced on this device. -->
         <section aria-labelledby="access-title">
-          <h3 id="access-title">Page access</h3>
-          <label class="check"><input id="access-read" type="checkbox" aria-describedby="access-read-help" />Share the current page with each question</label>
-          <p id="access-read-help" class="hint">On: Scout for Safari sends the page you are on with your question. Off: only tabs you attach.</p>
-          <label class="check"><input id="access-search" type="checkbox" aria-describedby="access-search-help" />Let Scout for Safari search your open tabs and history</label>
+          <h3 id="access-title">Permissions</h3>
+          <p class="hint">Scout for Safari checks every one of these on this device. Nothing relies on a server to enforce them.</p>
+          <label class="check"><input id="access-read" type="checkbox" aria-describedby="access-read-help" />Read the current page</label>
+          <p id="access-read-help" class="hint">On by default: Scout for Safari sends the page you are on with your question. Off: only tabs you attach.</p>
+          <label class="check"><input id="access-search" type="checkbox" aria-describedby="access-search-help" />Search history and tabs</label>
           <p id="access-search-help" class="hint"></p>
           <h4>Screenshots</h4>
-          <p class="hint">Scout for Safari asks before each screenshot of a site, unless you chose Always or Never for it. A screenshot shows everything on screen, including anything typed into the page.</p>
+          <p class="hint">Asked per site: Scout for Safari asks before each screenshot of a site, unless you chose Always or Never for it. A screenshot shows everything on screen, including anything typed into the page.</p>
           <ul id="shot-list" class="list" aria-label="Screenshot choices"></ul>
+          <h4>Scout mode</h4>
+          <label class="field">
+            <span>When Scout mode is asked to act on a page</span>
+            <select id="scout-mode" aria-describedby="scout-mode-help">
+              <option value="ask">Ask before each task</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <p id="scout-mode-help" class="hint">Asked per task: Scout for Safari asks before it starts acting on a page, and says which site and what it will do.</p>
+          <label class="check"><input id="sensitive-confirm" type="checkbox" checked disabled aria-describedby="sensitive-help" />Sensitive-action confirmation</label>
+          <p id="sensitive-help" class="hint">Always on. It can't be turned off. Before anything that would submit, purchase, send, delete, sign in, change account settings, or download or run a file, Scout for Safari stops and asks you, even when the model marks the action as pre-approved.</p>
+          <h4>"Always allow" sites</h4>
+          <p class="hint">Sites where you chose "Always allow on this site" for a kind of sensitive action. Revoke one and Scout for Safari asks again.</p>
+          <ul id="always-list" class="list" aria-label="Sites with always-allowed actions"></ul>
+          <p id="always-status" class="hint" role="status"></p>
           <h4>Blocked sites</h4>
-          <p class="hint">Scout for Safari never reads or screenshots these sites or their subdomains.</p>
+          <p class="hint">Scout for Safari never reads, screenshots, or acts on these sites or their subdomains.</p>
           <form id="block-form" class="row" autocomplete="off">
             <label class="field" style="flex: 1 1 60%">
               <span>Site to block</span>
@@ -556,9 +587,19 @@
           <ul id="block-list" class="list" aria-label="Blocked sites"></ul>
           <p id="block-status" class="hint" role="status"></p>
           <div id="admin-box" hidden>
-            <p class="hint">Blocked by your organization. You cannot change this here.</p>
+            <h4>Blocked by your organization</h4>
+            <p class="hint">A managed setting. You cannot change this here.</p>
             <ul id="admin-list" class="list" aria-label="Blocked by your organization"></ul>
           </div>
+          <h4>Private browsing</h4>
+          <p class="hint">Disabled. Scout for Safari does not read, answer, or act in Private Browsing.</p>
+        </section>
+
+        <section aria-labelledby="shared-title">
+          <h3 id="shared-title">Shared in conversations</h3>
+          <p class="hint">What each conversation shared with your AI provider: pages read, screenshots, tools, and Scout tasks (titles and sites, never page text). Clear a conversation's list here; its messages stay.</p>
+          <ul id="shared-list" class="list" aria-labelledby="shared-title"></ul>
+          <p id="shared-status" class="hint" role="status"></p>
         </section>
 
         <section aria-labelledby="activity-title">

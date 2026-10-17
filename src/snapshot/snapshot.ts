@@ -26,6 +26,8 @@ export interface SnapElement {
   href?: string;
   /** aria-expanded on a toggle: false while what it controls is collapsed. */
   expanded?: boolean;
+  /** Part 3: inside a <form>, so Enter in it may submit (src/scout/sensitive.ts). */
+  inForm?: boolean;
 }
 
 export interface Snapshot {
@@ -178,7 +180,7 @@ export function buildSnapshot(root: SnapNode, opts: SnapshotOptions): Snapshot {
     used += s.length;
   };
 
-  const walk = (node: SnapNode): void => {
+  const walk = (node: SnapNode, inForm = false): void => {
     if (node.tag === "#text") {
       push(squash(node.text ?? "", maxText));
       return;
@@ -197,6 +199,7 @@ export function buildSnapshot(root: SnapNode, opts: SnapshotOptions): Snapshot {
         if (node.attrs.disabled !== undefined) el.disabled = true;
         if (node.tag === "a") el.href = squash(node.attrs.href ?? "", MAX_VALUE);
         if (node.attrs["aria-expanded"] === "true" || node.attrs["aria-expanded"] === "false") el.expanded = node.attrs["aria-expanded"] === "true";
+        if (inForm) el.inForm = true;
         if (sensitive) {
           el.redacted = true;
           el.value = REDACTED;
@@ -223,7 +226,7 @@ export function buildSnapshot(root: SnapNode, opts: SnapshotOptions): Snapshot {
 
     const block = BLOCK_TAGS.has(node.tag);
     if (block) push("\n");
-    for (const c of node.children) walk(c);
+    for (const c of node.children) walk(c, inForm || node.tag === "form");
     if (block) push("\n");
   };
   walk(root);

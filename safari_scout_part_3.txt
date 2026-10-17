@@ -1,0 +1,102 @@
+Scout for Safari, Part 3 of 3: Scout Mode, Overlay and Permissions
+App name: Scout for Safari Tagline: Your AI Scout for the Safari Browser
+Instructions
+Parts 1 and 2 are done: the rename, toolbar and panel, message bridge, conversation flow, context, and tools. Build on them. This part adds Scout mode (the assistant carrying out tasks in the browser with the user's permission), the visual overlay, and the full permissions screen.
+When you're done, run the tests, summarize your changes, and list any platform limits you hit.
+
+8. Scout mode
+8.1 Loop
+	•	run_task starts a task. The server proposes a short batch of actions.
+	•	The client checks each action against the permission gate.
+	•	The client carries out the actions, waiting briefly between them so the page can settle.
+	•	The client returns a screenshot, a summary of the page's structure, and the result of each action.
+	•	The server decides the next batch, until the task is done or stopped.
+8.2 Action vocabulary (allow-list)
+click, double_click, right_click, type, key, scroll, scroll_to_element, drag, fill_field, wait, screenshot. Reject anything else.
+8.3 Targeting
+Prefer element references taken from the page's accessibility structure. Use coordinates only as a fallback, scaled to the real viewport.
+8.4 Sensitive actions: client-enforced confirmation
+Before any action that would submit, purchase, send, delete, sign in, change account settings, or download/run files, Scout pauses and shows:
+Scout for Safari wants to: [plain-language description] on [site], [Allow once] [Always allow on this site] [Deny]
+This prompt is triggered on the device by matching the action type and its target (submit buttons, payment fields, and the like). It appears even if the server marks the action as pre-approved.
+8.5 User control
+	•	Take control: pauses the agent immediately so the user can use the page normally. Resume continues.
+	•	Stop: ends the task and removes the overlay.
+	•	An action log in the panel lists every step in plain language.
+	•	The toolbar icon switches to the filled-lens variant while a task is running.
+
+9. Scouting overlay
+Shown on the tab Scout is controlling, for the whole time it's acting.
+Element
+Specification
+Border glow
+Full-screen layer that lets clicks pass through. Animated gradient border: savanna gold #E0A526 → amber #C9781E → acacia green #6E8B3D
+Animation
+A sweep around the edge on a 2.5 s loop, fading in over 600 ms and out over 400 ms
+Click marker
+Ripple shown at the target point about 150 ms before each click
+Control pill
+Fixed at the bottom center: binoculars icon, "Scouting…", Take control, Stop
+Reduced motion
+Static border, no sweep, when prefers-reduced-motion is set
+Performance
+Pauses when the tab is hidden; render resolution is capped
+
+Implementation: the baseline is a CSS @property angle animated on a conic-gradient border, with a soft blur. WebGL is optional. The layer must use pointer-events: none everywhere except the control pill.
+
+10. Full permissions screen
+Control
+Default
+Enforced by
+Read the current page
+On
+Client
+Search history and tabs
+Off
+Client
+Screenshots
+Ask per site
+Client
+Scout mode
+Ask per task
+Client
+Sensitive-action confirmation
+Always on (can't be turned off)
+Client
+Site blocklist (set by the user)
+Empty
+Client
+Admin blocklist (managed setting)
+Optional
+Client
+"Always allow" sites
+Empty, and the user can revoke them
+Client
+Private browsing
+Disabled
+Client
+
+The user can view and clear what has been shared in each conversation.
+
+11. Platform note
+Capability
+Preferred
+Fallback
+Actions
+Browser-level input automation
+DOM events from content scripts
+Overlay
+Browser-level overlay view
+Page-layer overlay from a content script
+
+Verify these on the target browser. If it's Safari, use the fallback column unless the preferred option is confirmed to work.
+
+Part 3 acceptance criteria
+	•	Unknown actions are rejected and logged.
+	•	Every sensitive action shows the confirmation, even when the server marks it as pre-approved.
+	•	Take control stops all actions within 250 ms. Stop removes the overlay within 500 ms.
+	•	The overlay never blocks user clicks except on the control pill.
+	•	Reduced-motion mode shows a static border.
+	•	The click marker appears before each click.
+	•	The toolbar icon shows the active variant while a task runs.
+	•	Scout mode doesn't work in private browsing.
