@@ -11,8 +11,9 @@ import type { Snapshot } from "./snapshot/snapshot";
 import { CONTENT_HANDLER, OVERLAY_HANDLER, type ContentRequest, type OverlayRequest } from "./content-api";
 import { callInjected } from "./content-call";
 import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
-import { renderMarkdown } from "./chat/markdown";
-import { ConversationStore } from "./chat/store";
+import { chipSources, renderMarkdown } from "./chat/markdown";
+import { answerText, fillSourceCard, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
+import { ConversationStore, type StoredMessage } from "./chat/store";
 import { MAX_EXTRA_TABS, type TabInfo } from "./chat/tabs";
 import { suggestCodes, type SuggestedCodes } from "./coupons/codes";
 import { locateForm } from "./coupons/locate";
@@ -65,12 +66,17 @@ import {
   deleteReportText,
   loadConversation,
   loadHistory,
+  loadRatings,
   loadSettings,
   parseSettings,
+  ratingKey,
+  saveRating,
   saveSettings,
   summarizeShared,
   type EffortSetting,
+  type HistoryEntry,
   type HistoryKind,
+  type Rating,
   type Settings,
   type StorageArea,
 } from "./settings/settings";
@@ -491,10 +497,288 @@ async function main(): Promise<void> {
     if (atBottom) scrollToEnd();
   }).observe(thread);
 
-  function addMessage(kind: "user" | "assistant" | "error", text: string, opts: { mode?: string } = {}): HTMLElement {
+  // ---------- Answer actions and sources (owner items 10 and 12) ----------
+  // Under each finished answer: Copy, Share, Good / Bad answer, Branch, and
+  // "N sources". Citations show as site chips at the end of the paragraph
+  // that used them; hovering (or tapping, on touch) shows the source's card.
+  // Ratings stay on this device (storage key `ratings`); nothing is sent.
+
+  /** Saved entries shown in this chat, in order; chat answers carry their bubble. */
+  const turns: Array<{ bubble?: HTMLElement; entry: HistoryEntry }> = [];
+  let ratingsLoad: Promise<Record<string, Rating>> | null = null;
+  const ratings = (): Promise<Record<string, Rating>> =>
+    (ratingsLoad ??= storage ? loadRatings(storage).catch(() => ({})) : Promise.resolve({}));
+
+  const ICON_PATHS = {
+    copy: ["M9 8h10a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z", "M16 8V4a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h3"],
+    check: ["M5 12.5l4.5 4.5L19 7.5"],
+    share: ["M12 15V3", "M7.5 7.5L12 3l4.5 4.5", "M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"],
+    up: ["M7 10.5V21", "M7 10.5l4-8a2.5 2.5 0 0 1 3 2.6V9h5a2 2 0 0 1 2 2.4l-1.5 8A2 2 0 0 1 17.5 21H4a1 1 0 0 1-1-1v-8.5a1 1 0 0 1 1-1Z"],
+    down: ["M17 13.5V3", "M17 13.5l-4 8a2.5 2.5 0 0 1-3-2.6V15H5a2 2 0 0 1-2-2.4l1.5-8A2 2 0 0 1 6.5 3H20a1 1 0 0 1 1 1v8.5a1 1 0 0 1-1 1Z"],
+    branch: ["M6 3v5a6 6 0 0 0 6 6", "M18 3v5a6 6 0 0 1-6 6v7"],
+  };
+  type IconName = keyof typeof ICON_PATHS;
+
+  function icon(name: IconName): SVGSVGElement {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "i");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    for (const d of ICON_PATHS[name]) {
+      const path = document.createElementNS(NS, "path");
+      path.setAttribute("d", d);
+      svg.appendChild(path);
+    }
+    return svg;
+  }
+
+  function actionButton(name: IconName, label: string, onClick: (b: HTMLButtonElement) => void): HTMLButtonElement {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "icon-btn";
+    b.setAttribute("aria-label", label);
+    b.title = label;
+    b.appendChild(icon(name));
+    b.addEventListener("click", () => onClick(b));
+    return b;
+  }
+
+  async function copyText(text: string): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** The row under a finished chat answer. */
+  function answerActions(bubble: HTMLElement, turn: { question: string; answer: string; sources?: Source[] }): HTMLElement {
+    const sources = turn.sources ?? [];
+    const row = document.createElement("div");
+    row.className = "answer-actions";
+    row.setAttribute("role", "group");
+    row.setAttribute("aria-label", "Answer actions");
+
+    const copy = actionButton("copy", "Copy answer", (b) => {
+      void copyText(answerText(turn.answer, sources)).then((ok) => {
+        status.textContent = ok ? "Copied the answer." : "Could not copy. Select the answer and press Command-C.";
+        if (!ok) return;
+        b.replaceChildren(icon("check"));
+        setTimeout(() => b.replaceChildren(icon("copy")), 1500);
+      });
+    });
+
+    const share = actionButton("share", "Share answer", () => {
+      const text = turn.question + "\n\n" + answerText(turn.answer, sources);
+      void (async () => {
+        const data = { title: "Scout for Safari", text };
+        if (typeof navigator.share === "function" && (!navigator.canShare || navigator.canShare(data))) {
+          try {
+            await navigator.share(data);
+            return;
+          } catch (err) {
+            // Closed the share sheet: nothing else to do.
+            if (err instanceof Error && err.name === "AbortError") return;
+          }
+        }
+        status.textContent = (await copyText(text))
+          ? "Sharing is not available here, so the question and answer were copied. Paste them where you want to share."
+          : "Could not share or copy. Select the answer and press Command-C.";
+      })();
+    });
+
+    const key = ratingKey(turn.question, turn.answer);
+    const good = actionButton("up", "Good answer", () => void rate("up"));
+    const bad = actionButton("down", "Bad answer", () => void rate("down"));
+    const show = (r: Rating | undefined): void => {
+      good.setAttribute("aria-pressed", String(r === "up"));
+      bad.setAttribute("aria-pressed", String(r === "down"));
+    };
+    show(undefined);
+    void ratings().then((all) => show(all[key]));
+    async function rate(r: Rating): Promise<void> {
+      const all = await ratings();
+      const next = all[key] === r ? null : r;
+      if (next) all[key] = next;
+      else delete all[key];
+      show(next ?? undefined);
+      status.textContent = next ? "Marked as a " + (next === "up" ? "good" : "bad") + " answer. This stays on this device." : "Rating removed.";
+      if (storage) await saveRating(storage, key, next).catch(() => undefined);
+    }
+
+    const branch = actionButton("branch", "Branch from this answer", () => void branchFrom(bubble));
+    row.append(copy, share, good, bad, branch);
+
+    if (sources.length) {
+      const listId = "sources-" + Math.random().toString(36).slice(2, 10);
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "sources-toggle";
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-controls", listId);
+      const stack = document.createElement("span");
+      stack.className = "site-stack";
+      const seen = new Set<string>();
+      for (const s of sources) {
+        const name = siteName(s.url);
+        if (seen.has(name) || seen.size >= 3) continue;
+        seen.add(name);
+        stack.appendChild(siteIcon(document, s.url));
+      }
+      toggle.append(stack, sources.length === 1 ? "1 source" : sources.length + " sources");
+      const list = document.createElement("ol");
+      list.id = listId;
+      list.className = "source-list";
+      list.setAttribute("aria-label", "Sources");
+      list.hidden = true;
+      for (const s of sources) {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.href = s.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        const site = document.createElement("span");
+        site.className = "source-site";
+        site.textContent = siteName(s.url);
+        const title = document.createElement("span");
+        title.className = "source-title";
+        title.textContent = s.title || s.url;
+        a.append(siteIcon(document, s.url), site, title);
+        li.appendChild(a);
+        list.appendChild(li);
+      }
+      toggle.addEventListener("click", () => {
+        list.hidden = !list.hidden;
+        toggle.setAttribute("aria-expanded", String(!list.hidden));
+        if (!list.hidden) list.scrollIntoView({ block: "nearest" });
+      });
+      row.appendChild(toggle);
+      const wrap = document.createElement("div");
+      wrap.className = "answer-foot";
+      wrap.append(row, list);
+      return wrap;
+    }
+    return row;
+  }
+
+  /**
+   * Branch: a new chat holding this conversation up to and including this
+   * answer, so the next question continues from here. Later messages stay in
+   * the old chat's saved history and leave the view.
+   */
+  async function branchFrom(bubble: HTMLElement): Promise<void> {
+    if (activeChat || control || task || couponRun) {
+      status.textContent = "Wait until Scout for Safari finishes, then branch.";
+      return;
+    }
+    const i = turns.findIndex((t) => t.bubble === bubble);
+    const target = turns[i]?.entry;
+    if (!target) return;
+    let entries = turns.slice(0, i + 1).map((t) => t.entry);
+    // Saved history also has Scout mode runs from this session; use it when it has this answer.
+    if (storage && conv) {
+      const stored = await loadConversation(storage, settings.retention, Date.now(), conv).catch(() => []);
+      const j = stored.map((e) => (!e.kind || e.kind === "chat") && e.question === target.question && e.answer === target.answer).lastIndexOf(true);
+      if (j >= 0) entries = stored.slice(0, j + 1);
+    }
+    clearThread();
+    if (storage) {
+      conv = await startNewConversation(storage, tab.id, Date.now()).catch(() => conv);
+      for (const e of entries) {
+        await appendHistory(storage, settings.retention, {
+          ...e,
+          conv,
+          ...(e.sources ? { sources: e.sources.map((s) => ({ url: savedUrl(s.url), ...(s.title ? { title: s.title } : {}), ...(s.kind ? { kind: s.kind } : {}) })) } : {}),
+        }).catch(() => undefined);
+      }
+    }
+    showEntries(entries);
+    updateEmpty();
+    status.textContent = "Branched into a new chat from that answer. Ask your next question to continue from there.";
+    trace("conversation:branch " + entries.length);
+    scrollToEnd();
+  }
+
+  const sourceCard = document.createElement("div");
+  sourceCard.id = "source-card";
+  sourceCard.hidden = true;
+  document.body.appendChild(sourceCard);
+  let cardFor: HTMLElement | null = null;
+  let cardTimer = 0;
+
+  function showSourceCard(chip: HTMLElement): void {
+    const src = chipSources.get(chip);
+    if (!src) return;
+    clearTimeout(cardTimer);
+    if (cardFor !== chip) {
+      cardFor?.removeAttribute("aria-describedby");
+      fillSourceCard(document, sourceCard, src);
+    }
+    cardFor = chip;
+    chip.setAttribute("aria-describedby", sourceCard.id);
+    sourceCard.hidden = false;
+    const r = chip.getBoundingClientRect();
+    const w = sourceCard.offsetWidth;
+    const h = sourceCard.offsetHeight;
+    const left = Math.max(8, Math.min(r.left, innerWidth - w - 8));
+    const top = r.bottom + 6 + h <= innerHeight - 8 ? r.bottom + 6 : Math.max(8, r.top - h - 6);
+    sourceCard.style.left = left + "px";
+    sourceCard.style.top = top + "px";
+  }
+
+  function hideSourceCard(): void {
+    clearTimeout(cardTimer);
+    sourceCard.hidden = true;
+    cardFor?.removeAttribute("aria-describedby");
+    cardFor = null;
+  }
+
+  const chipOf = (t: EventTarget | null): HTMLElement | null => (t instanceof Element ? t.closest<HTMLElement>("a.cite") : null);
+  log.addEventListener("pointerover", (e) => {
+    const chip = chipOf(e.target);
+    if (!chip || e.pointerType !== "mouse") return;
+    clearTimeout(cardTimer);
+    cardTimer = window.setTimeout(() => showSourceCard(chip), 120);
+  });
+  log.addEventListener("pointerout", (e) => {
+    if (!chipOf(e.target) || e.pointerType !== "mouse") return;
+    clearTimeout(cardTimer);
+    cardTimer = window.setTimeout(hideSourceCard, 250);
+  });
+  sourceCard.addEventListener("pointerenter", () => clearTimeout(cardTimer));
+  sourceCard.addEventListener("pointerleave", () => {
+    cardTimer = window.setTimeout(hideSourceCard, 250);
+  });
+  log.addEventListener("focusin", (e) => {
+    const chip = chipOf(e.target);
+    if (chip) showSourceCard(chip);
+  });
+  log.addEventListener("focusout", (e) => {
+    if (chipOf(e.target) && !(e.relatedTarget instanceof Node && sourceCard.contains(e.relatedTarget))) hideSourceCard();
+  });
+  // Touch has no hover: the first tap shows the card (its title opens the page).
+  log.addEventListener("click", (e) => {
+    const chip = chipOf(e.target);
+    if (!chip || !matchMedia("(pointer: coarse)").matches || (cardFor === chip && !sourceCard.hidden)) return;
+    e.preventDefault();
+    showSourceCard(chip);
+  });
+  document.addEventListener("pointerdown", (e) => {
+    if (!sourceCard.hidden && !(e.target instanceof Node && sourceCard.contains(e.target)) && !chipOf(e.target)) hideSourceCard();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !sourceCard.hidden) hideSourceCard();
+  });
+  thread.addEventListener("scroll", () => {
+    if (!sourceCard.hidden) hideSourceCard();
+  });
+
+  function addMessage(kind: "user" | "assistant" | "error", text: string, opts: { mode?: string; sources?: Source[] } = {}): HTMLElement {
     const node = document.createElement("div");
     node.className = "msg " + kind;
-    if (kind === "assistant") renderMarkdown(document, node, text);
+    if (kind === "assistant") renderMarkdown(document, node, text, { sources: opts.sources ?? [] });
     else if (kind === "user" && opts.mode) {
       const label = document.createElement("span");
       label.className = "mode";
@@ -530,6 +814,7 @@ async function main(): Promise<void> {
   }
 
   async function saveEntry(kind: HistoryKind, q: string, answer: string): Promise<void> {
+    turns.push({ entry: { at: Date.now(), question: q, answer, kind } });
     if (!storage) return;
     // Created on first use: after Delete all data, nothing is stored until the next answer.
     if (!conv) conv = await conversationForTab(storage, tab.id, Date.now()).catch(() => "");
@@ -539,25 +824,37 @@ async function main(): Promise<void> {
   async function restoreConversation(): Promise<void> {
     if (!storage || !conv) return;
     const entries = await loadConversation(storage, settings.retention, Date.now(), conv).catch(() => []);
-    history.length = 0;
-    for (const e of entries) {
-      const mode = e.kind === "agent" ? "Scout mode" : e.kind === "coupons" ? "Find coupons" : undefined;
-      const isSummary = e.question === SUMMARIZE_QUESTION || LEGACY_SUMMARIZE_QUESTIONS.includes(e.question);
-      addMessage("user", isSummary ? "Summarize page" : e.question, mode ? { mode } : {});
-      const answer = addMessage("assistant", e.answer);
-      if ((!e.kind || e.kind === "chat") && e.shared) answer.appendChild(sharedLine(e.shared));
-      if (!e.kind || e.kind === "chat") history.push({ role: "user", content: e.question }, { role: "assistant", content: e.answer });
-    }
-    history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
+    showEntries(entries);
     if (entries.length) trace("conversation:restored " + entries.length);
     // Again after layout and images settle, so the newest message is in view.
     requestAnimationFrame(scrollToEnd);
     window.addEventListener("load", scrollToEnd, { once: true });
   }
 
+  /** Shows saved entries as the thread and sets the model's context from them. */
+  function showEntries(entries: HistoryEntry[]): void {
+    history.length = 0;
+    for (const e of entries) {
+      const mode = e.kind === "agent" ? "Scout mode" : e.kind === "coupons" ? "Find coupons" : undefined;
+      const isSummary = e.question === SUMMARIZE_QUESTION || LEGACY_SUMMARIZE_QUESTIONS.includes(e.question);
+      addMessage("user", isSummary ? "Summarize page" : e.question, mode ? { mode } : {});
+      const chat = !e.kind || e.kind === "chat";
+      const answer = addMessage("assistant", e.answer, chat ? { sources: e.sources ?? [] } : {});
+      if (chat && e.shared) answer.appendChild(sharedLine(e.shared));
+      if (chat) {
+        history.push({ role: "user", content: e.question }, { role: "assistant", content: e.answer });
+        answer.appendChild(answerActions(answer, e));
+      }
+      turns.push(chat ? { bubble: answer, entry: e } : { entry: e });
+    }
+    history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
+  }
+
   function clearThread(): void {
     store.clear();
     views.clear();
+    turns.length = 0;
+    hideSourceCard();
     log.replaceChildren();
     confirmBox.hidden = true;
     history.length = 0;
@@ -1049,8 +1346,8 @@ async function main(): Promise<void> {
     model: string;
     /** Tabs this answer may read: the current tab when shared, attached tabs, tabs it opened. */
     scope: number[];
-    /** Numbered sources [n]: the pages sent with the question. */
-    sources: Array<{ url: string; title?: string }>;
+    /** Numbered sources [n]: the pages sent with the question (after a Continue, the earlier part's sources). */
+    sources: Source[];
     shared: Array<{ title: string; host: string; status: string }>;
     /** Text shown before this answer continued (Continue after a drop). */
     prefix: string;
@@ -1095,27 +1392,24 @@ async function main(): Promise<void> {
     const m = store.get(id);
     if (!v || !m) return;
     const text = v.prefix + m.text;
-    if (text) renderMarkdown(document, v.bubble, text, { sources: [...v.sources, ...m.citations] });
+    if (text) renderMarkdown(document, v.bubble, text, { sources: allSources(v, m) });
     else v.bubble.textContent = m.status === "error" || m.status === "complete" ? "" : "Thinking…";
-    if (m.citations.length) {
-      const ol = document.createElement("ol");
-      ol.className = "sources";
-      ol.start = v.sources.length + 1;
-      ol.setAttribute("aria-label", "Web sources");
-      for (const c of m.citations) {
-        const li = document.createElement("li");
-        const a = document.createElement("a");
-        a.href = c.url;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        a.textContent = c.title || hostOf(c.url) || c.url;
-        li.appendChild(a);
-        ol.appendChild(li);
-      }
-      v.bubble.appendChild(ol);
-    }
     v.bubble.appendChild(sharedLine(v.shared));
+    if (v.closed && m.status === "complete" && !m.stopped && text) {
+      v.bubble.appendChild(answerActions(v.bubble, { question: v.question, answer: text, sources: allSources(v, m) }));
+    }
     scrollToEnd();
+  }
+
+  /** The start of a shared page's text, for its source card. Shown only, never saved. */
+  function snippetOf(text: string): string {
+    const t = text.replace(/\s+/g, " ").trim();
+    return t.length > 180 ? t.slice(0, 177).replace(/\s+\S*$/, "") + "…" : t;
+  }
+
+  /** The pages sent with the question, then the web pages the provider cited. */
+  function allSources(v: MessageView, m: StoredMessage): Source[] {
+    return [...v.sources, ...m.citations.map((c): Source => ({ ...c, kind: "web" }))];
   }
 
   function finalize(id: string): void {
@@ -1127,6 +1421,9 @@ async function main(): Promise<void> {
     const full = v.prefix + m.text;
     if (m.status === "complete" && !m.stopped) {
       history.push({ role: "user", content: v.question }, { role: "assistant", content: full });
+      // Without snippets: they quote page text, which history never keeps.
+      const sources = allSources(v, m).map(({ url, title, kind }) => ({ url, ...(title ? { title } : {}), ...(kind ? { kind } : {}) }));
+      turns.push({ bubble: v.bubble, entry: { at: Date.now(), question: v.question, answer: full, kind: "chat", ...(sources.length ? { sources } : {}), ...(v.shared.length ? { shared: v.shared } : {}) } });
       history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
       status.textContent = m.usage ? formatCostLine(v.model, m.usage) : "";
       current.finish("done", "Answered (" + full.length + " characters).", m.usage);
@@ -1147,7 +1444,7 @@ async function main(): Promise<void> {
         more.textContent = "Continue";
         more.addEventListener("click", () => {
           err.remove();
-          void ask(CONTINUE_PROMPT, { continueOf: { bubble: v.bubble, question: v.question, partial: full, shared: v.shared } });
+          void ask(CONTINUE_PROMPT, { continueOf: { bubble: v.bubble, question: v.question, partial: full, shared: v.shared, sources: allSources(v, m) } });
         });
         err.appendChild(more);
       }
@@ -1370,7 +1667,7 @@ async function main(): Promise<void> {
     read_current: boolean;
   }
 
-  async function ask(text: string, opts: { continueOf?: { bubble: HTMLElement; question: string; partial: string; shared: MessageView["shared"] } } = {}): Promise<void> {
+  async function ask(text: string, opts: { continueOf?: { bubble: HTMLElement; question: string; partial: string; shared: MessageView["shared"]; sources: Source[] } } = {}): Promise<void> {
     const trimmed = text.trim();
     if (!trimmed || activeChat || control || task || !session) return;
     const s = session;
@@ -1410,7 +1707,10 @@ async function main(): Promise<void> {
     else if (!conv) conv = await conversationForTab(storage, tab.id, Date.now()).catch(() => "");
 
     let pages: PageContext[] = [];
-    if (cont) v.shared = [...cont.shared];
+    if (cont) {
+      v.shared = [...cont.shared];
+      v.sources = [...cont.sources];
+    }
     else {
       // Spec 6: the current tab when shared, plus the attached tabs. Nothing else.
       const ctx = await request<ContextReply>(
@@ -1427,7 +1727,7 @@ async function main(): Promise<void> {
       trace(readOk(cur?.status) ? "page:read ok" : "page:read failed");
       if (ctx?.read_current !== false && !readOk(cur?.status)) status.textContent = "Could not read this page. Answering without it.";
       v.scope = [...(ctx?.read_current !== false && tab.id !== undefined ? [tab.id] : []), ...extra.map((t) => t.id)];
-      v.sources = pages.map((p) => ({ url: p.url, title: p.title }));
+      v.sources = pages.map((p) => ({ url: p.url, title: p.title, kind: "page", snippet: snippetOf(p.text) }));
       v.shared = shared.map((t) => ({ title: attached.get(t.tab_id)?.title || t.title, host: t.host, status: t.status }));
       for (const t of extra) if (!shared.some((x) => x.tab_id === t.id)) v.shared.push({ title: t.title, host: hostOf(t.url) ?? "", status: "failed" });
       if (extra.length) trace("tabs:read " + shared.filter((t) => t.tab_id !== tab.id && readOk(t.status)).length + "/" + extra.length);
@@ -1460,7 +1760,9 @@ async function main(): Promise<void> {
           history: cont ? [...past, { role: "user", content: cont.question }, { role: "assistant", content: cont.partial }] : past,
           pages,
           shared: v.shared,
-          ...(cont ? { display_question: cont.question, answer_prefix: v.prefix } : {}),
+          ...(cont
+            ? { display_question: cont.question, answer_prefix: v.prefix, prefix_sources: cont.sources.map((x) => ({ url: x.url, title: x.title ?? "" })) }
+            : {}),
         },
         { timeoutMs: 10_000 },
       );

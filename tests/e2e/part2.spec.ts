@@ -253,7 +253,94 @@ test("answers render tables, code with a Copy button, math, and numbered sources
   await expect(answer.getByRole("button", { name: "Copy code (js)" })).toBeVisible();
   await expect(answer.locator("math")).toHaveCount(1);
   await expect(answer.locator("math")).toHaveAttribute("alttext", "E = mc^2");
-  await expect(answer.locator("sup a")).toHaveAttribute("href", "https://shop.test/a");
+  // Item 12: [1] shows as a site chip at the end of its paragraph.
+  const chip = answer.locator("p").first().locator("a.cite");
+  await expect(chip).toHaveText("shop");
+  await expect(chip).toHaveAttribute("href", "https://shop.test/a");
+  await expect(answer.locator("p").first()).toHaveText("This is a sample answer from the Scout mock server. shop");
+});
+
+/** Records clipboard writes; no share sheet, so Share falls back to copying. */
+async function stubClipboard(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const g = globalThis as unknown as { __copied: string[] };
+    g.__copied = [];
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: async (t: string) => void g.__copied.push(t) }, configurable: true });
+    Object.defineProperty(navigator, "share", { value: undefined, configurable: true });
+  });
+}
+const copied = (page: Page): Promise<string[]> => page.evaluate(() => (globalThis as unknown as { __copied: string[] }).__copied);
+
+test("a finished answer has Copy, Share, ratings, Branch, its sources, and source cards", async ({ page }) => {
+  await stubClipboard(page);
+  await openPopup(page);
+  await ask(page, "Show me everything");
+  const answer = lastAnswer(page);
+  const actions = answer.getByRole("group", { name: "Answer actions" });
+  await expect(actions).toBeVisible();
+
+  // Hovering a chip shows the source's card; moving away hides it.
+  await answer.locator("a.cite").first().hover();
+  const card = page.locator("#source-card");
+  await expect(card).toBeVisible();
+  await expect(card).toContainText("shop.test");
+  await expect(card.getByRole("link", { name: "Test shop" })).toHaveAttribute("href", "https://shop.test/a");
+  await expect(card).toContainText("Widget costs $10.");
+  await expect(card).toContainText("Page you shared");
+  await page.getByLabel("Ask about this page").hover();
+  await expect(card).toBeHidden();
+
+  await actions.getByRole("button", { name: "Copy answer" }).click();
+  await expect(page.locator("#status")).toHaveText("Copied the answer.");
+  expect((await copied(page))[0]).toMatch(/^This is a \*\*sample answer\*\* from the Scout mock server \[1\]\.[\s\S]*\n\nSources:\n\[1\] Test shop \(https:\/\/shop\.test\/a\)$/);
+
+  await actions.getByRole("button", { name: "Share answer" }).click();
+  await expect(page.locator("#status")).toContainText("the question and answer were copied");
+  expect((await copied(page))[1]).toMatch(/^Show me everything\n\nThis is a/);
+
+  const good = actions.getByRole("button", { name: "Good answer" });
+  const bad = actions.getByRole("button", { name: "Bad answer" });
+  await expect(good).toHaveAttribute("aria-pressed", "false");
+  await good.click();
+  await expect(good).toHaveAttribute("aria-pressed", "true");
+  await bad.click();
+  await expect(good).toHaveAttribute("aria-pressed", "false");
+  await expect(bad).toHaveAttribute("aria-pressed", "true");
+  const ratings = await page.evaluate(() => (globalThis as unknown as { __store: Record<string, unknown> }).__store.ratings);
+  expect(Object.values(ratings as Record<string, string>)).toEqual(["down"]);
+
+  const toggle = actions.getByRole("button", { name: "1 source" });
+  await expect(answer.getByRole("list", { name: "Sources" })).toBeHidden();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(answer.getByRole("list", { name: "Sources" }).getByRole("link")).toHaveAttribute("href", "https://shop.test/a");
+});
+
+test("Branch starts a new chat from an earlier answer, keeping its sources", async ({ page }) => {
+  await openPopup(page);
+  await ask(page, "First question");
+  await expect(lastAnswer(page).getByRole("group", { name: "Answer actions" })).toBeVisible();
+  await ask(page, "Second question");
+  await expect(page.getByRole("log").locator(".msg.assistant")).toHaveCount(2);
+  await expect(lastAnswer(page).getByRole("group", { name: "Answer actions" })).toBeVisible();
+
+  await page.getByRole("log").locator(".msg.assistant").first().getByRole("button", { name: "Branch from this answer" }).click();
+  await expect(page.locator("#status")).toContainText("Branched into a new chat");
+  await expect(page.getByRole("log").locator(".msg.user")).toHaveText(["First question"]);
+  await expect(page.getByRole("log").locator(".msg.assistant")).toHaveCount(1);
+  await expect(lastAnswer(page).locator("a.cite").first()).toHaveText("shop");
+  await expect(lastAnswer(page).getByRole("button", { name: "1 source" })).toBeVisible();
+
+  // The new chat is saved on its own, so a reopened panel shows the branch.
+  const history = await page.evaluate(() => (globalThis as unknown as { __store: Record<string, unknown> }).__store.history as Array<{ question: string; conv: string; sources?: unknown[] }>);
+  const convs = [...new Set(history.map((e) => e.conv))];
+  expect(convs).toHaveLength(2);
+  const branch = history.filter((e) => e.conv === convs[1]);
+  expect(branch.map((e) => e.question)).toEqual(["First question"]);
+  expect(branch[0]?.sources).toEqual([{ url: "https://shop.test/a", title: "Test shop", kind: "page" }]);
+
+  await ask(page, "Third question");
+  await expect(page.getByRole("log").locator(".msg.assistant")).toHaveCount(2);
 });
 
 // Safeguards 13-15 for the new UI: WCAG 2.2 A/AA with the tool question,
