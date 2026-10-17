@@ -128,7 +128,7 @@ describe("suggestCodes when the search does not finish", () => {
         await new Promise((_res, rej) => req.signal?.addEventListener("abort", () => rej(new ProviderError("anthropic", "network"))));
       },
     };
-    const r = await suggestCodes(slow, "m", "www.shop.test", undefined, { timeoutMs: 20 });
+    const r = await suggestCodes(slow, "m", "www.shop.test", undefined, { timeoutMs: 20, readPages: false });
     expect(r.error?.code).toBe("timeout");
     expect(r.codes[0]?.code).toBe("SAVE10");
   });
@@ -149,7 +149,7 @@ describe("suggestCodes when the search does not finish", () => {
         yield { type: "text", delta: "QUICK10 | https://deals.test/quick\n" };
       },
     };
-    const r = await suggestCodes(twoPass, "m", "www.masa.test", undefined, { timeoutMs: 20, retryTimeoutMs: 500 });
+    const r = await suggestCodes(twoPass, "m", "www.masa.test", undefined, { timeoutMs: 20, retryTimeoutMs: 500, readPages: false });
     expect(reqs).toHaveLength(2);
     expect(reqs[0]).toMatchObject({ webFetch: true, webSearchMaxUses: 10 });
     expect(reqs[1]).toMatchObject({ webFetch: false, webSearchMaxUses: 6 });
@@ -170,7 +170,7 @@ describe("suggestCodes when the search does not finish", () => {
         await new Promise((_res, rej) => req.signal?.addEventListener("abort", () => rej(new ProviderError("anthropic", "network"))));
       },
     };
-    const r = await suggestCodes(slow, "m", "www.shop.test", undefined, { timeoutMs: 20, retryTimeoutMs: 20 });
+    const r = await suggestCodes(slow, "m", "www.shop.test", undefined, { timeoutMs: 20, retryTimeoutMs: 20, readPages: false });
     expect(calls).toBe(1);
     expect(r.retried).toBeUndefined();
     expect(r.error?.code).toBe("timeout");
@@ -182,7 +182,7 @@ describe("suggestCodes when the search does not finish", () => {
       },
     };
     calls = 0;
-    await suggestCodes(empty, "m", "www.shop.test", undefined, { timeoutMs: 20, retry: false });
+    await suggestCodes(empty, "m", "www.shop.test", undefined, { timeoutMs: 20, retry: false, readPages: false });
     expect(calls).toBe(1);
   });
 
@@ -209,25 +209,41 @@ describe("suggestCodes when the search does not finish", () => {
 });
 
 describe("suggestCodes request and evidence", () => {
-  it("names the store, asks for searches and page reads, and for each code as soon as it is seen", async () => {
-    const seen: { req?: ChatRequest } = {};
-    await suggestCodes(provider([], undefined, seen), "m", "www.tackform.test", undefined, { followUp: false });
+  it("reads the listed pages first without searching, then names the store and asks for searches and page reads", async () => {
+    const reqs: ChatRequest[] = [];
+    const recorder: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        reqs.push(req);
+      },
+    };
+    await suggestCodes(recorder, "m", "www.tackform.test");
+    expect(reqs).toHaveLength(2);
+    // Live sweep 2026-10-17: Melin's search stopped at 6 masked codes, and a model told to open the
+    // listed pages before searching read them all and wrote nothing in four minutes (Brumate). The
+    // pages that print codes are named, the ones that printed working codes most often first, and
+    // read in a pass of their own, with no search tool, before the search starts.
+    const listed =
+      "https://www.wethrift.com/tackform https://www.wethrift.com/codes/tackform.test https://us.hotdeals.com/store/tackform-coupon " +
+      "https://www.dontpayfull.com/at/tackform.test https://www.couponbind.com/coupons/tackform.test https://tackform.tenereteam.com/coupons " +
+      "https://usa.coupert.com/coupons/tackform-test-discount-code https://dealhack.com/coupons/tackform";
+    expect(reqs[0]).toMatchObject({ webSearch: false, webFetch: true, webFetchMaxUses: 8 });
+    expect(reqs[0]?.webSearchMaxUses).toBeUndefined();
+    expect(String(reqs[0]?.messages[0]?.content)).toContain("Store: tackform\nStore website: tackform.test");
+    expect(String(reqs[0]?.messages[0]?.content)).toContain("First job, no searching: open each of these pages with web_fetch");
+    expect(String(reqs[0]?.messages[0]?.content)).toContain("Pages: " + listed);
+    const seen = { req: reqs[1] };
+    expect(seen.req).toMatchObject({ webSearch: true, webSearchMaxUses: 10, webFetch: true, webFetchMaxUses: 10 });
     expect(String(seen.req?.messages[0]?.content)).toContain("Store: tackform\nStore website: tackform.test");
     expect(String(seen.req?.messages[0]?.content)).not.toContain("Also written as");
+    // Nothing was opened by this fake, so the search is told to open them.
+    expect(String(seen.req?.messages[0]?.content)).toContain("Open these pages too; they were not read yet: " + listed);
+    expect(String(seen.req?.messages[0]?.content)).not.toContain("First job");
     const olipop: { req?: ChatRequest } = {};
-    await suggestCodes(provider([], undefined, olipop), "m", "www.drinkolipop.com", undefined, { followUp: false });
+    await suggestCodes(provider([], undefined, olipop), "m", "www.drinkolipop.com");
     expect(String(olipop.req?.messages[0]?.content)).toContain("Store: drinkolipop\nStore website: drinkolipop.com\nAlso written as: olipop");
-    expect(seen.req).toMatchObject({ webSearch: true, webSearchMaxUses: 10, webFetch: true, webFetchMaxUses: 10 });
     expect(seen.req?.system).toContain("as soon as you see it");
-    // Live sweep 2026-10-17: Melin's search stopped at 6 masked codes; pages that print codes are named,
-    // the ones that printed working codes most often first, and the model is told to open them all.
-    expect(String(seen.req?.messages[0]?.content)).toContain(
-      "Open every one of them with web_fetch before your first search; one that does not exist just fails to load: " +
-        "https://www.wethrift.com/tackform https://www.wethrift.com/codes/tackform.test https://us.hotdeals.com/store/tackform-coupon " +
-        "https://www.dontpayfull.com/at/tackform.test https://www.couponbind.com/coupons/tackform.test https://tackform.tenereteam.com/coupons " +
-        "https://usa.coupert.com/coupons/tackform-test-discount-code https://dealhack.com/coupons/tackform",
-    );
-    expect(seen.req?.system).toContain("open every one of them with web_fetch before your first search");
+    expect(seen.req?.system).toContain("open each with web_fetch and list what they print before anything else");
     expect(seen.req?.system).toContain("hide codes behind a 'Get code' button");
     expect(seen.req?.system).toContain("Never invent, complete, or vary a code");
     expect(seen.req?.system).not.toMatch(/guess/i);
@@ -259,8 +275,8 @@ describe("suggestCodes request and evidence", () => {
       "m",
       "www.shop.test",
       undefined,
-      // This fake replays the same stream on every call; the follow-up is tested on its own.
-      { followUp: false },
+      // This fake replays the same stream on every call; the read-first pass is tested on its own.
+      { readPages: false },
     );
     expect(r.codes.map((c) => [c.code, c.origin])).toEqual([
       ["SAVE20", "verified"],
@@ -308,115 +324,147 @@ describe("likelyCodePages", () => {
 });
 
 // Live sweep 2026-10-17: Tackform's working code (STREETDEALX) was printed on a
-// listed page the model never opened in three runs.
-describe("listed pages the search skipped", () => {
+// listed page the model never opened in three runs; told to open every listed
+// page before searching, the model then read them all and wrote nothing in
+// four minutes (Brumate). The listed pages are read first, on their own.
+describe("listed pages are read first", () => {
   const listedFor = async (store: string): Promise<string[]> => {
     const { likelyCodePages } = await import("../../src/coupons/codes");
     const { identifyMerchant } = await import("../../src/coupons/merchant");
     return likelyCodePages(identifyMerchant("https://" + store + "/"));
   };
+  const isRead = (req: ChatRequest): boolean => String(req.messages[0]?.content).includes("First job, no searching");
 
-  it("opens them in one follow-up, without searching, and verifies the codes read there", async () => {
+  it("reads them without the search tool, then tells the search which were read and which were not", async () => {
     const reqs: ChatRequest[] = [];
     const p: ProviderClient = {
       id: "anthropic",
       async *stream(req) {
         reqs.push(req);
-        if (!String(req.messages[0]?.content).includes("You did not open these pages")) {
+        if (isRead(req)) {
           yield { type: "fetch", url: "https://wethrift.com/tackform/", ok: true, chars: 1200 };
           yield { type: "source", url: "https://www.wethrift.com/tackform", title: "Tackform", page: "No Tackform codes right now." };
-          yield { type: "fetch", url: "https://www.dealdrop.com/tackform", ok: true, chars: 1200 };
-          yield { type: "text", delta: "NONE\n" };
+          yield { type: "fetch", url: "https://www.couponbind.com/coupons/tackform.test", ok: true, chars: 900 };
+          yield { type: "source", url: "https://www.couponbind.com/coupons/tackform.test", title: "Tackform codes", page: "STREETDEALX: 10% off at Tackform" };
+          yield { type: "fetch", url: "https://us.hotdeals.com/store/tackform-coupon", ok: false, error: "url_not_accessible" };
+          yield { type: "text", delta: 'STREETDEALX | https://www.couponbind.com/coupons/tackform.test | "STREETDEALX: 10% off" | -\n' };
           return;
         }
-        yield { type: "fetch", url: "https://www.couponbind.com/coupons/tackform.test", ok: true, chars: 1200 };
-        yield { type: "source", url: "https://www.couponbind.com/coupons/tackform.test", title: "Tackform codes", page: "STREETDEALX: 10% off at Tackform" };
-        yield { type: "text", delta: 'STREETDEALX | https://www.couponbind.com/coupons/tackform.test | "STREETDEALX: 10% off" | -\n' };
+        yield { type: "source", url: "https://creator.test/tack", page: "my code TACKFAN10" };
+        yield { type: "text", delta: "TACKFAN10 | https://creator.test/tack\n" };
       },
     };
     const r = await suggestCodes(p, "m", "www.tackform.test");
     const listed = await listedFor("www.tackform.test");
     expect(reqs).toHaveLength(2);
-    // Every fetch the model asked for, with what the page answered, for the run trace.
+    expect(reqs[0]).toMatchObject({ webSearch: false, webFetch: true, webFetchMaxUses: listed.length });
+    expect(reqs[1]).toMatchObject({ webSearch: true, webSearchMaxUses: 10, webFetch: true, webFetchMaxUses: 10 });
+    const second = String(reqs[1]?.messages[0]?.content);
+    // Read with or without "www." and a slash; a page that failed to load counts as opened (asking again would fail again).
+    expect(second).toContain(
+      "These pages were already read in a previous step; do not open them again: https://www.wethrift.com/tackform https://us.hotdeals.com/store/tackform-coupon https://www.couponbind.com/coupons/tackform.test",
+    );
+    expect(second).toContain("Open these pages too; they were not read yet: https://www.wethrift.com/codes/tackform.test https://www.dontpayfull.com/at/tackform.test");
+    expect(r.pagesRead).toBe(true);
+    expect(r.pagesListed).toBe(listed.length);
+    expect(r.pagesOpened).toBe(3);
     expect(r.pages).toEqual([
       { url: "https://wethrift.com/tackform/", ok: true, chars: 1200 },
-      { url: "https://www.dealdrop.com/tackform", ok: true, chars: 1200 },
-      { url: "https://www.couponbind.com/coupons/tackform.test", ok: true, chars: 1200 },
+      { url: "https://www.couponbind.com/coupons/tackform.test", ok: true, chars: 900 },
+      { url: "https://us.hotdeals.com/store/tackform-coupon", ok: false, error: "url_not_accessible" },
     ]);
-    expect(r.ignored).toBe(0);
-    expect(reqs[0]).toMatchObject({ webFetch: true, webSearchMaxUses: 10, webFetchMaxUses: 10 });
-    // Only the listed pages not opened (wethrift.com/tackform was, with or without "www." and a slash).
-    expect(reqs[1]).toMatchObject({ webFetch: true, webSearchMaxUses: 1, webFetchMaxUses: listed.length - 1 });
-    const asked = String(reqs[1]?.messages[0]?.content).split("You did not open these pages")[1] ?? "";
-    expect(asked).toContain("Do not search");
-    expect(asked).toContain("https://www.couponbind.com/coupons/tackform.test");
-    expect(asked).not.toContain("https://www.wethrift.com/tackform ");
-    expect(r.followedUp).toBe(true);
-    expect(r.pagesListed).toBe(listed.length);
-    expect(r.pagesOpened).toBe(2);
     expect(r.error).toBeUndefined();
-    expect(r.codes.map((c) => [c.code, c.origin])).toEqual([["STREETDEALX", "verified"]]);
+    expect(r.codes.map((c) => [c.code, c.origin])).toEqual([
+      ["STREETDEALX", "verified"],
+      ["TACKFAN10", "verified"],
+    ]);
   });
 
-  it("runs no follow-up on a provider without a page fetch tool", async () => {
-    let calls = 0;
+  it("skips the read on a provider without a page fetch tool, and on a second search", async () => {
+    const reqs: ChatRequest[] = [];
     const openai: ProviderClient = {
       id: "openai",
-      async *stream() {
-        calls++;
+      async *stream(req) {
+        reqs.push(req);
         yield { type: "source", url: "https://deals.test/o" };
         yield { type: "text", delta: "OPEN10 | https://deals.test/o\n" };
       },
     };
     const r = await suggestCodes(openai, "m", "www.tackform.test");
-    expect(calls).toBe(1);
-    expect(r.followedUp).toBeUndefined();
+    expect(reqs).toHaveLength(1);
+    expect(reqs[0]).toMatchObject({ webSearch: true });
+    expect(r.pagesRead).toBeUndefined();
     expect(r.codes.map((c) => c.code)).toEqual(["OPEN10"]);
-  });
-
-  it("runs no follow-up when every listed page was opened, nor after a failed search", async () => {
-    const listed = await listedFor("www.tackform.test");
-    let calls = 0;
-    const all: ProviderClient = {
+    const again: ChatRequest[] = [];
+    const anthropic: ProviderClient = {
       id: "anthropic",
-      async *stream() {
-        calls++;
-        for (const u of listed) yield { type: "fetch", url: u, ok: true, chars: 900 };
-        yield { type: "text", delta: "NONE\n" };
+      async *stream(req) {
+        again.push(req);
       },
     };
-    const r = await suggestCodes(all, "m", "www.tackform.test");
-    expect(calls).toBe(1);
-    expect(r.followedUp).toBeUndefined();
-    expect(r.pagesOpened).toBe(listed.length);
-    let failed = 0;
+    await suggestCodes(anthropic, "m", "www.tackform.test", undefined, { more: true, exclude: ["OPEN10"] });
+    expect(again).toHaveLength(1);
+    expect(again[0]).toMatchObject({ webSearch: true });
+  });
+
+  it("a read that runs out of time still leads to the search; a refused read ends it", async () => {
+    const reqs: ChatRequest[] = [];
+    const slowRead: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        reqs.push(req);
+        if (isRead(req)) {
+          await new Promise((_res, rej) => req.signal?.addEventListener("abort", () => rej(new ProviderError("anthropic", "network"))));
+          return;
+        }
+        yield { type: "source", url: "https://deals.test/s" };
+        yield { type: "text", delta: "LATE10 | https://deals.test/s\n" };
+      },
+    };
+    const r = await suggestCodes(slowRead, "m", "www.tackform.test", undefined, { readTimeoutMs: 20 });
+    expect(reqs).toHaveLength(2);
+    expect(r.error).toBeUndefined();
+    expect(r.codes.map((c) => c.code)).toEqual(["LATE10"]);
+    let calls = 0;
     const broke: ProviderClient = {
       id: "anthropic",
       async *stream() {
-        failed++;
+        calls++;
         throw new ProviderError("anthropic", "no_credit");
       },
     };
     const r2 = await suggestCodes(broke, "m", "www.tackform.test");
-    expect(failed).toBe(1);
+    expect(calls).toBe(1);
     expect(r2.error?.code).toBe("no_credit");
   });
 
-  it("a follow-up that runs out of time keeps what the search found and is not an error", async () => {
+  // Brumate run h: the search wrote one line of prose and no code before its time ran out, and
+  // the search-only retry did not run because "something" had been written.
+  it("retries without page reads when the search times out having written prose but no code line", async () => {
+    const reqs: ChatRequest[] = [];
     const p: ProviderClient = {
       id: "anthropic",
       async *stream(req) {
-        if (String(req.messages[0]?.content).includes("You did not open these pages")) {
+        reqs.push(req);
+        if (isRead(req)) return;
+        if (req.webFetch) {
+          yield { type: "text", delta: "Let me look through these pages for codes.\n" };
           await new Promise((_res, rej) => req.signal?.addEventListener("abort", () => rej(new ProviderError("anthropic", "network"))));
           return;
         }
-        yield { type: "source", url: "https://deals.test/a", page: "FIRST10 10% off" };
-        yield { type: "text", delta: "FIRST10 | https://deals.test/a\n" };
+        yield { type: "source", url: "https://deals.test/quick" };
+        yield { type: "text", delta: "QUICK10 | https://deals.test/quick\n" };
       },
     };
-    const r = await suggestCodes(p, "m", "www.tackform.test", undefined, { followUpTimeoutMs: 20 });
-    expect(r.followedUp).toBe(true);
+    const r = await suggestCodes(p, "m", "www.tackform.test", undefined, { timeoutMs: 20, retryTimeoutMs: 500 });
+    expect(reqs.map((q) => [q.webSearch, q.webFetch])).toEqual([
+      [false, true],
+      [true, true],
+      [true, false],
+    ]);
+    expect(r.retried).toBe(true);
     expect(r.error).toBeUndefined();
-    expect(r.codes.map((c) => c.code)).toEqual(["FIRST10"]);
+    expect(r.ignored).toBe(1);
+    expect(r.codes.map((c) => c.code)).toEqual(["QUICK10"]);
   });
 });

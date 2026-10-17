@@ -61,10 +61,11 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
         input_schema: t.parameters,
       }));
       if (req.webSearch) tools.push({ type: "web_search_20260209", name: "web_search", max_uses: req.webSearchMaxUses ?? 3 });
-      // Web fetch only opens URLs already in the conversation (e.g. search
-      // results). Citations on, so quoted passages come back as page text;
-      // page size bounded so one long page cannot eat the budget.
-      if (req.webSearch && req.webFetch) {
+      // Web fetch only opens URLs already in the conversation (search results,
+      // or pages the request names; it works without the search tool).
+      // Citations on, so quoted passages come back as page text; page size
+      // bounded so one long page cannot eat the budget.
+      if (req.webFetch) {
         tools.push({
           type: "web_fetch_20260209",
           name: "web_fetch",

@@ -32,15 +32,23 @@ export const RETRY_TIME_MS = 90_000;
 const RETRY_SEARCH_USES = 6;
 const RETRY_NOTE = "This is a quick search without page reads: list every code you can read in the search results themselves, as reported by those pages.";
 /**
- * Pages named in the request (`likelyCodePages`), few enough that one search
- * can open them all. Live sweep 2026-10-17: Tackform's working code was
- * printed on a listed page the model never opened in three runs, so pages it
- * skips are opened in a short follow-up.
+ * Pages named in the request (`likelyCodePages`), read in a short first pass
+ * of their own before any search. Live sweep 2026-10-17: Tackform's working
+ * code was printed on a listed page the model never opened in three runs;
+ * then, told to open every listed page before searching, the model read
+ * 140 000 characters of pages and wrote nothing before the four-minute
+ * budget ended (Brumate). Reading first, with its own budget, keeps both
+ * from happening: the pages are opened for sure, and what they print is
+ * written down before the search starts.
  */
 export const MAX_LISTED_PAGES = 8;
-export const FOLLOW_UP_TIME_MS = 75_000;
-const FOLLOW_UP_NOTE =
-  "You did not open these pages, which may print this store's codes in full. Open each of them now with web_fetch, then list every code printed in full on them in the same format (MASKED for a page that hides its codes). Do not search; a page that fails to load is skipped.";
+export const READ_TIME_MS = 100_000;
+/** The search keeps at least this much time after the listed pages were read. */
+export const MIN_SEARCH_TIME_MS = 120_000;
+const READ_NOTE =
+  "First job, no searching: open each of these pages with web_fetch and list every code printed in full on them, one per line in the format above (MASKED for a page that hides its codes). A page that fails to load is skipped. Pages:";
+const AFTER_READ_NOTE = "These pages were already read in a previous step; do not open them again:";
+const NOT_READ_NOTE = "Open these pages too; they were not read yet:";
 
 // Sources worth naming: coupon sites that show full codes for small direct-to-consumer
 // stores, and the public places creators and brands post codes. The model decides
@@ -51,7 +59,7 @@ export const CODES_SYSTEM_PROMPT = [
   "You find coupon, promo, and discount codes that are publicly posted online for one specific store, so they can be tested in the shopper's cart.",
   "Use web_search many times with different wordings: the store's domain and its name with 'coupon codes', 'promo code', 'discount code', 'creator discount', 'affiliate code', 'influencer code', 'code reddit', 'podcast code', 'newsletter code';",
   "and the store's name with the names of coupon sites (" + COUPON_SITES + ").",
-  "When the request lists pages, open every one of them with web_fetch before your first search. Open the most useful pages the searches return too, and read the exact code strings. Look at coupon sites, creator, affiliate, podcast, YouTube, Instagram, TikTok, Linktree, Reddit, newsletter and blog pages, and the store's own pages (announcement bar, FAQ, help center, promotions page).",
+  "When the request lists pages to read, open each with web_fetch and list what they print before anything else. Open the most useful pages the searches return too, and read the exact code strings. Look at coupon sites, creator, affiliate, podcast, YouTube, Instagram, TikTok, Linktree, Reddit, newsletter and blog pages, and the store's own pages (announcement bar, FAQ, help center, promotions page).",
   "Some coupon sites print every code in full (Wethrift, DealDrop, Dealhack, RetailCoupons, HotDeals, Tenere, Knoji, DontPayFull, GrabOn, Discoup); others hide codes behind a 'Get code' button (Coupons.com, RetailMeNot, Honey, CouponFollow, SimplyCodes, CouponCabin), so those pages only tell you a code exists: when you meet one, go to the sites that print codes and to creator pages instead of stopping.",
   "Rules: list a code only when you saw it written out on a page, for this store and not another store with a similar name.",
   "Never invent, complete, or vary a code. A code shown masked or hidden behind a button cannot be listed as a code; report it as MASKED, then keep looking: other pages usually print the same codes in full.",
@@ -132,8 +140,8 @@ export interface SuggestedCodes {
   /** Pages named in the request (`likelyCodePages`), and how many of them the model asked to open. */
   pagesListed: number;
   pagesOpened: number;
-  /** True when a follow-up opened listed pages the search had skipped. */
-  followedUp?: boolean;
+  /** True when the listed pages were read in a pass of their own before the search. */
+  pagesRead?: boolean;
   /** Every page fetch the model asked for, in order: what it answered. For the run trace. */
   pages: FetchedPage[];
   /** Reply lines that were neither a code line nor MASKED, OFFER or NONE. */
@@ -320,9 +328,9 @@ export interface SearchOptions {
   retryTimeoutMs?: number;
   /** False: no search-only retry. */
   retry?: boolean;
-  /** False: no follow-up for listed pages the search skipped. */
-  followUp?: boolean;
-  followUpTimeoutMs?: number;
+  /** False: the listed pages are not read in a pass of their own first. */
+  readPages?: boolean;
+  readTimeoutMs?: number;
 }
 
 export async function suggestCodes(
@@ -343,7 +351,7 @@ export async function suggestCodes(
   const cited: CouponCandidate[] = [];
   const searched = opts.webSearch !== false;
   let retried = false;
-  let followedUp = false;
+  let pagesRead = false;
   const listed = likelyCodePages(merchant);
   // Pages the model asked the fetch tool for, loaded or not.
   const opened = new Set<string>();
@@ -355,14 +363,13 @@ export async function suggestCodes(
     "Store: " + merchant.brand + "\nStore website: " + merchant.domain +
     (merchant.host.replace(/^www\./, "") !== merchant.domain ? "\nCheckout host: " + merchant.host : "") +
     (aka.length ? "\nAlso written as: " + aka.join(", ") : "") +
-    (listed.length ? "\nPages that may print this store's codes in full. Open every one of them with web_fetch before your first search; one that does not exist just fails to load: " + listed.join(" ") : "") +
     (opts.more ? "\n" + MORE_FOCUS : "") +
     (opts.exclude?.length
       ? "\nAlready tried, do not list these again; look for different codes: " + opts.exclude.slice(0, MAX_EXCLUDE_LISTED).join(", ")
       : "");
 
-  /** One streamed search; what it finds lands in `text`, `retrieved` and `cited`. Returns why it ended early, if it did. */
-  const pass = async (p: { fetch: boolean; timeoutMs: number; searches: number; fetches?: number; note?: string }): Promise<SearchError | undefined> => {
+  /** One streamed request; what it finds lands in `text`, `retrieved` and `cited`. Returns why it ended early, if it did. */
+  const pass = async (p: { search: boolean; fetch: boolean; timeoutMs: number; searches?: number; fetches?: number; note?: string }): Promise<SearchError | undefined> => {
     const ac = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -375,12 +382,12 @@ export async function suggestCodes(
     const req = {
       model,
       system: CODES_SYSTEM_PROMPT,
-      messages: [{ role: "user" as const, content: content + "\n" + (p.note ?? (p.fetch ? "" : RETRY_NOTE)) }],
+      messages: [{ role: "user" as const, content: content + (p.note ? "\n" + p.note : "") }],
       // Room for thinking between searches at higher effort.
       maxTokens: 8000,
       ...(opts.effort ? { effort: opts.effort } : {}),
-      webSearch: true,
-      webSearchMaxUses: p.searches,
+      webSearch: p.search,
+      ...(p.search ? { webSearchMaxUses: p.searches ?? SEARCH_USES } : {}),
       webFetch: p.fetch,
       ...(p.fetch ? { webFetchMaxUses: p.fetches ?? FETCH_USES } : {}),
       signal: ac.signal,
@@ -412,21 +419,34 @@ export async function suggestCodes(
     }
   };
 
+  // Code lines written so far (prose does not count), plus codes quoted in citations.
+  const foundSoFar = (): number => parseFindings(text, retrieved).found.length + cited.length;
+  // Read each time: a stop can arrive during any pass.
+  const stopped = (): boolean => signal?.aborted === true;
   if (searched) {
-    error = await pass({ fetch: true, timeoutMs: opts.timeoutMs ?? SEARCH_TIME_MS, searches: SEARCH_USES });
-    // Nothing written before the time ran out: one quick pass from search results alone.
-    if (error?.code === "timeout" && !text.trim() && cited.length === 0 && opts.retry !== false && signal?.aborted !== true) {
-      retried = true;
-      error = await pass({ fetch: false, timeoutMs: opts.retryTimeoutMs ?? RETRY_TIME_MS, searches: RETRY_SEARCH_USES });
-    } else if (!error && opts.followUp !== false && provider.id === "anthropic" && signal?.aborted !== true) {
-      // Listed pages the search did not open: one short pass opens them. Only
-      // the Anthropic client has a page fetch tool and reports what it opened.
+    let spent = 0;
+    // 1. The listed pages, read in a pass of their own with no searching. Only
+    //    the Anthropic client has a page fetch tool; a second search (`more`)
+    //    has had them read already.
+    if (listed.length && !opts.more && provider.id === "anthropic" && opts.readPages !== false && !stopped()) {
+      pagesRead = true;
+      const started = Date.now();
+      const first = await pass({ search: false, fetch: true, timeoutMs: opts.readTimeoutMs ?? READ_TIME_MS, fetches: listed.length, note: READ_NOTE + " " + listed.join(" ") });
+      spent = Date.now() - started;
+      // A refused request ends the search here; running out of time only moves on to the search.
+      if (first && first.code !== "timeout") error = first;
+    }
+    // 2. The search, told which listed pages were read and which were not.
+    if (!error && !stopped()) {
+      const read = listed.filter((u) => opened.has(urlKey(u)));
       const missed = listed.filter((u) => !opened.has(urlKey(u)));
-      if (missed.length) {
-        followedUp = true;
-        const late = await pass({ fetch: true, timeoutMs: opts.followUpTimeoutMs ?? FOLLOW_UP_TIME_MS, searches: 1, fetches: missed.length, note: FOLLOW_UP_NOTE + " " + missed.join(" ") });
-        // Running out of time here loses nothing already found; a refused request is reported.
-        if (late && late.code !== "timeout") error = late;
+      const note = [read.length ? AFTER_READ_NOTE + " " + read.join(" ") : "", missed.length ? NOT_READ_NOTE + " " + missed.join(" ") : ""].filter(Boolean).join("\n");
+      const budget = opts.timeoutMs ?? Math.max(MIN_SEARCH_TIME_MS, SEARCH_TIME_MS - spent);
+      error = await pass({ search: true, fetch: true, timeoutMs: budget, searches: SEARCH_USES, fetches: FETCH_USES, ...(note ? { note } : {}) });
+      // No code line written before the time ran out: one quick pass from search results alone.
+      if (error?.code === "timeout" && foundSoFar() === 0 && opts.retry !== false && !stopped()) {
+        retried = true;
+        error = await pass({ search: true, fetch: false, timeoutMs: opts.retryTimeoutMs ?? RETRY_TIME_MS, searches: RETRY_SEARCH_USES, note: RETRY_NOTE });
       }
     }
   }
@@ -450,7 +470,7 @@ export async function suggestCodes(
     ...(retried ? { retried: true } : {}),
     pagesListed: listed.length,
     pagesOpened: listed.filter((u) => opened.has(urlKey(u))).length,
-    ...(followedUp ? { followedUp: true } : {}),
+    ...(pagesRead ? { pagesRead: true } : {}),
     pages,
     ignored: findings.ignored,
   };

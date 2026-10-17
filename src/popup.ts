@@ -2111,7 +2111,7 @@ async function main(): Promise<void> {
             return "?";
           }
         };
-        trace("coupons:pages listed=" + sug.pagesListed + " opened=" + sug.pagesOpened + (sug.followedUp ? " followed-up" : ""));
+        trace("coupons:pages listed=" + sug.pagesListed + " opened=" + sug.pagesOpened + (sug.pagesRead ? " read-first" : ""));
         for (const p of sug.pages) trace("coupons:page " + pageLabel(p.url) + " " + (p.ok ? "ok" : p.error ?? "error") + " " + (p.chars ?? 0));
         trace("coupons:candidates store=" + onSite.length + " verified=" + sug.verified + " reported=" + sug.reported + " dropped=" + sug.dropped + " masked=" + sug.masked + " ignored=" + sug.ignored);
         say(discoveryLine(discovery));

@@ -188,6 +188,16 @@ describe("web search (T019)", () => {
     expect(ev).toContainEqual({ type: "source", url: "https://deals.test/b", title: "More" });
   });
 
+  it("sends the fetch tool on its own when only page reads are asked for", async () => {
+    let body = "";
+    const f: FetchLike = async (_u, init) => {
+      body = String(init.body);
+      return sse([{ type: "message_stop" }]);
+    };
+    await collect(createProvider("anthropic", { apiKey: "k", fetch: f }).stream({ ...search, webSearch: false, webFetch: true, webFetchMaxUses: 8 }));
+    expect(JSON.parse(body).tools).toEqual([{ type: "web_fetch_20260209", name: "web_fetch", max_uses: 8, citations: { enabled: true }, max_content_tokens: 40_000 }]);
+  });
+
   it("omits tools when search is off and no tools given", async () => {
     let body = "";
     const f: FetchLike = async (_u, init) => {
