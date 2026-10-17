@@ -138,16 +138,33 @@ test("coupon run tests every code found online, applies the best, never clicks o
   test.setTimeout(90_000);
   const { clicks } = await openPopup(page);
   await page.getByRole("button", { name: "Find coupons" }).click();
+  // Owner, 2026-10-17: milestones post in the chat, outside the folded card,
+  // the newest with a moving indicator; no "can take a couple of minutes" line.
+  const steps = page.locator("#log > .coupon-step");
+  await expect(steps.first()).toHaveText("Searching for coupons for shop…", BATCH_WAIT);
+  await expect(page.locator("#log > .coupon-step.busy .pulse")).toHaveCount(1);
+  await expect(page.locator("#status")).not.toContainText("couple of minutes");
   const answer = page.getByRole("log").locator(".msg.assistant").last();
-  await expect(answer).toContainText("I searched the web for shop codes. Found 5 codes read on the pages that post them.", BATCH_WAIT);
-  await expect(answer).toContainText("I tested 5 codes. SAVE20 is the best: your total drops from $100.00 to $80.00 (you save $20.00, 20% off).");
-  await expect(answer).toContainText("It's applied to your cart, and I didn't go to checkout.");
+  await expect(answer).toHaveText(
+    "I tested 5 codes found online for shop. SAVE20 is the best: your total drops from $100.00 to $80.00 (you save $20.00, 20% off). It's applied to your cart, and I didn't go to checkout.",
+    BATCH_WAIT,
+  );
   await expect(answer).not.toContainText("guess");
   await expect(page.locator("#coupons-more")).toBeHidden();
+  const said = await steps.allTextContents();
+  expect(said).toContain("Found 5 coupons. Applying them to your cart while I keep searching.");
+  expect(said).toContain("Found code SAVE10, saves $10.00 (10% off). Continuing to apply for better savings.");
+  expect(said).toContain("Found code SAVE20, saves $20.00 (20% off). Continuing to apply for better savings.");
+  expect(said.some((t) => t.startsWith("Found all relevant coupons, 5 in all."))).toBe(true);
+  // When the run ends no indicator keeps moving.
+  await expect(page.locator(".pulse")).toHaveCount(0);
   // The trace is folded by default: open it to read the code lines.
   await page.locator("#task .trace-head").click();
-  // Tested in rank order, not the model's listing order: "welcome" reads as a
-  // first-order restriction (candidates.ts RESTRICTED), so WELCOME5 goes last.
+  await expect(page.locator("#task .say")).toContainText(["I searched the web for shop codes. Found 5 codes read on the pages that post them."]);
+  // Tested as the search writes them, each arrival in rank order: the first
+  // four finished lines arrive together and "welcome" reads as a first-order
+  // restriction (candidates.ts RESTRICTED), so WELCOME5 goes last of them;
+  // BOGUS99, the reply's last line, arrives when the reply ends.
   const rows = page.locator("#task .attempt");
   await expect(rows).toHaveCount(5);
   await expect(rows.nth(0)).toContainText("SAVE10");
@@ -156,8 +173,9 @@ test("coupon run tests every code found online, applies the best, never clicks o
   await expect(rows.nth(1)).toContainText("$100.00");
   await expect(rows.nth(2)).toContainText("SAVE20");
   await expect(rows.nth(2)).toContainText("$80.00");
-  await expect(rows.nth(4)).toContainText("WELCOME5");
-  await expect(rows.nth(4)).toContainText("$100.00");
+  await expect(rows.nth(3)).toContainText("WELCOME5");
+  await expect(rows.nth(3)).toContainText("$100.00");
+  await expect(rows.nth(4)).toContainText("BOGUS99");
   for (let i = 0; i < 5; i++) {
     await expect(rows.nth(i).getByRole("link", { name: "seen on deals.test" })).toHaveAttribute("href", "https://deals.test/codes");
   }
@@ -183,14 +201,14 @@ test("no winning code: offers to search again, searches without repeating codes,
   await expect(page.getByRole("button", { name: "Send" })).toBeHidden();
   await page.getByRole("button", { name: "Search again" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
-  await expect(answer).toContainText("I tested 5 codes and none lowered your total of $100.00, so your cart is unchanged. I couldn't find any more codes to try.", BATCH_WAIT);
+  await expect(answer).toContainText("I tested 5 codes found online for shop and none lowered your total of $100.00, so your cart is unchanged. I couldn't find any more codes to try.", BATCH_WAIT);
   // Three requests: the listed coupon pages read first, the search, then the
   // second search, which names the codes already tried and looks in other places.
   expect(asks).toHaveLength(3);
   expect(asks[0]).toContain("First job, no searching");
   expect(asks[2]).toContain("Already tried, do not list these again");
-  // In the order they were tested (WELCOME5 ranks last as a first-order code).
-  expect(asks[2]).toContain("SAVE10, FREESHIP, SAVE20, BOGUS99, WELCOME5");
+  // In the order they were tested (see the first test).
+  expect(asks[2]).toContain("SAVE10, FREESHIP, SAVE20, WELCOME5, BOGUS99");
   expect(asks[2]).toContain("second search");
   // The trace is folded by default: open it to read the code lines.
   await page.locator("#task .trace-head").click();
