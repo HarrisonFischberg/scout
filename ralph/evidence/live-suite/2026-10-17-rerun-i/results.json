@@ -1,0 +1,761 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T18-13-07",
+  "results": [
+    {
+      "name": "Tackform",
+      "url": "https://www.tackform.com",
+      "group": "gear",
+      "outcome": "no codes found",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:pages listed=8 opened=8 read-first",
+        "coupons:page wethrift.com/tackform ok 8559",
+        "coupons:page usa.coupert.com/coupons/tackform-com-discount-code url_not_accessible 0",
+        "coupons:page dealhack.com/coupons/tackform url_not_accessible 0",
+        "coupons:page wethrift.com/codes/tackform.com ok 8559",
+        "coupons:page couponbind.com/coupons/tackform.com ok 22446",
+        "coupons:page dontpayfull.com/at/tackform.com url_not_accessible 0",
+        "coupons:page us.hotdeals.com/store/tackform-coupon ok 30925",
+        "coupons:page tackform.tenereteam.com/coupons ok 18378",
+        "coupons:page greenpromocode.com/coupons/tackform-com url_not_accessible 0",
+        "coupons:page dealdrop.com/tackform ok 8916",
+        "coupons:page dealpromo.net/coupons/tackform.com ok 13038",
+        "coupons:page joincheckmate.com/merchants/tackform.com ok 19765",
+        "coupons:page goodsearch.com/coupons/tackform ok 19407",
+        "coupons:page timelycoupons.com/coupons/tackform ok 13633",
+        "coupons:page techjury.net/consumer-electronics/tackform ok 6240",
+        "coupons:page tackform.knoji.com/promo-codes ok 77649",
+        "coupons:page simplycodes.com/store/tackform.com ok 77649",
+        "coupons:page tackform.com ok 16810",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=7 ignored=0",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 6.3,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 6.4,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 6.4,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 6.5,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 6.9,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 6.9,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:pages listed=8 opened=8 read-first"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page wethrift.com/tackform ok 8559"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page usa.coupert.com/coupons/tackform-com-discount-code url_not_accessible 0"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page dealhack.com/coupons/tackform url_not_accessible 0"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page wethrift.com/codes/tackform.com ok 8559"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page couponbind.com/coupons/tackform.com ok 22446"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page dontpayfull.com/at/tackform.com url_not_accessible 0"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page us.hotdeals.com/store/tackform-coupon ok 30925"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page tackform.tenereteam.com/coupons ok 18378"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page greenpromocode.com/coupons/tackform-com url_not_accessible 0"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page dealdrop.com/tackform ok 8916"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page dealpromo.net/coupons/tackform.com ok 13038"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page joincheckmate.com/merchants/tackform.com ok 19765"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page goodsearch.com/coupons/tackform ok 19407"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page timelycoupons.com/coupons/tackform ok 13633"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page techjury.net/consumer-electronics/tackform ok 6240"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page tackform.knoji.com/promo-codes ok 77649"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page simplycodes.com/store/tackform.com ok 77649"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:page tackform.com ok 16810"
+        },
+        {
+          "t": 139.1,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=7 ignored=0"
+        },
+        {
+          "t": 139.3,
+          "stage": "coupons:status no_codes"
+        },
+        {
+          "t": 139.3,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "892f7a9f18",
+      "startedAt": "2026-10-17T18:13:07.584Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://www.tackform.com/cart"
+      },
+      "cartBefore": {
+        "total": 60,
+        "codes": [],
+        "fields": {
+          "items": 1,
+          "subtotal": 6000,
+          "original": 6000,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Tackform codes. No code posted for Tackform could be found. 7 codes shown masked or behind a button could not be read, so they were not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Tackform codes…",
+        "I searched the web for Tackform codes. No code posted for Tackform could be found. 7 codes shown masked or behind a button could not be read, so they were not tested."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 60,
+        "codes": [],
+        "fields": {
+          "items": 1,
+          "subtotal": 6000,
+          "original": 6000,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "seconds": 143
+    },
+    {
+      "name": "Brumate",
+      "url": "https://brumate.com",
+      "group": "extra",
+      "outcome": "applied",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method page",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:pages listed=8 opened=8 read-first",
+        "coupons:page dontpayfull.com/at/brumate.com ok 51878",
+        "coupons:page usa.coupert.com/coupons/brumate-com-discount-code url_not_accessible 0",
+        "coupons:page couponbind.com/coupons/brumate.com url_not_accessible 0",
+        "coupons:page dealhack.com/coupons/brumate url_not_accessible 0",
+        "coupons:page wethrift.com/codes/brumate.com ok 15334",
+        "coupons:page wethrift.com/brumate url_not_accessible 0",
+        "coupons:page us.hotdeals.com/store/brumate-coupon url_not_accessible 0",
+        "coupons:page brumate.tenereteam.com/coupons ok 21510",
+        "coupons:candidates store=0 verified=29 reported=8 dropped=0 masked=2 ignored=0",
+        "coupons:attempt 1 rejected",
+        "coupons:attempt 2 none",
+        "coupons:attempt 3 saving",
+        "coupons:attempt 4 rejected",
+        "coupons:attempt 5 none",
+        "coupons:attempt 6 rejected",
+        "coupons:attempt 7 rejected",
+        "coupons:attempt 8 none",
+        "coupons:attempt 9 rejected",
+        "coupons:attempt 10 none",
+        "coupons:attempt 11 rejected",
+        "coupons:attempt 12 none",
+        "coupons:attempt 13 rejected",
+        "coupons:attempt 14 none",
+        "coupons:attempt 15 rejected",
+        "coupons:attempt 16 none",
+        "coupons:attempt 17 rejected",
+        "coupons:attempt 18 none",
+        "coupons:attempt 19 rejected",
+        "coupons:attempt 20 none",
+        "coupons:attempt 21 rejected",
+        "coupons:attempt 22 none",
+        "coupons:attempt 23 rejected",
+        "coupons:attempt 24 none",
+        "coupons:attempt 25 none",
+        "coupons:attempt 26 rejected",
+        "coupons:attempt 27 rejected",
+        "coupons:attempt 28 none",
+        "coupons:attempt 29 none",
+        "coupons:attempt 30 rejected",
+        "coupons:attempt 31 none",
+        "coupons:attempt 32 rejected",
+        "coupons:attempt 33 none",
+        "coupons:attempt 34 rejected",
+        "coupons:attempt 35 none",
+        "coupons:attempt 36 rejected",
+        "coupons:attempt 37 none",
+        "coupons:status done best applied",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 17.7,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 17.8,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 17.8,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 21,
+          "stage": "coupons:method page"
+        },
+        {
+          "t": 21.6,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 21.6,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 110.3,
+          "stage": "coupons:pages listed=8 opened=8 read-first"
+        },
+        {
+          "t": 110.3,
+          "stage": "coupons:page dontpayfull.com/at/brumate.com ok 51878"
+        },
+        {
+          "t": 110.3,
+          "stage": "coupons:page usa.coupert.com/coupons/brumate-com-discount-code url_not_accessible 0"
+        },
+        {
+          "t": 110.3,
+          "stage": "coupons:page couponbind.com/coupons/brumate.com url_not_accessible 0"
+        },
+        {
+          "t": 110.3,
+          "stage": "coupons:page dealhack.com/coupons/brumate url_not_accessible 0"
+        },
+        {
+          "t": 110.3,
+          "stage": "coupons:page wethrift.com/codes/brumate.com ok 15334"
+        },
+        {
+          "t": 110.3,
+          "stage": "coupons:page wethrift.com/brumate url_not_accessible 0"
+        },
+        {
+          "t": 110.3,
+          "stage": "coupons:page us.hotdeals.com/store/brumate-coupon url_not_accessible 0"
+        },
+        {
+          "t": 110.3,
+          "stage": "coupons:page brumate.tenereteam.com/coupons ok 21510"
+        },
+        {
+          "t": 110.3,
+          "stage": "coupons:candidates store=0 verified=29 reported=8 dropped=0 masked=2 ignored=0"
+        },
+        {
+          "t": 111.7,
+          "stage": "coupons:attempt 1 rejected"
+        },
+        {
+          "t": 114.7,
+          "stage": "coupons:attempt 2 none"
+        },
+        {
+          "t": 116.6,
+          "stage": "coupons:attempt 3 saving"
+        },
+        {
+          "t": 119.5,
+          "stage": "coupons:attempt 4 rejected"
+        },
+        {
+          "t": 122.5,
+          "stage": "coupons:attempt 5 none"
+        },
+        {
+          "t": 123.8,
+          "stage": "coupons:attempt 6 rejected"
+        },
+        {
+          "t": 125.4,
+          "stage": "coupons:attempt 7 rejected"
+        },
+        {
+          "t": 128.4,
+          "stage": "coupons:attempt 8 none"
+        },
+        {
+          "t": 130,
+          "stage": "coupons:attempt 9 rejected"
+        },
+        {
+          "t": 133,
+          "stage": "coupons:attempt 10 none"
+        },
+        {
+          "t": 134.6,
+          "stage": "coupons:attempt 11 rejected"
+        },
+        {
+          "t": 137.6,
+          "stage": "coupons:attempt 12 none"
+        },
+        {
+          "t": 139.2,
+          "stage": "coupons:attempt 13 rejected"
+        },
+        {
+          "t": 142.2,
+          "stage": "coupons:attempt 14 none"
+        },
+        {
+          "t": 143.8,
+          "stage": "coupons:attempt 15 rejected"
+        },
+        {
+          "t": 146.8,
+          "stage": "coupons:attempt 16 none"
+        },
+        {
+          "t": 148.4,
+          "stage": "coupons:attempt 17 rejected"
+        },
+        {
+          "t": 151.4,
+          "stage": "coupons:attempt 18 none"
+        },
+        {
+          "t": 153,
+          "stage": "coupons:attempt 19 rejected"
+        },
+        {
+          "t": 155.9,
+          "stage": "coupons:attempt 20 none"
+        },
+        {
+          "t": 157.2,
+          "stage": "coupons:attempt 21 rejected"
+        },
+        {
+          "t": 160.2,
+          "stage": "coupons:attempt 22 none"
+        },
+        {
+          "t": 161.8,
+          "stage": "coupons:attempt 23 rejected"
+        },
+        {
+          "t": 164.8,
+          "stage": "coupons:attempt 24 none"
+        },
+        {
+          "t": 167.8,
+          "stage": "coupons:attempt 25 none"
+        },
+        {
+          "t": 169.1,
+          "stage": "coupons:attempt 26 rejected"
+        },
+        {
+          "t": 170.4,
+          "stage": "coupons:attempt 27 rejected"
+        },
+        {
+          "t": 173.4,
+          "stage": "coupons:attempt 28 none"
+        },
+        {
+          "t": 176.4,
+          "stage": "coupons:attempt 29 none"
+        },
+        {
+          "t": 178,
+          "stage": "coupons:attempt 30 rejected"
+        },
+        {
+          "t": 181,
+          "stage": "coupons:attempt 31 none"
+        },
+        {
+          "t": 182.6,
+          "stage": "coupons:attempt 32 rejected"
+        },
+        {
+          "t": 185.6,
+          "stage": "coupons:attempt 33 none"
+        },
+        {
+          "t": 187.2,
+          "stage": "coupons:attempt 34 rejected"
+        },
+        {
+          "t": 190.2,
+          "stage": "coupons:attempt 35 none"
+        },
+        {
+          "t": 191.8,
+          "stage": "coupons:attempt 36 rejected"
+        },
+        {
+          "t": 194.8,
+          "stage": "coupons:attempt 37 none"
+        },
+        {
+          "t": 196.4,
+          "stage": "coupons:status done best applied"
+        },
+        {
+          "t": 196.4,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "892f7a9f18",
+      "startedAt": "2026-10-17T18:15:33.694Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.brumate.com/"
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for BruMate codes. Found 37 codes: 29 codes read on the pages that post them and 8 codes the search reported from pages it returned. 2 codes shown masked or behind a button could not be read, so they were not tested. I tested 37 codes. LL10-XEEG0MNF is the best: your total drops from $149.99 to $139.99 (you save $10.00, 7% off). It's applied to your cart, and I didn't go to checkout. Conditions seen with it: \n10\n𝑜\n𝑓\n𝑓\n;\n𝑎\n𝑙\n𝑠\n𝑜\n𝑙\n𝑖\n𝑠\n𝑡\n𝑒\n𝑑\n𝑜\n𝑛\n𝑡\n𝑒\n𝑛\n𝑒\n𝑟\n𝑒\n𝑡\n𝑒\n𝑎\n𝑚\n.\n𝑐\n𝑜\n𝑚\n𝑎\n𝑠\n\"\n10\n cheaper at least.\n\nCode\tResult\tWhere it was found\nLL10-XEEG0MNF\tsaves $10.00, total $139.99\tseen on dontpayfull.com\n\nDidn't work: 3DRINK, SXYHKFHS3ZJP, W-GHSZN6V8, LD20, REF-FKVOCB7J, W-2M7PLC85, W-56RX4VGX, REF-FA8CVZ7T, REF-7F9T4LPD, SNFGOPCBZ and 26 more.\n\nCode-free offers the pages mention (not tested): Text BRUCREW to 66415 to subscribe for BrüMate text alerts and exclusive offers.\" text-signup offer; the page elsewhere ; Refer a friend to give them a 15% discount on their first order of $25+.\" referral program; Active military and veterans receive a 10% discount on their entire order after verification via GovX ID.\" also nurses, .\n\nCheckout can still change the final price, for example tax, shipping, or whether the code applies to later orders.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Found the coupon box. Searching the web for BruMate codes…",
+        "I searched the web for BruMate codes. Found 37 codes: 29 codes read on the pages that post them and 8 codes the search reported from pages it returned. 2 codes shown masked or behind a button could not be read, so they were not tested.",
+        "Testing 37 codes on your cart, one at a time…"
+      ],
+      "attempts": [
+        {
+          "code": "3DRINK",
+          "text": "3DRINK · $149.99 · Not accepted by the store. · seen on brumate.tenereteam.com",
+          "source": "https://brumate.tenereteam.com/coupons",
+          "evidence": "Extra 10% OFF Site-wide by using Brumate Coupon Code. (10% off; the page lists it as an affiliate code; excludes sale and clearance items and gift cards)",
+          "good": false
+        },
+        {
+          "code": "SXYHKFHS3ZJP",
+          "text": "SXYHKFHS3ZJP · $149.99 · No saving. · seen on brumate.tenereteam.com",
+          "source": "https://brumate.tenereteam.com/coupons",
+          "evidence": "Save 15% now when using this code from Brumate (15% off; shared by a user; no stacking)",
+          "good": false
+        },
+        {
+          "code": "LL10-XEEG0MNF",
+          "text": "LL10-XEEG0MNF · $139.99 · saves $10.00 · Saves $10.00. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "Anika T. tested the code \"LL10-XEEG0MNF\" at checkout on brumate.com. The code was successfully applied. ($10 off; also listed on tenereteam.com as \"10$ cheaper at least)",
+          "good": true
+        },
+        {
+          "code": "W-GHSZN6V8",
+          "text": "W-GHSZN6V8 · $149.99 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "samantha-reed tested the code \"W-GHSZN6V8\" at checkout on brumate.com. The code was successfully applied. (10% off storewide)",
+          "good": false
+        },
+        {
+          "code": "LD20",
+          "text": "LD20 · $149.99 · No saving. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "lisaxfield successfully applied the code \"LD20\" via DontPayFull extension on brumate.com. (20% off; excludes coolers and gift cards; single use per order; last use reported Feb 27, 2026)",
+          "good": false
+        },
+        {
+          "code": "REF-FKVOCB7J",
+          "text": "REF-FKVOCB7J · $149.99 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "tiffaniasadventures successfully applied the code \"REF-FKVOCB7J\" via DontPayFull extension on brumate.com. (15% off; last reported use Feb 27, 2026)",
+          "good": false
+        },
+        {
+          "code": "W-2M7PLC85",
+          "text": "W-2M7PLC85 · $149.99 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "mountainmike tested the code \"W-2M7PLC85\" at checkout on brumate.com. The code was successfully applied. (10% off storewide; no combining with other discounts; tested Jun 10, 2026)",
+          "good": false
+        },
+        {
+          "code": "W-56RX4VGX",
+          "text": "W-56RX4VGX · $149.99 · No saving. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "wei-chen tested the code \"W-56RX4VGX\" at checkout on brumate.com. The code was successfully applied. (10% off; tested Jun 16, 2026)",
+          "good": false
+        },
+        {
+          "code": "REF-FA8CVZ7T",
+          "text": "REF-FA8CVZ7T · $149.99 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "Oct 13, 2026 New code available for BruMate: REF-FA8CVZ7T · 15% off (15% off; also on tenereteam.com)",
+          "good": false
+        },
+        {
+          "code": "REF-7F9T4LPD",
+          "text": "REF-7F9T4LPD · $149.99 · No saving. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "Sep 8, 2026 New code available for BruMate: REF-7F9T4LPD · 15% off (15% off)",
+          "good": false
+        },
+        {
+          "code": "SNFGOPCBZ",
+          "text": "SNFGOPCBZ · $149.99 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "Jan 2026 … SNFGOPCBZ 80% Off Deals (older code)",
+          "good": false
+        },
+        {
+          "code": "BRYNLEYMAY",
+          "text": "BRYNLEYMAY · $149.99 · No saving. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "Jun 2026 … BRYNLEYMAY 15% Off Storewide (older code)",
+          "good": false
+        },
+        {
+          "code": "CHILL",
+          "text": "CHILL · $149.99 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "Jul 2026 … CHILL 20% Off Your Entire Order (older code)",
+          "good": false
+        },
+        {
+          "code": "GOLDEN",
+          "text": "GOLDEN · $149.99 · No saving. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "Sep 2026 … GOLDEN Save up to 50% on Your Orders (older code)",
+          "good": false
+        },
+        {
+          "code": "7P6JHQQM93GN",
+          "text": "7P6JHQQM93GN · $149.99 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/brumate.com",
+          "evidence": "The best BrüMate coupon code to try right now is 7P6JHQQM93GN for 15% off. (15% off storewide; the page's own code list shows it hidden behind \"Show Code)",
+          "good": false
+        },
+        {
+          "code": "3DRINKS",
+          "text": "3DRINKS · $149.99 · No saving. · seen on brumate.tenereteam.com",
+          "source": "https://brumate.tenereteam.com/coupons",
+          "evidence": "Brumate 'd love to welcome you to newsletter by giving you 10% off your next purchase! (10% off; the page lists it as from social media/campaign; excludes sale and clearance items and gift cards)",
+          "good": false
+        },
+        {
+          "code": "REF-T36JVK33",
+          "text": "REF-T36JVK33 · $149.99 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "lfcjo successfully applied the code \"REF-T36JVK33\" via DontPayFull extension on brumate.com. (15% off first purchase; last reported use Feb 27, 2026)",
+          "good": false
+        },
+        {
+          "code": "SHIP",
+          "text": "SHIP · $149.99 · No saving. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "Mar 2026 … SHIP 20% Off Select Items (older code)",
+          "good": false
+        },
+        {
+          "code": "DECADE",
+          "text": "DECADE · $149.99 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "May 2026 … DECADE 20% Off Select Items (older code)",
+          "good": false
+        },
+        {
+          "code": "WELCOMEK8V2",
+          "text": "WELCOMEK8V2 · $149.99 · No saving. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "Aug 2026 … WELCOMEK8V2 Save up to 50% on Your Orders (older code)",
+          "good": false
+        },
+        {
+          "code": "CART10",
+          "text": "CART10 · $149.99 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "Oct 2026 … cart10 Save 35% on Select Items (listed as the best code for Oct 2026)",
+          "good": false
+        },
+        {
+          "code": "LDW20",
+          "text": "LDW20 · $149.99 · No saving. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "angrybirb captured the code \"LDW20\" from BruMate. The code was active for 5 days. (20% off; drinkware only, no combining with other promotions; may be expired (last seen about 1 month earlier))",
+          "good": false
+        },
+        {
+          "code": "REF-JGK7QZ5I",
+          "text": "REF-JGK7QZ5I · $149.99 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "15% Special Discount on Your Purchase … Expired Sep 3, 2026 REF-JGK7QZ5I (expired Sep 3, 2026)",
+          "good": false
+        },
+        {
+          "code": "REF-I2D0V6DU",
+          "text": "REF-I2D0V6DU · $149.99 · No saving. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "BruMate Promo Code - 15% Off … Expired Sep 6, 2026 REF-I2D0V6DU (expired Sep 6, 2026)",
+          "good": false
+        },
+        {
+          "code": "W-R7GB4WBL",
+          "text": "W-R7GB4WBL · $149.99 · No saving. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "10% Off BruMate Orders … Expired Sep 5, 2026 W-R7GB4WBL (expired Sep 5, 2026)",
+          "good": false
+        },
+        {
+          "code": "TIABF",
+          "text": "TIABF · $149.99 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "25% Off w/Coupon Code on Your Purchase … Expired Jan 5, 2023 TIABF (expired Jan 5, 2023)",
+          "good": false
+        },
+        {
+          "code": "CRUMERA",
+          "text": "CRUMERA · $149.99 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "BruMate Discount Code: Save 15% … Expired Oct 6, 2023 CRUMERA (expired Oct 6, 2023)",
+          "good": false
+        },
+        {
+          "code": "HOLIDAY25",
+          "text": "HOLIDAY25 · $149.99 · No saving. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "Nov 2025 … HOLIDAY25 25% Off Orders on Black Friday Sale (seasonal, likely expired)",
+          "good": false
+        },
+        {
+          "code": "CHRISTMAS30",
+          "text": "CHRISTMAS30 · $149.99 · No saving. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/brumate.com",
+          "evidence": "Dec 2025 … CHRISTMAS30 30% Off (seasonal, likely expired)",
+          "good": false
+        },
+        {
+          "code": "CHEER",
+          "text": "CHEER · $149.99 · Not accepted by the store. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/brumate-promo-codes",
+          "evidence": "CHEER (15% OFF)",
+          "good": false
+        },
+        {
+          "code": "EARLY20",
+          "text": "EARLY20 · $149.99 · No saving. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/brumate-promo-codes",
+          "evidence": "20% OFF EARLY20 (20% off. Wethrift shows it as storewide, found about 11 months before.)",
+          "good": false
+        },
+        {
+          "code": "CHEYENNEJUNE",
+          "text": "CHEYENNEJUNE · $149.99 · Not accepted by the store. · tiktok.com (reported by the search)",
+          "source": "https://www.tiktok.com/discover/brumate-influencer-code",
+          "evidence": "score a discount with code CHEYENNEJUNE (Creator code for the Wildflower collection. HotDeals lists it as 25% off.)",
+          "good": false
+        },
+        {
+          "code": "CLASS",
+          "text": "CLASS · $149.99 · No saving. · tiktok.com (reported by the search)",
+          "source": "https://www.tiktok.com/discover/influencer-brumate-codes",
+          "evidence": "Enjoy 20% off with code CLASS (20% off through Sunday per a creator post (LTK link). Wethrift lists it as \"20% off all weekend\".)",
+          "good": false
+        },
+        {
+          "code": "LARA10",
+          "text": "LARA10 · $149.99 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/brumate.com",
+          "evidence": "Use code LARA10 to save on your next order at BrüMate. (Source: a TikTok post by @okiekreations405. The offer amount isn't stated, and the code is probably 10% off.)",
+          "good": false
+        },
+        {
+          "code": "PAIGE32627",
+          "text": "PAIGE32627 · $149.99 · No saving. · tiktok.com (reported by the search)",
+          "source": "https://www.tiktok.com/discover/brumate-influencer-code",
+          "evidence": "Use code: PAIGE32627 for 10% off! (Creator code (The Loaded Tea Shop).)",
+          "good": false
+        },
+        {
+          "code": "GIFT20",
+          "text": "GIFT20 · $149.99 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/brumate.com",
+          "evidence": "20% off holiday gifts, Free Shipping ... GIFT20 (Holiday offer from BrüMate's own advertising. Probably expired.)",
+          "good": false
+        },
+        {
+          "code": "CHEYENNEDOT",
+          "text": "CHEYENNEDOT · $149.99 · No saving. · tiktok.com (reported by the search)",
+          "source": "https://www.tiktok.com/discover/influencer-brumate-codes",
+          "evidence": "Use code CHEYENNEDOT at Brumate for 24 hours only (A creator code valid for 24 hours, likely expired. The discount amount isn't stated.)",
+          "good": false
+        }
+      ],
+      "seconds": 200
+    }
+  ]
+}
