@@ -303,8 +303,11 @@ test("Take control stops actions within 250 ms, Resume continues, and Stop remov
   await expect(page.getByRole("button", { name: "Start task" })).toBeHidden();
   const stopAt = Date.now();
   await page.locator(".composer-foot").getByRole("button", { name: "Stop" }).click();
-  await expect(page.getByRole("log", { name: "Conversation" }).getByText("Stopped.", { exact: true })).toBeVisible();
+  await expect(traceHead(page)).toContainText("Stopped");
   expect(Date.now() - stopAt).toBeLessThan(2000);
+  // Stop just stops: the trace says so, with no error card under it (owner, 2026-10-17).
+  await expect(page.locator(".msg.error")).toHaveCount(0);
+  await expect(page.getByRole("log", { name: "Conversation" }).getByText("Stopped.", { exact: true })).toHaveCount(0);
   f = await fake(page);
   const stopClick = f.rec.find((r) => r.what === "overlay:hide")!;
   expect(stopClick).toBeDefined();
