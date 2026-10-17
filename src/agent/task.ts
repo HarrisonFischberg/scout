@@ -238,11 +238,17 @@ export async function runTask(deps: TaskDeps): Promise<TaskOutcome> {
       });
     });
 
+  let overlayFailed = false;
   const overlay = async (cmd: OverlayCommand): Promise<void> => {
     try {
       await deps.page.overlay(cmd);
-    } catch {
+    } catch (err) {
       // The overlay is a courtesy to the user; the task does not depend on it.
+      // Said once in the log (and traced by the panel), so a missing border is diagnosable.
+      if (overlayFailed || cmd.type === "hide") return;
+      overlayFailed = true;
+      const code = (err instanceof Error ? err.message : String(err)).replace(/[^\w .:-]/g, "").slice(0, 80);
+      logLine("Overlay could not be shown (" + (code || "unknown") + "). The task continues without it.", "note");
     }
   };
   const setState = async (state: OverlayState): Promise<void> => {

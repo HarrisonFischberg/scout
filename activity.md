@@ -1344,3 +1344,13 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
   - `tests/e2e/agent.spec.ts` and `safety.spec.ts` (old in-popup loop) removed; their intent lives in `scout.spec.ts` and `tests/unit/task.test.ts`.
 - Platform limits hit (spec 11, Safari): no browser-level input automation and no browser-level overlay for extensions, so both fallbacks are built and the preferred column is not used; `@property` inside shadow roots is ignored (registered on the document instead; Safari 16.0–16.3 gets a static border); DOM events cannot reach cross-origin iframes, native pickers, or `isTrusted`-only handlers (reported to the model as failed actions); a coordinate click resolves through `elementFromPoint`; Safari's popover closes when the user clicks the page, so the runner lives in the worker and brings the panel back (`action.openPopup`) when a confirmation waits and no panel is open. Recorded in `docs/safari-api-support.md` (Part 3 table) and launch blockers 30–32.
 - Not done here: WebKit run of the e2e, Simulator and Mac checks, `npm run check:release`, Xcode builds (blocker 30); consent version decision (blocker 32).
+
+## 2026-10-17 — Bug: no glow on Mac and iPhone (Part 3 overlay), owner report
+
+- Actual (owner, Mac diagnostics run #26, live claude-opus-5, fixture forms page): the task ran (confirmation asked and allowed, actions performed, summary returned) but no border or pill appeared on the page; same on the iPhone.
+- Expected (owner): the page glows and Scout mode clicks around and makes choices.
+- Found so far (no Safari here; WebKit cannot be downloaded in this session either):
+  1. `src/overlay.ts` declared a module constant named `CSS`, which shadowed the browser's `CSS` object, so `CSS.registerProperty` always threw and the angle registration fell through to the document-level `@property` fallback. Renamed to `STYLE_TEXT`. Not by itself a reason for no border, but a real bug.
+  2. The runner swallowed every overlay error, so the report could not say whether `overlay.js` was injected or the handler threw. Now the first failure is one "Overlay could not be shown (<reason>)" line in the action log and a `task:overlay-failed <reason>` stage in diagnostics.
+  3. The host is now attached the way the page button is (`src/edge.ts`, checked in Safari): popover attribute before joining the document, appended to the root element, then `showPopover()`; host style also pins opacity, visibility, transform, filter, clip-path and contain.
+- Checks: lint clean; unit 337; e2e overlay + scout 15/15 (Chromium). Next report from the owner decides the cause.
