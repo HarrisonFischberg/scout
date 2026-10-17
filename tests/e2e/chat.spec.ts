@@ -101,6 +101,23 @@ test.describe("touch device", () => {
     await expect(page.getByLabel("Ask about this page")).toBeVisible();
     await expect(page.getByLabel("Ask about this page")).not.toBeFocused();
   });
+
+  // Owner item 6 (2026-10-17): Safari's sheet bar already names Scout, so the
+  // chat header drops its own icon and title but keeps New chat and Settings.
+  test("the chat header shows no repeated name, only New chat and Settings", async ({ page }) => {
+    await openPopup(page, { key: "sk-test-synthetic" });
+    const header = page.locator("#chat-view > header");
+    await expect(header.locator("img")).toBeHidden();
+    await expect(page.getByRole("heading", { name: "Scout for Safari", level: 1 })).toHaveCSS("width", "1px");
+    await expect(page.getByRole("button", { name: "New chat" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
+  });
+});
+
+test("on Mac the chat header keeps the icon and the name", async ({ page }) => {
+  await openPopup(page, { key: "sk-test-synthetic" });
+  await expect(page.locator("#chat-view > header img")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scout for Safari", level: 1 })).toBeVisible();
 });
 
 // T018: with OpenAI chosen but only an Anthropic key saved, the popup used
