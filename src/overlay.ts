@@ -17,24 +17,26 @@ import { OVERLAY_HANDLER, type OverlayRequest } from "./content-api";
 const FLAG = "__safariScoutOverlayLoaded";
 const g = globalThis as unknown as Record<string, unknown>;
 
-// Safari blue (owner, 2026-10-17): Apple's system blue with a lighter sky blue
-// and a deeper blue, close together so the sweep shifts gently instead of in
-// patches. Spec 9 named gold, amber and green; the owner chose blue.
-const BLUES = "#0A84FF, #3F9BFF, #5AC8FA, #2E8BFF, #0A84FF, #1F6FE8, #3A7BFF, #0A84FF";
+// Safari cyan-blue (owner reference, 2026-10-17: a teal bloom that hugs every
+// edge of the page and tints the middle). Hues close together, so the sweep
+// reads as one slow swirl rather than patches. Spec 9 named gold, amber and
+// green; the owner chose blue.
+const BLUES = "#0A84FF, #1A9BE8, #2BBCE6, #33CCF0, #22B4E0, #1496D9, #0E88E0, #1FA8E6, #2EC1EA, #0A84FF";
 // How much of the wash shows: center of the page, halfway out, the edges, the corners.
-export const GLOW_CENTER = "18%";
-export const GLOW_MID = "26%";
-export const GLOW_EDGE = "62%";
-export const GLOW_CORNER = "85%";
+export const GLOW_CENTER = "28%";
+export const GLOW_MID = "36%";
+export const GLOW_EDGE = "78%";
+export const GLOW_CORNER = "95%";
 // Many close stops, so the fade is smooth rather than banded.
 const MASK_STOPS = [
   "rgb(0 0 0 / " + GLOW_CENTER + ") 0%",
-  "rgb(0 0 0 / 21%) 25%",
+  "rgb(0 0 0 / 31%) 25%",
   "rgb(0 0 0 / " + GLOW_MID + ") 45%",
-  "rgb(0 0 0 / 38%) 60%",
-  "rgb(0 0 0 / 50%) 72%",
-  "rgb(0 0 0 / " + GLOW_EDGE + ") 85%",
-  "rgb(0 0 0 / 75%) 93%",
+  "rgb(0 0 0 / 46%) 58%",
+  "rgb(0 0 0 / 58%) 70%",
+  "rgb(0 0 0 / 68%) 78%",
+  "rgb(0 0 0 / " + GLOW_EDGE + ") 86%",
+  "rgb(0 0 0 / 88%) 94%",
   "rgb(0 0 0 / " + GLOW_CORNER + ") 100%",
 ].join(", ");
 
@@ -80,14 +82,14 @@ const STYLE_TEXT = `
   background: conic-gradient(from var(--scout-angle), ${BLUES});
   -webkit-mask-image: radial-gradient(ellipse at center, ${MASK_STOPS});
   mask-image: radial-gradient(ellipse at center, ${MASK_STOPS});
-  filter: blur(18px); animation: scout-sweep ${SWEEP_MS}ms linear infinite;
+  filter: blur(26px); animation: scout-sweep ${SWEEP_MS}ms linear infinite;
 }
 .layer.paused .glow { opacity: 0.5; }
 .layer.hidden-tab .glow { animation-play-state: paused; }
 @keyframes scout-sweep { to { --scout-angle: 360deg; } }
 .ripple {
   position: absolute; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; pointer-events: none;
-  border: 2px solid #0A84FF; box-shadow: 0 0 0 2px rgb(10 132 255 / 35%); opacity: 0.95;
+  border: 2px solid #2BBCE6; box-shadow: 0 0 0 2px rgb(43 188 230 / 35%); opacity: 0.95;
   animation: scout-ripple ${RIPPLE_MS}ms ease-out forwards;
 }
 @keyframes scout-ripple { from { transform: scale(0.4); opacity: 0.95; } to { transform: scale(1.6); opacity: 0; } }
@@ -108,7 +110,7 @@ const STYLE_TEXT = `
 }
 .pill button:hover { background: rgb(255 255 255 / 16%); }
 .pill button:focus-visible { outline: 2px solid #2997ff; outline-offset: 2px; }
-.pill button.stop { border-color: #5AC8FA; color: #5AC8FA; }
+.pill button.stop { border-color: #33CCF0; color: #33CCF0; }
 @media (prefers-reduced-motion: reduce) {
   .glow { animation: none; }
   .ripple { animation: none; transform: scale(1); }
