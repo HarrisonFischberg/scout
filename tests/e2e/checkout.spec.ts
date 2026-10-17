@@ -21,9 +21,22 @@ function codesTurn(codes: string[]): string {
       },
     },
     { type: "content_block_stop", index: 0 },
-    { type: "content_block_start", index: 1, content_block: { type: "text", text: "" } },
-    { type: "content_block_delta", index: 1, delta: { type: "text_delta", text: codes.map((c) => c + " | https://deals.test/codes").join("\n") } },
+    {
+      type: "content_block_start",
+      index: 1,
+      content_block: {
+        type: "web_fetch_tool_result",
+        content: {
+          type: "web_fetch_result",
+          url: "https://deals.test/codes",
+          content: { type: "document", source: { type: "text", media_type: "text/plain", data: codes.map((c) => "Use code " + c + " at checkout").join("\n") }, title: "Synthetic deals" },
+        },
+      },
+    },
     { type: "content_block_stop", index: 1 },
+    { type: "content_block_start", index: 2, content_block: { type: "text", text: "" } },
+    { type: "content_block_delta", index: 2, delta: { type: "text_delta", text: codes.map((c) => c + " | https://deals.test/codes").join("\n") } },
+    { type: "content_block_stop", index: 2 },
     { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 12 } },
     { type: "message_stop" },
   ]);
@@ -90,7 +103,7 @@ test("checkout page without a cart API: types codes only into the discount box, 
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   await expect(answer).toContainText(
-    "I tested 25 codes. SAVE20 is the best: your total drops from $170.00 to $136.00 (you save $34.00, 20% off).",
+    "I tested 5 codes. SAVE20 is the best: your total drops from $170.00 to $136.00 (you save $34.00, 20% off).",
     RUN_WAIT,
   );
   await expect(answer).toContainText("It's applied to your cart, and I didn't go to checkout.");
@@ -99,10 +112,10 @@ test("checkout page without a cart API: types codes only into the discount box, 
   // The trace is folded by default: open it to read the code lines.
   await page.locator("#task .trace-head").click();
   const rows = page.locator("#task .attempt");
-  await expect(rows).toHaveCount(25);
+  await expect(rows).toHaveCount(5);
   // The code the store's home page advertises (fixture banner: KETO10) is tried first.
   await expect(rows.nth(0)).toContainText("KETO10");
-  await expect(rows.nth(0).getByRole("link", { name: "127.0.0.1" })).toHaveAttribute("href", /^http:\/\/127\.0\.0\.1:\d+\/$/);
+  await expect(rows.nth(0).getByRole("link", { name: /the store's own site/ })).toHaveAttribute("href", /^http:\/\/127\.0\.0\.1:\d+\/$/);
   await expect(rows.nth(1)).toContainText("WELCOME5");
   await expect(rows.nth(2)).toContainText("SAVE10");
   await expect(rows.nth(2)).toContainText("$153.00");
@@ -119,11 +132,15 @@ test("checkout page on a Shopify store: tests codes through the cart API and app
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   await expect(answer).toContainText(
-    "I tested 25 codes. BEEFY15 is the best: your total drops from $151.79 to $135.81 (you save $15.98, 11% off).",
+    "I tested 3 codes. BEEFY15 is the best: your total drops from $151.79 to $135.81 (you save $15.98, 11% off).",
     RUN_WAIT,
   );
   await expect(answer).toContainText("It's applied to your cart");
   await expect(page.locator("#coupons-more")).toBeHidden();
+  // The fake store takes two codes but only counts the first: the pair was tried and did not beat BEEFY15 alone.
+  await page.locator("#task .trace-head").click();
+  await expect(page.locator("#task .attempt").last()).toContainText("BEEFY15 + KETO10");
+  await expect(page.locator("#task .attempt").last()).toContainText("Both accepted, but no lower total.");
   // The checkout page reloads to show the code; the cart holds only the winner.
   await shop.waitForLoadState("load");
   const cart = await shop.evaluate(() => fetch("/cart.js").then((r) => r.json()));

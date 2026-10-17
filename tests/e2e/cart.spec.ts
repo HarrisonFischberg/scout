@@ -41,8 +41,10 @@ test("returns null on a store that is not Shopify", async ({ page }) => {
   expect(await call(page, { type: "scout:cart-info" })).toBeNull();
 });
 
-test("lists the codes the store's home page advertises, not ones inside scripts", async ({ page }) => {
+test("lists the codes the store's home page advertises, with the words around them, not ones inside scripts", async ({ page }) => {
   await load(page);
   // The fixture home page has a "use code KETO10" banner and a script naming another code.
-  expect(await call<string[]>(page, { type: "scout:store-codes" })).toEqual(["KETO10"]);
+  const codes = await call<Array<{ code: string; context: string }>>(page, { type: "scout:store-codes" });
+  expect(codes.map((c) => c.code)).toEqual(["KETO10"]);
+  expect(codes[0]?.context).toContain("KETO10");
 });

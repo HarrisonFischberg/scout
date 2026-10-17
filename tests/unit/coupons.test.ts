@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { AgentControl } from "../../src/agent/control";
 import type { Action, ActionResult } from "../../src/actions/executor";
-import { suggestCodes } from "../../src/coupons/codes";
-import { brandTokens, mergeCandidates, originLabel, patternCodes } from "../../src/coupons/candidates";
+import { isMasked, mergeCandidates, normalizeCode, originLabel } from "../../src/coupons/candidates";
 import {
   couponStatusText,
   couponSummary,
+  discoveryLine,
+  openCouponTester,
   parseCodes,
   parseTotal,
   runCouponSearch,
@@ -13,7 +14,6 @@ import {
   type CartState,
   type CouponPage,
 } from "../../src/coupons/finder";
-import type { ChatRequest, ProviderClient, StreamEvent } from "../../src/providers";
 import { shopifyCartInfo } from "../../src/coupons/shopify";
 import { buildSnapshot, type SnapNode, type Snapshot } from "../../src/snapshot/snapshot";
 
@@ -86,7 +86,7 @@ describe("parseCodes", () => {
 
 describe("runCouponSearch", () => {
   const names = ["WELCOME5", "SAVE10", "FREESHIP", "SAVE20", "BOGUS99"];
-  const five = names.map((code) => ({ code, origin: "sourced" as const, sourceUrl: "https://deals.test/" + code.toLowerCase() }));
+  const five = names.map((code) => ({ code, origin: "verified" as const, sourceUrl: "https://deals.test/" + code.toLowerCase() }));
 
   it("tries each code once, keeps the larger saving, never clicks order", async () => {
     const p = shop();
@@ -106,7 +106,7 @@ describe("runCouponSearch", () => {
   });
 
   it("reports no saving when no code works", async () => {
-    const out = await runCouponSearch({ page: shop(), codes: ["NOPE1", "NOPE2"].map((code) => ({ code, origin: "sourced" as const, sourceUrl: "https://deals.test/x" })), settleMs: 0 });
+    const out = await runCouponSearch({ page: shop(), codes: ["NOPE1", "NOPE2"].map((code) => ({ code, origin: "verified" as const, sourceUrl: "https://deals.test/x" })), settleMs: 0 });
     expect(out.best).toBeUndefined();
     expect(out.message).toBe("No code lowered the total.");
     expect(out.attempts.every((a) => a.saving === 0)).toBe(true);
@@ -149,51 +149,81 @@ describe("runCouponSearch", () => {
   });
 });
 
-// Owner decision 2026-10-16 (T031): find as many codes as possible and test
-// them, guesses included; the store decides which work. Replaces the T019
-// rule that only codes with a searched source page were tried.
-describe("candidates and labels", () => {
-  it("keeps the source URL on every attempt and labels guesses honestly", async () => {
+// Owner rule 2026-10-17: never guess. Every tested code was seen on a page,
+// and the page, the words around the code and any conditions travel with it.
+describe("candidates and evidence", () => {
+  it("keeps the source, the quote and the conditions on every attempt, and labels where each code came from", async () => {
     const out = await runCouponSearch({
       page: shop(),
       codes: [
-        { code: "SAVE10", origin: "sourced", sourceUrl: "https://deals.test/a" },
-        { code: "SAVE20", origin: "pattern" },
+        { code: "SAVE10", origin: "verified", sourceUrl: "https://deals.test/a", context: "SAVE10 10% off", conditions: "new customers" },
+        { code: "SAVE20", origin: "reported", sourceUrl: "https://deals.test/b" },
+        { code: "NOPE5", origin: "store", sourceUrl: "https://shop.test/" },
       ],
       settleMs: 0,
     });
-    expect(out.attempts[0]?.sourceUrl).toBe("https://deals.test/a");
-    expect(out.attempts.map((a) => originLabel(a))).toEqual(["deals.test", "Guess (common pattern)"]);
+    expect(out.attempts[0]).toMatchObject({ sourceUrl: "https://deals.test/a", context: "SAVE10 10% off", conditions: "new customers" });
+    expect(out.attempts.map((a) => originLabel(a))).toEqual(["seen on deals.test", "deals.test (reported by the search)", "the store's own site (shop.test)"]);
     expect(out.best?.code).toBe("SAVE20");
+    expect(couponSummary(out)).toContain("| SAVE20 | saves $20.00, total $80.00 | [deals.test (reported by the search)](https://deals.test/b) |");
+    expect(couponSummary(out)).toContain("Didn't work: NOPE5.");
+    expect(couponSummary(out)).not.toMatch(/guess/i);
   });
 
-  it("builds store-name patterns, hint percentages first", () => {
-    expect(brandTokens("getbeefy.co")).toEqual(["BEEFY", "GETBEEFY"]);
-    const codes = patternCodes("getbeefy.co", [15]);
-    expect(codes.slice(0, 3)).toEqual(["BEEFY15", "BEEFY10", "BEEFY20"]);
-    expect(codes).toContain("WELCOME10");
-    expect(new Set(codes).size).toBe(codes.length);
-  });
-
-  it("merges by code, keeping the best-supported origin", () => {
+  it("merges by code, keeping the best-supported origin and counting the pages that showed it", () => {
     const merged = mergeCandidates(
-      [{ code: "beefy15", origin: "pattern" }],
-      [{ code: "BEEFY15", origin: "sourced", sourceUrl: "https://x.test" }, { code: "RACH", origin: "unverified", sourceUrl: "https://y.test" }],
+      [{ code: "beefy15", origin: "reported", sourceUrl: "https://y.test", conditions: "sitewide" }],
+      [
+        { code: "BEEFY15", origin: "verified", sourceUrl: "https://x.test", context: "BEEFY15 15% off" },
+        { code: "RACH", origin: "reported", sourceUrl: "https://y.test" },
+      ],
     );
     expect(merged).toEqual([
-      { code: "BEEFY15", origin: "sourced", sourceUrl: "https://x.test" },
-      { code: "RACH", origin: "unverified", sourceUrl: "https://y.test" },
+      { code: "BEEFY15", origin: "verified", sourceUrl: "https://x.test", context: "BEEFY15 15% off", conditions: "sitewide", sources: 2 },
+      { code: "RACH", origin: "reported", sourceUrl: "https://y.test", sources: 1 },
     ]);
+  });
+
+  it("drops a candidate without a page, and never builds a code from a masked one", () => {
+    expect(mergeCandidates([{ code: "SAVE10", origin: "reported", sourceUrl: "" }])).toEqual([]);
+    expect(isMasked("SAVE1***")).toBe(true);
+    expect(isMasked("WELC•••")).toBe(true);
+    expect(isMasked("XXXX20")).toBe(true);
+    expect(isMasked("SAVE10")).toBe(false);
+    expect(normalizeCode("MASKED")).toBeNull();
+  });
+
+  it("opens the tester before any search so a page without a coupon box fails fast", async () => {
+    const p = shop({ noForm: true });
+    const t = await openCouponTester(p, { settleMs: 0 });
+    expect(t).toEqual({ error: "no_form", message: "No coupon box found on this page. Open the cart or checkout page first." });
+    const ok = await openCouponTester(shop(), { settleMs: 0 });
+    expect("error" in ok).toBe(false);
+    if (!("error" in ok)) {
+      expect(ok.baseline).toBe(100);
+      const out = await runCouponSearch({ page: p, tester: ok, codes: [{ code: "SAVE10", origin: "verified", sourceUrl: "https://deals.test/a" }], settleMs: 0 });
+      expect(out.best?.code).toBe("SAVE10");
+    }
+  });
+
+  it("says plainly how the codes were found", () => {
+    expect(discoveryLine({ brand: "Beefy", searched: true, store: 1, verified: 2, reported: 1, masked: 1, dropped: 2 })).toBe(
+      "I searched the web for Beefy codes. Found 4 codes: 1 code on the store's own site, 2 codes read on the pages that post them and 1 code the search reported from pages it returned. 1 code shown masked or behind a button could not be read, so it was not tested. 2 codes the search mentioned without a page it had opened were left out.",
+    );
+    expect(discoveryLine({ brand: "Beefy", searched: true, store: 0, verified: 0, reported: 0, masked: 0, dropped: 0 })).toBe("I searched the web for Beefy codes. No code posted for Beefy could be found.");
+    expect(discoveryLine({ brand: "Beefy", searched: true, error: { code: "auth_invalid", message: "The web search failed. The API key was rejected." }, store: 0, verified: 0, reported: 0, masked: 0, dropped: 0 })).toBe(
+      "The web search ended early (The web search failed. The API key was rejected). No code posted for Beefy could be found.",
+    );
   });
 });
 
 describe("batches", () => {
-  const many = Array.from({ length: 30 }, (_, i) => ({ code: "NOPE" + (i + 10), origin: "pattern" as const }));
+  const many = Array.from({ length: 30 }, (_, i) => ({ code: "NOPE" + (i + 10), origin: "reported" as const, sourceUrl: "https://deals.test/list" }));
 
   // Owner, 2026-10-16: after 25 attempts, apply the best code if one saves
   // money; only when none does, ask whether to find 25 more.
   it("applies the best code after a batch of 25 without asking", async () => {
-    const codes = [...many.slice(0, 2), { code: "SAVE20", origin: "sourced" as const, sourceUrl: "https://deals.test/a" }, ...many.slice(2)];
+    const codes = [...many.slice(0, 2), { code: "SAVE20", origin: "verified" as const, sourceUrl: "https://deals.test/a" }, ...many.slice(2)];
     let asked = 0;
     const out = await runCouponSearch({
       page: shop(),
@@ -226,7 +256,7 @@ describe("batches", () => {
       },
       findMore: async (k) => {
         known.push(k);
-        return [{ code: "NOPE10", origin: "pattern" }, ...Array.from({ length: 30 }, (_, i) => ({ code: "FRESH" + (i + 10), origin: "pattern" as const }))];
+        return [{ code: "NOPE10", origin: "reported", sourceUrl: "https://deals.test/list" }, ...Array.from({ length: 30 }, (_, i) => ({ code: "FRESH" + (i + 10), origin: "reported" as const, sourceUrl: "https://deals.test/more" }))];
       },
     });
     expect(asked).toEqual([
@@ -259,7 +289,7 @@ describe("batches", () => {
     expect(out.status).toBe("done");
     expect(out.attempts).toHaveLength(25);
     expect(out.exhausted).toBe(true);
-    expect(couponSummary(out)).toContain("I tested **25 codes** and none lowered your total of $100.00. I couldn't find any more codes to try.");
+    expect(couponSummary(out)).toContain("I tested **25 codes** and none lowered your total of $100.00, so your cart is unchanged. I couldn't find any more codes to try.");
   });
 
   it("asks after each batch and stops when the user says no", async () => {
@@ -277,7 +307,7 @@ describe("batches", () => {
     expect(asked).toEqual([25]);
     expect(out.attempts).toHaveLength(25);
     expect(out.untested).toBe(5);
-    expect(couponSummary(out)).toContain("I tested **25 codes** and none lowered your total of $100.00. 5 more codes were left untested.");
+    expect(couponSummary(out)).toContain("I tested **25 codes** and none lowered your total of $100.00, so your cart is unchanged. 5 more codes were left untested.");
   });
 
   it("continues when the user says yes", async () => {
@@ -287,16 +317,18 @@ describe("batches", () => {
 });
 
 /** Fake Shopify cart: BEEFY15 = 15% off, KETO = 10% off, everything else rejected. */
-function shopify(opts: { start?: string[]; rateLimitAfter?: number } = {}): CartApi & { calls: string[]; reloads: number; codes: string[] } {
+function shopify(opts: { start?: string[]; rateLimitAfter?: number; stack?: boolean } = {}): CartApi & { calls: string[]; reloads: number; codes: string[] } {
   const base = 159.78;
   const pct: Record<string, number> = { BEEFY15: 15, KETO: 10 };
   let codes = opts.start ?? [];
   const state = (): CartState => {
-    const valid = codes.find((c) => pct[c]);
+    // Without stacking only the first valid code counts; with it, every valid code does.
+    const valid = codes.filter((c) => pct[c]).slice(0, opts.stack ? undefined : 1);
+    const off = valid.reduce((sum, c) => sum + (pct[c] ?? 0), 0);
     return {
-      total: valid ? Math.round(base * (1 - (pct[valid] ?? 0) / 100) * 100) / 100 : 151.8,
+      total: valid.length ? Math.round(base * (1 - off / 100) * 100) / 100 : 151.8,
       currency: "USD",
-      codes: codes.map((c) => ({ code: c, applicable: !!pct[c] })),
+      codes: codes.map((c) => ({ code: c, applicable: !!pct[c] && (opts.stack || valid[0] === c) })),
     };
   };
   const api = {
@@ -331,14 +363,14 @@ describe("Shopify cart path", () => {
       throw new Error("page path must not be used");
     },
   });
-  const cands = ["RACH", "BEEFY15", "KETO", "WELCOME10"].map((code) => ({ code, origin: "pattern" as const }));
+  const cands = ["RACH", "BEEFY15", "KETO", "WELCOME10"].map((code) => ({ code, origin: "reported" as const, sourceUrl: "https://deals.test/beefy" }));
 
   it("tests each code through the cart API, applies the best, and reloads the cart", async () => {
     const cart = shopify();
     const out = await runCouponSearch({ page: page(cart), codes: cands });
     expect(out.method).toBe("shopify");
     expect(out.baseline).toBe(151.8);
-    expect(out.attempts.map((a) => a.accepted)).toEqual([false, true, true, false]);
+    expect(out.attempts.filter((a) => !a.combo).map((a) => a.accepted)).toEqual([false, true, true, false]);
     expect(out.best?.code).toBe("BEEFY15");
     expect(out.best?.total).toBe(135.81);
     expect(out.applied).toBe(true);
@@ -348,12 +380,34 @@ describe("Shopify cart path", () => {
     expect(text).toContain("I tested **4 codes**. **BEEFY15** is the best: your total drops from **$151.80** to **$135.81**");
     expect(text).toContain("It's applied to your cart, and I didn't go to checkout.");
     expect(text).toContain("| KETO |");
-    expect(text).toContain("Didn't work: 2 guessed codes.");
+    expect(text).toContain("Didn't work: RACH, WELCOME10.");
+  });
+
+  // Stores whose cart API takes two codes: the best code is tried together
+  // with the next best, and the pair wins only when the total drops further.
+  it("tries the best code together with the next best and keeps the pair when the store stacks them", async () => {
+    const cart = shopify({ stack: true });
+    const out = await runCouponSearch({ page: page(cart), codes: cands });
+    const combo = out.attempts.find((a) => a.combo);
+    expect(combo).toMatchObject({ code: "BEEFY15,KETO", combo: ["BEEFY15", "KETO"], accepted: true });
+    expect(out.best?.code).toBe("BEEFY15,KETO");
+    expect(out.applied).toBe(true);
+    expect(cart.codes).toEqual(["BEEFY15", "KETO"]);
+    expect(couponSummary(out)).toContain("**BEEFY15** + **KETO** together is the best");
+  });
+
+  it("keeps the single best code when the store refuses the pair", async () => {
+    const cart = shopify();
+    const out = await runCouponSearch({ page: page(cart), codes: cands });
+    const combo = out.attempts.find((a) => a.combo);
+    expect(combo).toMatchObject({ accepted: false, note: "The store does not combine these codes." });
+    expect(out.best?.code).toBe("BEEFY15");
+    expect(cart.codes).toEqual(["BEEFY15"]);
   });
 
   it("puts the cart's original code back when nothing beats it", async () => {
     const cart = shopify({ start: ["OLDCODE"] });
-    const out = await runCouponSearch({ page: page(cart), codes: [{ code: "NOPE10", origin: "pattern" }] });
+    const out = await runCouponSearch({ page: page(cart), codes: [{ code: "NOPE10", origin: "reported", sourceUrl: "https://deals.test/beefy" }] });
     expect(out.best).toBeUndefined();
     expect(cart.codes).toEqual(["OLDCODE"]);
     expect(cart.reloads).toBe(1);
@@ -434,7 +488,7 @@ function checkout(): CouponPage & { zip: string; ordered: number } {
 describe("Shopify checkout page (page path)", () => {
   it("uses the discount box, not the ZIP code field, reads the split total, and applies the best code", async () => {
     const p = checkout();
-    const codes = ["WELCOME5", "SAVE10", "SAVE20", "NOPE99"].map((code) => ({ code, origin: "sourced" as const, sourceUrl: "https://deals.test/x" }));
+    const codes = ["WELCOME5", "SAVE10", "SAVE20", "NOPE99"].map((code) => ({ code, origin: "verified" as const, sourceUrl: "https://deals.test/x" }));
     const out = await runCouponSearch({ page: p, codes, settleMs: 0 });
     expect(out.method).toBe("page");
     expect(out.baseline).toBe(170);
@@ -463,75 +517,9 @@ describe("shopifyCartInfo", () => {
   });
 });
 
-describe("suggestCodes", () => {
-  function fake(events: StreamEvent[], seen: { req?: ChatRequest } = {}): ProviderClient {
-    return {
-      id: "anthropic",
-      async *stream(req) {
-        seen.req = req;
-        yield* events;
-      },
-    };
-  }
-
-  it("asks for a deep search, labels codes by how well they are sourced, adds hint and pattern guesses", async () => {
-    const seen: { req?: ChatRequest } = {};
-    const provider = fake(
-      [
-        { type: "source", url: "https://deals.test/page" },
-        { type: "text", delta: "RACH | https://deals.test/page\n" },
-        { type: "text", delta: "LUNA | https://not-returned.test/x\nHINT | 15 | https://simplycodes.test/store\n" },
-        { type: "usage", usage: { inputTokens: 12, outputTokens: 4 } },
-      ],
-      seen,
-    );
-    const r = await suggestCodes(provider, "m", "getbeefy.co");
-    expect(seen.req).toMatchObject({ webSearch: true, webSearchMaxUses: 8, webFetch: true });
-    expect(r.codes.slice(0, 3)).toEqual([
-      { code: "RACH", origin: "sourced", sourceUrl: "https://deals.test/page" },
-      { code: "LUNA", origin: "unverified", sourceUrl: "https://not-returned.test/x" },
-      { code: "BEEFY15", origin: "hint", sourceUrl: "https://simplycodes.test/store" },
-    ]);
-    expect(r.codes.some((c) => c.code === "WELCOME10" && c.origin === "pattern")).toBe(true);
-    expect(r.found).toBe(2);
-    expect(r.inputTokens).toBe(12);
-  });
-
-  it("when asked for more, names the tried codes, skips them, and adds the longer guess list", async () => {
-    const seen: { req?: ChatRequest } = {};
-    const first = await suggestCodes(fake([], {}), "m", "getbeefy.co", undefined, { webSearch: false });
-    const tried = ["RACH", ...first.codes.map((c) => c.code)];
-    const provider = fake(
-      [
-        { type: "source", url: "https://deals.test/new" },
-        { type: "text", delta: "RACH | https://deals.test/new\nNEWONE | https://deals.test/new\n" },
-      ],
-      seen,
-    );
-    const r = await suggestCodes(provider, "m", "getbeefy.co", undefined, { exclude: tried });
-    const msg = String(seen.req?.messages[0]?.content);
-    expect(msg).toContain("Already tried, do not list these again");
-    expect(msg).toContain("RACH, BEEFY10");
-    expect(r.codes[0]).toEqual({ code: "NEWONE", origin: "sourced", sourceUrl: "https://deals.test/new" });
-    expect(r.codes.some((c) => tried.includes(c.code))).toBe(false);
-    expect(r.codes.filter((c) => c.origin === "pattern").length).toBeGreaterThanOrEqual(25);
-    expect(r.codes.some((c) => c.code === "BEEFY50")).toBe(true);
-  });
-
-  it("with search disabled makes no model call but still offers pattern guesses", async () => {
-    const seen: { req?: ChatRequest } = {};
-    const r = await suggestCodes(fake([], seen), "m", "getbeefy.co", undefined, { webSearch: false });
-    expect(seen.req).toBeUndefined();
-    expect(r.searched).toBe(false);
-    expect(r.found).toBe(0);
-    expect(r.codes.every((c) => c.origin === "pattern")).toBe(true);
-    expect(r.codes[0]?.code).toBe("BEEFY10");
-  });
-});
-
 describe("couponStatusText", () => {
   it("never exposes an internal status code", () => {
-    for (const s of ["done", "no_form", "no_codes", "captcha", "stopped", "rate_limited", "error"] as const) {
+    for (const s of ["done", "no_form", "no_codes", "search_failed", "captcha", "stopped", "rate_limited", "error"] as const) {
       const text = couponStatusText(s);
       expect(text).not.toMatch(/_/);
       expect(text).toMatch(/^Coupon search .+\.$/);

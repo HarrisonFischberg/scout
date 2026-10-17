@@ -45,6 +45,8 @@ export function createOpenAI(cfg: ProviderConfig): ProviderClient {
         input: openaiInput(req.messages),
         tools: tools.length ? tools : undefined,
         reasoning: req.effort ? { effort: req.effort } : undefined,
+        // The pages each search returned, so a code's page can be checked against them.
+        include: req.webSearch ? ["web_search_call.action.sources"] : undefined,
       };
       let res: Response;
       try {
@@ -80,6 +82,13 @@ export function createOpenAI(cfg: ProviderConfig): ProviderClient {
                 url: ev.annotation.url,
                 ...(typeof ev.annotation.title === "string" ? { title: ev.annotation.title } : {}),
               };
+            }
+            break;
+          case "response.output_item.done":
+            if (ev.item?.type === "web_search_call" && Array.isArray(ev.item.action?.sources)) {
+              for (const s of ev.item.action.sources) {
+                if (typeof s?.url === "string") yield { type: "source", url: s.url };
+              }
             }
             break;
           case "response.output_item.added":

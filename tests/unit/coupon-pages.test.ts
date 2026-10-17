@@ -181,7 +181,7 @@ function store(o: StoreOpts): CouponPage & { applied: string[]; clicks: string[]
   return s;
 }
 
-const codes = (...list: string[]) => list.map((code) => ({ code, origin: "sourced" as const, sourceUrl: "https://deals.test/" }));
+const codes = (...list: string[]) => list.map((code) => ({ code, origin: "verified" as const, sourceUrl: "https://deals.test/" }));
 
 describe("the page path on different kinds of checkout", () => {
   it("opens a coupon box hidden behind a toggle", async () => {

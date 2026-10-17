@@ -14,12 +14,24 @@ import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from
 import { renderMarkdown } from "./chat/markdown";
 import { ConversationStore } from "./chat/store";
 import { MAX_EXTRA_TABS, type TabInfo } from "./chat/tabs";
-import { suggestCodes } from "./coupons/codes";
+import { suggestCodes, type SuggestedCodes } from "./coupons/codes";
 import { locateForm } from "./coupons/locate";
+import { identifyMerchant, type MerchantMeta } from "./coupons/merchant";
 import { formatMoney } from "./coupons/money";
-import { codesInText, MAX_STORE_CODES } from "./coupons/store";
-import { mergeCandidates, originLabel } from "./coupons/candidates";
-import { couponStatusText, couponSummary, runCouponSearch, type BatchState, type CartApi, type CartState } from "./coupons/finder";
+import { codesWithContext, MAX_STORE_CODES, type StoreCode } from "./coupons/store";
+import { mergeCandidates, originLabel, rankCandidates, type CouponCandidate } from "./coupons/candidates";
+import {
+  couponStatusText,
+  couponSummary,
+  discoveryLine,
+  openCouponTester,
+  runCouponSearch,
+  type BatchState,
+  type CartApi,
+  type CartState,
+  type CouponOutcome,
+  type DiscoveryInfo,
+} from "./coupons/finder";
 import { formatCostLine } from "./cost";
 import { buildReport, describeBrowser, Diagnostics, disabledRun, type RunHandle, type RunKind } from "./diagnostics";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
@@ -195,7 +207,10 @@ interface CouponPage {
   snapshot(limits?: { maxElements?: number; maxTextChars?: number }): Promise<Snapshot>;
   act(action: Action): Promise<ActionResult>;
   cart: CartApi;
-  storeCodes(): Promise<string[]>;
+  /** Codes the store's home page advertises, with the words around each. */
+  storeCodes(): Promise<StoreCode[]>;
+  /** How the page names the store (meta tags). */
+  meta(): Promise<MerchantMeta | null>;
 }
 
 // The content script is injected on demand into the active tab only.
@@ -261,7 +276,13 @@ async function tabAgentPage(): Promise<CouponPage | null> {
     },
     storeCodes: async () => {
       const codes = await call({ type: "scout:store-codes" });
-      return Array.isArray(codes) ? codes.filter((c): c is string => typeof c === "string") : [];
+      return Array.isArray(codes)
+        ? codes.filter((c): c is StoreCode => !!c && typeof (c as StoreCode).code === "string" && typeof (c as StoreCode).context === "string").slice(0, MAX_STORE_CODES)
+        : [];
+    },
+    meta: async () => {
+      const m = (await call({ type: "scout:page-meta" })) as MerchantMeta | null;
+      return m && typeof m === "object" ? m : null;
     },
   };
 }
@@ -1865,9 +1886,20 @@ async function main(): Promise<void> {
     };
   }
 
-  /** One inline line per code: "SAVE20 · $80.00 · Works, 20% off · deals.test". */
+  /** One inline line per code: "SAVE20 · $80.00 · saves $20.00 · seen on deals.test". */
   function attemptRow(
-    a: { code: string; total: number | null; saving: number | null; accepted: boolean | null; note: string; origin: Parameters<typeof originLabel>[0]["origin"]; sourceUrl?: string },
+    a: {
+      code: string;
+      combo?: string[];
+      total: number | null;
+      saving: number | null;
+      accepted: boolean | null;
+      note: string;
+      origin: Parameters<typeof originLabel>[0]["origin"];
+      sourceUrl?: string;
+      context?: string;
+      conditions?: string;
+    },
     currency: string | undefined,
     t: { body: HTMLElement },
   ): void {
@@ -1877,7 +1909,9 @@ async function main(): Promise<void> {
     row.dataset.code = a.code;
     const code = document.createElement("span");
     code.className = "code";
-    code.textContent = a.code;
+    code.textContent = a.combo ? a.combo.join(" + ") : a.code;
+    // The evidence: the words the page showed around the code.
+    if (a.context) code.title = a.context + (a.conditions ? " (" + a.conditions + ")" : "");
     const text = document.createElement("span");
     const parts = [a.total === null ? "total unknown" : formatMoney(a.total, currency)];
     if (good && a.saving !== null) parts.push("saves " + formatMoney(a.saving, currency));
@@ -1885,7 +1919,7 @@ async function main(): Promise<void> {
     text.textContent = " · " + parts.join(" · ") + " · ";
     row.append(code, text);
     const label = originLabel(a);
-    if (a.sourceUrl && (a.origin === "sourced" || a.origin === "unverified")) {
+    if (a.sourceUrl) {
       const link = document.createElement("a");
       link.href = a.sourceUrl;
       link.target = "_blank";
@@ -1906,13 +1940,17 @@ async function main(): Promise<void> {
       box.setAttribute("aria-labelledby", "coupons-more-text");
       const p = document.createElement("p");
       p.id = "coupons-more-text";
-      p.textContent = "We've tried " + state.tried + " codes and none lowered your total. Would you like Scout for Safari to find " + state.next + " more to test?";
+      p.textContent =
+        "We've tried " + state.tried + " code" + (state.tried === 1 ? "" : "s") + " and none lowered your total. " +
+        (state.remaining > 0
+          ? "Test the " + state.remaining + " still untested?"
+          : "Would you like Scout for Safari to search the web again, in other places, for more codes to test?");
       const row = document.createElement("div");
       row.className = "row";
       const yesBtn = document.createElement("button");
       yesBtn.type = "button";
       yesBtn.className = "btn primary";
-      yesBtn.textContent = "Find " + state.next + " more";
+      yesBtn.textContent = state.remaining > 0 ? "Keep testing" : "Search again";
       const noBtn = document.createElement("button");
       noBtn.type = "button";
       noBtn.className = "btn";
@@ -1979,109 +2017,158 @@ async function main(): Promise<void> {
     const onStop = (): void => run.stop();
     t.stopBtn.addEventListener("click", onStop);
     void overlay.show();
-    say("Searching the web for codes…");
     let used: Usage = { inputTokens: 0, outputTokens: 0 };
     let summary = "";
-    let searchNote = "";
     let statusOf = "done";
+    const addUsage = (more: { inputTokens: number; outputTokens: number; webSearches?: number }): void => {
+      const searches = (used.webSearches ?? 0) + (more.webSearches ?? 0);
+      used = {
+        inputTokens: used.inputTokens + more.inputTokens,
+        outputTokens: used.outputTokens + more.outputTokens,
+        ...(searches ? { webSearches: searches } : {}),
+      };
+    };
     try {
       const snap = await page.snapshot();
-      const merchant = new URL(snap.url).hostname;
+      // The merchant: the tab's host, less checkout-only subdomains, and the
+      // name the page gives itself. All page data, used only as search words.
+      const meta = await page.meta().catch(() => null);
+      const merchant = identifyMerchant(snap.url, meta ?? {});
+      trace("coupons:merchant " + (merchant.host === merchant.domain ? "store-host" : "other-host") + (meta?.siteName ? " named" : ""));
       const ac = new AbortController();
       t.stopBtn.addEventListener("click", () => ac.abort(), { once: true });
       run.signal.addEventListener("abort", () => ac.abort(), { once: true });
-      // Codes the store advertises itself (banner, announcement bar): this page
-      // and its home page, read on the device. Tried first, search or not.
-      const onSite = [...new Set([...codesInText(snap.text), ...(await page.storeCodes().catch(() => []))])].slice(0, MAX_STORE_CODES);
-      const storeUrl = new URL("/", snap.url).toString();
-      trace("coupons:store-codes " + onSite.length);
-      trace("coupons:search");
-      const sug = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal, s.effort ? { effort: s.effort } : {});
-      used = { inputTokens: sug.inputTokens, outputTokens: sug.outputTokens, ...(sug.webSearches ? { webSearches: sug.webSearches } : {}) };
-      const addUsage = (more: { inputTokens: number; outputTokens: number; webSearches: number }): void => {
-        const searches = (used.webSearches ?? 0) + more.webSearches;
-        used = {
-          inputTokens: used.inputTokens + more.inputTokens,
-          outputTokens: used.outputTokens + more.outputTokens,
-          ...(searches ? { webSearches: searches } : {}),
-        };
+      // Checkout summaries sit late in big pages: read more of them than the agent does.
+      // Waits run here, not in the page, so they outlast a page that reloads.
+      const couponPage = {
+        ...page,
+        snapshot: () => page.snapshot(COUPON_SNAPSHOT),
+        act: (a: Action) =>
+          a.type === "wait"
+            ? new Promise<ActionResult>((r) => setTimeout(() => r({ ok: true, action: "wait", message: "Waited." }), Math.min(Math.max(a.ms, 0), 10_000)))
+            : page.act(a),
       };
-      if (sug.error) trace("coupons:search-error " + sug.error.code);
-      // A failed search is not the end: the store's own codes and the guesses are still tried.
-      if (sug.error && sug.error.code !== "stopped") {
-        const plural = (n: number, what: string): string => n + " " + what + (n === 1 ? "" : "s");
-        const parts = [
-          ...(sug.found ? [plural(sug.found, "code") + " it found before then"] : []),
-          ...(onSite.length ? [plural(onSite.length, "code") + " from the store's own site"] : []),
-          "common guesses",
-        ];
-        const list = parts.length > 1 ? parts.slice(0, -1).join(", ") + (parts.length > 2 ? "," : "") + " and " + parts[parts.length - 1] : parts[0];
-        searchNote = sug.error.message + " I tested " + list + " instead.";
-      }
-      const codes = mergeCandidates(
-        onSite.map((code) => ({ code, origin: "sourced" as const, sourceUrl: storeUrl })),
-        sug.codes,
-      );
-      const found = codes.filter((c) => c.origin === "sourced" || c.origin === "unverified").length;
-      trace("coupons:candidates found=" + found + " guessed=" + sug.guessed + " store=" + onSite.length);
-      say(
-        (sug.error && sug.error.code !== "stopped" ? sug.error.message + " " : "") +
-          "Found " + found + " code" + (found === 1 ? "" : "s") + " online and " + sug.guessed + " common guesses. Testing them on your cart…",
-      );
-      const outcome = await runCouponSearch({
-        // Checkout summaries sit late in big pages: read more of them than the agent does.
-        // Waits run here, not in the page, so they outlast a page that reloads.
-        page: {
-          ...page,
-          snapshot: () => page.snapshot(COUPON_SNAPSHOT),
-          act: (a) =>
-            a.type === "wait"
-              ? new Promise((r) => setTimeout(() => r({ ok: true, action: "wait", message: "Waited." }), Math.min(Math.max(a.ms, 0), 10_000)))
-              : page.act(a),
-        },
-        codes,
-        locate: async (snap) => {
-          trace("coupons:locate");
-          const r = await locateForm(s.provider, s.settings.model, snap, ac.signal, s.effort);
-          addUsage({ ...r.usage, webSearches: 0 });
-          trace("coupons:locate " + (r.hints ? Object.keys(r.hints).join(",") : "none"));
-          return r.hints;
-        },
-        control: run,
-        delayMs: 250,
-        askMore: async (state) => {
-          void overlay.state("waiting");
-          const more = await askMoreCodes(state, t);
-          void overlay.state("running");
-          return more;
-        },
-        findMore: async (known) => {
-          trace("coupons:find-more known=" + known.length);
-          say("Searching the web for more codes…");
-          status.textContent = "Finding more coupons. The web search can take a couple of minutes.";
-          const more = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
-            exclude: known,
-            ...(s.effort ? { effort: s.effort } : {}),
+      const locate = async (view: Snapshot) => {
+        trace("coupons:locate");
+        const r = await locateForm(s.provider, s.settings.model, view, ac.signal, s.effort);
+        addUsage(r.usage);
+        trace("coupons:locate " + (r.hints ? Object.keys(r.hints).join(",") : "none"));
+        return r.hints;
+      };
+      // 1. A way to test codes, before any search: the store's cart API or its
+      //    coupon box. A page with neither stops here, in seconds.
+      say("Looking for the coupon box on this page…");
+      const tester = await openCouponTester(couponPage, { locate });
+      if ("error" in tester) {
+        trace("coupons:method none status " + tester.error);
+        statusOf = tester.error === "stopped" ? "stopped" : "error";
+        summary = tester.message + (tester.error === "no_form" ? " No codes were searched for or tested." : "");
+        status.textContent = couponStatusText(tester.error);
+        current.finish(tester.error, tester.message, used);
+        addMessage("error", summary);
+      } else {
+        trace("coupons:method " + tester.method);
+        say((tester.method === "page" ? "Found the coupon box." : "Reached the store's cart.") + " Searching the web for " + merchant.brand + " codes…");
+        // 2. Codes the store advertises itself (banner, announcement bar): this
+        //    page and its home page, read on the device. Then the web search.
+        const storeUrl = new URL("/", snap.url).toString();
+        const asStore = (c: StoreCode, sourceUrl: string): CouponCandidate => ({ code: c.code, origin: "store", sourceUrl, context: c.context });
+        const onSite = mergeCandidates(
+          codesWithContext(snap.text).map((c) => asStore(c, snap.url)),
+          (await page.storeCodes().catch((): StoreCode[] => [])).map((c) => asStore(c, storeUrl)),
+        ).slice(0, MAX_STORE_CODES);
+        trace("coupons:store-codes " + onSite.length);
+        trace("coupons:search");
+        const sug = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal, s.effort ? { effort: s.effort } : {});
+        addUsage(sug);
+        if (sug.error) trace("coupons:search-error " + sug.error.code);
+        const discovery: DiscoveryInfo = {
+          brand: merchant.brand,
+          searched: sug.searched,
+          ...(sug.error ? { error: sug.error } : {}),
+          store: onSite.length,
+          verified: sug.verified,
+          reported: sug.reported,
+          masked: sug.masked,
+          dropped: sug.dropped,
+          offers: sug.offers,
+        };
+        const tally = (more: SuggestedCodes): void => {
+          discovery.verified += more.verified;
+          discovery.reported += more.reported;
+          discovery.masked += more.masked;
+          discovery.dropped += more.dropped;
+          discovery.offers = [...(discovery.offers ?? []), ...more.offers];
+          if (more.error && !discovery.error) discovery.error = more.error;
+        };
+        const codes = rankCandidates(mergeCandidates(onSite, sug.codes), merchant);
+        trace("coupons:candidates store=" + onSite.length + " verified=" + sug.verified + " reported=" + sug.reported + " dropped=" + sug.dropped + " masked=" + sug.masked);
+        say(discoveryLine(discovery));
+        if (codes.length === 0) {
+          // Nothing to test: say so plainly; the cart stays as it was.
+          await tester.finish(null).catch(() => undefined);
+          const failed = !!sug.error && sug.error.code !== "stopped";
+          const outcome: CouponOutcome = {
+            status: sug.error?.code === "stopped" ? "stopped" : failed ? "search_failed" : "no_codes",
+            method: tester.method,
+            baseline: tester.baseline,
+            ...(tester.currency ? { currency: tester.currency } : {}),
+            attempts: [],
+            applied: false,
+            untested: 0,
+            message: "Nothing was tested, and your cart is unchanged.",
+          };
+          trace("coupons:status " + outcome.status);
+          statusOf = outcome.status === "stopped" ? "stopped" : failed ? "error" : "done";
+          summary = couponSummary(outcome, discovery);
+          status.textContent = formatCostLine(s.settings.model, used);
+          current.finish(outcome.status, outcome.message, used);
+          addMessage(failed ? "error" : "assistant", summary);
+        } else {
+          say("Testing " + codes.length + " code" + (codes.length === 1 ? "" : "s") + " on your cart, one at a time…");
+          const outcome = await runCouponSearch({
+            page: couponPage,
+            tester,
+            codes,
+            control: run,
+            delayMs: 250,
+            askMore: async (state) => {
+              void overlay.state("waiting");
+              const more = await askMoreCodes(state, t);
+              void overlay.state("running");
+              return more;
+            },
+            findMore: async (known) => {
+              trace("coupons:find-more known=" + known.length);
+              say("Searching the web again for " + merchant.brand + " codes, in other places…");
+              status.textContent = "Finding more coupons. The web search can take a couple of minutes.";
+              const more = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
+                exclude: known,
+                more: true,
+                ...(s.effort ? { effort: s.effort } : {}),
+              });
+              addUsage(more);
+              tally(more);
+              if (more.error) trace("coupons:search-error " + more.error.code);
+              trace("coupons:candidates verified=" + more.verified + " reported=" + more.reported + " dropped=" + more.dropped + " masked=" + more.masked);
+              say(more.codes.length > 0 ? "Found " + more.codes.length + " more code" + (more.codes.length === 1 ? "" : "s") + " to try. Testing them on your cart…" : "No more codes found.");
+              return more.codes;
+            },
+            onAttempt: (a, index, total, currency) => {
+              trace("coupons:attempt " + index + (a.combo ? " combo" : "") + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none"));
+              status.textContent = a.combo ? "Testing two codes together…" : "Testing code " + index + " of " + total + "…";
+              attemptRow(a, currency, t);
+            },
           });
-          addUsage(more);
-          if (more.error) trace("coupons:search-error " + more.error.code);
-          trace("coupons:candidates found=" + more.found + " guessed=" + more.guessed);
-          say(more.codes.length > 0 ? "Found " + more.codes.length + " more codes to try. Testing them on your cart…" : "No more codes found.");
-          return more.codes;
-        },
-        onAttempt: (a, index, total, currency) => {
-          trace("coupons:attempt " + index + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none"));
-          status.textContent = "Testing code " + index + " of " + total + "…";
-          attemptRow(a, currency, t);
-        },
-      });
-      trace("coupons:method " + (outcome.method ?? "none") + " status " + outcome.status);
-      statusOf = outcome.status === "stopped" ? "stopped" : outcome.status === "done" ? "done" : "error";
-      summary = (searchNote && outcome.status !== "no_form" && outcome.status !== "error" ? searchNote + "\n\n" : "") + couponSummary(outcome);
-      status.textContent = formatCostLine(s.settings.model, used);
-      current.finish(outcome.status, outcome.message, used);
-      if (outcome.status === "no_form" || outcome.status === "error" || outcome.status === "no_codes") addMessage("error", summary);
-      else addMessage("assistant", summary);
+          trace("coupons:status " + outcome.status + (outcome.best ? " best" : " none") + (outcome.applied ? " applied" : ""));
+          statusOf = outcome.status === "stopped" ? "stopped" : outcome.status === "done" ? "done" : "error";
+          summary = couponSummary(outcome, discovery);
+          status.textContent = formatCostLine(s.settings.model, used);
+          current.finish(outcome.status, outcome.message, used);
+          if (outcome.status === "no_form" || outcome.status === "error") addMessage("error", summary);
+          else addMessage("assistant", summary);
+        }
+      }
     } catch {
       statusOf = "error";
       summary = "Could not finish the coupon search. Nothing was ordered.";

@@ -171,6 +171,7 @@ describe("web search (T019)", () => {
     const f: FetchLike = async (_u, init) => {
       body = String(init.body);
       return sse([
+        { type: "response.output_item.done", item: { type: "web_search_call", action: { type: "search", sources: [{ type: "url", url: "https://deals.test/a" }] } } },
         {
           type: "response.output_text.annotation.added",
           annotation: { type: "url_citation", url: "https://deals.test/b", title: "More" },
@@ -180,6 +181,9 @@ describe("web search (T019)", () => {
     };
     const ev = await collect(createProvider("openai", { apiKey: "k", fetch: f }).stream(search));
     expect(JSON.parse(body).tools).toEqual([{ type: "web_search" }]);
+    // The pages each search returned are asked for, so a code's page can be checked against them.
+    expect(JSON.parse(body).include).toEqual(["web_search_call.action.sources"]);
+    expect(ev).toContainEqual({ type: "source", url: "https://deals.test/a" });
     expect(ev).toContainEqual({ type: "source", url: "https://deals.test/b", title: "More" });
   });
 
@@ -195,12 +199,29 @@ describe("web search (T019)", () => {
 });
 
 describe("web search depth and fetch (T031)", () => {
-  it("sends max_uses and the web fetch tool when asked, and reports fetched pages as sources", async () => {
+  it("sends max_uses and the web fetch tool when asked, and reports fetched pages as sources with their text", async () => {
     let body = "";
     const stream = [
       { type: "message_start", message: { usage: { input_tokens: 1, output_tokens: 1 } } },
-      { type: "content_block_start", index: 0, content_block: { type: "web_fetch_tool_result", content: { type: "web_fetch_result", url: "https://linktr.ee/example" } } },
+      {
+        type: "content_block_start",
+        index: 0,
+        content_block: {
+          type: "web_fetch_tool_result",
+          content: {
+            type: "web_fetch_result",
+            url: "https://linktr.ee/example",
+            content: { type: "document", source: { type: "text", media_type: "text/plain", data: "Use code CREATOR10 for 10% off" }, title: "Example links" },
+          },
+        },
+      },
       { type: "content_block_stop", index: 0 },
+      {
+        type: "content_block_start",
+        index: 1,
+        content_block: { type: "web_search_tool_result", content: [{ type: "web_search_result", url: "https://deals.test/x", title: "Deals", page_age: "June 7, 2026" }] },
+      },
+      { type: "content_block_stop", index: 1 },
       { type: "message_stop" },
     ].map((e) => "event: " + e.type + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
     const p = createProvider("anthropic", {
@@ -211,12 +232,13 @@ describe("web search depth and fetch (T031)", () => {
       },
     });
     const events = [];
-    for await (const ev of p.stream({ model: "m", messages: [{ role: "user", content: "x" }], maxTokens: 10, webSearch: true, webSearchMaxUses: 8, webFetch: true })) events.push(ev);
+    for await (const ev of p.stream({ model: "m", messages: [{ role: "user", content: "x" }], maxTokens: 10, webSearch: true, webSearchMaxUses: 8, webFetch: true, webFetchMaxUses: 5 })) events.push(ev);
     expect(JSON.parse(body).tools).toEqual([
       { type: "web_search_20260209", name: "web_search", max_uses: 8 },
-      { type: "web_fetch_20260209", name: "web_fetch", max_uses: 8 },
+      { type: "web_fetch_20260209", name: "web_fetch", max_uses: 5, citations: { enabled: true }, max_content_tokens: 40_000 },
     ]);
-    expect(events).toContainEqual({ type: "source", url: "https://linktr.ee/example" });
+    expect(events).toContainEqual({ type: "source", url: "https://linktr.ee/example", title: "Example links", page: "Use code CREATOR10 for 10% off" });
+    expect(events).toContainEqual({ type: "source", url: "https://deals.test/x", title: "Deals", age: "June 7, 2026" });
   });
 });
 
