@@ -5,7 +5,7 @@
 // conic-gradient wash over the whole page (strongest at the edges, lighter in
 // the middle; owner changed this from the spec's thin border on 2026-10-17;
 // CSS @property angle, 2.5 s sweep, soft blur), a ripple at the point of each
-// click, and the "Working…" toast with a Stop square (owner reference). Static border under prefers-reduced-motion; the
+// click, and a small "Working…" toast with the binoculars and a Stop square. Static border under prefers-reduced-motion; the
 // animation pauses while the tab is hidden; the glow renders at half
 // resolution and is scaled up. The worker drives it through one handler
 // global; the pill's buttons ask the worker to pause or stop the task.
@@ -95,20 +95,22 @@ const STYLE_TEXT = `
 @keyframes scout-ripple { from { transform: scale(0.4); opacity: 0.95; } to { transform: scale(1.6); opacity: 0; } }
 /* "Working…" toast (owner reference, 2026-10-17): teal glass, glowing text, one stop square. */
 .pill {
-  position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); pointer-events: auto;
-  display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 14px; min-width: 240px;
-  font: 17px/1.2 -apple-system, system-ui, sans-serif; color: #d6f4ff; background: rgb(18 44 54 / 86%);
-  border: 1px solid rgb(51 204 240 / 28%); box-shadow: 0 6px 24px rgb(0 20 30 / 35%), 0 0 24px rgb(51 204 240 / 25%);
+  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); pointer-events: auto;
+  display: flex; align-items: center; gap: 8px; padding: 5px 5px 5px 12px; border-radius: 11px; min-width: 168px;
+  font: 13px/1.2 -apple-system, system-ui, sans-serif; color: #d6f4ff; background: rgb(18 44 54 / 86%);
+  border: 1px solid rgb(51 204 240 / 28%); box-shadow: 0 4px 18px rgb(0 20 30 / 35%), 0 0 18px rgb(51 204 240 / 25%);
   -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); white-space: nowrap; max-width: calc(100vw - 24px);
 }
-.pill .wave { width: 20px; height: 20px; flex: none; color: #8fe3ff; }
-.label { flex: 1; font-weight: 500; letter-spacing: 0.01em; text-shadow: 0 0 10px rgb(51 204 240 / 75%), 0 0 2px rgb(214 244 255 / 60%); }
-.pill .sep { width: 1px; height: 26px; background: rgb(51 204 240 / 25%); flex: none; }
+.pill .glyph { width: 18px; height: 18px; flex: none; color: #8fe3ff; filter: drop-shadow(0 0 4px rgb(51 204 240 / 70%)); }
+.pill .glyph .body { fill: currentColor; }
+.pill .glyph .lens { fill: rgb(18 44 54); }
+.label { flex: 1; font-weight: 500; letter-spacing: 0.01em; text-shadow: 0 0 8px rgb(51 204 240 / 75%), 0 0 2px rgb(214 244 255 / 60%); }
+.pill .sep { width: 1px; height: 20px; background: rgb(51 204 240 / 25%); flex: none; }
 .pill button.stop {
-  all: initial; cursor: pointer; width: 36px; height: 36px; border-radius: 10px; flex: none;
+  all: initial; cursor: pointer; width: 28px; height: 28px; border-radius: 8px; flex: none;
   background: rgb(51 204 240 / 22%); display: flex; align-items: center; justify-content: center;
 }
-.pill button.stop::before { content: ""; width: 14px; height: 14px; border-radius: 3px; background: #8fe3ff; box-shadow: 0 0 8px rgb(51 204 240 / 80%); }
+.pill button.stop::before { content: ""; width: 11px; height: 11px; border-radius: 2px; background: #8fe3ff; box-shadow: 0 0 6px rgb(51 204 240 / 80%); }
 .pill button.stop:hover { background: rgb(51 204 240 / 34%); }
 .pill button.stop:focus-visible { outline: 2px solid #8fe3ff; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
@@ -151,9 +153,13 @@ type State = "running" | "paused" | "waiting";
 
 const LABEL: Record<State, string> = { running: "Working…", paused: "Paused", waiting: "Waiting for you" };
 
-const WAVE =
-  '<svg class="wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false">' +
-  '<circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>';
+// Binoculars (design/icons/safari-scout-binoculars.svg), lenses in the toast color.
+const GLYPH =
+  '<svg class="glyph" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><g class="body">' +
+  '<rect x="11.5" y="5" width="11" height="11" rx="2.5"/><rect x="41.5" y="5" width="11" height="11" rx="2.5"/>' +
+  '<rect x="26" y="17" width="12" height="11" rx="3"/><rect x="5" y="14" width="24" height="28" rx="7"/>' +
+  '<rect x="35" y="14" width="24" height="28" rx="7"/><circle cx="17" cy="44" r="14"/><circle cx="47" cy="44" r="14"/></g>' +
+  '<circle class="lens" cx="17" cy="44" r="8"/><circle class="lens" cx="47" cy="44" r="8"/></svg>';
 
 if (!g[FLAG]) {
   g[FLAG] = true;
@@ -193,7 +199,7 @@ if (!g[FLAG]) {
     ripples.setAttribute("aria-hidden", "true");
     const pill = document.createElement("div");
     pill.className = "pill";
-    pill.insertAdjacentHTML("afterbegin", WAVE);
+    pill.insertAdjacentHTML("afterbegin", GLYPH);
     label = document.createElement("span");
     label.className = "label";
     label.setAttribute("role", "status");
