@@ -17,11 +17,26 @@ import { OVERLAY_HANDLER, type OverlayRequest } from "./content-api";
 const FLAG = "__safariScoutOverlayLoaded";
 const g = globalThis as unknown as Record<string, unknown>;
 
-// How much of the color wash shows: center of the page, halfway out, the edges, the corners.
-export const GLOW_CENTER = "20%";
-export const GLOW_MID = "30%";
-export const GLOW_EDGE = "72%";
-export const GLOW_CORNER = "90%";
+// Safari blue (owner, 2026-10-17): Apple's system blue with a lighter sky blue
+// and a deeper blue, close together so the sweep shifts gently instead of in
+// patches. Spec 9 named gold, amber and green; the owner chose blue.
+const BLUES = "#0A84FF, #3F9BFF, #5AC8FA, #2E8BFF, #0A84FF, #1F6FE8, #3A7BFF, #0A84FF";
+// How much of the wash shows: center of the page, halfway out, the edges, the corners.
+export const GLOW_CENTER = "18%";
+export const GLOW_MID = "26%";
+export const GLOW_EDGE = "62%";
+export const GLOW_CORNER = "85%";
+// Many close stops, so the fade is smooth rather than banded.
+const MASK_STOPS = [
+  "rgb(0 0 0 / " + GLOW_CENTER + ") 0%",
+  "rgb(0 0 0 / 21%) 25%",
+  "rgb(0 0 0 / " + GLOW_MID + ") 45%",
+  "rgb(0 0 0 / 38%) 60%",
+  "rgb(0 0 0 / 50%) 72%",
+  "rgb(0 0 0 / " + GLOW_EDGE + ") 85%",
+  "rgb(0 0 0 / 75%) 93%",
+  "rgb(0 0 0 / " + GLOW_CORNER + ") 100%",
+].join(", ");
 
 export const FADE_IN_MS = 600;
 export const FADE_OUT_MS = 400;
@@ -52,7 +67,6 @@ function registerAngle(): void {
   (document.head ?? document.documentElement).appendChild(style);
 }
 
-// Savanna gold -> amber -> acacia green (spec 9).
 const STYLE_TEXT = `
 :host { all: initial; }
 .layer { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity ${FADE_OUT_MS}ms ease; overflow: hidden; }
@@ -63,17 +77,17 @@ const STYLE_TEXT = `
 .glow {
   position: absolute; left: 0; top: 0; width: 50%; height: 50%; transform: scale(2); transform-origin: 0 0;
   pointer-events: none;
-  background: conic-gradient(from var(--scout-angle), #E0A526, #C9781E, #6E8B3D, #E0A526);
-  -webkit-mask-image: radial-gradient(ellipse at center, rgb(0 0 0 / ${GLOW_CENTER}) 0%, rgb(0 0 0 / ${GLOW_MID}) 45%, rgb(0 0 0 / ${GLOW_EDGE}) 85%, rgb(0 0 0 / ${GLOW_CORNER}) 100%);
-  mask-image: radial-gradient(ellipse at center, rgb(0 0 0 / ${GLOW_CENTER}) 0%, rgb(0 0 0 / ${GLOW_MID}) 45%, rgb(0 0 0 / ${GLOW_EDGE}) 85%, rgb(0 0 0 / ${GLOW_CORNER}) 100%);
-  filter: blur(8px); animation: scout-sweep ${SWEEP_MS}ms linear infinite;
+  background: conic-gradient(from var(--scout-angle), ${BLUES});
+  -webkit-mask-image: radial-gradient(ellipse at center, ${MASK_STOPS});
+  mask-image: radial-gradient(ellipse at center, ${MASK_STOPS});
+  filter: blur(18px); animation: scout-sweep ${SWEEP_MS}ms linear infinite;
 }
 .layer.paused .glow { opacity: 0.5; }
 .layer.hidden-tab .glow { animation-play-state: paused; }
 @keyframes scout-sweep { to { --scout-angle: 360deg; } }
 .ripple {
   position: absolute; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; pointer-events: none;
-  border: 2px solid #E0A526; box-shadow: 0 0 0 2px rgb(224 165 38 / 35%); opacity: 0.95;
+  border: 2px solid #0A84FF; box-shadow: 0 0 0 2px rgb(10 132 255 / 35%); opacity: 0.95;
   animation: scout-ripple ${RIPPLE_MS}ms ease-out forwards;
 }
 @keyframes scout-ripple { from { transform: scale(0.4); opacity: 0.95; } to { transform: scale(1.6); opacity: 0; } }
@@ -94,7 +108,7 @@ const STYLE_TEXT = `
 }
 .pill button:hover { background: rgb(255 255 255 / 16%); }
 .pill button:focus-visible { outline: 2px solid #2997ff; outline-offset: 2px; }
-.pill button.stop { border-color: #E0A526; color: #E0A526; }
+.pill button.stop { border-color: #5AC8FA; color: #5AC8FA; }
 @media (prefers-reduced-motion: reduce) {
   .glow { animation: none; }
   .ripple { animation: none; transform: scale(1); }
