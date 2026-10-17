@@ -220,11 +220,19 @@ describe("candidates and evidence", () => {
 describe("batches", () => {
   const many = Array.from({ length: 30 }, (_, i) => ({ code: "NOPE" + (i + 10), origin: "reported" as const, sourceUrl: "https://deals.test/list" }));
 
-  // Owner, 2026-10-16: after 25 attempts, apply the best code if one saves
-  // money; only when none does, ask whether to find 25 more.
-  it("applies the best code after a batch of 25 without asking", async () => {
-    const codes = [...many.slice(0, 2), { code: "SAVE20", origin: "verified" as const, sourceUrl: "https://deals.test/a" }, ...many.slice(2)];
+  // Owner, 2026-10-17: the best code among all the codes found wins, not the
+  // first batch's best. Once a code saves money every found code is still
+  // tested, without asking; only a run where nothing worked asks to search again.
+  it("keeps testing every found code after a saving, without asking, and applies the best of all of them", async () => {
+    const codes = [
+      ...many.slice(0, 2),
+      { code: "SAVE10", origin: "verified" as const, sourceUrl: "https://deals.test/a" },
+      ...many.slice(2, 27),
+      { code: "SAVE20", origin: "reported" as const, sourceUrl: "https://deals.test/b" },
+      ...many.slice(27),
+    ];
     let asked = 0;
+    let searched = 0;
     const out = await runCouponSearch({
       page: shop(),
       codes,
@@ -234,11 +242,18 @@ describe("batches", () => {
         asked++;
         return true;
       },
+      findMore: async () => {
+        searched++;
+        return [];
+      },
     });
     expect(asked).toBe(0);
-    expect(out.attempts).toHaveLength(25);
+    expect(searched).toBe(0);
+    expect(out.attempts).toHaveLength(32);
+    expect(out.untested).toBe(0);
     expect(out.best?.code).toBe("SAVE20");
     expect(out.applied).toBe(true);
+    expect(couponSummary(out)).toContain("I tested **32 codes**. **SAVE20** is the best");
     expect(couponSummary(out)).toContain("you save $20.00, 20% off");
   });
 
