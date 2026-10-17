@@ -53,6 +53,7 @@ import { conversationForTab, startNewConversation } from "./panel/state";
 import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/consent";
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
+import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
   appendHistory,
@@ -134,6 +135,7 @@ interface ActiveTab {
   id?: number;
   windowId?: number;
   url?: string;
+  favIconUrl?: string;
   incognito: boolean;
 }
 
@@ -144,6 +146,7 @@ async function activeTab(): Promise<ActiveTab> {
       ...(tab?.id !== undefined ? { id: tab.id } : {}),
       ...(tab?.windowId !== undefined ? { windowId: tab.windowId } : {}),
       ...(tab?.url ? { url: tab.url } : {}),
+      ...(tab?.favIconUrl ? { favIconUrl: tab.favIconUrl } : {}),
       incognito: tab?.incognito === true || browser.extension?.inIncognitoContext === true,
     };
   } catch {
@@ -348,6 +351,7 @@ async function main(): Promise<void> {
   const log = el("log");
   const noKey = el("no-key");
   const empty = el("empty");
+  const siteSuggestions = el<HTMLUListElement>("site-suggestions");
   const composer = el<HTMLFormElement>("composer");
   const question = el<HTMLTextAreaElement>("question");
   const send = el<HTMLButtonElement>("send");
@@ -522,6 +526,7 @@ async function main(): Promise<void> {
   function updateEmpty(): void {
     const busyCards = !!task || !!couponRun || !confirmBox.hidden;
     empty.hidden = !session || log.childElementCount > 0 || busyCards;
+    siteSuggestions.hidden = empty.hidden || !siteSuggestions.childElementCount;
   }
 
   async function saveEntry(kind: HistoryKind, q: string, answer: string): Promise<void> {
@@ -804,6 +809,7 @@ async function main(): Promise<void> {
     question.disabled = busy;
     for (const i of modeInputs) i.disabled = busy;
     for (const c of empty.querySelectorAll<HTMLButtonElement>("button")) c.disabled = busy;
+    for (const c of siteSuggestions.querySelectorAll<HTMLButtonElement>("button")) c.disabled = busy;
     if (busy) stop.focus();
     else if (!matchMedia("(pointer: coarse)").matches) question.focus();
   }
@@ -2353,6 +2359,42 @@ async function main(): Promise<void> {
     closePlus();
     void runCoupons();
   });
+  // On a known shopping site the composer lists store actions and the general chips go.
+  const shop = suggestionsFor(tab.url);
+  if (shop) {
+    const iconUrl = siteIconUrl(tab.url, tab.favIconUrl);
+    const letterTile = (): HTMLElement => {
+      const t = document.createElement("span");
+      t.className = "site-icon tile";
+      t.setAttribute("aria-hidden", "true");
+      t.style.background = shop.site.color;
+      t.dataset.letter = shop.site.name.replace(/^The /, "").charAt(0);
+      return t;
+    };
+    for (const s of shop.items) {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.type = "button";
+      let icon: HTMLElement = letterTile();
+      if (iconUrl) {
+        const img = document.createElement("img");
+        img.className = "site-icon";
+        img.alt = "";
+        img.referrerPolicy = "no-referrer";
+        img.src = iconUrl;
+        img.addEventListener("error", () => img.replaceWith(letterTile()), { once: true });
+        icon = img;
+      }
+      icon.setAttribute("aria-hidden", "true");
+      b.append(icon, s.label);
+      b.addEventListener("click", () => void ask(s.prompt));
+      li.appendChild(b);
+      siteSuggestions.appendChild(li);
+    }
+    siteSuggestions.setAttribute("aria-label", "Suggestions for " + shop.site.name);
+    empty.querySelector<HTMLElement>(".chips")!.hidden = true;
+    updateEmpty();
+  }
   for (const chip of empty.querySelectorAll<HTMLButtonElement>("button[data-prompt]")) {
     chip.addEventListener("click", () => {
       const p = chip.dataset.prompt ?? "";

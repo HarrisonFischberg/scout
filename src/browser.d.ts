@@ -44,7 +44,7 @@ declare const browser: {
   };
   tabs: {
     query(info: { active?: boolean; currentWindow?: boolean }): Promise<
-      Array<{ id?: number; windowId?: number; title?: string; url?: string; active?: boolean; incognito?: boolean }>
+      Array<{ id?: number; windowId?: number; title?: string; url?: string; active?: boolean; incognito?: boolean; favIconUrl?: string }>
     >;
     // Part 2 tool host. Optional where the e2e stubs leave them out.
     get?(tabId: number): Promise<{ id?: number; windowId?: number; title?: string; url?: string; active?: boolean; incognito?: boolean }>;
