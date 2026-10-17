@@ -33,6 +33,7 @@ declare const browser: {
     sendMessage(message: unknown): Promise<unknown>;
     sendNativeMessage(application: string, message: unknown): Promise<unknown>;
     connect?(info: { name: string }): BrowserPort;
+    getPlatformInfo?(): Promise<{ os: string }>;
     onMessage: {
       addListener(
         listener: (message: unknown, sender?: BrowserMessageSender) => Promise<unknown> | unknown,

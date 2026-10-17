@@ -7,7 +7,8 @@ import type { Target, TaskAction } from "./actions/vocabulary";
 export type ContentRequest =
   // Coupon runs ask for more of the page (order summaries sit late in it); the content script caps both.
   | { type: "scout:snapshot"; maxElements?: number; maxTextChars?: number }
-  | { type: "scout:act"; action: Action }
+  // `show`: coupon runs draw a pointer that moves to, presses and types into the element.
+  | { type: "scout:act"; action: Action; show?: boolean }
   // Part 3 Scout mode (src/actions/task-dom.ts): what is at a target, and one allow-listed action.
   | { type: "scout:task-probe"; target: Target | "focused" }
   | { type: "scout:task-act"; action: TaskAction }

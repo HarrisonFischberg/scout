@@ -4,8 +4,8 @@ import { withWorker } from "./worker";
 // Loads the built popup (run `npm run build` first) with a stubbed `browser`
 // namespace. Storage, Keychain, and permissions are in-memory fakes exposed on
 // `window.__fake` so the test can assert what was deleted. No live API call.
-async function openPopup(page: Page): Promise<void> {
-  await page.addInitScript(() => {
+async function openPopup(page: Page, os?: string): Promise<void> {
+  await page.addInitScript((os) => {
     const data: Record<string, unknown> = {
       settings: { provider: "anthropic", model: "claude-sonnet-5-5", retention: "7" },
       history: [{ at: Date.now(), question: "hi", answer: "hello" }],
@@ -27,6 +27,7 @@ async function openPopup(page: Page): Promise<void> {
           return { ok: true };
         },
         onMessage: { addListener() {} },
+        ...(os ? { getPlatformInfo: async () => ({ os }) } : {}),
       },
       tabs: { query: async () => [] },
       permissions: {
@@ -53,7 +54,7 @@ async function openPopup(page: Page): Promise<void> {
     };
     (globalThis as unknown as { browser: unknown; __fake: unknown }).browser = stub;
     (globalThis as unknown as { __fake: unknown }).__fake = fake;
-  });
+  }, os);
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
   // No live provider calls. A test can register its own model list after this.
@@ -185,4 +186,46 @@ test("opening Settings focuses its heading, not a provider control", async ({ pa
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page.getByRole("heading", { name: "Settings", level: 2 })).toBeFocused();
   for (const name of ["Anthropic", "OpenAI"]) await expect(page.getByRole("radio", { name })).not.toBeFocused();
+});
+
+test("Settings ends at Delete all data: neither the panel nor the page scrolls on into empty space", async ({ page }) => {
+  await page.setViewportSize({ width: 400, height: 600 });
+  await openPopup(page);
+  await page.getByRole("button", { name: "Settings" }).click();
+  const sizes = await page.evaluate(() => {
+    const body = document.querySelector("#settings-view .body") as HTMLElement;
+    const last = body.lastElementChild as HTMLElement;
+    const style = getComputedStyle(body);
+    return {
+      page: document.documentElement.scrollHeight,
+      viewport: innerHeight,
+      scroll: body.scrollHeight,
+      end: last.offsetTop + last.offsetHeight + parseFloat(style.paddingBottom),
+    };
+  });
+  expect(sizes.page).toBeLessThanOrEqual(sizes.viewport);
+  expect(sizes.scroll).toBeLessThanOrEqual(Math.ceil(sizes.end) + 1);
+});
+
+test("Button on webpages is offered on iPhone and iPad, and not on Mac", async ({ page }) => {
+  await openPopup(page, "mac");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("heading", { name: "Toolbar button" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Button on webpages" })).toBeHidden();
+  await expect(page.getByText("turn on Button on webpages")).toBeHidden();
+  await expect(page.getByText("Control-Shift-S on Mac opens and closes Scout for Safari")).toBeVisible();
+});
+
+test("Button on webpages shows on iPhone and iPad", async ({ page }) => {
+  await openPopup(page, "ios");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("heading", { name: "Button on webpages" })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Show a Scout button on the edge of webpages" })).toBeVisible();
+});
+
+test("Settings has no Activity section", async ({ page }) => {
+  await openPopup(page);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("heading", { name: "Permissions" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Activity" })).toHaveCount(0);
 });

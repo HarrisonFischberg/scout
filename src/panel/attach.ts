@@ -1,7 +1,6 @@
 // Panel helpers for Part 2: the @ tab picker, the "Shared:" line under each
-// message, and Settings > Activity rows. Pure, so they are unit-tested.
+// message. Pure, so they are unit-tested.
 import { MAX_EXTRA_TABS, type TabInfo } from "../chat/tabs";
-import type { ToolLogEntry } from "../tools/log";
 
 export const MAX_SUGGESTIONS = 8;
 
@@ -69,17 +68,4 @@ const TOOL_LABEL: Record<string, string> = {
 
 export function toolLabel(name: string): string {
   return TOOL_LABEL[name] ?? "Unknown tool";
-}
-
-/** Part 3: one Scout mode action in the log is "action:<type>" (rejected ones included). */
-function activityTool(tool: string): string {
-  if (tool.startsWith("unknown:")) return "Unknown tool (" + tool.slice(8) + ")";
-  if (tool.startsWith("action:")) return "Action (" + tool.slice(7) + ")";
-  return toolLabel(tool);
-}
-
-/** One Settings > Activity row: time, tool, site, result, duration. */
-export function activityLine(e: ToolLogEntry, locale?: string): string {
-  const time = new Date(e.at).toLocaleString(locale, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  return [time, activityTool(e.tool), e.site || "no site", e.status, e.ms + " ms"].join(" · ");
 }

@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 // Loads the built content script (run `npm run build` first) into a fixture
 // page, then drives it through the same handler the popup calls via
 // scripting.executeScript.
-type Req = { type: "scout:snapshot" } | { type: "scout:act"; action: Record<string, unknown> };
+type Req = { type: "scout:snapshot" } | { type: "scout:act"; action: Record<string, unknown>; show?: boolean };
 interface Snap {
   elements: Array<{ ref: string; name: string; role: string; value?: string }>;
 }
@@ -85,4 +85,39 @@ test("stale ref after the element is removed fails cleanly", async ({ page }) =>
   const ref = refFor(snap, "Apply");
   await page.evaluate(() => document.getElementById("apply")?.remove());
   expect(await act(page, { type: "click", ref })).toMatchObject({ ok: false, error: "stale_ref" });
+});
+
+test("coupon runs show a pointer that presses Apply and types the code one character at a time", async ({ page }) => {
+  await load(page, "/shop.html");
+  await page.evaluate(() => {
+    const w = window as unknown as { __values: string[] };
+    w.__values = [];
+    document.getElementById("coupon")?.addEventListener("input", (e) => w.__values.push((e.target as HTMLInputElement).value));
+  });
+  const snap = await send<Snap>(page, { type: "scout:snapshot" });
+  const typed = await send<Result>(page, { type: "scout:act", action: { type: "type", ref: refFor(snap, "Coupon code"), text: "SAVE20" }, show: true });
+  expect(typed.ok).toBe(true);
+  await expect(page.getByLabel("Coupon code")).toHaveValue("SAVE20");
+  // Cleared first, then one change per character, as a person typing makes.
+  const values = await page.evaluate(() => (window as unknown as { __values: string[] }).__values);
+  expect(values).toEqual(["", "S", "SA", "SAV", "SAVE", "SAVE2", "SAVE20"]);
+  // The pointer is on the page, hidden from assistive tech and from Scout's own snapshots.
+  const host = page.locator("#scout-pointer");
+  await expect(host).toHaveAttribute("aria-hidden", "true");
+  const again = await send<Snap>(page, { type: "scout:snapshot" });
+  expect(again.elements.length).toBe(snap.elements.length);
+  // It lets clicks through: a real click on Apply under it still lands.
+  const clicked = await send<Result>(page, { type: "scout:act", action: { type: "click", ref: refFor(snap, "Apply") }, show: true });
+  expect(clicked.ok).toBe(true);
+  await expect(page.locator("#total")).toHaveText("$80.00");
+  await page.getByRole("button", { name: "Place order" }).click();
+  await expect(page.locator("#order-status")).toHaveText("Order placed.");
+});
+
+test("without show, actions stay instant and draw nothing", async ({ page }) => {
+  await load(page, "/shop.html");
+  const snap = await send<Snap>(page, { type: "scout:snapshot" });
+  await act(page, { type: "type", ref: refFor(snap, "Coupon code"), text: "SAVE10" });
+  await expect(page.getByLabel("Coupon code")).toHaveValue("SAVE10");
+  await expect(page.locator("#scout-pointer")).toHaveCount(0);
 });
