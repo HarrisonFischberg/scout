@@ -72,29 +72,16 @@ test("the layer lets clicks through to the page everywhere except the control pi
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   });
   expect(await page.evaluate((p) => document.elementFromPoint(p.x, p.y)?.hasAttribute("data-scout-overlay"), pill)).toBe(true);
-  // The pill's buttons send Take control and Stop to the worker for this task, on trusted clicks only.
-  const label = await inShadow(page, (root) => {
-    const r = root.querySelector(".label")!.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  });
-  await page.mouse.click(label.x, label.y);
-  await inShadow(page, (root) => (root.querySelector("button.take") as HTMLButtonElement).click());
+  // The toast's Stop square sends stop to the worker for this task, on trusted clicks only.
+  await inShadow(page, (root) => (root.querySelector("button.stop") as HTMLButtonElement).click());
   expect((await sent(page)).filter((m) => m.type === "task.control")).toHaveLength(0);
-  const take = await inShadow(page, (root) => {
-    const r = root.querySelector("button.take")!.getBoundingClientRect();
+  const stop = await inShadow(page, (root) => {
+    const r = root.querySelector("button.stop")!.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   });
-  await page.mouse.click(take.x, take.y);
-  expect((await sent(page)).filter((m) => m.type === "task.control")).toEqual([{ type: "task.control", payload: { task_id: "t1", command: "pause" } }]);
-  await overlay(page, { type: "overlay:state", state: "paused" });
-  await expect.poll(() => inShadow(page, (root) => root.querySelector("button.take")!.textContent)).toBe("Resume");
-  // The longer label moved the buttons: find Resume again.
-  const resume = await inShadow(page, (root) => {
-    const r = root.querySelector("button.take")!.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  });
-  await page.mouse.click(resume.x, resume.y);
-  expect((await sent(page)).filter((m) => m.type === "task.control").map((m) => (m.payload as { command: string }).command)).toEqual(["pause", "resume"]);
+  await page.mouse.click(stop.x, stop.y);
+  expect((await sent(page)).filter((m) => m.type === "task.control")).toEqual([{ type: "task.control", payload: { task_id: "t1", command: "stop" } }]);
+  await expect(host(page)).not.toBeAttached();
 });
 
 test("the click marker appears at the target before the click lands, and the border fades in", async ({ page }) => {
@@ -194,9 +181,9 @@ test.describe("reduced motion", () => {
 test("the pill names the state and the page cannot press its buttons", async ({ page }) => {
   await load(page);
   await overlay(page, { type: "overlay:show", taskId: "t1", state: "running" });
-  expect(await inShadow(page, (root) => root.querySelector(".label")!.textContent)).toBe("Scouting…");
+  expect(await inShadow(page, (root) => root.querySelector(".label")!.textContent)).toBe("Working…");
   await overlay(page, { type: "overlay:state", state: "waiting" });
-  expect(await inShadow(page, (root) => root.querySelector(".label")!.textContent)).toBe("Waiting for your answer in Scout");
+  expect(await inShadow(page, (root) => root.querySelector(".label")!.textContent)).toBe("Waiting for you");
   // A page script's synthetic click on Stop sends nothing.
   await inShadow(page, (root) => (root.querySelector("button.stop") as HTMLButtonElement).dispatchEvent(new MouseEvent("click", { bubbles: true })));
   expect((await sent(page)).filter((m) => m.type === "task.control")).toHaveLength(0);
