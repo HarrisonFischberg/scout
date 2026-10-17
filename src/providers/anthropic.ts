@@ -25,6 +25,30 @@ interface Block {
   json: string;
 }
 
+type RawBlock = Record<string, unknown>;
+
+/**
+ * Server tools (web search, web fetch) run in a loop on Anthropic's side that
+ * ends the turn with stop_reason "pause_turn" after a set number of steps,
+ * often before the model has written its answer. The turn goes on when it is
+ * sent back unchanged as the last assistant message; at most this many times.
+ */
+export const MAX_RESUMES = 3;
+
+/** The assistant turn as the API expects it back: no empty text blocks or null fields. */
+function resumable(content: Array<RawBlock | undefined>): RawBlock[] {
+  const out: RawBlock[] = [];
+  for (const b of content) {
+    if (!b) continue;
+    if (b.type === "text") {
+      if (typeof b.text !== "string" || b.text === "") continue;
+      const citations = Array.isArray(b.citations) && b.citations.length ? b.citations : undefined;
+      out.push({ type: "text", text: b.text, ...(citations ? { citations } : {}) });
+    } else out.push(b);
+  }
+  return out;
+}
+
 export function createAnthropic(cfg: ProviderConfig): ProviderClient {
   return {
     id: "anthropic",
@@ -37,102 +61,138 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
       if (req.webSearch) tools.push({ type: "web_search_20260209", name: "web_search", max_uses: req.webSearchMaxUses ?? 3 });
       // Web fetch only opens URLs already in the conversation (e.g. search results).
       if (req.webSearch && req.webFetch) tools.push({ type: "web_fetch_20260209", name: "web_fetch", max_uses: req.webSearchMaxUses ?? 3 });
-      const body = {
-        model: req.model,
-        max_tokens: req.maxTokens,
-        stream: true,
-        system: req.system,
-        messages: anthropicMessages(req.messages),
-        tools: tools.length ? tools : undefined,
-        output_config: req.effort ? { effort: req.effort } : undefined,
-      };
-      let res: Response;
-      try {
-        res = await cfg.fetch(cfg.baseUrl ?? DEFAULT_URL, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-api-key": cfg.apiKey,
-            "anthropic-version": "2023-06-01",
-            // Calls come from the extension's browser origin with the user's own
-            // key (BYOK); the API rejects browser-origin requests without this
-            // opt-in (the official SDK sends it for dangerouslyAllowBrowser).
-            "anthropic-dangerous-direct-browser-access": "true",
-          },
-          body: JSON.stringify(body),
-          signal: req.signal,
-        });
-      } catch (err) {
-        // A refused request (no consent, src/settings/consent.ts) keeps its reason.
-        if (err instanceof ProviderError) throw err;
-        throw new ProviderError("anthropic", "network");
-      }
-      if (!res.ok) throw errorFromStatus("anthropic", res);
-      if (!res.body) throw new ProviderError("anthropic", "stream_error");
-
-      const blocks = new Map<number, Block>();
       let inputTokens = 0;
       let outputTokens = 0;
       let webSearches = 0;
-      for await (const raw of readSse(res.body)) {
-        const ev = raw as Record<string, any>;
-        switch (ev.type) {
-          case "message_start":
-            inputTokens = ev.message?.usage?.input_tokens ?? 0;
-            outputTokens = ev.message?.usage?.output_tokens ?? 0;
-            break;
-          case "content_block_start": {
-            const cb = ev.content_block ?? {};
-            if (cb.type === "web_fetch_tool_result" && typeof cb.content?.url === "string") {
-              yield { type: "source", url: cb.content.url };
-            }
-            if (cb.type === "web_search_tool_result" && Array.isArray(cb.content)) {
-              for (const r of cb.content) {
-                if (r?.type === "web_search_result" && typeof r.url === "string") {
-                  yield { type: "source", url: r.url, ...(typeof r.title === "string" ? { title: r.title } : {}) };
+      // Earlier parts of a paused turn, sent back so the server resumes it.
+      let paused: RawBlock[] = [];
+      let container: string | undefined;
+      for (let round = 0; ; round++) {
+        const messages = anthropicMessages(req.messages);
+        if (paused.length) messages.push({ role: "assistant", content: paused });
+        const body = {
+          model: req.model,
+          max_tokens: req.maxTokens,
+          stream: true,
+          system: req.system,
+          messages,
+          tools: tools.length ? tools : undefined,
+          output_config: req.effort ? { effort: req.effort } : undefined,
+          container: paused.length ? container : undefined,
+        };
+        let res: Response;
+        try {
+          res = await cfg.fetch(cfg.baseUrl ?? DEFAULT_URL, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-api-key": cfg.apiKey,
+              "anthropic-version": "2023-06-01",
+              // Calls come from the extension's browser origin with the user's own
+              // key (BYOK); the API rejects browser-origin requests without this
+              // opt-in (the official SDK sends it for dangerouslyAllowBrowser).
+              "anthropic-dangerous-direct-browser-access": "true",
+            },
+            body: JSON.stringify(body),
+            signal: req.signal,
+          });
+        } catch (err) {
+          // A refused request (no consent, src/settings/consent.ts) keeps its reason.
+          if (err instanceof ProviderError) throw err;
+          throw new ProviderError("anthropic", "network");
+        }
+        if (!res.ok) throw errorFromStatus("anthropic", res);
+        if (!res.body) throw new ProviderError("anthropic", "stream_error");
+
+        const blocks = new Map<number, Block>();
+        const content: Array<RawBlock | undefined> = [];
+        let respOut = 0;
+        let respSearches = 0;
+        let stop: string | undefined;
+        for await (const raw of readSse(res.body)) {
+          const ev = raw as Record<string, any>;
+          switch (ev.type) {
+            case "message_start":
+              inputTokens += ev.message?.usage?.input_tokens ?? 0;
+              respOut = ev.message?.usage?.output_tokens ?? 0;
+              if (typeof ev.message?.container?.id === "string") container = ev.message.container.id;
+              break;
+            case "content_block_start": {
+              const cb = ev.content_block ?? {};
+              if (cb.type === "web_fetch_tool_result" && typeof cb.content?.url === "string") {
+                yield { type: "source", url: cb.content.url };
+              }
+              if (cb.type === "web_search_tool_result" && Array.isArray(cb.content)) {
+                for (const r of cb.content) {
+                  if (r?.type === "web_search_result" && typeof r.url === "string") {
+                    yield { type: "source", url: r.url, ...(typeof r.title === "string" ? { title: r.title } : {}) };
+                  }
                 }
               }
+              content[ev.index] = { ...cb };
+              blocks.set(ev.index, {
+                kind: cb.type === "tool_use" ? "tool_use" : "text",
+                id: cb.id,
+                name: cb.name,
+                json: "",
+              });
+              break;
             }
-            blocks.set(ev.index, {
-              kind: cb.type === "tool_use" ? "tool_use" : "text",
-              id: cb.id,
-              name: cb.name,
-              json: "",
-            });
-            break;
-          }
-          case "content_block_delta": {
-            const d = ev.delta ?? {};
-            if (d.type === "text_delta") yield { type: "text", delta: d.text };
-            else if (d.type === "citations_delta" && typeof d.citation?.url === "string") {
-              yield { type: "source", url: d.citation.url };
-            } else if (d.type === "input_json_delta") {
-              const b = blocks.get(ev.index);
-              if (b) b.json += d.partial_json ?? "";
-            }
-            break;
-          }
-          case "content_block_stop": {
-            const b = blocks.get(ev.index);
-            if (b?.kind === "tool_use") {
-              let input: unknown;
-              try {
-                input = b.json ? JSON.parse(b.json) : {};
-              } catch {
-                throw new ProviderError("anthropic", "stream_error");
+            case "content_block_delta": {
+              const d = ev.delta ?? {};
+              const kept = content[ev.index];
+              if (d.type === "text_delta") {
+                yield { type: "text", delta: d.text };
+                if (kept) kept.text = String(kept.text ?? "") + d.text;
+              } else if (d.type === "citations_delta" && typeof d.citation?.url === "string") {
+                yield { type: "source", url: d.citation.url, ...(typeof d.citation.cited_text === "string" ? { text: d.citation.cited_text } : {}) };
+                if (kept) kept.citations = [...(Array.isArray(kept.citations) ? kept.citations : []), d.citation];
+              } else if (d.type === "thinking_delta") {
+                if (kept) kept.thinking = String(kept.thinking ?? "") + (d.thinking ?? "");
+              } else if (d.type === "signature_delta") {
+                if (kept) kept.signature = d.signature;
+              } else if (d.type === "input_json_delta") {
+                const b = blocks.get(ev.index);
+                if (b) b.json += d.partial_json ?? "";
               }
-              yield { type: "tool_call", id: b.id ?? "", name: b.name ?? "", input };
+              break;
             }
-            blocks.delete(ev.index);
-            break;
+            case "content_block_stop": {
+              const b = blocks.get(ev.index);
+              const kept = content[ev.index];
+              if (b?.json && kept && /tool_use$/.test(String(kept.type))) {
+                try {
+                  kept.input = JSON.parse(b.json);
+                } catch {
+                  throw new ProviderError("anthropic", "stream_error");
+                }
+              }
+              if (b?.kind === "tool_use") {
+                let input: unknown;
+                try {
+                  input = b.json ? JSON.parse(b.json) : {};
+                } catch {
+                  throw new ProviderError("anthropic", "stream_error");
+                }
+                yield { type: "tool_call", id: b.id ?? "", name: b.name ?? "", input };
+              }
+              blocks.delete(ev.index);
+              break;
+            }
+            case "message_delta":
+              respOut = ev.usage?.output_tokens ?? respOut;
+              respSearches = ev.usage?.server_tool_use?.web_search_requests ?? respSearches;
+              if (typeof ev.delta?.stop_reason === "string") stop = ev.delta.stop_reason;
+              if (typeof ev.delta?.container?.id === "string") container = ev.delta.container.id;
+              break;
+            case "error":
+              throw new ProviderError("anthropic", "stream_error");
           }
-          case "message_delta":
-            outputTokens = ev.usage?.output_tokens ?? outputTokens;
-            webSearches = ev.usage?.server_tool_use?.web_search_requests ?? webSearches;
-            break;
-          case "error":
-            throw new ProviderError("anthropic", "stream_error");
         }
+        outputTokens += respOut;
+        webSearches += respSearches;
+        if (stop !== "pause_turn" || round >= MAX_RESUMES || req.signal?.aborted) break;
+        paused = [...paused, ...resumable(content)];
       }
       yield { type: "usage", usage: { inputTokens, outputTokens, ...(webSearches ? { webSearches } : {}) } };
       yield { type: "done" };

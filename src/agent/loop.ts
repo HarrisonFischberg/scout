@@ -10,7 +10,8 @@ import { classifyAction, detectCaptcha, type Classification } from "../safety/cl
 import type { Snapshot } from "../snapshot/snapshot";
 
 export interface AgentPage {
-  snapshot(): Promise<Snapshot>;
+  /** `limits` asks for more of a long page than the default caps (coupon runs). */
+  snapshot(limits?: { maxElements?: number; maxTextChars?: number }): Promise<Snapshot>;
   act(action: Action): Promise<ActionResult>;
 }
 

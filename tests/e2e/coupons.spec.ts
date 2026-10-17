@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 // Drives the built popup (run `npm run build` first). The mock model suggests
 // 5 synthetic codes; common-pattern guesses follow (T031). A fake tab simulates
-// a non-Shopify shop (SAVE10 = 10%, SAVE20 = 20%, the rest invalid), so the
-// page path (coupon box) is used. No live provider call, no merchant site.
+// a non-Shopify shop (SAVE10 = 10%, SAVE20 = 20%, the rest refused with a
+// message, as real stores do), so the page path (coupon box) is used. No live provider call, no merchant site.
 // Not run in the sandbox (launch-blockers 12).
 function sse(events: Array<Record<string, unknown>>): string {
   return events.map((e) => "event: " + String(e.type) + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
@@ -36,7 +36,7 @@ const CODES_TURN = sse([
 
 async function openPopup(
   page: Page,
-  opts: { pct?: Record<string, number>; codesTurn?: string } = {},
+  opts: { pct?: Record<string, number>; codesTurn?: string; status?: number } = {},
 ): Promise<{ clicks: string[]; asks: string[] }> {
   const clicks: string[] = [];
   const asks: string[] = [];
@@ -46,6 +46,8 @@ async function openPopup(
     const pct: Record<string, number> = pctIn;
     let typed = "";
     let total = 100;
+    // Like real stores, a refused code gets a message.
+    let message = "";
     const elements = [
       { ref: "e1", tag: "input", role: "textbox", name: "Coupon code", type: "text" },
       { ref: "e2", tag: "button", role: "button", name: "Apply" },
@@ -66,16 +68,22 @@ async function openPopup(
             return {
               url: "https://shop.test/cart",
               title: "Cart",
-              text: "Subtotal: $100.00\nTotal: $" + total.toFixed(2),
+              text: "Subtotal: $100.00\n" + (message ? message + "\n" : "") + "Total: $" + total.toFixed(2),
               elements,
               truncated: false,
             };
           }
           const a = m.action ?? { type: "?" };
-          if (a.type === "type") typed = (a.text ?? "").toUpperCase();
+          if (a.type === "type") {
+            typed = (a.text ?? "").toUpperCase();
+            message = "";
+          }
           if (a.type === "click") {
             w.__recordClick(a.ref ?? "?");
-            if (a.ref === "e2") total = 100 - (pct[typed] ?? 0);
+            if (a.ref === "e2") {
+              total = 100 - (pct[typed] ?? 0);
+              message = pct[typed] ? "" : "Invalid coupon code.";
+            }
           }
           return { ok: true, action: a.type, message: "ok" };
         },
@@ -99,6 +107,7 @@ async function openPopup(
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
   await page.route("https://api.anthropic.com/**", (r) => {
     asks.push(r.request().postData() ?? "");
+    if (opts.status) return r.fulfill({ status: opts.status, contentType: "application/json", body: "{}" });
     return r.fulfill({ status: 200, contentType: "text/event-stream", body: opts.codesTurn ?? CODES_TURN });
   });
   await page.goto("/popup.html");
@@ -166,4 +175,19 @@ test("no winning code: asks to find 25 more, searches again without repeating co
   await page.getByRole("button", { name: "Stop here" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   await expect(answer).toContainText("I tested 50 codes and none lowered your total of $100.00.", BATCH_WAIT);
+});
+
+// Owner report 2026-10-16 (tackform.com): a failed web search ended the run
+// before any code was tried. Now the guesses are still tested.
+test("a failed web search still tests guesses and says why the search failed", async ({ page }) => {
+  test.setTimeout(90_000);
+  await openPopup(page, { status: 401 });
+  await page.getByRole("button", { name: "Find coupons" }).click();
+  const answer = page.getByRole("log").locator(".msg.assistant").last();
+  await expect(answer).toContainText(
+    "The web search failed. The API key was rejected. Check the key in Scout for Safari settings. I tested common guesses instead.",
+    BATCH_WAIT,
+  );
+  await expect(answer).toContainText("SAVE20 is the best: your total drops from $100.00 to $80.00");
+  await expect(page.locator("#coupons-rows tr").first()).toContainText("Guess (common pattern)");
 });

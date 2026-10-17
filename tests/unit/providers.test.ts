@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createProvider, ProviderError } from "../../src/providers";
 import type { FetchLike, StreamEvent } from "../../src/providers";
+import { MAX_RESUMES } from "../../src/providers/anthropic";
 
 // Synthetic recorded streams: written by hand, not captured from a live API.
 const enc = new TextEncoder();
@@ -216,5 +217,103 @@ describe("web search depth and fetch (T031)", () => {
       { type: "web_fetch_20260209", name: "web_fetch", max_uses: 8 },
     ]);
     expect(events).toContainEqual({ type: "source", url: "https://linktr.ee/example" });
+  });
+});
+
+// A server-tool turn that the API paused (stop_reason "pause_turn") is sent
+// back as is so the search goes on; the code list often comes only after that.
+describe("paused server-tool turns (pause_turn)", () => {
+  const search = { model: "m", messages: [{ role: "user" as const, content: "find codes" }], maxTokens: 64, webSearch: true, webFetch: true };
+  const paused = [
+    { type: "message_start", message: { usage: { input_tokens: 10, output_tokens: 1 }, container: { id: "cntr_1" } } },
+    { type: "content_block_start", index: 0, content_block: { type: "thinking", thinking: "" } },
+    { type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "Look at coupon sites." } },
+    { type: "content_block_delta", index: 0, delta: { type: "signature_delta", signature: "sig-1" } },
+    { type: "content_block_stop", index: 0 },
+    { type: "content_block_start", index: 1, content_block: { type: "server_tool_use", id: "srv_1", name: "web_search", input: {} } },
+    { type: "content_block_delta", index: 1, delta: { type: "input_json_delta", partial_json: '{"query":' } },
+    { type: "content_block_delta", index: 1, delta: { type: "input_json_delta", partial_json: '"shop promo code"}' } },
+    { type: "content_block_stop", index: 1 },
+    {
+      type: "content_block_start",
+      index: 2,
+      content_block: { type: "web_search_tool_result", tool_use_id: "srv_1", content: [{ type: "web_search_result", url: "https://deals.test/a", title: "Deals", encrypted_content: "x" }] },
+    },
+    { type: "content_block_stop", index: 2 },
+    { type: "content_block_start", index: 3, content_block: { type: "text", text: "" } },
+    { type: "content_block_stop", index: 3 },
+    { type: "content_block_start", index: 4, content_block: { type: "text", text: "" } },
+    { type: "content_block_delta", index: 4, delta: { type: "text_delta", text: "SAVE10 | https://deals.test/a\n" } },
+    {
+      type: "content_block_delta",
+      index: 4,
+      delta: { type: "citations_delta", citation: { type: "web_search_result_location", url: "https://deals.test/a", cited_text: "Use code SAVE10 for 10% off", encrypted_index: "e1" } },
+    },
+    { type: "content_block_stop", index: 4 },
+    { type: "message_delta", delta: { stop_reason: "pause_turn" }, usage: { output_tokens: 30, server_tool_use: { web_search_requests: 1 } } },
+    { type: "message_stop" },
+  ];
+  const finished = [
+    { type: "message_start", message: { usage: { input_tokens: 50, output_tokens: 1 } } },
+    { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
+    { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "TAKE15 | https://deals.test/b\n" } },
+    { type: "content_block_stop", index: 0 },
+    { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 20, server_tool_use: { web_search_requests: 2 } } },
+    { type: "message_stop" },
+  ];
+
+  it("resumes with the paused turn sent back intact and adds up the usage", async () => {
+    const bodies: Array<Record<string, any>> = [];
+    let n = 0;
+    const f: FetchLike = async (_u, init) => {
+      bodies.push(JSON.parse(String(init.body)));
+      return sse(n++ === 0 ? paused : finished);
+    };
+    const ev = await collect(createProvider("anthropic", { apiKey: "k", fetch: f }).stream(search));
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]!.container).toBeUndefined();
+    const second = bodies[1]!;
+    expect(second.container).toBe("cntr_1");
+    expect(second.messages).toHaveLength(2);
+    expect(second.messages[0]).toEqual({ role: "user", content: "find codes" });
+    expect(second.messages[1]).toEqual({
+      role: "assistant",
+      content: [
+        { type: "thinking", thinking: "Look at coupon sites.", signature: "sig-1" },
+        { type: "server_tool_use", id: "srv_1", name: "web_search", input: { query: "shop promo code" } },
+        { type: "web_search_tool_result", tool_use_id: "srv_1", content: [{ type: "web_search_result", url: "https://deals.test/a", title: "Deals", encrypted_content: "x" }] },
+        {
+          type: "text",
+          text: "SAVE10 | https://deals.test/a\n",
+          citations: [{ type: "web_search_result_location", url: "https://deals.test/a", cited_text: "Use code SAVE10 for 10% off", encrypted_index: "e1" }],
+        },
+      ],
+    });
+    expect(ev.filter((e) => e.type === "text").map((e) => (e as { delta: string }).delta).join("")).toBe("SAVE10 | https://deals.test/a\nTAKE15 | https://deals.test/b\n");
+    expect(ev).toContainEqual({ type: "source", url: "https://deals.test/a", text: "Use code SAVE10 for 10% off" });
+    expect(ev).toContainEqual({ type: "usage", usage: { inputTokens: 60, outputTokens: 50, webSearches: 3 } });
+  });
+
+  it("resumes at most MAX_RESUMES times, then ends with what it has", async () => {
+    let calls = 0;
+    const f: FetchLike = async () => {
+      calls++;
+      return sse(paused);
+    };
+    const ev = await collect(createProvider("anthropic", { apiKey: "k", fetch: f }).stream(search));
+    expect(calls).toBe(MAX_RESUMES + 1);
+    expect(ev[ev.length - 1]).toEqual({ type: "done" });
+  });
+
+  it("does not resume a turn the user stopped", async () => {
+    const ac = new AbortController();
+    let calls = 0;
+    const f: FetchLike = async () => {
+      calls++;
+      ac.abort();
+      return sse(paused);
+    };
+    await collect(createProvider("anthropic", { apiKey: "k", fetch: f }).stream({ ...search, signal: ac.signal }));
+    expect(calls).toBe(1);
   });
 });

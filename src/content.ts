@@ -1,14 +1,15 @@
 // Content script (T009). Injected on demand with `scripting.executeScript`;
 // never declared for all URLs. Exposes one handler: snapshot the page, perform
-// one action by ref from the last snapshot, and (T031) read or set the store's
-// Shopify cart discount. Page content is untrusted data and only leaves via the
-// return value.
+// one action by ref from the last snapshot, (T031) read or set the store's
+// cart discount (Shopify, WooCommerce, BigCommerce), and list codes the store's home page advertises.
+// Page content is untrusted data and only leaves via the return value.
 import { domPage } from "./actions/dom";
 import { executeAction, type ActionResult } from "./actions/executor";
 import { buildSnapshot, fromElement, type SnapNode, type Snapshot } from "./snapshot/snapshot";
 
 import { CONTENT_HANDLER as HANDLER, type ContentRequest } from "./content-api";
-import { shopifyCartInfo, shopifyCartUpdate } from "./coupons/shopify";
+import { storeCartInfo, storeCartUpdate } from "./coupons/carts";
+import { codesInText, storeHomeText } from "./coupons/store";
 
 const FLAG = "__safariScoutContent";
 const g = globalThis as unknown as Record<string, unknown>;
@@ -17,13 +18,16 @@ if (!g[FLAG]) {
   g[FLAG] = true;
   let refs = new Map<string, Element>();
 
-  const snapshot = (): Snapshot => {
+  const snapshot = (limits: { maxElements?: number; maxTextChars?: number } = {}): Snapshot => {
     const nodeToEl = new Map<SnapNode, Element>();
     const root = fromElement(document.documentElement, nodeToEl);
     const next = new Map<string, Element>();
     const snap = buildSnapshot(root, {
       url: location.href,
       title: document.title,
+      // Larger only on request (coupon runs), never past these caps.
+      ...(typeof limits.maxElements === "number" ? { maxElements: Math.min(Math.max(limits.maxElements, 1), 1000) } : {}),
+      ...(typeof limits.maxTextChars === "number" ? { maxTextChars: Math.min(Math.max(limits.maxTextChars, 1), 120_000) } : {}),
       onRef: (ref, node) => {
         const el = nodeToEl.get(node);
         if (el) next.set(ref, el);
@@ -37,10 +41,11 @@ if (!g[FLAG]) {
   // messaging: on iOS Safari a tabs.sendMessage to this script went
   // unanswered (T018), while executeScript results arrive reliably.
   g[HANDLER] = (req: ContentRequest): Promise<unknown> | Snapshot | null => {
-    if (req.type === "scout:snapshot") return snapshot();
+    if (req.type === "scout:snapshot") return snapshot({ maxElements: req.maxElements, maxTextChars: req.maxTextChars });
     if (req.type === "scout:act") return executeAction(domPage(refs, window), req.action) as Promise<ActionResult>;
-    if (req.type === "scout:cart-info") return shopifyCartInfo();
-    if (req.type === "scout:cart-update") return shopifyCartUpdate(String(req.discount ?? ""));
+    if (req.type === "scout:cart-info") return storeCartInfo();
+    if (req.type === "scout:cart-update") return storeCartUpdate(String(req.discount ?? ""));
+    if (req.type === "scout:store-codes") return storeHomeText().then((t) => (t ? codesInText(t) : []));
     if (req.type === "scout:reload") {
       // Let the reply reach the popup first, then refresh the cart view.
       setTimeout(() => location.reload(), 50);

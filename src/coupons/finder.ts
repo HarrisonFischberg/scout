@@ -11,9 +11,11 @@
 // is the user asked whether to find and test 25 more.
 import type { Action, ActionResult } from "../actions/executor";
 import type { AgentControl } from "../agent/loop";
-import { classifyAction, detectCaptcha } from "../safety/classifier";
-import type { SnapElement, Snapshot } from "../snapshot/snapshot";
+import { detectCaptcha } from "../safety/classifier";
+import type { Snapshot } from "../snapshot/snapshot";
 import { CODE_RE, originLabel, type CandidateOrigin, type CouponCandidate } from "./candidates";
+import { findForm, newLines, removeTarget, revealTargets, showsCode, storeReply, type FormHints, type StoreReply } from "./form";
+import { formatMoney, readTotal } from "./money";
 
 export type { CouponCandidate } from "./candidates";
 
@@ -22,6 +24,8 @@ export interface CartState {
   total: number;
   currency: string | null;
   codes: Array<{ code: string; applicable: boolean }>;
+  /** Whose cart API answered: "shopify", "woocommerce", "bigcommerce". */
+  platform?: string;
 }
 
 /** The store's own cart API (Shopify), reached through the content script. */
@@ -67,8 +71,13 @@ export function couponStatusText(status: CouponStatus): string {
 
 export interface CouponOutcome {
   status: CouponStatus;
-  method: "shopify" | "page" | null;
+  /** "page" (coupon box) or the store platform whose cart API was used. */
+  method: string | null;
   baseline: number | null;
+  /** As the store prints it ("$", "€") or an ISO code from its cart API. */
+  currency?: string;
+  /** Why testing ended early, for the summary. */
+  note?: string;
   attempts: CouponAttempt[];
   best?: CouponAttempt;
   /** True when the best code was applied and a fresh read confirmed the total. */
@@ -82,17 +91,6 @@ export interface CouponOutcome {
 
 export const BATCH_SIZE = 25;
 export const MAX_TOTAL = 200;
-const INPUT_NAME = /coupon|promo|discount|voucher|gift\s*card|reduction|code/i;
-const STRONG_INPUT = /coupon|promo|discount|voucher|reduction/i;
-// Fields named "code" that are not coupon boxes: never type a coupon there.
-const NOT_COUPON_INPUT = /zip|postal|post\s*code|area\s*code|country\s*code|phone|verif|security|one[-\s]?time|sms|access\s*code|tracking/i;
-const TEXT_TYPES = new Set(["text", "search", ""]);
-const APPLY_NAME = /^(apply|redeem|add|use)\b|apply\s+(code|coupon|discount)/i;
-const NOT_APPLY = /\bto\s+(cart|bag|basket|wish\s*list|order)\b/i;
-// "Total" then up to one line of words (a currency code, "1 item") before the
-// amount; "Total savings" and "Total discount" are not the total.
-const TOTAL_RE =
-  /(?:^|[^a-z])(?:order\s+|grand\s+|new\s+)?total\b(?!\s*(?:savings?|saved|discounts?|off)\b)[^$\d]{0,24}?(?:\d+\s+items?\b[^$\d]{0,12}?)?\$\s*([\d,]+(?:\.\d{1,2})?)/gi;
 const STOPWORDS = new Set(["NONE", "N/A", "CODE", "CODES", "COUPON", "SORRY", "NOTE", "THE", "AND"]);
 
 /** Candidate codes from free text: one per token, upper-cased, deduped, capped. */
@@ -107,46 +105,9 @@ export function parseCodes(text: string, max = 10): string[] {
   return out;
 }
 
-/** Last "Total: $x" on the page that is not a subtotal, in dollars. */
+/** Last order total on the page that is not a subtotal, in the store's currency. */
 export function parseTotal(text: string): number | null {
-  let last: number | null = null;
-  for (const m of text.matchAll(TOTAL_RE)) {
-    const n = Number((m[1] ?? "").replace(/,/g, ""));
-    if (Number.isFinite(n)) last = n;
-  }
-  return last;
-}
-
-function isOrderLike(el: SnapElement, snap: Snapshot): boolean {
-  const c = classifyAction({ type: "click", ref: el.ref }, snap);
-  return c.sensitive && c.kind !== "personal_data";
-}
-
-function findForm(snap: Snapshot): { input: SnapElement; apply: SnapElement } | null {
-  const inputs = snap.elements.filter(
-    (e) =>
-      e.tag === "input" &&
-      !e.redacted &&
-      !e.disabled &&
-      TEXT_TYPES.has(e.type ?? "text") &&
-      INPUT_NAME.test(e.name) &&
-      !NOT_COUPON_INPUT.test(e.name),
-  );
-  const input = inputs.find((e) => STRONG_INPUT.test(e.name)) ?? inputs[0];
-  if (!input) return null;
-  const at = snap.elements.indexOf(input);
-  // Never the order button: payment, login, and similar targets are refused.
-  const buttons = snap.elements.filter(
-    (e) =>
-      (e.tag === "button" || e.role === "button") &&
-      APPLY_NAME.test(e.name.trim()) &&
-      !NOT_APPLY.test(e.name) &&
-      !isOrderLike(e, snap),
-  );
-  // The box's own button follows it and may stay disabled until a code is
-  // typed (Shopify checkout); otherwise the nearest enabled one before it.
-  const apply = buttons.find((e) => snap.elements.indexOf(e) > at) ?? buttons.filter((e) => !e.disabled).pop();
-  return apply ? { input, apply } : null;
+  return readTotal(text)?.amount ?? null;
 }
 
 /** Largest positive saving among accepted (or not rejected) codes; the earliest wins ties. */
@@ -165,11 +126,14 @@ interface TryResult {
   note?: string;
   captcha?: boolean;
   rateLimited?: boolean;
+  /** No further code can be measured on this page; `note` says why. */
+  halt?: boolean;
 }
 
 interface Tester {
-  method: "shopify" | "page";
+  method: string;
   baseline: number;
+  currency?: string;
   tryCode(code: string): Promise<TryResult>;
   /** Applies one code (or "" to clear) and returns the confirmed total. */
   apply(code: string): Promise<number | null>;
@@ -177,14 +141,15 @@ interface Tester {
   finish(winner: string | null): Promise<void>;
 }
 
-async function shopifyTester(cart: CartApi): Promise<Tester | null> {
+async function cartTester(cart: CartApi): Promise<Tester | null> {
   const start = await cart.info();
   // Only a real cart (numeric total) counts; anything else falls back to the page path.
   if (!start || typeof start.total !== "number" || !Array.isArray(start.codes)) return null;
   const original = start.codes.map((c) => c.code).join(",");
   return {
-    method: "shopify",
+    method: start.platform ?? "shopify",
     baseline: start.total,
+    ...(start.currency ? { currency: start.currency } : {}),
     async tryCode(code) {
       const r = await cart.update(code);
       if (!r) return { total: null, accepted: null, note: "The store did not answer." };
@@ -204,51 +169,177 @@ async function shopifyTester(cart: CartApi): Promise<Tester | null> {
   };
 }
 
-async function pageTester(page: CouponPage, settleMs: number): Promise<Tester | { error: CouponStatus; message: string }> {
-  let snap: Snapshot;
-  try {
-    snap = await page.snapshot();
-  } catch {
-    return { error: "error", message: "Could not read the page." };
-  }
-  if (detectCaptcha(snap)) return { error: "captcha", message: "Stopped: the page asks for a CAPTCHA. Complete it yourself." };
-  if (!findForm(snap)) return { error: "no_form", message: "No coupon box found on this page. Open the cart or checkout page first." };
-  const baseline = parseTotal(snap.text);
-  if (baseline === null) return { error: "error", message: "Could not read a total on this page, so savings cannot be measured." };
-  // Refs last one snapshot, and the page changes after each code, so look again each time.
+/** How long to wait for a store after pressing Apply (or a toggle), and how often to look. */
+export interface SettleTimes {
+  /** With no word from the store, a code that changed nothing is judged after this. */
+  quietMs: number;
+  /** Upper bound while the store says it is working or that the code applied. */
+  maxMs: number;
+}
+const POLL_MS = 300;
+const MIN_QUIET_MS = 600;
+const EPS = 0.004;
+const KEPT_NOTE = "The store kept the earlier code on the order and shows no remove button I can use safely, so I stopped testing there.";
+
+async function pageTester(
+  page: CouponPage,
+  times: SettleTimes,
+  locate?: (snap: Snapshot) => Promise<FormHints | null>,
+): Promise<Tester | { error: CouponStatus; message: string }> {
+  const pause = async (ms: number): Promise<void> => void (await page.act({ type: "wait", ms }).catch(() => null));
+  // A page that is reloading (a store whose Apply submits a form) does not answer for a moment.
   const look = async (): Promise<Snapshot | null> => {
-    try {
-      return await page.snapshot();
-    } catch {
-      return null;
+    for (let i = 0; i < 4; i++) {
+      const snap = await page.snapshot().catch(() => null);
+      if (snap && typeof snap.text === "string" && Array.isArray(snap.elements)) return snap;
+      await pause(POLL_MS);
     }
+    return null;
   };
+  // Never throws: a page that did not answer counts as a failed action.
+  const act = async (a: Action): Promise<ActionResult> =>
+    (await page.act(a).catch(() => null)) ?? { ok: false, action: a.type, message: "The page did not answer." };
+  let hints: FormHints | undefined;
+  const totalOf = (snap: Snapshot) => readTotal(snap.text, hints?.totalLabel);
+
+  // The box, after clicking what shows it when it is hidden ("Have a promo code?").
+  const open = async (start: Snapshot): Promise<{ snap: Snapshot; form: NonNullable<ReturnType<typeof findForm>> } | null> => {
+    let snap = start;
+    const clicked = new Set<string>();
+    for (let round = 0; round < 3; round++) {
+      const form = findForm(snap, hints);
+      if (form) return { snap, form };
+      const target = revealTargets(snap, hints).find((e) => !clicked.has(e.role + ":" + e.name));
+      if (!target) return null;
+      clicked.add(target.role + ":" + target.name);
+      if (!(await act({ type: "click", ref: target.ref })).ok) continue;
+      for (let waited = 0; waited < Math.max(times.quietMs, POLL_MS); waited += POLL_MS) {
+        await pause(POLL_MS);
+        const next = await look();
+        if (!next) return null;
+        snap = next;
+        if (findForm(snap, hints)) break;
+      }
+    }
+    const form = findForm(snap, hints);
+    return form ? { snap, form } : null;
+  };
+
+  let first = await look();
+  if (!first) return { error: "error", message: "Could not read the page." };
+  if (detectCaptcha(first)) return { error: "captcha", message: "Stopped: the page asks for a CAPTCHA. Complete it yourself." };
+  let opened = await open(first);
+  // Rules found no box or no total: ask the model which controls they are, once.
+  if ((!opened || !totalOf(opened.snap)) && locate) {
+    hints = (await locate(opened?.snap ?? first).catch(() => null)) ?? undefined;
+    if (hints) {
+      first = (await look()) ?? first;
+      opened = await open(first);
+    }
+  }
+  if (!opened) return { error: "no_form", message: "No coupon box found on this page. Open the cart or checkout page first." };
+  const base = totalOf(opened.snap);
+  if (!base) return { error: "error", message: "Could not read a total on this page, so savings cannot be measured." };
+  const baseline = base.amount;
+
+  // A code that lowered the total and is still on the order.
+  let kept: { code: string; total: number } | null = null;
+  // Slowest time the store took to answer a code (message or new total), once seen.
+  let answerMs: number | null = null;
+
+  // Clicks the control that removes `code` and waits for the total to go back.
+  const takeOff = async (snap: Snapshot, code: string): Promise<Snapshot | null | "none"> => {
+    const target = removeTarget(snap, code);
+    if (!target) return "none";
+    if (!(await act({ type: "click", ref: target.ref })).ok) return null;
+    for (let waited = 0; waited < Math.max(times.maxMs, POLL_MS); waited += POLL_MS) {
+      await pause(POLL_MS);
+      const next = await look();
+      if (!next) return null;
+      const t = totalOf(next)?.amount;
+      if (t !== undefined && Math.abs(t - baseline) <= EPS) return next;
+    }
+    return null;
+  };
+
   const tryCode = async (code: string): Promise<TryResult> => {
-    const before = await look();
+    let before = await look();
     if (!before) return { total: null, accepted: null, note: "Could not read the page." };
     if (detectCaptcha(before)) return { total: null, accepted: null, captcha: true };
-    const form = findForm(before);
-    if (!form) return { total: null, accepted: null, note: "The coupon box is gone." };
-    const typed = await page.act({ type: "type", ref: form.input.ref, text: code, clear: true });
+    // Measure codes one at a time: take the last working code off first.
+    if (kept) {
+      const off = await takeOff(before, kept.code);
+      if (off === null) return { total: null, accepted: null, halt: true, note: KEPT_NOTE };
+      if (off !== "none") {
+        before = off;
+        kept = null;
+      }
+    }
+    const box = await open(before);
+    if (!box) return { total: null, accepted: null, ...(kept ? { halt: true, note: KEPT_NOTE } : { note: "The coupon box is gone." }) };
+    const typed = await act({ type: "type", ref: box.form.input.ref, text: code, clear: true });
     if (!typed.ok) return { total: null, accepted: null, note: "Could not type the code: " + typed.message };
     // Some stores enable Apply only once a code is typed.
     const ready = await look();
-    const now = ready ? findForm(ready) : null;
-    if (!now || now.apply.disabled) return { total: null, accepted: null, note: "The Apply button stayed disabled." };
-    const clicked = await page.act({ type: "click", ref: now.apply.ref });
+    const now = ready ? findForm(ready, hints) : null;
+    if (!ready || !now || now.apply.disabled) return { total: null, accepted: null, note: "The Apply button stayed disabled." };
+    const preTotal = totalOf(ready)?.amount ?? baseline;
+    const clicked = await act({ type: "click", ref: now.apply.ref });
     if (!clicked.ok) return { total: null, accepted: null, note: "Could not press Apply: " + clicked.message };
-    await page.act({ type: "wait", ms: settleMs });
-    const after = await look();
-    if (!after) return { total: null, accepted: null, note: "Could not read the page after applying." };
-    if (detectCaptcha(after)) return { total: null, accepted: null, captcha: true };
-    const total = parseTotal(after.text);
-    return total === null ? { total: null, accepted: null, note: "Total not readable after applying." } : { total, accepted: null };
+
+    // Wait for the store's answer: a message, or a total that changed and held.
+    // Once the store has answered a code, quiet codes wait about twice its answer time.
+    const quiet = answerMs === null ? times.quietMs : Math.min(times.quietMs, Math.max(MIN_QUIET_MS, 2 * answerMs + POLL_MS));
+    let after = ready;
+    let reply: StoreReply = null;
+    let changed: number | null = null;
+    let waited = 0;
+    let answeredAt: number | null = null;
+    for (let i = 0; ; i++) {
+      const limit = reply === "busy" || reply === "accepted" ? Math.max(times.maxMs, quiet) : quiet;
+      if (i > 0 && waited >= limit) break;
+      const step = Math.min(POLL_MS, Math.max(limit - waited, 0));
+      await pause(step);
+      waited += step;
+      const next = await look();
+      if (!next) return { total: null, accepted: null, note: "Could not read the page after applying." };
+      if (detectCaptcha(next)) return { total: null, accepted: null, captcha: true };
+      after = next;
+      reply = storeReply(newLines(ready.text, next.text)) ?? reply;
+      const t = totalOf(next)?.amount ?? null;
+      const moved = t !== null && Math.abs(t - preTotal) > EPS;
+      if (answeredAt === null && (moved || (reply !== null && reply !== "busy"))) answeredAt = waited;
+      if (moved) {
+        if (changed !== null && Math.abs(t - changed) <= EPS) break;
+        changed = t;
+        continue;
+      }
+      changed = null;
+      if (reply === "rejected") break;
+    }
+    if (answeredAt !== null) answerMs = Math.max(answerMs ?? 0, answeredAt);
+    const total = totalOf(after)?.amount ?? null;
+    if (total === null) return { total: null, accepted: null, note: "Total not readable after applying." };
+    // The earlier code is still on (same total, or still listed) and nothing could
+    // take it off: this total would count both codes, so stop measuring here.
+    if (kept && kept.code !== code && (Math.abs(total - kept.total) <= EPS || showsCode(after.text, kept.code))) {
+      return { total: null, accepted: null, halt: true, note: KEPT_NOTE };
+    }
+    const lowered = total < baseline - EPS;
+    kept = lowered ? { code, total } : null;
+    if (reply === "rejected" && !lowered) return { total, accepted: false, note: "Not accepted by the store." };
+    return { total, accepted: reply === "accepted" ? true : null };
   };
   return {
     method: "page",
     baseline,
+    ...(base.currency ? { currency: base.currency } : {}),
     tryCode,
     async apply(code) {
+      if (kept?.code === code) {
+        const snap = await look();
+        return snap ? (totalOf(snap)?.amount ?? null) : null;
+      }
       return (await tryCode(code)).total;
     },
     async finish() {
@@ -270,7 +361,12 @@ export interface CouponInput {
   codes: CouponCandidate[];
   control?: AgentControl;
   signal?: AbortSignal;
+  /** Page path: how long a code that changed nothing gets before it counts as no saving (default 2500 ms). */
   settleMs?: number;
+  /** Page path: longest wait while the store says it is applying the code (default 8000 ms). */
+  maxSettleMs?: number;
+  /** Page path: asks the model which controls are the coupon box, Apply, and the total, when the rules find none. */
+  locate?: (snap: Snapshot) => Promise<FormHints | null>;
   /** Pause between codes, to be gentle with the store. */
   delayMs?: number;
   batchSize?: number;
@@ -281,7 +377,8 @@ export interface CouponInput {
   askMore?: (s: BatchState) => Promise<boolean>;
   /** Finds codes not in `known` (new web search, more guesses). Used only after askMore says yes. */
   findMore?: (known: string[]) => Promise<CouponCandidate[]>;
-  onAttempt?: (a: CouponAttempt, index: number, total: number) => void;
+  /** `currency` as the store prints it, for showing amounts. */
+  onAttempt?: (a: CouponAttempt, index: number, total: number, currency?: string) => void;
 }
 
 export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome> {
@@ -300,18 +397,22 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
   };
   add(input.codes);
 
-  const shopify = input.page.cart ? await shopifyTester(input.page.cart).catch(() => null) : null;
-  const tester = shopify ?? (await pageTester(input.page, input.settleMs ?? 400));
+  const viaCart = input.page.cart ? await cartTester(input.page.cart).catch(() => null) : null;
+  const quietMs = input.settleMs ?? 2500;
+  const tester = viaCart ?? (await pageTester(input.page, { quietMs, maxMs: Math.max(input.maxSettleMs ?? 8000, quietMs) }, input.locate));
   if ("error" in tester) {
     return { status: tester.error, method: null, baseline: null, attempts, applied: false, untested: codes.length, message: tester.message };
   }
   const baseline = tester.baseline;
+  let haltNote = "";
   const result = (status: CouponStatus, message: string, extra: Partial<CouponOutcome> = {}): CouponOutcome => {
     const best = bestOf(attempts);
     return {
       status,
       method: tester.method,
       baseline,
+      ...(tester.currency ? { currency: tester.currency } : {}),
+      ...(haltNote ? { note: haltNote } : {}),
       attempts,
       ...(best ? { best } : {}),
       applied: false,
@@ -347,12 +448,16 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
           note: "The page asked for a CAPTCHA.",
         };
         attempts.push(attempt);
-        input.onAttempt?.(attempt, attempts.length, codes.length);
+        input.onAttempt?.(attempt, attempts.length, codes.length, tester.currency);
         stoppedEarly = "captcha";
         break outer;
       }
       if (r.rateLimited) {
         stoppedEarly = "rate_limited";
+        break outer;
+      }
+      if (r.halt) {
+        haltNote = r.note ?? "";
         break outer;
       }
       const saving = r.total === null ? null : Math.round((baseline - r.total) * 100) / 100;
@@ -361,7 +466,7 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
         (r.accepted === false
           ? "Not accepted by the store."
           : saving !== null && saving > 0
-            ? "Saves $" + saving.toFixed(2) + "."
+            ? "Saves " + formatMoney(saving, tester.currency) + "."
             : r.accepted
               ? "Accepted, but no lower total."
               : "No saving.");
@@ -375,7 +480,7 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
         note,
       };
       attempts.push(attempt);
-      input.onAttempt?.(attempt, attempts.length, codes.length);
+      input.onAttempt?.(attempt, attempts.length, codes.length, tester.currency);
       if (input.delayMs) await new Promise((res) => setTimeout(res, input.delayMs));
     }
     i += batch.length;
@@ -418,7 +523,7 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
   return result(stoppedEarly ?? "done", applied ? "Best code " + best.code + " applied." : "Best code " + best.code + " could not be re-applied.", { applied });
 }
 
-const money = (n: number): string => "$" + n.toFixed(2);
+
 const percentOff = (baseline: number, total: number): string => {
   const p = baseline > 0 ? ((baseline - total) / baseline) * 100 : 0;
   return p >= 1 ? Math.round(p) + "% off" : "under 1% off";
@@ -426,6 +531,7 @@ const percentOff = (baseline: number, total: number): string => {
 
 /** Chat summary of a run, in the same plain style as other answers. Built in code, not by the model. */
 export function couponSummary(o: CouponOutcome): string {
+  const money = (v: number): string => formatMoney(v, o.currency);
   const n = o.attempts.length;
   const tested = "**" + n + " code" + (n === 1 ? "" : "s") + "**";
   const lines: string[] = [];
@@ -467,6 +573,7 @@ export function couponSummary(o: CouponOutcome): string {
     if (guesses) parts.push(guesses + " guessed code" + (guesses === 1 ? "" : "s"));
     lines.push("", "Didn't work: " + parts.join(", plus ") + ".");
   }
+  if (o.note) lines.push("", o.note);
   if (o.best) lines.push("", "Checkout can still change the final price, for example tax, shipping, or whether the code applies to later orders.");
   return lines.join("\n");
 }

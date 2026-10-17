@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="de">
+  <head><meta charset="utf-8" /><title>Kasse (synthetic)</title></head>
+  <body>
+    <!-- A checkout with none of the usual helpers: the promo box is hidden
+         behind a "Have a promo code?" toggle, the store takes 1.2 s to apply a
+         code ("Applying…" meanwhile), prices are in euros written the German
+         way (1.234,56 €), refused codes get a German error, applied codes
+         stack and each gets a Remove button. Clears the error when typing.
+         Synthetic codes: RABATT10 = 10%, RABATT25 = 25%. -->
+    <main>
+      <h2>Lieferung</h2>
+      <label for="zip">Postleitzahl</label>
+      <input id="zip" name="postcode" type="text" autocomplete="postal-code" />
+      <button id="pay" type="button">Place order</button>
+      <p id="status"></p>
+    </main>
+    <aside>
+      <h2>Bestellübersicht</h2>
+      <button id="toggle" type="button" aria-expanded="false">Have a promo code?</button>
+      <div id="box" style="display: none">
+        <label for="promo">Promo code</label>
+        <input id="promo" type="text" />
+        <button id="apply" type="button">Apply</button>
+      </div>
+      <p id="message" role="status"></p>
+      <ul id="applied"></ul>
+      <p>Zwischensumme 200,00 €</p>
+      <p id="total"></p>
+    </aside>
+    <script>
+      const PCT = { RABATT10: 10, RABATT25: 25 };
+      const applied = [];
+      const euro = (n) => n.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " €";
+      const msg = document.getElementById("message");
+      function render() {
+        const off = applied.reduce((s, c) => s + PCT[c], 0);
+        document.getElementById("total").textContent = "Gesamtsumme " + euro(200 * (1 - off / 100));
+        const list = document.getElementById("applied");
+        list.innerHTML = "";
+        for (const c of applied) {
+          const li = document.createElement("li");
+          li.textContent = "Rabatt (" + c + ") ";
+          const rm = document.createElement("button");
+          rm.type = "button";
+          rm.textContent = "Remove " + c;
+          rm.addEventListener("click", () => setTimeout(() => (applied.splice(applied.indexOf(c), 1), render()), 600));
+          li.appendChild(rm);
+          list.appendChild(li);
+        }
+      }
+      render();
+      document.getElementById("toggle").addEventListener("click", (e) => {
+        const box = document.getElementById("box");
+        const open = box.style.display === "none";
+        box.style.display = open ? "block" : "none";
+        e.target.setAttribute("aria-expanded", String(open));
+      });
+      document.getElementById("promo").addEventListener("input", () => (msg.textContent = ""));
+      document.getElementById("apply").addEventListener("click", () => {
+        const code = document.getElementById("promo").value.trim().toUpperCase();
+        msg.textContent = "Applying…";
+        setTimeout(() => {
+          if (PCT[code]) {
+            if (!applied.includes(code)) applied.push(code);
+            msg.textContent = "";
+            render();
+          } else msg.textContent = "Dieser Code ist ungültig.";
+        }, PCT[code] ? 1200 : 600);
+      });
+      document.getElementById("pay").addEventListener("click", () => (document.getElementById("status").textContent = "Order placed."));
+    </script>
+  </body>
+</html>

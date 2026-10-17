@@ -32,12 +32,12 @@ function codesTurn(codes: string[]): string {
 type Handler = (m: unknown) => unknown;
 
 /** Opens the checkout fixture, then the popup wired to it as the active tab. */
-async function open(page: Page, opts: { shopify: boolean; codes: string[] }): Promise<Page> {
+async function open(page: Page, opts: { shopify: boolean; codes: string[]; fixture?: string }): Promise<Page> {
   const shop = await page.context().newPage();
   if (!opts.shopify) {
     await shop.route("**/cart.js", (r) => r.fulfill({ status: 404, contentType: "text/html", body: "not found" }));
   }
-  await shop.goto("/shopify-checkout.html");
+  await shop.goto(opts.fixture ?? "/shopify-checkout.html");
   await page.exposeFunction("__injectContent", async () => {
     await shop.addScriptTag({ path: "apple/Extension/Resources/content.js" });
   });
@@ -98,7 +98,12 @@ test("checkout page without a cart API: types codes only into the discount box, 
   await expect(page.locator("#coupons-more")).toBeHidden();
   const rows = page.locator("#coupons-rows tr");
   await expect(rows).toHaveCount(25);
-  await expect(rows.nth(1)).toContainText("$153.00");
+  // The code the store's home page advertises (fixture banner: KETO10) is tried first.
+  await expect(rows.nth(0)).toContainText("KETO10");
+  await expect(rows.nth(0).getByRole("link", { name: "127.0.0.1" })).toHaveAttribute("href", /^http:\/\/127\.0\.0\.1:\d+\/$/);
+  await expect(rows.nth(1)).toContainText("WELCOME5");
+  await expect(rows.nth(2)).toContainText("SAVE10");
+  await expect(rows.nth(2)).toContainText("$153.00");
   await expect(shop.locator("#message")).toHaveText("SAVE20 applied.");
   await expect(shop.locator("#zip")).toHaveValue("");
   await expect(shop.locator("#email")).toHaveValue("");
@@ -123,4 +128,43 @@ test("checkout page on a Shopify store: tests codes through the cart API and app
   expect(cart.discount_codes).toEqual([{ code: "BEEFY15", applicable: true }]);
   await expect(shop.locator("#zip")).toHaveValue("");
   await expect(shop.locator("#status")).toHaveText("");
+});
+
+// Owner, 2026-10-16: coupons must work on every site, not only Shopify.
+test("a WooCommerce store: tests codes through its Store API and applies the best", async ({ page }) => {
+  test.setTimeout(120_000);
+  const shop = await open(page, { shopify: false, fixture: "/woo-cart.html", codes: ["SAVE10", "SAVE20", "NOPE1"] });
+  await page.getByRole("button", { name: "Find coupons" }).click();
+  const answer = page.getByRole("log").locator(".msg.assistant").last();
+  await expect(answer).toContainText("SAVE20 is the best: your total drops from €150.00 to €120.00 (you save €30.00, 20% off).", RUN_WAIT);
+  await expect(answer).toContainText("It's applied to your cart");
+  // Codes stack in WooCommerce; the finder took each one off before the next, so only the winner is left.
+  await shop.waitForLoadState("load");
+  const cart = await shop.evaluate(() => fetch("/wp-json/wc/store/v1/cart").then((r) => r.json()));
+  expect(cart.coupons.map((c: { code: string }) => c.code)).toEqual(["save20"]);
+  await expect(shop.locator("#status")).toHaveText("");
+});
+
+test("a checkout with a hidden promo box, a slow total in euros, errors, and remove buttons", async ({ page }) => {
+  test.setTimeout(150_000);
+  const shop = await open(page, { shopify: false, fixture: "/promo-checkout.html", codes: ["NOPE1", "RABATT10", "RABATT25"] });
+  await page.getByRole("button", { name: "Find coupons" }).click();
+  const answer = page.getByRole("log").locator(".msg.assistant").last();
+  await expect(answer).toContainText("RABATT25 is the best: your total drops from €200.00 to €150.00 (you save €50.00, 25% off).", { timeout: 120_000 });
+  await expect(answer).toContainText("It's applied to your cart");
+  const rows = page.locator("#coupons-rows tr");
+  // First the code the fixture site's home page advertises (KETO10), refused here in German.
+  await expect(rows.nth(0)).toContainText("KETO10");
+  await expect(rows.nth(0)).toContainText("Not accepted by the store.");
+  await expect(rows.nth(1)).toContainText("NOPE1");
+  await expect(rows.nth(1)).toContainText("Not accepted by the store.");
+  // The 1.2 s store delay is waited out: RABATT10 counts as a saving, measured alone.
+  await expect(rows.nth(2)).toContainText("RABATT10");
+  await expect(rows.nth(2)).toContainText("€180.00");
+  await expect(rows.nth(3)).toContainText("€150.00");
+  // Only the winner is left on the order, and the order button was never pressed.
+  await expect(shop.locator("#applied li")).toHaveCount(1);
+  await expect(shop.locator("#applied")).toContainText("RABATT25");
+  await expect(shop.locator("#status")).toHaveText("");
+  await expect(shop.locator("#zip")).toHaveValue("");
 });

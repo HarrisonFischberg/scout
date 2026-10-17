@@ -103,7 +103,7 @@ test("the first request asks first, and nothing reaches Anthropic before Allow",
   await expect(dialog).toContainText("Your messages");
   await expect(dialog).toContainText("the page's address, title, description, and text");
   await expect(dialog).toContainText("What you typed into forms, password fields, and hidden fields are left out");
-  await expect(dialog).toContainText("A screenshot of the visible page, only when you allow it for that site.");
+  await expect(dialog).toContainText("A screenshot of the visible page, only when you allow it for that site. It shows everything on screen, including anything typed into the page.");
   await expect(dialog).toContainText("Titles and addresses of your open tabs, only if you turn on tab search in Settings.");
   await expect(dialog).toContainText("Your API key, only to sign in to Anthropic");
   await expect(dialog).not.toContainText("OpenAI");

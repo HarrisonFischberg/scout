@@ -158,7 +158,7 @@ export function consentText(p: Provider): ConsentText {
         "What you typed into forms, password fields, and hidden fields are left out, and passwords, keys, and tokens found on the page are removed. " +
         "Control Browser and Find coupons also send the page's links, buttons, and form fields, with password and card fields hidden.",
       "Other tabs only when you attach them.",
-      "A screenshot of the visible page, only when you allow it for that site.",
+      "A screenshot of the visible page, only when you allow it for that site. It shows everything on screen, including anything typed into the page.",
       "Titles and addresses of your open tabs, only if you turn on tab search in Settings.",
       "Your API key, only to sign in to " + name + ". Scout for Safari never sends it anywhere else.",
     ],
