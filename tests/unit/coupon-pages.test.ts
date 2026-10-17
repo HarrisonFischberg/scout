@@ -28,6 +28,16 @@ describe("totals in any currency and format", () => {
     expect(readTotal("Zwischensumme 120,00 €\nGesamtsumme 1.234,56 €")).toEqual({ amount: 1234.56, currency: "€" });
     expect(readTotal("Total\nUSD $170.00")).toEqual({ amount: 170, currency: "$" });
     expect(readTotal("Order total: £89")).toEqual({ amount: 89, currency: "£" });
+    // Live sweep 2026-10-17 (Brumate): a cart drawer whose only total sits on the Checkout button.
+    expect(readTotal("BrüMate E-Gift Card $10\nYou're only $80 away from free shipping!\nAdd Discount Code\nCheckout - $10")).toEqual({ amount: 10, currency: "$" });
+    expect(readTotal("CHECKOUT+ · $25.69")).toEqual({ amount: 25.69, currency: "$" });
+    expect(readTotal("Pay now €12,50")).toEqual({ amount: 12.5, currency: "€" });
+    // A labelled total wins over the button amount (order protection can sit in the button's figure);
+    // the button amount wins over a Subtotal; a Subtotal alone is still not a total.
+    expect(readTotal("Total $20.00\nCHECKOUT+ · $25.69")).toEqual({ amount: 20, currency: "$" });
+    expect(readTotal("Subtotal $20.00\nCHECKOUT+ · $25.69")).toEqual({ amount: 25.69, currency: "$" });
+    expect(readTotal("Subtotal $20.00\nShipping calculated at checkout")).toBeNull();
+    expect(readTotal("You're only $80 away from free shipping!")).toBeNull();
     expect(readTotal("Total ¥12,800")).toEqual({ amount: 12800, currency: "¥" });
     expect(readTotal("Amount due CHF 99.00")).toEqual({ amount: 99, currency: "CHF" });
     expect(readTotal("Total 499,00 kr")).toEqual({ amount: 499, currency: "kr" });
