@@ -243,9 +243,11 @@ test("Stop ends a streaming answer and keeps what arrived", async ({ page }) => 
   await expect(lastAnswer(page)).toContainText("One two");
   await expect(page.getByRole("button", { name: "Send" })).toBeHidden();
   await page.locator(".composer-foot").getByRole("button", { name: "Stop" }).click();
-  await expect(page.getByRole("log").getByText("Stopped.", { exact: true })).toBeVisible();
-  await expect(lastAnswer(page)).not.toContainText("sixteen");
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+  await expect(lastAnswer(page)).not.toContainText("sixteen");
+  // Stop just stops: no "Stopped." card, no Copy diagnostics, no status line (owner, 2026-10-17).
+  await expect(page.locator(".msg.error")).toHaveCount(0);
+  await expect(page.getByText("Stopped.", { exact: true })).toHaveCount(0);
 });
 
 test("answers render tables, code with a Copy button, math, and numbered sources", async ({ page }) => {
