@@ -529,3 +529,23 @@ describe("listed pages are read first", () => {
     expect(r.codes.map((c) => c.code)).toEqual(["QUICK10"]);
   });
 });
+
+// Owner, 2026-10-17: codes are handed over while the search runs, so they can be tested at once.
+describe("suggestCodes reports codes as it finds them", () => {
+  it("passes each finished, checked code line once, never a half-written one", async () => {
+    const batches: string[][] = [];
+    const r = await suggestCodes(
+      provider([
+        { type: "source", url: "https://deals.test/a", page: "Deals for shop: use SAVE10 for 10% off" },
+        { type: "text", delta: "SAVE10 | https://deals.test/a | \"use SAVE10\" | -\nSAVE1" },
+        { type: "text", delta: "5 | https://deals.test/a\nGHOST | https://never-returned.test/x\n" },
+      ]),
+      "m",
+      "www.shop.test",
+      undefined,
+      { readPages: false, onFound: (fresh) => batches.push(fresh.map((c) => c.code)) },
+    );
+    expect(batches).toEqual([["SAVE10"], ["SAVE15"]]);
+    expect(r.codes.map((c) => c.code).sort()).toEqual(["SAVE10", "SAVE15"]);
+  });
+});

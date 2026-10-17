@@ -334,8 +334,25 @@
       .trace .attempt .code { font: 600 13px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-primary); }
       .trace .attempt.good { color: var(--text-primary); }
       .trace .attempt.good .code { color: var(--accent-text); }
-      .trace .more { display: flex; flex-direction: column; gap: 8px; }
-      .trace .more p { margin: 0; }
+      .trace .more, #coupons-more { display: flex; flex-direction: column; gap: 8px; }
+      .trace .more p, #coupons-more p { margin: 0; }
+      /* Find coupons: milestone lines in the chat, outside the folded card;
+         the newest has a moving indicator, earlier ones a check. */
+      .coupon-step { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; color: var(--text-secondary); }
+      .coupon-step.busy { color: var(--text-primary); }
+      .coupon-step .done-mark { width: 18px; height: 18px; flex: none; color: var(--accent-text); }
+      .pulse {
+        display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+        width: 18px; height: 18px; flex: none; box-sizing: border-box; border-radius: 50%;
+        border: 1px solid var(--hairline); background: var(--bg-subtle); color: var(--text-secondary);
+      }
+      .pulse i { display: block; width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+      @media (prefers-reduced-motion: no-preference) {
+        .pulse i { animation: scout-pulse 1.2s ease-in-out infinite; }
+        .pulse i:nth-child(2) { animation-delay: 0.2s; }
+        .pulse i:nth-child(3) { animation-delay: 0.4s; }
+      }
+      @keyframes scout-pulse { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
 
       @media (prefers-reduced-motion: no-preference) {
         .icon-btn, .chip, .segmented label, #plus-menu button, #model-menu button { transition: background-color 150ms, color 150ms, border-color 150ms; }
