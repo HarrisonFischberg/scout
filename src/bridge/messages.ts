@@ -2,11 +2,14 @@
 // background worker. One shared module: Parts 2 and 3 add their message types
 // to REQUESTS and EVENTS below. Every message is { type, request_id, payload }.
 // All checks run on the device; nothing relies on a server to enforce them.
+import { EFFORTS } from "../providers/types";
 
 /** Name of the long-lived port the panel opens to the background worker. */
 export const PANEL_PORT = "scout-panel";
 
-export type BridgeErrorType = "timeout" | "blocked-by-user" | "schema-error" | "unhandled";
+// "unsupported" (Part 2): the browser has no API for it (Safari: tab groups,
+// history, recently closed tabs).
+export type BridgeErrorType = "timeout" | "blocked-by-user" | "schema-error" | "unhandled" | "unsupported";
 
 export interface Envelope<P = unknown> {
   type: string;
@@ -35,12 +38,15 @@ export type Schema =
   | "string"
   | "number"
   | "boolean"
+  /** Any JSON value; the receiver validates it further (tool inputs). */
+  | "unknown"
   | { enum: readonly string[] }
   | { array: Schema }
   | { object: Record<string, Schema>; optional?: readonly string[] };
 
 /** Returns null when `value` matches, otherwise where and why it does not. */
 export function checkSchema(schema: Schema, value: unknown, path = "payload"): string | null {
+  if (schema === "unknown") return value === undefined ? path + " is required" : null;
   if (schema === "string" || schema === "boolean") {
     return typeof value === schema ? null : path + " must be a " + schema;
   }
@@ -121,6 +127,74 @@ export const REQUESTS = {
   "panel.state": { senders: ["panel"], payload: { object: { tabId: "number" } } },
   /** Page button (src/edge.ts): the user tapped it; open the toolbar panel. */
   "panel.open": { senders: ["content"], payload: { object: {} } },
+  // ---------- Part 2: conversation, context and tools ----------
+  /** Reads the current tab (when allowed) and the attached tabs as cleaned Markdown (src/context). */
+  "context.read": {
+    senders: ["panel"],
+    payload: { object: { current_tab: "number", attached: { array: "number" }, include_current: "boolean" }, optional: ["current_tab"] },
+  },
+  /** Starts an answer on the Scout server (src/server/engine.ts). Events follow on the port. */
+  "chat.start": {
+    senders: ["panel"],
+    payload: {
+      object: {
+        message_id: "string",
+        conv: "string",
+        provider: { enum: ["anthropic", "openai"] },
+        model: "string",
+        effort: { enum: EFFORTS },
+        question: "string",
+        history: { array: { object: { role: { enum: ["user", "assistant"] }, content: "string" } } },
+        /** Cleaned pages from context.read: the current tab first, then attached tabs. */
+        pages: { array: { object: { url: "string", title: "string", text: "string" } } },
+        /** Tabs shown under the message (title, host, read status), saved with the answer. */
+        shared: { array: { object: { title: "string", host: "string", status: "string" } } },
+        /** Continue after a drop: history shows this question and the answer starts with this text. */
+        display_question: "string",
+        answer_prefix: "string",
+      },
+      optional: ["effort", "shared", "display_question", "answer_prefix"],
+    },
+  },
+  "chat.stop": { senders: ["panel"], payload: { object: { message_id: "string" } } },
+  /** The panel ran a tool request through the tool host; same request_id as the request. */
+  "chat.tool_result": {
+    senders: ["panel"],
+    payload: {
+      object: {
+        message_id: "string",
+        request_id: "string",
+        status: { enum: ["ok", "error", "schema-error", "blocked-by-user", "unsupported", "declined", "timeout"] },
+        text: "string",
+        image_type: { enum: ["image/jpeg", "image/png"] },
+        image_data: "string",
+        /** What the tool shared (read_page, screenshot_visible), for the saved entry. Never page text. */
+        shared_title: "string",
+        shared_host: "string",
+      },
+      optional: ["image_type", "image_data", "shared_title", "shared_host"],
+    },
+  },
+  /** Answers still running for a conversation, so a reopened panel can resume them. */
+  "chat.active": { senders: ["panel"], payload: { object: { conv: "string" } } },
+  /** Runs one tool through the tool host (src/tools/host.ts). `input` is checked there. */
+  "tool.run": {
+    senders: ["panel"],
+    payload: {
+      object: {
+        request_id: "string",
+        name: "string",
+        input: "unknown",
+        tabs: { array: "number" },
+        current_tab: "number",
+        /** The user's answer when the tool needed one (close_tabs, screenshots). */
+        decision: { enum: ["confirmed", "declined", "once", "always", "never"] },
+      },
+      optional: ["current_tab", "decision"],
+    },
+  },
+  /** Recent tool calls for Settings > Activity. */
+  "tools.log": { senders: ["panel"], payload: { object: {} } },
 } as const satisfies Record<string, RequestSpec>;
 
 export type RequestType = keyof typeof REQUESTS;
@@ -129,12 +203,42 @@ export type RequestType = keyof typeof REQUESTS;
 export const PANEL_EVENTS = {
   /** First message on the port: which tab and window the panel is showing. */
   "panel.hello": { object: { tabId: "number", windowId: "number" }, optional: ["windowId"] },
+  /** Part 2: stream this answer's events after `after_seq` (0 = from the start). Sent again after a reconnect. */
+  "chat.subscribe": { object: { message_id: "string", after_seq: "number" } },
 } as const satisfies Record<string, Schema>;
 
 /** Port events (worker to panel), for streaming progress and task state. */
 export const WORKER_EVENTS = {
   "panel.ack": { object: { tabId: "number" } },
-  // Parts 2 and 3: "task.progress", "task.state", ...
+  /** Part 2: one numbered Scout server event (src/server/protocol.ts checks the fields per kind). */
+  "chat.event": {
+    object: {
+      message_id: "string",
+      seq: "number",
+      kind: { enum: ["start", "text", "citation", "tool_request", "tool_done", "usage", "done", "error"] },
+      delta: "string",
+      url: "string",
+      title: "string",
+      request_id: "string",
+      name: "string",
+      input: "unknown",
+      status: "string",
+      text: "string",
+      message: "string",
+      code: "string",
+      stopped: "boolean",
+      input_tokens: "number",
+      output_tokens: "number",
+      web_searches: "number",
+    },
+    optional: [
+      "delta", "url", "title", "request_id", "name", "input", "status", "text", "message", "code", "stopped",
+      "input_tokens", "output_tokens", "web_searches",
+    ],
+  },
+  /** The worker no longer knows this answer (it restarted): nothing more will come. */
+  "chat.lost": { object: { message_id: "string" } },
+  // Part 3: "task.progress", "task.state", ...
 } as const satisfies Record<string, Schema>;
 
 let counter = 0;
@@ -219,7 +323,7 @@ export async function request<R = unknown>(
     if (parsed.env.type === "error") {
       const p = parsed.env.payload as Partial<ErrorPayload>;
       const kind: BridgeErrorType =
-        p.error === "timeout" || p.error === "blocked-by-user" || p.error === "schema-error" ? p.error : "unhandled";
+        p.error === "timeout" || p.error === "blocked-by-user" || p.error === "schema-error" || p.error === "unsupported" ? p.error : "unhandled";
       throw new BridgeError(kind, typeof p.message === "string" ? p.message : type + " failed");
     }
     return parsed.env.payload as R;

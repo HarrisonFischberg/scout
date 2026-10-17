@@ -1,8 +1,22 @@
 import { ProviderError, errorFromStatus } from "./errors";
 import { readSse } from "./sse";
-import type { ChatRequest, ProviderClient, ProviderConfig, StreamEvent } from "./types";
+import type { ChatMessage, ChatRequest, ProviderClient, ProviderConfig, StreamEvent } from "./types";
 
 const DEFAULT_URL = "https://api.anthropic.com/v1/messages";
+
+/** Messages API shape: string content as is, parts as text and base64 image blocks. */
+export function anthropicMessages(messages: ChatMessage[]): unknown[] {
+  return messages.map((m) =>
+    typeof m.content === "string"
+      ? m
+      : {
+          role: m.role,
+          content: m.content.map((p) =>
+            p.type === "text" ? { type: "text", text: p.text } : { type: "image", source: { type: "base64", media_type: p.mediaType, data: p.data } },
+          ),
+        },
+  );
+}
 
 interface Block {
   kind: "text" | "tool_use";
@@ -28,7 +42,7 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
         max_tokens: req.maxTokens,
         stream: true,
         system: req.system,
-        messages: req.messages,
+        messages: anthropicMessages(req.messages),
         tools: tools.length ? tools : undefined,
         output_config: req.effort ? { effort: req.effort } : undefined,
       };

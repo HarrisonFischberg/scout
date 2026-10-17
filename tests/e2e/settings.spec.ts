@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { withWorker } from "./worker";
 
 // Loads the built popup (run `npm run build` first) with a stubbed `browser`
 // namespace. Storage, Keychain, and permissions are in-memory fakes exposed on
@@ -9,7 +10,7 @@ async function openPopup(page: Page): Promise<void> {
       settings: { provider: "anthropic", model: "claude-sonnet-5-5", retention: "7" },
       history: [{ at: Date.now(), question: "hi", answer: "hello" }],
       // Sharing with the providers already allowed (consent.spec.ts covers asking).
-      aiConsent: { anthropic: { at: 1, version: 1 }, openai: { at: 1, version: 1 } },
+      aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } },
     };
     const keys: Record<string, string> = { anthropic: "sk-test-synthetic" };
     let origins = ["https://shop.test/*", "https://api.anthropic.com/*"];
@@ -58,6 +59,7 @@ async function openPopup(page: Page): Promise<void> {
   // No live provider calls. A test can register its own model list after this.
   await page.route("https://api.anthropic.com/**", (r) => r.fulfill({ status: 401, body: "{}" }));
   await page.route("https://api.openai.com/**", (r) => r.fulfill({ status: 401, body: "{}" }));
+  await withWorker(page);
   await page.goto("/popup.html");
 }
 

@@ -8,8 +8,12 @@ import type { FetchLike } from "../providers/types";
 import type { StorageArea } from "./settings";
 
 export const CONSENT_KEY = "aiConsent";
-/** Bump when what is shared changes materially, so everyone is asked again. */
-export const CONSENT_VERSION = 1;
+/**
+ * Bump when what is shared changes materially, so everyone is asked again.
+ * 2 (Part 2, 2026-10-16): screenshots, open-tab titles and addresses, and page
+ * metadata can now be shared.
+ */
+export const CONSENT_VERSION = 2;
 
 export interface ConsentRecord {
   at: number;
@@ -150,9 +154,12 @@ export function consentText(p: Provider): ConsentText {
       "Each time you use Scout for Safari, " + name + " receives:",
     items: [
       "Your messages and the tasks you type.",
-      "When a request uses the page (questions, Summarize, Control Browser, Find coupons): the page's address, title, and text, " +
-        "and for Control Browser and Find coupons its links, buttons, and form fields. Password and card fields are hidden first.",
-      "Text of other tabs only when you choose them.",
+      "When a request uses the page (questions, Summarize, Control Browser, Find coupons): the page's address, title, description, and text. " +
+        "What you typed into forms, password fields, and hidden fields are left out, and passwords, keys, and tokens found on the page are removed. " +
+        "Control Browser and Find coupons also send the page's links, buttons, and form fields, with password and card fields hidden.",
+      "Other tabs only when you attach them.",
+      "A screenshot of the visible page, only when you allow it for that site.",
+      "Titles and addresses of your open tabs, only if you turn on tab search in Settings.",
       "Your API key, only to sign in to " + name + ". Scout for Safari never sends it anywhere else.",
     ],
     policyLabel: name + " privacy policy",

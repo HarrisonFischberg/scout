@@ -38,7 +38,7 @@ async function openPopup(page: Page, snap: Page2, script: string[]): Promise<{ a
         onMessage: { addListener() {} },
       },
       // Sharing with the provider already allowed (consent.spec.ts covers asking).
-      storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 1 }, openai: { at: 1, version: 1 } } } : {}), set: async () => undefined, clear: async () => undefined } },
+      storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } } } : {}), set: async () => undefined, clear: async () => undefined } },
       tabs: {
         query: async () => [{ id: 1 }],
         sendMessage: async (_id: number, m: { type: string; action?: { type: string } }) => {

@@ -16,6 +16,8 @@ export interface PanelPortOptions {
   connect: Connect;
   /** Sent first on every (re)connection, e.g. panel.hello. */
   hello: () => Envelope;
+  /** Runs after hello on every (re)connection, e.g. to resubscribe to running answers (Part 2). */
+  onOpen?: (post: (type: string, payload: unknown) => void) => void;
   onEvent?: (env: Envelope) => void;
   onState?: (state: "connected" | "reconnecting") => void;
   baseDelayMs?: number;
@@ -71,6 +73,7 @@ export function connectPanelPort(opts: PanelPortOptions): PanelPort {
     });
     try {
       p.postMessage(opts.hello());
+      opts.onOpen?.((type, payload) => p.postMessage(envelope(type, payload)));
     } catch {
       // onDisconnect follows and schedules the retry.
     }

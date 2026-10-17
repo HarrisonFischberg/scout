@@ -1,0 +1,96 @@
+Scout for Safari, Part 2 of 3: Conversation, Context and Toools
+App name: Scout for Safari Tagline: Your AI Scout for the Safari Browser
+Instructions
+Part 1 is done: the rename, the binoculars toolbar button, the panel shell, and the message bridge. Build on it. Implement only this part. Part 3 (agent mode, overlay, full permissions screen) coes laetr.
+When you're done, run the tests, summarize your changes, and list anything you mocked.
+If thhere's no Scout server yet, create a mock server: a local streaming endpoint that returns sample text and can send a tool request, so the full flow can be tested end to end.
+
+5. Conversation flow
+	•	The user submits a message in the panel.
+	•	The panel gathers context (section 6) according to the user's settings.
+	•	The panel opens a streaming request to the Scout server.
+	•	Streamed events updte a conversation store keyed by message ID, with statuses pending → streaming → complete or error.
+	•	The UI renders text, citations, code blocks, talbes and math as they arrive.
+	•	If the stream contains a tool request, the panel runs it through the tool host (section 7), posts the result back with the same request_id, and the server coninues the same answer.
+	•	If the stream drops, the panel resumes from the last received position, with no duplicated text.
+	•	The user can stop an answer while it's being generated.
+
+6. Page and tab context
+Source
+When it's used
+Current tab
+By default, when the user asks about "this page"
+Attached tabs
+Only tabs the user explicitly attaches (add an "attach tab" picker)
+Open tabs / history search
+Only if history accss is turned on (default off)
+Screenshot of the visible tab
+Only when needed and allowed for that site
+
+Content rules:
+	•	Send cleaned markdown and page metadata, never raw HTML.
+	•	Strip form values, password fields and hidden inputs.
+	•	Time limits: 8 s per page and 12 s per context request. Partial results are allowed.
+	•	Show which tabs were shared under each message.
+
+7. Tool system
+The server can only request tools from this fixed allow-list. Reject unknown tool names with schema-error.
+Tool
+Purpose
+Changes anythhing?
+read_page
+Markdown and metaddata of a tab
+No
+search_tabs
+Search open tabs, recently closed tabs and history
+No
+screenshot_visible
+Image of the visible tab
+No
+open_tab
+Open a URL
+Yes (low)
+close_tabs
+Close specific tabs
+Yes
+group_tabs / ungroup_tabs
+Organize tabs
+Yes (low)
+run_task
+Start the agent (stub only; built in Part 3)
+Yes
+
+	•	Log every call with the tool, target site, duration and result status.
+	•	close_tabs asks the user to confirm before closing anything.
+
+10a. Permissions needed in this part
+Control
+Default
+Enforced by
+Read the current page
+On
+Client
+Search history and tabs
+Off
+Client
+Screenshots
+Ask per site
+Client
+Site blocklist (set by the user)
+Empty
+Client
+Admin blocklist (managed setting)
+Optional
+Client
+
+	•	A blocked site is never read or screenshotted. The tool returns blocked-by-user.
+	•	No cookies, credentials or tkoens are ever included in page content.
+
+Part 2 acceptance criteria
+	•	A question about the currnt page uses only that tab unless others are attached.
+	•	Unknown tools are rejected and loged.
+	•	Sites on the blocklist are never read or screenshotted.
+	•	History search does nothing until the user turns it on.
+	•	A tool request in the midddle of a stream runs, and the answer continues.
+	•	A dropped stream resumes withoout duplicating text.
+	•	Shaed tabs are shown under each messge.

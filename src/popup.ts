@@ -8,20 +8,27 @@ import type { Snapshot } from "./snapshot/snapshot";
 import { CONTENT_HANDLER, type ContentRequest } from "./content-api";
 import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { renderMarkdown } from "./chat/markdown";
-import { runTurn } from "./chat/session";
-import { mergeTabs, resolveMentions, type TabInfo } from "./chat/tabs";
+import { ConversationStore } from "./chat/store";
+import { MAX_EXTRA_TABS, type TabInfo } from "./chat/tabs";
 import { suggestCodes } from "./coupons/codes";
 import { originLabel } from "./coupons/candidates";
 import { couponStatusText, couponSummary, runCouponSearch, type BatchState, type CartApi, type CartState } from "./coupons/finder";
 import { formatCostLine } from "./cost";
 import { buildReport, describeBrowser, Diagnostics, disabledRun, type RunHandle, type RunKind } from "./diagnostics";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
-import { envelope } from "./bridge/messages";
+import { BridgeError, envelope, newRequestId, request, type Envelope } from "./bridge/messages";
 import { connectPanelPort, type PanelPort } from "./bridge/port";
+import type { ReadStatus, SharedTab } from "./context/gather";
+import { activityLine, dropMention, mentionAt, sharedLabel, suggestTabs, toolLabel } from "./panel/attach";
+import { hostOf, loadPageAccess, normalizeSite, parsePolicy, savePageAccess, screenshotDecision, type PageAccess } from "./permissions/gate";
+import { DEV_MOCK_KEY, DEV_MOCK_URL } from "./server/dev";
+import { fromWire } from "./server/protocol";
+import type { ToolDecision, ToolResult } from "./tools/host";
+import type { ToolLogEntry } from "./tools/log";
 import { ALL_SITES, PAGE_BUTTON_KEY, parsePageButton, reachText, type PageButton } from "./panel/edge";
 import { conversationForTab, startNewConversation } from "./panel/state";
 import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/consent";
-import { createProvider, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
+import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
@@ -100,6 +107,7 @@ async function listTabs(): Promise<TabInfo[]> {
 interface ActiveTab {
   id?: number;
   windowId?: number;
+  url?: string;
   incognito: boolean;
 }
 
@@ -109,6 +117,7 @@ async function activeTab(): Promise<ActiveTab> {
     return {
       ...(tab?.id !== undefined ? { id: tab.id } : {}),
       ...(tab?.windowId !== undefined ? { windowId: tab.windowId } : {}),
+      ...(tab?.url ? { url: tab.url } : {}),
       incognito: tab?.incognito === true || browser.extension?.inIncognitoContext === true,
     };
   } catch {
@@ -116,29 +125,6 @@ async function activeTab(): Promise<ActiveTab> {
   }
 }
 
-// tabId omitted: the active tab (covered by activeTab). Other tabs need a
-// per-site grant requested from the user first.
-async function readPage(tabId?: number): Promise<PageContext | null> {
-  try {
-    let id = tabId;
-    if (id === undefined) {
-      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-      id = tab?.id;
-    }
-    if (id === undefined) return null;
-    const results = await browser.scripting.executeScript({
-      target: { tabId: id },
-      func: () => ({
-        url: location.href,
-        title: document.title,
-        text: document.body ? document.body.innerText : "",
-      }),
-    });
-    return (results[0]?.result as PageContext | undefined) ?? null;
-  } catch {
-    return null;
-  }
-}
 
 // Debug builds only: local run recorder (src/diagnostics.ts). `current` is the
 // run in progress; every stage also goes to the native log. Stage names only,
@@ -368,6 +354,10 @@ async function main(): Promise<void> {
   }
 
   // ---------- Per-tab conversation and the worker port ----------
+  // Answers stream from the Scout server in the worker over this port (Part 2).
+  // After a reconnect, every unfinished answer is resubscribed from the last
+  // event the panel has, so nothing is shown twice.
+  const store = new ConversationStore();
   let conv = storage ? await conversationForTab(storage, tab.id, Date.now()).catch(() => "") : "";
   let port: PanelPort | null = null;
   if (browser.runtime.connect && tab.id !== undefined) {
@@ -376,6 +366,10 @@ async function main(): Promise<void> {
       port = connectPanelPort({
         connect: (info) => browser.runtime.connect!(info),
         hello: () => envelope("panel.hello", { tabId, ...(tab.windowId !== undefined ? { windowId: tab.windowId } : {}) }),
+        onOpen: (post) => {
+          for (const m of store.open()) post("chat.subscribe", { message_id: m.id, after_seq: m.lastSeq });
+        },
+        onEvent: (env) => onWorkerEvent(env),
         onState: (state) => trace("port:" + state),
       });
     } catch {
@@ -392,10 +386,13 @@ async function main(): Promise<void> {
 
   let session: Session | null = null;
   const history: ChatMessage[] = [];
-  let controller: AbortController | null = null;
+  /** The answer streaming now (Part 2), if any. */
+  let activeChat: string | null = null;
   let control: AgentControl | null = null;
   let others: TabInfo[] = [];
-  const checked = new Set<number>();
+  /** Tabs the user attached. They go with every question until removed. */
+  const attached = new Map<number, TabInfo>();
+  const toWorker = (m: unknown): Promise<unknown> => browser.runtime.sendMessage(m);
 
   // ---------- Diagnostics (debug builds only) ----------
   if (__SCOUT_DEBUG__) {
@@ -408,6 +405,15 @@ async function main(): Promise<void> {
     diagQuestion.checked = diag.includeQuestion;
     diagQuestion.addEventListener("change", () => void diag?.setIncludeQuestion(diagQuestion.checked));
     diagCopy.addEventListener("click", () => void copyDiagnostics(diagCopy.parentElement ?? diagCopy, diagStatus));
+    // Answers from the local mock server (scripts/mock-scout-server.mjs) instead of Anthropic.
+    const diagMock = el<HTMLInputElement>("diag-mock");
+    const mockSet = storage ? await storage.get(DEV_MOCK_KEY).catch(() => ({}) as Record<string, unknown>) : {};
+    diagMock.checked = typeof mockSet[DEV_MOCK_KEY] === "string";
+    diagMock.addEventListener("change", () => {
+      void storage?.set({ [DEV_MOCK_KEY]: diagMock.checked ? DEV_MOCK_URL : null }).then(() => {
+        diagStatus.textContent = diagMock.checked ? "Answers now come from the local mock server." : "Answers come from your provider again.";
+      });
+    });
     el("diag-clear").addEventListener("click", () => {
       void diag?.clear().then(() => (diagStatus.textContent = "Diagnostics cleared."));
     });
@@ -486,7 +492,8 @@ async function main(): Promise<void> {
       const mode = e.kind === "agent" ? "Control Browser" : e.kind === "coupons" ? "Find coupons" : undefined;
       const isSummary = e.question === SUMMARIZE_QUESTION || LEGACY_SUMMARIZE_QUESTIONS.includes(e.question);
       addMessage("user", isSummary ? "Summarize page" : e.question, mode ? { mode } : {});
-      addMessage("assistant", e.answer);
+      const answer = addMessage("assistant", e.answer);
+      if ((!e.kind || e.kind === "chat") && e.shared) answer.appendChild(sharedLine(e.shared));
       if (!e.kind || e.kind === "chat") history.push({ role: "user", content: e.question }, { role: "assistant", content: e.answer });
     }
     history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
@@ -497,6 +504,8 @@ async function main(): Promise<void> {
   }
 
   function clearThread(): void {
+    store.clear();
+    views.clear();
     log.replaceChildren();
     steps.replaceChildren();
     couponsRows.replaceChildren();
@@ -739,19 +748,143 @@ async function main(): Promise<void> {
     else if (!matchMedia("(pointer: coarse)").matches) question.focus();
   }
 
+  // ---------- Attached tabs (Part 2, spec 6): only tabs the user picks ----------
+  // Picked in the + menu's list or by typing @, shown as chips above the field,
+  // and sent with every question until removed. Nothing else is read.
+  const attachedBox = el("attached");
+  const mentionList = el<HTMLUListElement>("mention-list");
+
+  function renderAttached(): void {
+    attachedBox.replaceChildren(
+      ...[...attached.values()].map((t) => {
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        const name = document.createElement("span");
+        name.textContent = t.title;
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.setAttribute("aria-label", "Remove " + t.title);
+        remove.insertAdjacentHTML("beforeend", '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>');
+        remove.addEventListener("click", () => {
+          detachTab(t.id);
+          question.focus();
+        });
+        chip.append(name, remove);
+        return chip;
+      }),
+    );
+    attachedBox.hidden = attached.size === 0;
+    for (const box of tabList.querySelectorAll<HTMLInputElement>("input[data-tab]")) box.checked = attached.has(Number(box.dataset.tab));
+  }
+  function attachTab(t: TabInfo): void {
+    if (!attached.has(t.id) && attached.size >= MAX_EXTRA_TABS) {
+      status.textContent = "You can attach up to " + MAX_EXTRA_TABS + " tabs. Remove one first.";
+    } else {
+      attached.set(t.id, t);
+      trace("tabs:attached");
+    }
+    renderAttached();
+  }
+  function detachTab(id: number): void {
+    attached.delete(id);
+    renderAttached();
+  }
+
   async function loadTabs(): Promise<void> {
     others = (await listTabs()).filter((t) => !t.active);
+    for (const id of [...attached.keys()]) if (!others.some((t) => t.id === id)) attached.delete(id);
     tabList.replaceChildren();
     for (const t of others) {
       const label = document.createElement("label");
       const box = document.createElement("input");
       box.type = "checkbox";
-      box.addEventListener("change", () => (box.checked ? checked.add(t.id) : checked.delete(t.id)));
+      box.dataset.tab = String(t.id);
+      box.checked = attached.has(t.id);
+      box.addEventListener("change", () => (box.checked ? attachTab(t) : detachTab(t.id)));
       label.append(box, document.createTextNode(t.title));
       tabList.appendChild(label);
     }
     tabsToggle.disabled = others.length === 0;
+    renderAttached();
   }
+
+  // Typing @ suggests tabs; choosing one attaches it and removes the @word.
+  let mention: { start: number; items: TabInfo[]; index: number } | null = null;
+  function closeMentions(): void {
+    mention = null;
+    mentionList.hidden = true;
+    mentionList.replaceChildren();
+    question.removeAttribute("aria-activedescendant");
+  }
+  function markMention(): void {
+    if (!mention) return;
+    mentionList.querySelectorAll("li").forEach((li, i) => li.setAttribute("aria-selected", String(i === mention!.index)));
+    question.setAttribute("aria-activedescendant", "mention-" + mention.index);
+  }
+  function updateMentions(): void {
+    const at = mode() === "chat" ? mentionAt(question.value, question.selectionStart ?? question.value.length) : null;
+    const items = at ? suggestTabs(at.query, others, new Set(attached.keys())) : [];
+    if (!at || !items.length) return closeMentions();
+    mention = { start: at.start, items, index: 0 };
+    mentionList.replaceChildren(
+      ...items.map((t, i) => {
+        const li = document.createElement("li");
+        li.id = "mention-" + i;
+        li.setAttribute("role", "option");
+        li.append(t.title);
+        const h = hostOf(t.url);
+        if (h) {
+          const span = document.createElement("span");
+          span.className = "host";
+          span.textContent = h;
+          li.appendChild(span);
+        }
+        // mousedown, so the field keeps focus.
+        li.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          pickMention(i);
+        });
+        return li;
+      }),
+    );
+    mentionList.hidden = false;
+    markMention();
+  }
+  function pickMention(i: number): void {
+    const t = mention?.items[i];
+    if (!mention || !t) return;
+    attachTab(t);
+    const next = dropMention(question.value, mention.start, question.selectionStart ?? question.value.length);
+    question.value = next.text;
+    question.setSelectionRange(next.caret, next.caret);
+    closeMentions();
+    autosize();
+    question.focus();
+  }
+  /** Arrow keys, Enter, Tab and Escape while suggestions show. True when handled. */
+  function mentionKey(e: KeyboardEvent): boolean {
+    if (!mention) return false;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const n = mention.items.length;
+      mention.index = (mention.index + (e.key === "ArrowDown" ? 1 : n - 1)) % n;
+      markMention();
+      return true;
+    }
+    if ((e.key === "Enter" && !e.shiftKey) || e.key === "Tab") {
+      e.preventDefault();
+      pickMention(mention.index);
+      return true;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeMentions();
+      return true;
+    }
+    return false;
+  }
+  question.addEventListener("input", updateMentions);
+  question.addEventListener("blur", () => setTimeout(closeMentions, 0));
   tabsToggle.addEventListener("click", () => {
     tabsBox.hidden = !tabsBox.hidden;
     tabsToggle.setAttribute("aria-expanded", String(!tabsBox.hidden));
@@ -835,16 +968,337 @@ async function main(): Promise<void> {
     return ok;
   }
 
-  // ---------- Chat ----------
-  async function ask(text: string): Promise<void> {
+  // ---------- Chat (Part 2): context, the Scout server, tools ----------
+  // The panel reads context through the worker (gate first, 8 s per page),
+  // starts the answer on the Scout server, and applies its numbered events to
+  // the store. Tool requests run through the worker's tool host, after asking
+  // the user where the tool needs it, and the result goes back with the same
+  // request_id so the server continues the same answer.
+  const CONTINUE_PROMPT = "Continue your previous answer from exactly where it stopped. Do not repeat anything you already wrote.";
+
+  interface MessageView {
+    bubble: HTMLElement;
+    /** As saved in history: the question, or the original one for a continuation. */
+    question: string;
+    model: string;
+    /** Tabs this answer may read: the current tab when shared, attached tabs, tabs it opened. */
+    scope: number[];
+    /** Numbered sources [n]: the pages sent with the question. */
+    sources: Array<{ url: string; title?: string }>;
+    shared: Array<{ title: string; host: string; status: string }>;
+    /** Text shown before this answer continued (Continue after a drop). */
+    prefix: string;
+    handled: Set<string>;
+    queue: Promise<void>;
+    closed: boolean;
+    done: () => void;
+    finished: Promise<void>;
+  }
+  const views = new Map<string, MessageView>();
+
+  function newView(id: string, bubble: HTMLElement, q: string, model: string, prefix = ""): MessageView {
+    let done: () => void = () => undefined;
+    const finished = new Promise<void>((resolve) => (done = resolve));
+    const v: MessageView = { bubble, question: q, model, scope: [], sources: [], shared: [], prefix, handled: new Set(), queue: Promise.resolve(), closed: false, done, finished };
+    store.create(id);
+    views.set(id, v);
+    return v;
+  }
+
+  /** "Shared: Test shop (shop.test) · Screenshot (shop.test)" under an answer. */
+  function sharedLine(items: Array<{ title: string; host: string; status: string }>): HTMLElement {
+    const p = document.createElement("p");
+    p.className = "shared";
+    if (!items.length) {
+      p.textContent = "No pages shared.";
+      return p;
+    }
+    const ul = document.createElement("ul");
+    ul.setAttribute("aria-label", "Shared with this answer");
+    for (const item of items) {
+      const li = document.createElement("li");
+      li.textContent = sharedLabel(item);
+      ul.appendChild(li);
+    }
+    p.append("Shared: ", ul);
+    return p;
+  }
+
+  function renderView(id: string): void {
+    const v = views.get(id);
+    const m = store.get(id);
+    if (!v || !m) return;
+    const text = v.prefix + m.text;
+    if (text) renderMarkdown(document, v.bubble, text, { sources: [...v.sources, ...m.citations] });
+    else v.bubble.textContent = m.status === "error" || m.status === "complete" ? "" : "Thinking…";
+    if (m.citations.length) {
+      const ol = document.createElement("ol");
+      ol.className = "sources";
+      ol.start = v.sources.length + 1;
+      ol.setAttribute("aria-label", "Web sources");
+      for (const c of m.citations) {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.href = c.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = c.title || hostOf(c.url) || c.url;
+        li.appendChild(a);
+        ol.appendChild(li);
+      }
+      v.bubble.appendChild(ol);
+    }
+    v.bubble.appendChild(sharedLine(v.shared));
+    scrollToEnd();
+  }
+
+  function finalize(id: string): void {
+    const v = views.get(id);
+    const m = store.get(id);
+    if (!v || !m || v.closed || (m.status !== "complete" && m.status !== "error")) return;
+    v.closed = true;
+    renderView(id);
+    const full = v.prefix + m.text;
+    if (m.status === "complete" && !m.stopped) {
+      history.push({ role: "user", content: v.question }, { role: "assistant", content: full });
+      history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
+      status.textContent = m.usage ? formatCostLine(v.model, m.usage) : "";
+      current.finish("done", "Answered (" + full.length + " characters).", m.usage);
+    } else if (m.status === "complete") {
+      if (!full) v.bubble.remove();
+      addMessage("error", "Stopped.");
+      status.textContent = m.usage ? formatCostLine(v.model, m.usage) : "Stopped.";
+      current.finish("stopped", "Stopped.", m.usage);
+    } else {
+      if (!full) v.bubble.remove();
+      const message = m.error?.message || "Something went wrong. Try again.";
+      const err = addMessage("error", message);
+      // The provider stream or the worker dropped mid-answer: offer to finish it.
+      if (full && (m.error?.code === "interrupted" || m.error?.code === "lost")) {
+        const more = document.createElement("button");
+        more.type = "button";
+        more.className = "btn continue";
+        more.textContent = "Continue";
+        more.addEventListener("click", () => {
+          err.remove();
+          void ask(CONTINUE_PROMPT, { continueOf: { bubble: v.bubble, question: v.question, partial: full, shared: v.shared } });
+        });
+        err.appendChild(more);
+      }
+      status.textContent = "The request failed.";
+      current.finish("error", message, m.usage);
+    }
+    for (const b of toolButtons) b.click();
+    if (activeChat === id) {
+      activeChat = null;
+      setBusy(false);
+    }
+    v.done();
+  }
+
+  function subscribe(id: string, after: number): void {
+    try {
+      port?.post("chat.subscribe", { message_id: id, after_seq: after });
+    } catch {
+      // Not connected: the port resubscribes every open answer when it reconnects.
+    }
+  }
+
+  function onWorkerEvent(env: Envelope): void {
+    if (env.type === "chat.lost") {
+      const id = (env.payload as { message_id: string }).message_id;
+      store.lose(id, "Scout for Safari restarted before this answer finished.");
+      trace("chat:lost");
+      finalize(id);
+      return;
+    }
+    if (env.type !== "chat.event") return;
+    const w = fromWire(env.payload as Record<string, unknown>);
+    if (!w || !views.has(w.message_id)) return;
+    const result = store.apply(w.message_id, w.seq, w.event);
+    if (result === "gap") return subscribe(w.message_id, store.get(w.message_id)?.lastSeq ?? 0);
+    if (result !== "applied") return;
+    const m = store.get(w.message_id)!;
+    if (w.event.kind === "tool_request") {
+      const v = views.get(w.message_id)!;
+      const ev = w.event;
+      v.queue = v.queue.then(() => runToolRequest(w.message_id, ev)).catch(() => undefined);
+    }
+    if (m.status === "complete" || m.status === "error") finalize(w.message_id);
+    else if (w.event.kind === "text" || w.event.kind === "citation" || w.event.kind === "tool_done") renderView(w.message_id);
+  }
+
+  // ---------- Tool requests that need the user (close_tabs, screenshots) ----------
+  const toolAsk = el("tool-ask");
+  const toolAskTitle = el("tool-ask-title");
+  const toolAskButtons = el("tool-ask-buttons");
+  /** Buttons of the open question; finalize answers it with the safe choice. */
+  let toolButtons: HTMLButtonElement[] = [];
+
+  function askTool(opts: { title: string; what: string; items: string[]; choices: Array<{ label: string; value: ToolDecision; primary?: boolean; safe?: boolean }> }): Promise<ToolDecision> {
+    return new Promise((resolve) => {
+      toolAskTitle.textContent = opts.title;
+      el("tool-ask-what").textContent = opts.what;
+      el("tool-ask-list").replaceChildren(
+        ...opts.items.map((t) => {
+          const li = document.createElement("li");
+          li.textContent = t;
+          return li;
+        }),
+      );
+      // The safe choice (Cancel, Don't allow) has focus and answers Escape.
+      const safe = opts.choices.find((c) => c.safe) ?? opts.choices[opts.choices.length - 1]!;
+      let answered = false;
+      const onKey = (e: KeyboardEvent): void => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          done(safe.value);
+        }
+      };
+      const done = (value: ToolDecision): void => {
+        if (answered) return;
+        answered = true;
+        toolAsk.hidden = true;
+        toolButtons = [];
+        toolAsk.removeEventListener("keydown", onKey);
+        trace("tool:answer " + value);
+        if (activeChat) {
+          status.textContent = "Writing the answer…";
+          stop.focus();
+        }
+        resolve(value);
+      };
+      toolAskButtons.replaceChildren();
+      toolButtons = [];
+      for (const c of opts.choices) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "btn" + (c.primary ? " primary" : "");
+        b.textContent = c.label;
+        b.addEventListener("click", () => done(c.value));
+        toolAskButtons.appendChild(b);
+        if (c === safe) toolButtons = [b];
+      }
+      toolAsk.addEventListener("keydown", onKey);
+      toolAsk.hidden = false;
+      status.textContent = "Waiting for your answer.";
+      scrollToEnd();
+      toolButtons[0]?.focus();
+    });
+  }
+
+  async function confirmClose(input: unknown): Promise<ToolDecision> {
+    const ids = Array.isArray((input as { tab_ids?: unknown } | null)?.tab_ids)
+      ? ((input as { tab_ids: unknown[] }).tab_ids.filter((x) => typeof x === "number") as number[])
+      : [];
+    const all = await browser.tabs.query({}).catch(() => []);
+    const names = ids.map((i) => {
+      const t = all.find((x) => x.id === i);
+      return t ? (t.title || t.url || "Tab " + i) + (t.url && hostOf(t.url) ? " (" + hostOf(t.url) + ")" : "") : "Tab " + i + " (not open)";
+    });
+    return askTool({
+      title: ids.length === 1 ? "Close this tab?" : "Close " + ids.length + " tabs?",
+      what: "Scout for Safari wants to close:",
+      items: names,
+      choices: [
+        { label: ids.length === 1 ? "Close tab" : "Close tabs", value: "confirmed" },
+        { label: "Cancel", value: "declined", safe: true },
+      ],
+    });
+  }
+
+  /** Asks when the site is set to ask; undefined when Settings already decides (the host enforces it). */
+  async function askScreenshot(model: string): Promise<ToolDecision | undefined> {
+    const now = await activeTab();
+    const url = now.url ?? tab.url ?? "";
+    if (screenshotDecision(url, await loadPageAccess(storage), []) !== "ask") return undefined;
+    const site = hostOf(url) ?? "this page";
+    const provider = activeSettings().provider;
+    return askTool({
+      title: "Allow a screenshot?",
+      what:
+        "Scout for Safari wants a screenshot of the visible part of " + site + " to answer, and would send it to " + PROVIDER_NAME[provider] +
+        " (" + prettyModel(model) + ").",
+      items: [],
+      choices: [
+        { label: "Allow once", value: "once" },
+        { label: "Always for this site", value: "always" },
+        { label: "Never for this site", value: "never" },
+        { label: "Don't allow", value: "declined", safe: true },
+      ],
+    });
+  }
+
+  async function runToolRequest(id: string, ev: { request_id: string; name: string; input: unknown }): Promise<void> {
+    const v = views.get(id);
+    if (!v || v.handled.has(ev.request_id)) return;
+    // A reopened panel replays events; a request the server already has is skipped.
+    await new Promise((r) => setTimeout(r, 30));
+    if (!store.pendingTools(id).some((t) => t.request_id === ev.request_id)) return;
+    v.handled.add(ev.request_id);
+    trace("tool:request " + (/^\w{1,30}$/.test(ev.name) ? ev.name : "unknown"));
+    let decision: ToolDecision | undefined;
+    if (ev.name === "close_tabs") decision = await confirmClose(ev.input);
+    else if (ev.name === "screenshot_visible") decision = await askScreenshot(v.model);
+    // The answer ended (Stop, error) or the server timed the request out while asking.
+    if (store.get(id)?.status !== "streaming" || !store.pendingTools(id).some((t) => t.request_id === ev.request_id)) return;
+    let result: ToolResult;
+    try {
+      result = await request<ToolResult>(
+        toWorker,
+        "tool.run",
+        {
+          request_id: ev.request_id,
+          name: ev.name,
+          input: ev.input ?? {},
+          tabs: v.scope,
+          ...(tab.id !== undefined ? { current_tab: tab.id } : {}),
+          ...(decision ? { decision } : {}),
+        },
+        { timeoutMs: 30_000 },
+      );
+    } catch (err) {
+      result = {
+        status: err instanceof BridgeError && err.error === "timeout" ? "timeout" : "error",
+        text: "The tool could not run.",
+        site: "",
+      };
+    }
+    if (result.opened_tab !== undefined) v.scope.push(result.opened_tab);
+    if (result.status === "ok") {
+      if (result.shared) v.shared.push({ ...result.shared, status: "read" });
+      else if (ev.name !== "search_tabs") v.shared.push({ title: toolLabel(ev.name), host: result.site, status: "tool" });
+    }
+    trace("tool:" + (/^\w{1,30}$/.test(ev.name) ? ev.name : "unknown") + " " + result.status);
+    renderView(id);
+    await request(
+      toWorker,
+      "chat.tool_result",
+      {
+        message_id: id,
+        request_id: ev.request_id,
+        status: result.status,
+        text: result.text,
+        ...(result.image ? { image_type: result.image.mediaType, image_data: result.image.data } : {}),
+        ...(result.shared ? { shared_title: result.shared.title, shared_host: result.shared.host } : {}),
+      },
+      { timeoutMs: 10_000 },
+    ).catch(() => undefined);
+  }
+
+  interface ContextReply {
+    pages: PageContext[];
+    shared: SharedTab[];
+    read_current: boolean;
+  }
+
+  async function ask(text: string, opts: { continueOf?: { bubble: HTMLElement; question: string; partial: string; shared: MessageView["shared"] } } = {}): Promise<void> {
     const trimmed = text.trim();
-    if (!trimmed || controller || control || !session) return;
+    if (!trimmed || activeChat || control || !session) return;
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
-    const extra = mergeTabs(
-      others.filter((t) => checked.has(t.id)),
-      resolveMentions(trimmed, others),
-    );
+    const cont = opts.continueOf;
+    const extra = cont ? [] : [...attached.values()];
     // Asked first: the permission prompt needs this click's user gesture.
     let granted = extra.length === 0;
     if (!granted) {
@@ -852,68 +1306,111 @@ async function main(): Promise<void> {
       granted = await browser.permissions.request({ origins }).catch(() => false);
     }
     const isSummary = trimmed === SUMMARIZE_QUESTION;
-    startRun(isSummary ? "summarize" : "ask", { provider: s.settings.provider, model: s.settings.model, question: trimmed });
+    startRun(isSummary ? "summarize" : "ask", { provider: s.settings.provider, model: s.settings.model, question: cont ? cont.question : trimmed });
+    if (!port) {
+      addMessage("error", "Scout for Safari's background worker is not running. Close Scout for Safari and open it again.");
+      current.finish("error", "No worker port.");
+      return;
+    }
     trace("tabs:extra " + extra.length + (extra.length ? (granted ? " granted" : " declined") : ""));
-    addMessage("user", isSummary ? "Summarize page" : trimmed);
-    question.value = "";
-    autosize();
-    const bubble = addMessage("assistant", "");
-    bubble.textContent = "Thinking…";
-    status.textContent = "Reading the page and waiting for the answer.";
-    controller = new AbortController();
+    const id = newRequestId();
+    activeChat = id;
+    let bubble: HTMLElement;
+    if (cont) bubble = cont.bubble;
+    else {
+      addMessage("user", isSummary ? "Summarize page" : trimmed);
+      question.value = "";
+      autosize();
+      closeMentions();
+      bubble = addMessage("assistant", "");
+    }
+    const v = newView(id, bubble, cont ? cont.question : trimmed, s.settings.model, cont ? cont.partial + (/\s$/.test(cont.partial) ? "" : " ") : "");
+    renderView(id);
+    status.textContent = cont ? "Finishing the answer." : "Reading the page and waiting for the answer.";
     setBusy(true);
-    const page = await readPage();
-    current.page(page?.url);
-    trace(page ? "page:read ok" : "page:read failed");
-    if (!page) status.textContent = "Could not read this page. Answering without it.";
-    const extraPages: PageContext[] = [];
-    if (granted) {
-      for (const t of extra) {
-        const p = await readPage(t.id);
-        if (p) extraPages.push(p);
+    if (!storage) conv = conv || "";
+    else if (!conv) conv = await conversationForTab(storage, tab.id, Date.now()).catch(() => "");
+
+    let pages: PageContext[] = [];
+    if (cont) v.shared = [...cont.shared];
+    else {
+      // Spec 6: the current tab when shared, plus the attached tabs. Nothing else.
+      const ctx = await request<ContextReply>(
+        toWorker,
+        "context.read",
+        { ...(tab.id !== undefined ? { current_tab: tab.id } : {}), attached: granted ? extra.map((t) => t.id) : [], include_current: true },
+        { timeoutMs: 15_000 },
+      ).catch(() => null);
+      pages = ctx?.pages ?? [];
+      const readOk = (st: ReadStatus | undefined): boolean => st === "read" || st === "partial";
+      const shared = ctx?.shared ?? [];
+      const cur = shared.find((t) => t.tab_id === tab.id);
+      current.page(readOk(cur?.status) ? pages[0]?.url : undefined);
+      trace(readOk(cur?.status) ? "page:read ok" : "page:read failed");
+      if (ctx?.read_current !== false && !readOk(cur?.status)) status.textContent = "Could not read this page. Answering without it.";
+      v.scope = [...(ctx?.read_current !== false && tab.id !== undefined ? [tab.id] : []), ...extra.map((t) => t.id)];
+      v.sources = pages.map((p) => ({ url: p.url, title: p.title }));
+      v.shared = shared.map((t) => ({ title: attached.get(t.tab_id)?.title || t.title, host: t.host, status: t.status }));
+      for (const t of extra) if (!shared.some((x) => x.tab_id === t.id)) v.shared.push({ title: t.title, host: hostOf(t.url) ?? "", status: "failed" });
+      if (extra.length) trace("tabs:read " + shared.filter((t) => t.tab_id !== tab.id && readOk(t.status)).length + "/" + extra.length);
+      // Named in the conversation, not only the status line, which the answer's
+      // cost line overwrites. iOS Safari cannot read background tabs (seen in T018).
+      const missed = extra.filter((t) => !readOk(shared.find((x) => x.tab_id === t.id)?.status));
+      if (missed.length) {
+        addMessage(
+          "error",
+          "Could not read: " + missed.map((t) => t.title).join(", ") +
+            ". The answer uses only the pages listed as read. Site access may have been declined, the site may be blocked in Settings, or this browser cannot read background tabs (Safari on iPhone and iPad).",
+        );
       }
+      renderView(id);
     }
-    if (extra.length) trace("tabs:read " + extraPages.length + "/" + extra.length);
-    // Shown in the conversation, not only the status line, which the answer's
-    // "Done" overwrites. iOS Safari cannot read background tabs (seen in T018).
-    if (extra.length && extraPages.length < extra.length) {
-      const missed = extra.filter((t) => !extraPages.some((p) => p.url === t.url)).map((t) => t.title);
-      addMessage(
-        "error",
-        "Could not read: " + missed.join(", ") +
-          ". The answer uses only the pages listed as read. Site access may have been declined, or this browser cannot read background tabs (Safari on iPhone and iPad).",
-      );
-    }
+
     trace("model:start");
-    const result = await runTurn({
-      provider: s.provider,
-      model: s.settings.model,
-      ...(s.effort ? { effort: s.effort } : {}),
-      history,
-      question: trimmed,
-      page,
-      extraPages,
-      signal: controller.signal,
-      onText: (full) => {
-        renderMarkdown(document, bubble, full);
-        scrollToEnd();
-      },
-    });
-    controller = null;
-    if (result.ok) {
-      history.push({ role: "user", content: trimmed }, { role: "assistant", content: result.text });
-      history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
-      await saveEntry("chat", trimmed, result.text);
-      status.textContent = result.usage ? formatCostLine(s.settings.model, result.usage) : "";
-      current.finish("done", "Answered (" + result.text.length + " characters).", result.usage);
-    } else {
-      if (result.partial) renderMarkdown(document, bubble, result.partial);
-      else bubble.remove();
-      addMessage("error", result.error);
-      status.textContent = "The request failed.";
-      current.finish("error", result.error);
+    const past = history.map((h) => ({ role: h.role, content: textOf(h.content) }));
+    try {
+      await request(
+        toWorker,
+        "chat.start",
+        {
+          message_id: id,
+          conv,
+          provider: s.settings.provider,
+          model: s.settings.model,
+          ...(s.effort ? { effort: s.effort } : {}),
+          question: trimmed,
+          history: cont ? [...past, { role: "user", content: cont.question }, { role: "assistant", content: cont.partial }] : past,
+          pages,
+          shared: v.shared,
+          ...(cont ? { display_question: cont.question, answer_prefix: v.prefix } : {}),
+        },
+        { timeoutMs: 10_000 },
+      );
+    } catch {
+      store.lose(id, "Could not start the answer. Close Scout for Safari, open it again, and try again.");
+      finalize(id);
+      return;
     }
-    setBusy(false);
+    subscribe(id, 0);
+    await v.finished;
+  }
+
+  /** A reopened panel picks up answers still running in this conversation. */
+  async function resumeActive(): Promise<void> {
+    if (!conv || !port) return;
+    const got = await request<{ messages: Array<{ message_id: string; question: string; last_seq: number }> }>(toWorker, "chat.active", { conv }, { timeoutMs: 3_000 }).catch(() => null);
+    for (const a of got?.messages ?? []) {
+      if (views.has(a.message_id) || activeChat) continue;
+      addMessage("user", a.question === SUMMARIZE_QUESTION ? "Summarize page" : a.question);
+      const v = newView(a.message_id, addMessage("assistant", ""), a.question, activeSettings().model);
+      if (tab.id !== undefined) v.scope = [tab.id];
+      renderView(a.message_id);
+      activeChat = a.message_id;
+      setBusy(true);
+      status.textContent = "Still answering…";
+      trace("conversation:resumed");
+      subscribe(a.message_id, 0);
+    }
   }
 
   // ---------- Approval (S06): the run waits here. Deny is the default focus. ----------
@@ -948,7 +1445,7 @@ async function main(): Promise<void> {
   // ---------- Control Browser ----------
   async function runTask(goal: string): Promise<void> {
     const trimmed = goal.trim();
-    if (!trimmed || controller || control || !session) return;
+    if (!trimmed || activeChat || control || !session) return;
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     startRun("agent", { provider: s.settings.provider, model: s.settings.model, question: trimmed });
@@ -1093,7 +1590,7 @@ async function main(): Promise<void> {
   }
 
   async function runCoupons(): Promise<void> {
-    if (controller || control || !session) return;
+    if (activeChat || control || !session) return;
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     startRun("coupons", { provider: s.settings.provider, model: s.settings.model });
@@ -1202,6 +1699,7 @@ async function main(): Promise<void> {
     else void ask(question.value);
   });
   question.addEventListener("keydown", (event) => {
+    if (mentionKey(event)) return;
     if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
       composer.requestSubmit();
@@ -1223,9 +1721,18 @@ async function main(): Promise<void> {
       else void ask(p);
     });
   }
-  stop.addEventListener("click", () => controller?.abort());
+  stop.addEventListener("click", () => {
+    const id = activeChat;
+    if (!id) return;
+    trace("ui:stop-click chat");
+    void request(toWorker, "chat.stop", { message_id: id }).catch(() => {
+      // The worker is gone: end it here with what arrived.
+      store.lose(id, "Stopped.");
+      finalize(id);
+    });
+  });
   el("new-chat").addEventListener("click", () => {
-    if (controller || control) return;
+    if (activeChat || control) return;
     clearThread();
     if (storage) {
       void startNewConversation(storage, tab.id, Date.now())
@@ -1417,6 +1924,126 @@ async function main(): Promise<void> {
       sites.appendChild(li);
     }
     await renderPageButton(origins);
+    await renderAccess();
+    await renderActivity();
+  }
+
+  // ---------- Page access (Part 2, spec 10a) and Activity ----------
+  const accessRead = el<HTMLInputElement>("access-read");
+  const accessSearch = el<HTMLInputElement>("access-search");
+  const shotList = el("shot-list");
+  const blockForm = el<HTMLFormElement>("block-form");
+  const blockInput = el<HTMLInputElement>("block-input");
+  const blockCurrent = el<HTMLButtonElement>("block-current");
+  const blockList = el("block-list");
+  const blockStatus = el("block-status");
+  const activityList = el("activity-list");
+  const currentHost = hostOf(tab.url ?? "");
+
+  function listRow(text: string, button?: { label: string; aria: string; onClick: () => void }): HTMLLIElement {
+    const li = document.createElement("li");
+    li.append(text + (button ? " " : ""));
+    if (button) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn";
+      b.textContent = button.label;
+      b.setAttribute("aria-label", button.aria);
+      b.addEventListener("click", button.onClick);
+      li.appendChild(b);
+    }
+    return li;
+  }
+
+  async function updateAccess(change: (a: PageAccess) => PageAccess, message: string): Promise<void> {
+    try {
+      if (!storage) throw new Error("no storage");
+      await savePageAccess(storage, change(await loadPageAccess(storage)));
+      blockStatus.textContent = message;
+    } catch {
+      blockStatus.textContent = "Could not save the change. Try again.";
+    }
+    await renderAccess();
+  }
+
+  async function renderAccess(): Promise<void> {
+    const a = await loadPageAccess(storage);
+    accessRead.checked = a.readCurrent;
+    accessSearch.checked = a.searchTabs;
+    el("access-search-help").textContent =
+      "Off until you turn it on. On: when a question needs it, Scout for Safari can list the titles and addresses of your open tabs" +
+      (browser.history ? " and search your history." : ". Safari does not let extensions search history or recently closed tabs, so only open tabs are searched.");
+    const shots = Object.entries(a.screenshots);
+    shotList.replaceChildren(
+      ...(shots.length
+        ? shots.map(([host, choice]) =>
+            listRow(host + ": " + (choice === "always" ? "always allowed" : "never"), {
+              label: "Ask again",
+              aria: "Ask again before screenshots of " + host,
+              onClick: () => {
+                const next = { ...a.screenshots };
+                delete next[host];
+                void updateAccess((x) => ({ ...x, screenshots: next }), "Scout for Safari will ask before screenshots of " + host + ".");
+              },
+            }),
+          )
+        : [listRow("No sites chosen yet.")]),
+    );
+    blockList.replaceChildren(
+      ...(a.blocked.length
+        ? a.blocked.map((host) =>
+            listRow(host, {
+              label: "Unblock",
+              aria: "Unblock " + host,
+              onClick: () => void updateAccess((x) => ({ ...x, blocked: x.blocked.filter((b) => b !== host) }), "Unblocked " + host + "."),
+            }),
+          )
+        : [listRow("No sites blocked.")]),
+    );
+    blockCurrent.hidden = !currentHost || a.blocked.includes(currentHost);
+    if (currentHost) blockCurrent.textContent = "Block " + currentHost;
+    const org = parsePolicy(await nativeSend({ type: "policy.get" }).catch(() => null));
+    el("admin-box").hidden = org.length === 0;
+    el("admin-list").replaceChildren(...org.map((h) => listRow(h)));
+  }
+
+  function blockSite(raw: string): void {
+    const host = normalizeSite(raw);
+    if (!host) {
+      blockInput.setAttribute("aria-invalid", "true");
+      blockStatus.textContent = "Enter a site like example.com.";
+      blockInput.focus();
+      return;
+    }
+    blockInput.removeAttribute("aria-invalid");
+    blockInput.value = "";
+    void updateAccess(
+      (a) => ({ ...a, blocked: [...new Set([...a.blocked, host])] }),
+      "Blocked " + host + ". Scout for Safari will not read or screenshot it.",
+    );
+    trace("access:blocked");
+  }
+
+  accessRead.addEventListener("change", () => {
+    const on = accessRead.checked;
+    void updateAccess((a) => ({ ...a, readCurrent: on }), on ? "The current page is shared with each question." : "Only tabs you attach are shared.");
+  });
+  accessSearch.addEventListener("change", () => {
+    const on = accessSearch.checked;
+    void updateAccess((a) => ({ ...a, searchTabs: on }), on ? "Scout for Safari may search your open tabs." : "Tab and history search is off.");
+  });
+  blockForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    blockSite(blockInput.value);
+  });
+  blockCurrent.addEventListener("click", () => {
+    if (currentHost) blockSite(currentHost);
+  });
+
+  async function renderActivity(): Promise<void> {
+    const got = await request<{ entries: ToolLogEntry[] }>(toWorker, "tools.log", {}, { timeoutMs: 3_000 }).catch(() => null);
+    const entries = got?.entries ?? [];
+    activityList.replaceChildren(...(entries.length ? entries.slice(0, 20).map((e) => listRow(activityLine(e))) : [listRow("No tool calls yet.")]));
   }
 
   // ---------- Button on webpages (src/edge.ts) ----------
@@ -1655,6 +2282,7 @@ async function main(): Promise<void> {
   await connect();
   if (session) {
     await restoreConversation();
+    await resumeActive();
     await loadTabs();
     // On touch devices focusing the field on open raises the keyboard over the
     // small popup; let the user tap into it instead.

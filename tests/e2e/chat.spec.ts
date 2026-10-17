@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { withWorker } from "./worker";
 
 // Loads the built popup (run `npm run build` first) with a stubbed `browser`
 // namespace. The provider is mocked at the network layer: no live API call.
@@ -29,8 +30,8 @@ async function openPopup(page: Page, opts: { key: string | null }): Promise<{ bo
           onMessage: { addListener() {} },
         },
         // Sharing with the provider already allowed (consent.spec.ts covers asking).
-        storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 1 }, openai: { at: 1, version: 1 } } } : {}), set: async () => undefined, clear: async () => undefined } },
-        tabs: { query: async () => [{ id: 1 }] },
+        storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } } } : {}), set: async () => undefined, clear: async () => undefined } },
+        tabs: { query: async () => [{ id: 1, url: pageData.url, title: pageData.title, active: true }] },
         scripting: { executeScript: async () => [{ result: pageData }] },
       };
       (globalThis as unknown as { browser: unknown }).browser = stub;
@@ -43,6 +44,7 @@ async function openPopup(page: Page, opts: { key: string | null }): Promise<{ bo
     bodies.push(r.request().postData() ?? "");
     await r.fulfill({ status: 200, contentType: "text/event-stream", body: ANSWER });
   });
+  await withWorker(page);
   await page.goto("/popup.html");
   return { bodies };
 }
@@ -117,7 +119,7 @@ test("a provider fallback is announced in the conversation", async ({ page }) =>
       scripting: { executeScript: async () => [{ result: null }] },
       storage: {
         local: {
-          get: async () => ({ settings: { provider: "openai", model: "gpt-5", retention: "7" }, aiConsent: { anthropic: { at: 1, version: 1 } } }),
+          get: async () => ({ settings: { provider: "openai", model: "gpt-5", retention: "7" }, aiConsent: { anthropic: { at: 1, version: 2 } } }),
           set: async () => undefined,
           clear: async () => undefined,
         },
@@ -126,6 +128,7 @@ test("a provider fallback is announced in the conversation", async ({ page }) =>
   });
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
+  await withWorker(page);
   await page.goto("/popup.html");
   await expect(page.getByLabel("Ask about this page")).toBeVisible();
   await expect(
