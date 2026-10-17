@@ -70,8 +70,7 @@ test("ask about the page streams a Markdown answer", async ({ page }) => {
 
 test("summarize button works", async ({ page }) => {
   await openPopup(page, { key: "sk-test-synthetic" });
-  await page.getByRole("button", { name: "More actions" }).click();
-  await page.getByRole("button", { name: "Summarize page" }).click();
+  await page.getByRole("button", { name: "Summarize this page" }).click();
   await expect(page.getByRole("log").getByText("with free shipping.")).toBeVisible();
 });
 
