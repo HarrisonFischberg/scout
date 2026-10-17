@@ -298,8 +298,11 @@ test("Take control stops actions within 250 ms, Resume continues, and Stop remov
   await expect.poll(async () => (await acts(page)).length, { timeout: 8000 }).toBe(2);
   await expect(taskLog(page)).toContainText("Did: wait 1.5 s");
   // The next batch starts with an 8 s wait: Stop ends it and the overlay goes at once.
+  // Stop is the composer's blue button in place of Send, never one in the chat (owner, 2026-10-17).
+  await expect(page.getByRole("log", { name: "Conversation" }).getByRole("button", { name: "Stop" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Start task" })).toBeHidden();
   const stopAt = Date.now();
-  await page.getByRole("button", { name: "Stop" }).click();
+  await page.locator(".composer-foot").getByRole("button", { name: "Stop" }).click();
   await expect(page.getByRole("log", { name: "Conversation" }).getByText("Stopped.", { exact: true })).toBeVisible();
   expect(Date.now() - stopAt).toBeLessThan(2000);
   f = await fake(page);
