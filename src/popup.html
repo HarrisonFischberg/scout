@@ -238,7 +238,16 @@
       #model-pill-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       #model-pill:hover, #model-pill[aria-expanded="true"] { color: var(--text-primary); }
       #model-pill:disabled { cursor: default; color: var(--text-muted); }
-      .composer-foot > #stop, .composer-foot > #send { margin-left: auto; }
+      /* Owner design 2026-10-17: the mic sits before Send at the far right; both always show. */
+      .composer-foot > #model-pill { margin-right: auto; }
+      .round.mic { border: 0; background: var(--bg-subtle); }
+      .round.mic:hover { color: var(--text-primary); }
+      .round.mic[aria-pressed="true"] { background: var(--accent); color: var(--accent-on); }
+      .round.mic:disabled { opacity: 0.45; cursor: default; }
+      @media (prefers-reduced-motion: no-preference) {
+        .round.mic[aria-pressed="true"] { animation: scout-listen 1.4s ease-in-out infinite; }
+      }
+      @keyframes scout-listen { 0%, 100% { box-shadow: 0 0 0 0 var(--focus-ring); } 50% { box-shadow: 0 0 0 4px transparent; } }
       /* Models sheet: covers the panel, a list of rows with a check on the one in use. */
       #model-menu {
         position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column;
@@ -546,6 +555,9 @@
             </fieldset>
             <button id="model-pill" type="button" aria-label="Change model" aria-haspopup="dialog" aria-expanded="false" aria-controls="model-menu">
               <span id="model-pill-text"></span>
+            </button>
+            <button id="mic" class="round mic" type="button" aria-label="Dictate" aria-pressed="false" title="Dictate">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg>
             </button>
             <button id="stop" class="round send" type="button" aria-label="Stop" hidden>
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="8" rx="1.5"/></svg>

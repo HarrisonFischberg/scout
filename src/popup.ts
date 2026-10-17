@@ -56,6 +56,7 @@ import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/cons
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
+import { joinDictation, Listener, micErrorText, recognitionCtor } from "./panel/voice";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
   appendHistory,
@@ -442,6 +443,7 @@ async function main(): Promise<void> {
   const question = el<HTMLTextAreaElement>("question");
   const send = el<HTMLButtonElement>("send");
   const stop = el<HTMLButtonElement>("stop");
+  const mic = el<HTMLButtonElement>("mic");
   const plus = el<HTMLButtonElement>("plus");
   const plusMenu = el("plus-menu");
   const couponsRun = el<HTMLButtonElement>("coupons-run");
@@ -1019,6 +1021,50 @@ async function main(): Promise<void> {
   };
   question.addEventListener("input", autosize);
 
+  // ---------- Mic (owner, 2026-10-17; src/panel/voice.ts) ----------
+  // Speech to text into the box, nothing more: the user sends it with Send.
+  const phone = matchMedia("(pointer: coarse)").matches;
+  const speechLang = navigator.language || "en-US";
+  const dictation = new Listener(recognitionCtor(window), speechLang);
+  let dictating = false;
+  function setDictating(on: boolean): void {
+    dictating = on;
+    mic.setAttribute("aria-pressed", String(on));
+    mic.setAttribute("aria-label", on ? "Stop dictating" : "Dictate");
+    mic.title = on ? "Stop dictating" : "Dictate";
+  }
+  function stopDictation(): void {
+    if (dictating) dictation.stop();
+  }
+  mic.addEventListener("click", () => {
+    if (dictating) {
+      dictation.stop();
+      return;
+    }
+    const typed = question.value;
+    setDictating(true);
+    status.textContent = "Listening…";
+    trace("voice:dictate");
+    dictation.start(
+      {
+        onText: (heard) => {
+          question.value = joinDictation(typed, heard);
+          autosize();
+        },
+        onEnd: (error) => {
+          setDictating(false);
+          if (error && !(error === "no-speech" && question.value !== typed)) {
+            status.textContent = micErrorText(error, phone);
+            trace("voice:error " + error);
+          } else if (status.textContent === "Listening…") status.textContent = "";
+          question.focus();
+        },
+      },
+      { continuous: true },
+    );
+  });
+
+
   function closePlus(focusButton = false): void {
     plusMenu.hidden = true;
     plus.setAttribute("aria-expanded", "false");
@@ -1208,7 +1254,8 @@ async function main(): Promise<void> {
 
   function setBusy(busy: boolean): void {
     syncComposer();
-    plus.disabled = modelPill.disabled = busy;
+    plus.disabled = modelPill.disabled = mic.disabled = busy;
+    if (busy) stopDictation();
     if (busy) closeModelMenu();
     question.disabled = busy;
     for (const i of modeInputs) i.disabled = busy;
