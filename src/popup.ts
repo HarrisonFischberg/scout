@@ -1428,9 +1428,9 @@ async function main(): Promise<void> {
       status.textContent = m.usage ? formatCostLine(v.model, m.usage) : "";
       current.finish("done", "Answered (" + full.length + " characters).", m.usage);
     } else if (m.status === "complete") {
+      // The user pressed Stop: keep what arrived and say nothing (owner, 2026-10-17).
       if (!full) v.bubble.remove();
-      addMessage("error", "Stopped.");
-      status.textContent = m.usage ? formatCostLine(v.model, m.usage) : "Stopped.";
+      status.textContent = m.usage ? formatCostLine(v.model, m.usage) : "";
       current.finish("stopped", "Stopped.", m.usage);
     } else {
       if (!full) v.bubble.remove();
@@ -2120,7 +2120,8 @@ async function main(): Promise<void> {
     autosize();
     const out = await startTask(trimmed, "panel");
     if (!out) return;
-    addMessage(out.status === "done" ? "assistant" : "error", out.summary);
+    // Stopped by the user: the trace already reads "Stopped", nothing more to show.
+    if (out.status !== "stopped") addMessage(out.status === "done" ? "assistant" : "error", out.summary);
     current.finish(out.status, out.summary, out.usage);
     status.textContent = formatCostLine(s.settings.model, out.usage);
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
@@ -2165,7 +2166,7 @@ async function main(): Promise<void> {
     task = null;
     finishTrace(t, out.status);
     if (t0.source === "panel") {
-      addMessage(out.status === "done" ? "assistant" : "error", out.summary);
+      if (out.status !== "stopped") addMessage(out.status === "done" ? "assistant" : "error", out.summary);
       status.textContent = formatCostLine(activeSettings().model, out.usage);
     }
   }
@@ -2718,7 +2719,7 @@ async function main(): Promise<void> {
     trace("ui:stop-click chat");
     void request(toWorker, "chat.stop", { message_id: id }).catch(() => {
       // The worker is gone: end it here with what arrived.
-      store.lose(id, "Stopped.");
+      store.stopLocally(id);
       finalize(id);
     });
   });
