@@ -192,7 +192,8 @@
       /* The textarea has no outline of its own; the box around it shows focus. */
       .composer-box:focus-within { border-color: var(--border-control); }
       .composer-box:has(#question:focus-visible) { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring), var(--shadow); }
-      #mode-chip { display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 2px; font-weight: 700; color: var(--accent-text); }
+      /* No color, like the mode switch icons (owner item 11, 2026-10-17). */
+      #mode-chip { display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 2px; font-weight: 700; color: var(--text-primary); }
       #mode-chip .icon-btn { min-width: 24px; height: 24px; padding: 0; }
       #question {
         display: block; width: 100%; resize: none; border: 0; outline: 0; background: transparent;
@@ -411,6 +412,8 @@
         .pulse i:nth-child(2) { animation-delay: 0.2s; }
         .pulse i:nth-child(3) { animation-delay: 0.4s; }
       }
+      /* An answer still waiting for its first words (owner item 14). */
+      .thinking { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); }
       @keyframes scout-pulse { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
 
       /* iPhone (owner design 2026-10-17): larger starters and a rounder composer.
@@ -424,6 +427,11 @@
         #model-pill { min-height: 38px; padding: 0 16px; font-size: 15px; }
         .composer-foot .segmented label { min-height: 34px; padding: 0 10px; }
         .sheet-list button { min-height: 56px; font-size: 17px; }
+        /* Safari's own sheet bar already shows the name (owner item 6, 2026-10-17):
+           the chat header keeps only New chat and Settings, the title stays for VoiceOver. */
+        #chat-view > header { justify-content: flex-end; padding: 4px 12px; border-bottom: 0; }
+        #chat-view > header picture { display: none; }
+        #chat-view > header h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
       }
 
       @media (prefers-reduced-motion: no-preference) {
