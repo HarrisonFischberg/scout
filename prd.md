@@ -33,7 +33,7 @@ macOS and iOS. The user brings their own Anthropic or OpenAI API key.
 - Providers behind one interface: Anthropic Messages API (tool use, server
   web-search tool) and OpenAI Responses API (function calling, web search).
   Model IDs confirmed with the `claude-api` skill and OpenAI docs at build
-  time; default Claude Sonnet 5.5, user-selectable.
+  time; default Claude Haiku 5.5 at High effort (owner decision 2026-10-17), user-selectable.
 - Spec Part 2 (2026-10-16): chat answers run in the background worker as the
   "Scout server" (`src/server/`), streamed to the popup over the `scout-panel`
   port with numbered events; the popup gathers context and runs tool requests

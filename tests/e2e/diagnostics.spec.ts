@@ -68,7 +68,7 @@ test("an error offers Copy diagnostics and the report is the Actual behavior", a
   const report = await copied(page);
   expect(report).toContain("## Scout for Safari diagnostics — Actual behavior");
   expect(report).toMatch(/- Run: ask \(#\d+\)/);
-  expect(report).toContain("- Provider: anthropic / claude-sonnet-5-5");
+  expect(report).toContain("- Provider: anthropic / claude-haiku-5-5");
   expect(report).toContain("- Page: shop.test");
   expect(report).toContain('- Outcome: error — "The API key was rejected.');
   expect(report).toContain("page:read ok");

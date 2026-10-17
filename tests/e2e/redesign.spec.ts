@@ -154,15 +154,16 @@ const savedSettings = (page: Page) =>
 test("the model pill opens a menu in place: picking a model or effort saves it and Settings stays closed", async ({ page }) => {
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
   const pill = page.locator("#model-pill");
-  await expect(pill).toHaveText("Sonnet 5.5");
+  // Default for a new install: Haiku 5.5 at High.
+  await expect(pill).toHaveText("Haiku 5.5 · High");
   await expect(pill).toHaveAttribute("aria-haspopup", "menu");
   await pill.click();
   const menu = page.getByRole("menu", { name: "Model and effort" });
   await expect(menu).toBeVisible();
   await expect(pill).toHaveAttribute("aria-expanded", "true");
-  const sonnet = menu.getByRole("menuitemradio", { name: "Claude Sonnet 5.5" });
-  await expect(sonnet).toHaveAttribute("aria-checked", "true");
-  await expect(sonnet).toBeFocused();
+  const haiku = menu.getByRole("menuitemradio", { name: "Claude Haiku 5.5" });
+  await expect(haiku).toHaveAttribute("aria-checked", "true");
+  await expect(haiku).toBeFocused();
   // The menu opens above the composer, inside the popup.
   const menuBox = (await menu.boundingBox())!;
   expect(menuBox.y).toBeGreaterThanOrEqual(0);
@@ -172,14 +173,14 @@ test("the model pill opens a menu in place: picking a model or effort saves it a
   await expect(menu).toBeHidden();
   await expect(page.locator("#settings-view")).toBeHidden();
   await expect(pill).toBeFocused();
-  await expect(pill).toHaveText("Opus 5.5");
+  await expect(pill).toHaveText("Opus 5.5 · High");
   await expect(page.locator("#status")).toHaveText("");
-  await expect.poll(() => savedSettings(page)).toMatchObject({ provider: "anthropic", model: "claude-opus-5-5", effort: "default" });
+  await expect.poll(() => savedSettings(page)).toMatchObject({ provider: "anthropic", model: "claude-opus-5-5", effort: "high" });
 
   await pill.click();
-  await menu.getByRole("menuitemradio", { name: "High", exact: true }).click();
-  await expect(pill).toHaveText("Opus 5.5 · High");
-  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-opus-5-5", effort: "high" });
+  await menu.getByRole("menuitemradio", { name: "Low", exact: true }).click();
+  await expect(pill).toHaveText("Opus 5.5 · Low");
+  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-opus-5-5", effort: "low" });
 
   // A click outside closes it without changing anything.
   await pill.click();
@@ -187,7 +188,7 @@ test("the model pill opens a menu in place: picking a model or effort saves it a
   await page.getByLabel("Ask about this page").click();
   await expect(menu).toBeHidden();
   await expect(pill).toHaveAttribute("aria-expanded", "false");
-  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-opus-5-5", effort: "high" });
+  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-opus-5-5", effort: "low" });
 });
 
 test("the model menu works by keyboard: arrows move, Enter picks, Escape closes and returns focus", async ({ page }) => {
@@ -196,9 +197,9 @@ test("the model menu works by keyboard: arrows move, Enter picks, Escape closes 
   const menu = page.getByRole("menu", { name: "Model and effort" });
   await pill.focus();
   await page.keyboard.press("ArrowDown");
-  await expect(menu.getByRole("menuitemradio", { name: "Claude Sonnet 5.5" })).toBeFocused();
+  await expect(menu.getByRole("menuitemradio", { name: "Claude Haiku 5.5" })).toBeFocused();
   await page.keyboard.press("ArrowDown");
-  await expect(menu.getByRole("menuitemradio", { name: "Claude Opus 5.5" })).toBeFocused();
+  await expect(menu.getByRole("menuitemradio", { name: "Claude Fable 5.1" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(menu).toBeHidden();
   await expect(pill).toBeFocused();
@@ -210,8 +211,8 @@ test("the model menu works by keyboard: arrows move, Enter picks, Escape closes 
   await expect(menu.getByRole("menuitemradio", { name: "Max" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(menu).toBeHidden();
-  await expect(pill).toHaveText("Sonnet 5.5 · Max");
-  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-sonnet-5-5", effort: "max" });
+  await expect(pill).toHaveText("Haiku 5.5 · Max");
+  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-haiku-5-5", effort: "max" });
 });
 
 test("the mode switch stays on one line beside the model pill when the popup first opens", async ({ page }) => {
