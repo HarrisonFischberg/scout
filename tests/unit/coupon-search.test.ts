@@ -77,6 +77,17 @@ describe("parseFindings", () => {
   });
 });
 
+describe("parseFindings bookkeeping", () => {
+  it("counts reply lines that are neither a code line nor MASKED, OFFER or NONE", () => {
+    const r = newRetrieved();
+    addRetrieved(r, "https://deals.test/a", "SAVE5 5% off");
+    const f = parseFindings("Here is what I found:\nSAVE5 | https://deals.test/a\nMASKED | https://deals.test/b | hidden\nNo other codes exist.\nNONE", r);
+    expect(f.found.map((c) => c.code)).toEqual(["SAVE5"]);
+    expect(f.masked).toBe(1);
+    expect(f.ignored).toBe(2);
+  });
+});
+
 describe("codesInText", () => {
   it("finds codes a store advertises, with the words around them", () => {
     expect(codesInText("Fall sale! Use code TACO10 for 10% off. Promo code: SAVE-15 · enter WELCOME5 at checkout")).toEqual(["TACO10", "SAVE-15", "WELCOME5"]);
@@ -312,13 +323,13 @@ describe("listed pages the search skipped", () => {
       async *stream(req) {
         reqs.push(req);
         if (!String(req.messages[0]?.content).includes("You did not open these pages")) {
-          yield { type: "fetch", url: "https://wethrift.com/tackform/" };
+          yield { type: "fetch", url: "https://wethrift.com/tackform/", ok: true, chars: 1200 };
           yield { type: "source", url: "https://www.wethrift.com/tackform", title: "Tackform", page: "No Tackform codes right now." };
-          yield { type: "fetch", url: "https://www.dealdrop.com/tackform" };
+          yield { type: "fetch", url: "https://www.dealdrop.com/tackform", ok: true, chars: 1200 };
           yield { type: "text", delta: "NONE\n" };
           return;
         }
-        yield { type: "fetch", url: "https://www.couponbind.com/coupons/tackform.test" };
+        yield { type: "fetch", url: "https://www.couponbind.com/coupons/tackform.test", ok: true, chars: 1200 };
         yield { type: "source", url: "https://www.couponbind.com/coupons/tackform.test", title: "Tackform codes", page: "STREETDEALX: 10% off at Tackform" };
         yield { type: "text", delta: 'STREETDEALX | https://www.couponbind.com/coupons/tackform.test | "STREETDEALX: 10% off" | -\n' };
       },
@@ -326,6 +337,13 @@ describe("listed pages the search skipped", () => {
     const r = await suggestCodes(p, "m", "www.tackform.test");
     const listed = await listedFor("www.tackform.test");
     expect(reqs).toHaveLength(2);
+    // Every fetch the model asked for, with what the page answered, for the run trace.
+    expect(r.pages).toEqual([
+      { url: "https://wethrift.com/tackform/", ok: true, chars: 1200 },
+      { url: "https://www.dealdrop.com/tackform", ok: true, chars: 1200 },
+      { url: "https://www.couponbind.com/coupons/tackform.test", ok: true, chars: 1200 },
+    ]);
+    expect(r.ignored).toBe(0);
     expect(reqs[0]).toMatchObject({ webFetch: true, webSearchMaxUses: 10, webFetchMaxUses: 10 });
     // Only the listed pages not opened (wethrift.com/tackform was, with or without "www." and a slash).
     expect(reqs[1]).toMatchObject({ webFetch: true, webSearchMaxUses: 1, webFetchMaxUses: listed.length - 1 });
@@ -363,7 +381,7 @@ describe("listed pages the search skipped", () => {
       id: "anthropic",
       async *stream() {
         calls++;
-        for (const u of listed) yield { type: "fetch", url: u };
+        for (const u of listed) yield { type: "fetch", url: u, ok: true, chars: 900 };
         yield { type: "text", delta: "NONE\n" };
       },
     };

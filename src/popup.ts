@@ -2102,8 +2102,18 @@ async function main(): Promise<void> {
           if (more.error && !discovery.error) discovery.error = more.error;
         };
         const codes = rankCandidates(mergeCandidates(onSite, sug.codes), merchant);
+        // Host and path only, for the run trace (no query strings).
+        const pageLabel = (url: string): string => {
+          try {
+            const u = new URL(url);
+            return u.hostname.replace(/^www\./, "") + u.pathname.replace(/\/+$/, "");
+          } catch {
+            return "?";
+          }
+        };
         trace("coupons:pages listed=" + sug.pagesListed + " opened=" + sug.pagesOpened + (sug.followedUp ? " followed-up" : ""));
-        trace("coupons:candidates store=" + onSite.length + " verified=" + sug.verified + " reported=" + sug.reported + " dropped=" + sug.dropped + " masked=" + sug.masked);
+        for (const p of sug.pages) trace("coupons:page " + pageLabel(p.url) + " " + (p.ok ? "ok" : p.error ?? "error") + " " + (p.chars ?? 0));
+        trace("coupons:candidates store=" + onSite.length + " verified=" + sug.verified + " reported=" + sug.reported + " dropped=" + sug.dropped + " masked=" + sug.masked + " ignored=" + sug.ignored);
         say(discoveryLine(discovery));
         if (codes.length === 0) {
           // Nothing to test: say so plainly; the cart stays as it was.

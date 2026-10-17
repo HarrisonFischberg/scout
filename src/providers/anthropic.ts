@@ -118,6 +118,9 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
 
         const blocks = new Map<number, Block>();
         const content: Array<RawBlock | undefined> = [];
+        // Pages the model asked the fetch tool for, by tool call id, so a failed
+        // fetch (whose result names no page) can still be reported.
+        const asked = new Map<string, string>();
         let respOut = 0;
         let respSearches = 0;
         let stop: string | undefined;
@@ -131,17 +134,19 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
               break;
             case "content_block_start": {
               const cb = ev.content_block ?? {};
-              if (cb.type === "web_fetch_tool_result" && typeof cb.content?.url === "string") {
-                // The fetched document's text travels with the result: page
-                // text the coupon finder checks codes against.
-                const doc = cb.content.content ?? {};
-                const data = doc?.source?.data;
-                yield {
-                  type: "source",
-                  url: cb.content.url,
-                  ...(typeof doc?.title === "string" ? { title: doc.title } : {}),
-                  ...(typeof data === "string" && doc?.source?.type === "text" ? { page: data } : {}),
-                };
+              if (cb.type === "web_fetch_tool_result") {
+                const url = typeof cb.content?.url === "string" ? cb.content.url : asked.get(String(cb.tool_use_id ?? ""));
+                if (cb.content?.type === "web_fetch_tool_result_error") {
+                  if (url) yield { type: "fetch", url, ok: false, error: typeof cb.content.error_code === "string" ? cb.content.error_code : "error" };
+                } else if (url) {
+                  // The fetched document's text travels with the result: page
+                  // text the coupon finder checks codes against.
+                  const doc = cb.content?.content ?? {};
+                  const data = doc?.source?.data;
+                  const page = typeof data === "string" && doc?.source?.type === "text" ? data : undefined;
+                  yield { type: "fetch", url, ok: true, chars: page?.length ?? 0 };
+                  yield { type: "source", url, ...(typeof doc?.title === "string" ? { title: doc.title } : {}), ...(page !== undefined ? { page } : {}) };
+                }
               }
               if (cb.type === "web_search_tool_result" && Array.isArray(cb.content)) {
                 for (const r of cb.content) {
@@ -193,11 +198,9 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
                   throw new ProviderError("anthropic", "stream_error");
                 }
               }
-              // The page the model asked the fetch tool for: the coupon finder
-              // checks it against the pages it listed, loaded or not.
               if (kept?.type === "server_tool_use" && kept.name === "web_fetch") {
                 const url = (kept.input as { url?: unknown } | undefined)?.url;
-                if (typeof url === "string" && url) yield { type: "fetch", url };
+                if (typeof url === "string" && url) asked.set(String(kept.id ?? ""), url);
               }
               if (b?.kind === "tool_use") {
                 let input: unknown;

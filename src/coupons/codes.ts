@@ -134,6 +134,17 @@ export interface SuggestedCodes {
   pagesOpened: number;
   /** True when a follow-up opened listed pages the search had skipped. */
   followedUp?: boolean;
+  /** Every page fetch the model asked for, in order: what it answered. For the run trace. */
+  pages: FetchedPage[];
+  /** Reply lines that were neither a code line nor MASKED, OFFER or NONE. */
+  ignored: number;
+}
+
+export interface FetchedPage {
+  url: string;
+  ok: boolean;
+  chars?: number;
+  error?: string;
 }
 
 /** Page text and addresses the search actually retrieved: the evidence codes are checked against. */
@@ -212,6 +223,8 @@ export interface Findings {
   dropped: string[];
   masked: number;
   offers: string[];
+  /** Reply lines that were neither a code line nor MASKED, OFFER or NONE: prose the model wrote instead. */
+  ignored: number;
 }
 
 /**
@@ -225,6 +238,7 @@ export function parseFindings(text: string, retrieved: Retrieved): Findings {
   const dropped: string[] = [];
   const offers: string[] = [];
   let masked = 0;
+  let ignored = 0;
   for (const raw of text.split("\n")) {
     // Masks are read before Markdown is stripped: "SAVE1***" is a masked
     // code, "**SAVE10**" is emphasis.
@@ -246,7 +260,10 @@ export function parseFindings(text: string, retrieved: Retrieved): Findings {
     }
     // "CODE | url | quote | conditions"; also "CODE - url", "CODE: url" from older replies.
     const m = /^([^\s|]+?)\s*(?:\||\s[-–—]\s|[–—]|:(?=\s*https?))\s*(https?:\/\/[^\s|]+)\s*(?:\|?\s*(.*))?$/.exec(line);
-    if (!m) continue;
+    if (!m) {
+      if (!/^NONE\b/i.test(line)) ignored++;
+      continue;
+    }
     const rawCode = (m[1] ?? "").replace(/[:,;]+$/, "");
     if (isMasked(rawCode)) {
       masked++;
@@ -278,7 +295,7 @@ export function parseFindings(text: string, retrieved: Retrieved): Findings {
     });
     if (found.length >= MAX_FOUND) break;
   }
-  return { found, dropped, masked, offers };
+  return { found, dropped, masked, offers, ignored };
 }
 
 function searchError(err: unknown, timedOut: boolean, stopped: boolean): SearchError {
@@ -330,6 +347,7 @@ export async function suggestCodes(
   const listed = likelyCodePages(merchant);
   // Pages the model asked the fetch tool for, loaded or not.
   const opened = new Set<string>();
+  const pages: FetchedPage[] = [];
   // Other spellings worth searching with (the brand inside the domain label), not the domain itself.
   const plain = (v: string): string => v.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const aka = merchant.names.filter((n) => n !== plain(merchant.brand) && n !== plain(merchant.domain) && n !== plain(merchant.brand).replace(/\s+/g, ""));
@@ -370,7 +388,10 @@ export async function suggestCodes(
     try {
       for await (const ev of provider.stream(req)) {
         if (ev.type === "text") text += ev.delta;
-        else if (ev.type === "fetch") opened.add(urlKey(ev.url));
+        else if (ev.type === "fetch") {
+          opened.add(urlKey(ev.url));
+          pages.push({ url: ev.url, ok: ev.ok, ...(ev.chars !== undefined ? { chars: ev.chars } : {}), ...(ev.error ? { error: ev.error } : {}) });
+        }
         else if (ev.type === "source") {
           addRetrieved(retrieved, ev.url, ev.page ?? ev.text, ev.title);
           if (ev.text) {
@@ -430,5 +451,7 @@ export async function suggestCodes(
     pagesListed: listed.length,
     pagesOpened: listed.filter((u) => opened.has(urlKey(u))).length,
     ...(followedUp ? { followedUp: true } : {}),
+    pages,
+    ignored: findings.ignored,
   };
 }
