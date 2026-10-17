@@ -101,6 +101,12 @@ describe("finding the coupon box", () => {
     const shopify = snap([el("e1", "button", "Remove Synthetic bracket"), el("e2", "button", "Remove SAVE10")]);
     expect(removeTarget(shopify, "SAVE10")?.ref).toBe("e2");
     expect(removeTarget(snap([el("e1", "button", "Remove")]), "SAVE10")).toBeNull();
+    // Live sweep 2026-10-17, Brumate: the applied code is a "× CODE" pill with no "Remove" text.
+    const drawer = snap([el("e1", "button", "× Synthetic bracket"), el("e2", "button", "× LL10-XEEG0MNF"), el("e3", "button", "SAVE10 ×")]);
+    expect(removeTarget(drawer, "LL10-XEEG0MNF")?.ref).toBe("e2");
+    expect(removeTarget(drawer, "SAVE10")?.ref).toBe("e3");
+    expect(removeTarget(drawer, "XMAS20")).toBeNull();
+    expect(removeTarget(snap([el("e1", "button", "Xtra 20")]), "TRA 20")).toBeNull();
   });
 
   it("reads what the store just said", () => {

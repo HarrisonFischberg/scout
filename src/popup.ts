@@ -2102,6 +2102,7 @@ async function main(): Promise<void> {
           if (more.error && !discovery.error) discovery.error = more.error;
         };
         const codes = rankCandidates(mergeCandidates(onSite, sug.codes), merchant);
+        trace("coupons:pages listed=" + sug.pagesListed + " opened=" + sug.pagesOpened + (sug.followedUp ? " followed-up" : ""));
         trace("coupons:candidates store=" + onSite.length + " verified=" + sug.verified + " reported=" + sug.reported + " dropped=" + sug.dropped + " masked=" + sug.masked);
         say(discoveryLine(discovery));
         if (codes.length === 0) {

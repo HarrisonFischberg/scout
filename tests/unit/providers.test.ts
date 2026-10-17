@@ -200,6 +200,35 @@ describe("web search (T019)", () => {
 });
 
 describe("web search depth and fetch (T031)", () => {
+  it("reports each page the model asks the fetch tool for, loaded or not", async () => {
+    const stream = [
+      { type: "message_start", message: { usage: { input_tokens: 1, output_tokens: 1 } } },
+      { type: "content_block_start", index: 0, content_block: { type: "server_tool_use", id: "srv_1", name: "web_fetch", input: {} } },
+      { type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: '{"url":"https://deals.te' } },
+      { type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: 'st/blocked"}' } },
+      { type: "content_block_stop", index: 0 },
+      {
+        type: "content_block_start",
+        index: 1,
+        content_block: { type: "web_fetch_tool_result", tool_use_id: "srv_1", content: { type: "web_fetch_tool_result_error", error_code: "url_not_accessible" } },
+      },
+      { type: "content_block_stop", index: 1 },
+      { type: "content_block_start", index: 2, content_block: { type: "server_tool_use", id: "srv_2", name: "web_search", input: {} } },
+      { type: "content_block_delta", index: 2, delta: { type: "input_json_delta", partial_json: '{"query":"deals"}' } },
+      { type: "content_block_stop", index: 2 },
+      { type: "message_stop" },
+    ].map((e) => "event: " + e.type + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
+    const p = createProvider("anthropic", {
+      apiKey: "sk-test-synthetic",
+      fetch: async () => new Response(stream, { status: 200, headers: { "content-type": "text/event-stream" } }),
+    });
+    const events = [];
+    for await (const ev of p.stream({ model: "m", messages: [{ role: "user", content: "x" }], maxTokens: 10, webSearch: true, webFetch: true })) events.push(ev);
+    expect(events.filter((e) => e.type === "fetch")).toEqual([{ type: "fetch", url: "https://deals.test/blocked" }]);
+    // A fetch that failed is no source: nothing was retrieved from it.
+    expect(events.some((e) => e.type === "source")).toBe(false);
+  });
+
   it("sends max_uses and the web fetch tool when asked, and reports fetched pages as sources with their text", async () => {
     let body = "";
     const stream = [

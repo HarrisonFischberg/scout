@@ -68,6 +68,8 @@ export type StreamEvent =
    * model fetched (Anthropic web fetch); `age` is the search result's age.
    */
   | { type: "source"; url: string; title?: string; text?: string; page?: string; age?: string }
+  /** A page the model asked the provider to fetch (Anthropic web fetch), whether or not it loaded. */
+  | { type: "fetch"; url: string }
   | { type: "usage"; usage: Usage }
   | { type: "done" };
 

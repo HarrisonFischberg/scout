@@ -31,6 +31,16 @@ export const FETCH_USES = 10;
 export const RETRY_TIME_MS = 90_000;
 const RETRY_SEARCH_USES = 6;
 const RETRY_NOTE = "This is a quick search without page reads: list every code you can read in the search results themselves, as reported by those pages.";
+/**
+ * Pages named in the request (`likelyCodePages`), few enough that one search
+ * can open them all. Live sweep 2026-10-17: Tackform's working code was
+ * printed on a listed page the model never opened in three runs, so pages it
+ * skips are opened in a short follow-up.
+ */
+export const MAX_LISTED_PAGES = 8;
+export const FOLLOW_UP_TIME_MS = 75_000;
+const FOLLOW_UP_NOTE =
+  "You did not open these pages, which may print this store's codes in full. Open each of them now with web_fetch, then list every code printed in full on them in the same format (MASKED for a page that hides its codes). Do not search; a page that fails to load is skipped.";
 
 // Sources worth naming: coupon sites that show full codes for small direct-to-consumer
 // stores, and the public places creators and brands post codes. The model decides
@@ -41,7 +51,7 @@ export const CODES_SYSTEM_PROMPT = [
   "You find coupon, promo, and discount codes that are publicly posted online for one specific store, so they can be tested in the shopper's cart.",
   "Use web_search many times with different wordings: the store's domain and its name with 'coupon codes', 'promo code', 'discount code', 'creator discount', 'affiliate code', 'influencer code', 'code reddit', 'podcast code', 'newsletter code';",
   "and the store's name with the names of coupon sites (" + COUPON_SITES + ").",
-  "Open the most useful pages with web_fetch and read the exact code strings. Look at coupon sites, creator, affiliate, podcast, YouTube, Instagram, TikTok, Linktree, Reddit, newsletter and blog pages, and the store's own pages (announcement bar, FAQ, help center, promotions page).",
+  "When the request lists pages, open every one of them with web_fetch before your first search. Open the most useful pages the searches return too, and read the exact code strings. Look at coupon sites, creator, affiliate, podcast, YouTube, Instagram, TikTok, Linktree, Reddit, newsletter and blog pages, and the store's own pages (announcement bar, FAQ, help center, promotions page).",
   "Some coupon sites print every code in full (Wethrift, DealDrop, Dealhack, RetailCoupons, HotDeals, Tenere, Knoji, DontPayFull, GrabOn, Discoup); others hide codes behind a 'Get code' button (Coupons.com, RetailMeNot, Honey, CouponFollow, SimplyCodes, CouponCabin), so those pages only tell you a code exists: when you meet one, go to the sites that print codes and to creator pages instead of stopping.",
   "Rules: list a code only when you saw it written out on a page, for this store and not another store with a similar name.",
   "Never invent, complete, or vary a code. A code shown masked or hidden behind a button cannot be listed as a code; report it as MASKED, then keep looking: other pages usually print the same codes in full.",
@@ -66,20 +76,24 @@ export function likelyCodePages(m: Merchant): string[] {
   const slug = m.brand.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   if (label.length < 3) return [];
   const dashed = m.domain.replace(/\./g, "-");
-  // Ordered by how often each printed a working code in the 2026-10-17 live sweeps.
+  const brandToo = slug.length >= 3 && slug !== label && slug !== "this-store";
+  // Ordered by how often each printed a code that worked in the 2026-10-17
+  // live sweeps (Wethrift 14 stores, HotDeals 12, DontPayFull 11, Coupert 5;
+  // CouponBind printed Tackform's; DealDrop masks most codes).
   const out = [
     "https://www.wethrift.com/" + label,
+    ...(brandToo ? ["https://www.wethrift.com/" + slug] : []),
     "https://www.wethrift.com/codes/" + m.domain,
     "https://us.hotdeals.com/store/" + label + "-coupon",
-    "https://" + label + ".tenereteam.com/coupons",
-    "https://www.dealdrop.com/" + label,
-    "https://dealhack.com/coupons/" + label,
     "https://www.dontpayfull.com/at/" + m.domain,
     "https://www.couponbind.com/coupons/" + m.domain,
+    "https://" + label + ".tenereteam.com/coupons",
     "https://usa.coupert.com/coupons/" + dashed + "-discount-code",
+    "https://dealhack.com/coupons/" + label,
+    "https://www.dealdrop.com/" + label,
+    ...(brandToo ? ["https://www.dealdrop.com/" + slug] : []),
   ];
-  if (slug.length >= 3 && slug !== label && slug !== "this-store") out.push("https://www.wethrift.com/" + slug, "https://www.dealdrop.com/" + slug);
-  return [...new Set(out)].slice(0, 12);
+  return [...new Set(out)].slice(0, MAX_LISTED_PAGES);
 }
 
 /** The second search, after the first found nothing that worked: other kinds of sources. */
@@ -115,6 +129,11 @@ export interface SuggestedCodes {
   error?: SearchError;
   /** True when the fetching search timed out empty and a search-only pass ran instead. */
   retried?: boolean;
+  /** Pages named in the request (`likelyCodePages`), and how many of them the model asked to open. */
+  pagesListed: number;
+  pagesOpened: number;
+  /** True when a follow-up opened listed pages the search had skipped. */
+  followedUp?: boolean;
 }
 
 /** Page text and addresses the search actually retrieved: the evidence codes are checked against. */
@@ -284,6 +303,9 @@ export interface SearchOptions {
   retryTimeoutMs?: number;
   /** False: no search-only retry. */
   retry?: boolean;
+  /** False: no follow-up for listed pages the search skipped. */
+  followUp?: boolean;
+  followUpTimeoutMs?: number;
 }
 
 export async function suggestCodes(
@@ -304,6 +326,10 @@ export async function suggestCodes(
   const cited: CouponCandidate[] = [];
   const searched = opts.webSearch !== false;
   let retried = false;
+  let followedUp = false;
+  const listed = likelyCodePages(merchant);
+  // Pages the model asked the fetch tool for, loaded or not.
+  const opened = new Set<string>();
   // Other spellings worth searching with (the brand inside the domain label), not the domain itself.
   const plain = (v: string): string => v.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const aka = merchant.names.filter((n) => n !== plain(merchant.brand) && n !== plain(merchant.domain) && n !== plain(merchant.brand).replace(/\s+/g, ""));
@@ -311,14 +337,14 @@ export async function suggestCodes(
     "Store: " + merchant.brand + "\nStore website: " + merchant.domain +
     (merchant.host.replace(/^www\./, "") !== merchant.domain ? "\nCheckout host: " + merchant.host : "") +
     (aka.length ? "\nAlso written as: " + aka.join(", ") : "") +
-    (likelyCodePages(merchant).length ? "\nPages that may print this store's codes in full; open the ones that exist: " + likelyCodePages(merchant).join(" ") : "") +
+    (listed.length ? "\nPages that may print this store's codes in full. Open every one of them with web_fetch before your first search; one that does not exist just fails to load: " + listed.join(" ") : "") +
     (opts.more ? "\n" + MORE_FOCUS : "") +
     (opts.exclude?.length
       ? "\nAlready tried, do not list these again; look for different codes: " + opts.exclude.slice(0, MAX_EXCLUDE_LISTED).join(", ")
       : "");
 
   /** One streamed search; what it finds lands in `text`, `retrieved` and `cited`. Returns why it ended early, if it did. */
-  const pass = async (p: { fetch: boolean; timeoutMs: number; searches: number }): Promise<SearchError | undefined> => {
+  const pass = async (p: { fetch: boolean; timeoutMs: number; searches: number; fetches?: number; note?: string }): Promise<SearchError | undefined> => {
     const ac = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -331,19 +357,20 @@ export async function suggestCodes(
     const req = {
       model,
       system: CODES_SYSTEM_PROMPT,
-      messages: [{ role: "user" as const, content: p.fetch ? content : content + "\n" + RETRY_NOTE }],
+      messages: [{ role: "user" as const, content: content + "\n" + (p.note ?? (p.fetch ? "" : RETRY_NOTE)) }],
       // Room for thinking between searches at higher effort.
       maxTokens: 8000,
       ...(opts.effort ? { effort: opts.effort } : {}),
       webSearch: true,
       webSearchMaxUses: p.searches,
       webFetch: p.fetch,
-      ...(p.fetch ? { webFetchMaxUses: FETCH_USES } : {}),
+      ...(p.fetch ? { webFetchMaxUses: p.fetches ?? FETCH_USES } : {}),
       signal: ac.signal,
     };
     try {
       for await (const ev of provider.stream(req)) {
         if (ev.type === "text") text += ev.delta;
+        else if (ev.type === "fetch") opened.add(urlKey(ev.url));
         else if (ev.type === "source") {
           addRetrieved(retrieved, ev.url, ev.page ?? ev.text, ev.title);
           if (ev.text) {
@@ -370,6 +397,16 @@ export async function suggestCodes(
     if (error?.code === "timeout" && !text.trim() && cited.length === 0 && opts.retry !== false && signal?.aborted !== true) {
       retried = true;
       error = await pass({ fetch: false, timeoutMs: opts.retryTimeoutMs ?? RETRY_TIME_MS, searches: RETRY_SEARCH_USES });
+    } else if (!error && opts.followUp !== false && provider.id === "anthropic" && signal?.aborted !== true) {
+      // Listed pages the search did not open: one short pass opens them. Only
+      // the Anthropic client has a page fetch tool and reports what it opened.
+      const missed = listed.filter((u) => !opened.has(urlKey(u)));
+      if (missed.length) {
+        followedUp = true;
+        const late = await pass({ fetch: true, timeoutMs: opts.followUpTimeoutMs ?? FOLLOW_UP_TIME_MS, searches: 1, fetches: missed.length, note: FOLLOW_UP_NOTE + " " + missed.join(" ") });
+        // Running out of time here loses nothing already found; a refused request is reported.
+        if (late && late.code !== "timeout") error = late;
+      }
     }
   }
   const findings = parseFindings(text, retrieved);
@@ -390,5 +427,8 @@ export async function suggestCodes(
     webSearches,
     ...(error ? { error } : {}),
     ...(retried ? { retried: true } : {}),
+    pagesListed: listed.length,
+    pagesOpened: listed.filter((u) => opened.has(urlKey(u))).length,
+    ...(followedUp ? { followedUp: true } : {}),
   };
 }
