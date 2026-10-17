@@ -23,6 +23,7 @@
 		432C9AE3398D8889519FDAFD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6984060B5995FB15A70F7EB /* ContentView.swift */; };
 		44591AF1303D7DE7A9594AF2 /* SafariScoutApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFF3A7A6FFAC4C38E60D00F /* SafariScoutApp.swift */; };
 		4B8DECDD083E4E0D24B435E1 /* privacy.html in Resources */ = {isa = PBXBuildFile; fileRef = 3DE806274580B227D3995289 /* privacy.html */; };
+		4E60E6E0B9430202633CB4A2 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 028B5C712BE52F47B902E1D5 /* PrivacyInfo.xcprivacy */; };
 		523BC8C08DFDAB1AA8A16FAE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6984060B5995FB15A70F7EB /* ContentView.swift */; };
 		54402E0BD5CABDE383CC2812 /* content.js in Resources */ = {isa = PBXBuildFile; fileRef = 0E1A0E7A1B227ADF88A1B413 /* content.js */; };
 		5C75FABD416B3597CFD94F9A /* Scout for Safari Extension (iOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4A2569CEA3796C446ACE0B72 /* Scout for Safari Extension (iOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -43,16 +44,19 @@
 		7A1C0D4E2B9F46C3A8E5D1F2 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		7D806FF2F407994E4D28F1CF /* terms.html in Resources */ = {isa = PBXBuildFile; fileRef = E531573CE3C35CCBA2D4399C /* terms.html */; };
 		835D2EEF9233782755B3D00F /* Scout for Safari Extension (macOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5B36544F9C86B6EED546C345 /* Scout for Safari Extension (macOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		8B2E1F4D6C3E5F7A9B0C1D2E /* overlay.js in Resources */ = {isa = PBXBuildFile; fileRef = 7A1F0E3C5B2D4E6F8A9B0C1D /* overlay.js */; };
 		8B9A6545AF27168729CA73E8 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
+		8D7D9B0716DBF1217C50A15E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 04F7B8DE0E0129420C3451F7 /* PrivacyInfo.xcprivacy */; };
 		8F23322DBF642A0F901134D4 /* ManagedPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E6C47A906B73CF54C895C3C /* ManagedPolicyTests.swift */; };
 		982764464B6865F0DAF9415B /* edge.js in Resources */ = {isa = PBXBuildFile; fileRef = 4D16268A894074E1BF8D7243 /* edge.js */; };
-		8B2E1F4D6C3E5F7A9B0C1D2E /* overlay.js in Resources */ = {isa = PBXBuildFile; fileRef = 7A1F0E3C5B2D4E6F8A9B0C1D /* overlay.js */; };
 		997FBCCB476F2CD0AAAEE239 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 319A3602A9A92E9E704AEBCD /* popup.js */; };
+		9C3F2A5E7D4F6A8B0C1D2E3F /* overlay.js in Resources */ = {isa = PBXBuildFile; fileRef = 7A1F0E3C5B2D4E6F8A9B0C1D /* overlay.js */; };
 		A9BCE9F420000BAEE4CBCF29 /* icons in Resources */ = {isa = PBXBuildFile; fileRef = 334A0CB4A03F106FEB4E1814 /* icons */; };
 		A9DCCCEEF09EC9973178027B /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 319A3602A9A92E9E704AEBCD /* popup.js */; };
 		B0F17D07F5D33A6B6AE0E129 /* edge.js in Resources */ = {isa = PBXBuildFile; fileRef = 4D16268A894074E1BF8D7243 /* edge.js */; };
-		9C3F2A5E7D4F6A8B0C1D2E3F /* overlay.js in Resources */ = {isa = PBXBuildFile; fileRef = 7A1F0E3C5B2D4E6F8A9B0C1D /* overlay.js */; };
 		B159672DCF20D4BDE70FA9BF /* terms.md in Resources */ = {isa = PBXBuildFile; fileRef = 826B6B632BCAB1F014E23696 /* terms.md */; };
+		B327455324A477C5E91BA4E5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 028B5C712BE52F47B902E1D5 /* PrivacyInfo.xcprivacy */; };
+		B69C0FFD3E4BBE351CF174FB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 04F7B8DE0E0129420C3451F7 /* PrivacyInfo.xcprivacy */; };
 		B892ED1F69C079AFB3202BAE /* ProviderSetupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB2AA781644909EFF76E9FC /* ProviderSetupTests.swift */; };
 		C0C7388EAF345F982393C9EE /* KeychainStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67857510C6E847756D3CEA9F /* KeychainStoreTests.swift */; };
 		C3A53F9D6F7BA805B8F82363 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
@@ -117,6 +121,8 @@
 
 /* Begin PBXFileReference section */
 		017E778274AD8134FA1FAFD8 /* ManagedPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ManagedPolicy.swift; sourceTree = "<group>"; };
+		028B5C712BE52F47B902E1D5 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		04F7B8DE0E0129420C3451F7 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		0E1A0E7A1B227ADF88A1B413 /* content.js */ = {isa = PBXFileReference; includeInIndex = 1; path = content.js; sourceTree = "<group>"; };
 		1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
 		1FFF3A7A6FFAC4C38E60D00F /* SafariScoutApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafariScoutApp.swift; sourceTree = "<group>"; };
@@ -130,7 +136,6 @@
 		49CA46C4964F64376FDFBEBA /* Scout for Safari (macOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Scout for Safari (macOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A2569CEA3796C446ACE0B72 /* Scout for Safari Extension (iOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Scout for Safari Extension (iOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4D16268A894074E1BF8D7243 /* edge.js */ = {isa = PBXFileReference; includeInIndex = 1; path = edge.js; sourceTree = "<group>"; };
-		7A1F0E3C5B2D4E6F8A9B0C1D /* overlay.js */ = {isa = PBXFileReference; includeInIndex = 1; path = overlay.js; sourceTree = "<group>"; };
 		5A44912843C812B2B1960158 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
 		5B36544F9C86B6EED546C345 /* Scout for Safari Extension (macOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Scout for Safari Extension (macOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		67857510C6E847756D3CEA9F /* KeychainStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeychainStoreTests.swift; sourceTree = "<group>"; };
@@ -139,6 +144,7 @@
 		7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSetup.swift; sourceTree = "<group>"; };
 		7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		7A1F0E3C5B2D4E6F8A9B0C1D /* overlay.js */ = {isa = PBXFileReference; includeInIndex = 1; path = overlay.js; sourceTree = "<group>"; };
 		826B6B632BCAB1F014E23696 /* terms.md */ = {isa = PBXFileReference; includeInIndex = 1; path = terms.md; sourceTree = "<group>"; };
 		899B4FA63AA1A90BAC21BB4C /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8E6C47A906B73CF54C895C3C /* ManagedPolicyTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ManagedPolicyTests.swift; sourceTree = "<group>"; };
@@ -224,6 +230,7 @@
 				BA52935E29A00BF86685A3B8 /* Info.plist */,
 				6BD6F66D11844DC065A72B17 /* SafariScoutExtension.entitlements */,
 				017E778274AD8134FA1FAFD8 /* ManagedPolicy.swift */,
+				028B5C712BE52F47B902E1D5 /* PrivacyInfo.xcprivacy */,
 			);
 			name = Extension;
 			path = Extension;
@@ -309,6 +316,7 @@
 				899B4FA63AA1A90BAC21BB4C /* Info.plist */,
 				FFE46ABD9E4B81390D9346BB /* SafariScout.entitlements */,
 				B4986E15F6D4CE7B6EBDAC66 /* Assets.xcassets */,
+				04F7B8DE0E0129420C3451F7 /* PrivacyInfo.xcprivacy */,
 			);
 			name = App;
 			path = App;
@@ -491,6 +499,7 @@
 				A9BCE9F420000BAEE4CBCF29 /* icons in Resources */,
 				B0F17D07F5D33A6B6AE0E129 /* edge.js in Resources */,
 				9C3F2A5E7D4F6A8B0C1D2E3F /* overlay.js in Resources */,
+				B327455324A477C5E91BA4E5 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -508,6 +517,7 @@
 				D5B993F4AB34FFCA20E95B69 /* privacy-policy.md in Resources */,
 				418444F5EF38AA1A10A19813 /* terms.md in Resources */,
 				EE5F07BE2F2AA2E880B14BDB /* Assets.xcassets in Resources */,
+				8D7D9B0716DBF1217C50A15E /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -518,6 +528,7 @@
 				19F5593FC25FE6CABB131D2F /* privacy-policy.md in Resources */,
 				B159672DCF20D4BDE70FA9BF /* terms.md in Resources */,
 				0B61B16B770EC3A7178C62D6 /* Assets.xcassets in Resources */,
+				B69C0FFD3E4BBE351CF174FB /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -535,6 +546,7 @@
 				2DCE22FAAA4B8AA6634699DB /* icons in Resources */,
 				982764464B6865F0DAF9415B /* edge.js in Resources */,
 				8B2E1F4D6C3E5F7A9B0C1D2E /* overlay.js in Resources */,
+				4E60E6E0B9430202633CB4A2 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -664,13 +676,14 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = KTV2G3Z883;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout;
 				PRODUCT_NAME = "Scout for Safari";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -689,13 +702,14 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = KTV2G3Z883;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout;
 				PRODUCT_NAME = "Scout for Safari";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -869,11 +883,12 @@
 				CODE_SIGN_ENTITLEMENTS = Extension/SafariScoutExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KTV2G3Z883;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Extension/Info.plist;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout.Extension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout.Extension;
 				PRODUCT_NAME = "Scout for Safari Extension";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -987,11 +1002,12 @@
 				CODE_SIGN_ENTITLEMENTS = Extension/SafariScoutExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KTV2G3Z883;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Extension/Info.plist;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.SafariScout.Extension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout.Extension;
 				PRODUCT_NAME = "Scout for Safari Extension";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
