@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { withWorker } from "./worker";
 
 // Page button (src/edge.ts): the Scout tab on the edge of a page. Tapping it
 // asks the worker to open Scout's toolbar panel (Safari's own sheet on
@@ -22,7 +23,7 @@ async function stub(page: Page, pageButton: unknown): Promise<void> {
       const g = globalThis as unknown as Record<string, unknown>;
       const top = (window.top ?? window) as unknown as Record<string, unknown>;
       if (!top.__fake) {
-        top.__fake = { data: { aiConsent: { anthropic: { at: 1, version: 1 } }, pageButton }, panelOpens: 0, permissionRequests: [], injected: [] };
+        top.__fake = { data: { aiConsent: { anthropic: { at: 1, version: 2 } }, pageButton }, panelOpens: 0, permissionRequests: [], injected: [] };
         top.__listeners = [];
       }
       const fake = top.__fake as Fake;
@@ -211,6 +212,7 @@ test("a page cannot open Scout with a synthetic click", async ({ page }) => {
 
 test("Settings turns the button on: asks Safari for site access and shows it on this page", async ({ page }) => {
   await stub(page, undefined);
+  await withWorker(page);
   await page.goto("/popup.html");
   await page.getByRole("button", { name: "Settings" }).click();
   const box = page.getByRole("checkbox", { name: "Show a Scout button on the edge of webpages" });

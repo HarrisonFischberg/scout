@@ -17,9 +17,20 @@ export interface ToolSpec {
   parameters: Record<string, unknown>;
 }
 
+/** Part of a user turn. Images are base64 without the data: prefix (Part 2: screenshots). */
+export type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image"; mediaType: "image/jpeg" | "image/png"; data: string };
+
 export interface ChatMessage {
   role: "user" | "assistant";
-  content: string;
+  /** A string, or parts for a user turn that carries an image. */
+  content: string | ContentPart[];
+}
+
+/** The text of a message's content (image parts left out). */
+export function textOf(content: string | ContentPart[]): string {
+  return typeof content === "string" ? content : content.map((p) => (p.type === "text" ? p.text : "")).join("");
 }
 
 export interface ChatRequest {

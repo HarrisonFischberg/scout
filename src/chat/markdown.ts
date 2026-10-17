@@ -3,12 +3,18 @@
 // quote untrusted page text) cannot inject markup or scripts.
 //
 // Supports: paragraphs, headings (# to ######), bullet and numbered lists with
-// one nested level, block quotes, tables, horizontal rules, fenced code,
-// inline code, **bold**, *italic* / _italic_, ***bold italic***, ~~strike~~,
-// and http(s) links.
+// one nested level, block quotes, tables, horizontal rules, fenced code (with
+// its language and a Copy button), inline code, **bold**, *italic* / _italic_,
+// ***bold italic***, ~~strike~~, http(s) links, math ($...$, \(...\),
+// $$...$$, \[...\] as MathML, src/chat/math.ts), and numbered citations [n]
+// linked to the message's sources.
+import { texToMathML } from "./math";
+
 export type Inline =
   | { type: "text"; text: string }
   | { type: "code"; text: string }
+  | { type: "math"; tex: string }
+  | { type: "cite"; n: number }
   | { type: "strong"; children: Inline[] }
   | { type: "em"; children: Inline[] }
   | { type: "del"; children: Inline[] }
@@ -26,22 +32,29 @@ export type Block =
   | { type: "quote"; children: Inline[] }
   | { type: "table"; header: Inline[][]; rows: Inline[][][] }
   | { type: "rule" }
-  | { type: "code"; text: string };
+  | { type: "code"; text: string; lang?: string }
+  | { type: "math"; tex: string };
 
 const SAFE_URL = /^https?:\/\//i;
 
-// Order matters: code first (its content is literal), then links, then the
-// longest emphasis markers. No lookbehind: Safari 16.0–16.3 lacks it.
+// Order matters: code first (its content is literal), then math (also
+// literal), links, citations, then the longest emphasis markers. No
+// lookbehind: Safari 16.0–16.3 lacks it.
 const INLINE = new RegExp(
   [
     "`([^`]+)`", // 1 code
-    "\\[([^\\]]+)\\]\\(((?:[^()\\s]|\\([^()\\s]*\\))+)\\)", // 2,3 link (URL may hold one level of parentheses)
-    "\\*\\*\\*([^*\\s](?:[^*]*[^*\\s])?)\\*\\*\\*", // 4 bold italic
-    "\\*\\*([^*\\s](?:[^*]*[^*\\s])?)\\*\\*", // 5 bold
-    "__([^_\\s](?:[^_]*[^_\\s])?)__", // 6 bold (underscores)
-    "~~([^~\\s](?:[^~]*[^~\\s])?)~~", // 7 strike
-    "\\*([^*\\s](?:[^*]*[^*\\s])?)\\*", // 8 italic
-    "(^|[^\\w])_([^_\\s](?:[^_]*[^_\\s])?)_(?![\\w])", // 9,10 italic (underscores, not inside words)
+    "\\\\\\((.+?)\\\\\\)", // 2 math \( \)
+    // 3,4 math $...$: no space just inside the dollars and no digit right after,
+    // so prices like "$10 and $20" stay text.
+    "(^|[^\\\\\\w$])\\$([^\\s$](?:[^$\\n]*?[^\\s$\\\\])?)\\$(?![\\d\\w])",
+    "\\[([^\\]]+)\\]\\(((?:[^()\\s]|\\([^()\\s]*\\))+)\\)", // 5,6 link (URL may hold one level of parentheses)
+    "\\[(\\d{1,2})\\](?!\\()", // 7 citation [n]
+    "\\*\\*\\*([^*\\s](?:[^*]*[^*\\s])?)\\*\\*\\*", // 8 bold italic
+    "\\*\\*([^*\\s](?:[^*]*[^*\\s])?)\\*\\*", // 9 bold
+    "__([^_\\s](?:[^_]*[^_\\s])?)__", // 10 bold (underscores)
+    "~~([^~\\s](?:[^~]*[^~\\s])?)~~", // 11 strike
+    "\\*([^*\\s](?:[^*]*[^*\\s])?)\\*", // 12 italic
+    "(^|[^\\w])_([^_\\s](?:[^_]*[^_\\s])?)_(?![\\w])", // 13,14 italic (underscores, not inside words)
   ].join("|"),
   "g",
 );
@@ -56,17 +69,22 @@ export function parseInline(src: string): Inline[] {
   for (let m = re.exec(src); m; m = re.exec(src)) {
     pushText(src.slice(last, m.index));
     if (m[1] !== undefined) out.push({ type: "code", text: m[1] });
-    else if (m[2] !== undefined && m[3] !== undefined) {
-      if (SAFE_URL.test(m[3])) out.push({ type: "link", href: m[3], children: parseInline(m[2]) });
-      else pushText(m[2]);
-    } else if (m[4] !== undefined) out.push({ type: "strong", children: [{ type: "em", children: parseInline(m[4]) }] });
-    else if (m[5] !== undefined) out.push({ type: "strong", children: parseInline(m[5]) });
-    else if (m[6] !== undefined) out.push({ type: "strong", children: parseInline(m[6]) });
-    else if (m[7] !== undefined) out.push({ type: "del", children: parseInline(m[7]) });
-    else if (m[8] !== undefined) out.push({ type: "em", children: parseInline(m[8]) });
-    else if (m[10] !== undefined) {
-      pushText(m[9] ?? "");
-      out.push({ type: "em", children: parseInline(m[10]) });
+    else if (m[2] !== undefined) out.push({ type: "math", tex: m[2] });
+    else if (m[4] !== undefined) {
+      pushText(m[3] ?? "");
+      out.push({ type: "math", tex: m[4] });
+    } else if (m[5] !== undefined && m[6] !== undefined) {
+      if (SAFE_URL.test(m[6])) out.push({ type: "link", href: m[6], children: parseInline(m[5]) });
+      else pushText(m[5]);
+    } else if (m[7] !== undefined) out.push({ type: "cite", n: Number(m[7]) });
+    else if (m[8] !== undefined) out.push({ type: "strong", children: [{ type: "em", children: parseInline(m[8]) }] });
+    else if (m[9] !== undefined) out.push({ type: "strong", children: parseInline(m[9]) });
+    else if (m[10] !== undefined) out.push({ type: "strong", children: parseInline(m[10]) });
+    else if (m[11] !== undefined) out.push({ type: "del", children: parseInline(m[11]) });
+    else if (m[12] !== undefined) out.push({ type: "em", children: parseInline(m[12]) });
+    else if (m[14] !== undefined) {
+      pushText(m[13] ?? "");
+      out.push({ type: "em", children: parseInline(m[14]) });
     }
     last = m.index + m[0].length;
   }
@@ -110,12 +128,44 @@ export function parseMarkdown(src: string): Block[] {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
-    if (/^\s*```/.test(line)) {
+    const fence = /^\s*```\s*([\w+#.-]*)/.exec(line);
+    if (fence) {
       flushAll();
       const code: string[] = [];
       for (i++; i < lines.length && !/^\s*```/.test(lines[i] ?? ""); i++) code.push(lines[i] ?? "");
-      blocks.push({ type: "code", text: code.join("\n") });
+      blocks.push({ type: "code", text: code.join("\n"), ...(fence[1] ? { lang: fence[1].slice(0, 20) } : {}) });
       continue;
+    }
+    // Display math: $$...$$ or \[...\], on one line or several.
+    const dm = /^\s*(\$\$|\\\[)(.*)$/.exec(line);
+    if (dm) {
+      const close = dm[1] === "$$" ? "$$" : "\\]";
+      const first = dm[2] ?? "";
+      const at = first.indexOf(close);
+      if (at >= 0 && first.slice(at + close.length).trim() === "") {
+        flushAll();
+        blocks.push({ type: "math", tex: first.slice(0, at).trim() });
+        continue;
+      }
+      if (at < 0) {
+        const body = [first];
+        let j = i + 1;
+        for (; j < lines.length; j++) {
+          const l = lines[j] ?? "";
+          const k = l.indexOf(close);
+          if (k >= 0) {
+            body.push(l.slice(0, k));
+            break;
+          }
+          body.push(l);
+        }
+        if (j < lines.length) {
+          flushAll();
+          blocks.push({ type: "math", tex: body.join("\n").trim() });
+          i = j;
+          continue;
+        }
+      }
     }
     // Table: a row with pipes followed by a |---|---| rule.
     if (line.includes("|") && isTableRule(lines[i + 1] ?? "")) {
@@ -179,10 +229,29 @@ export function parseMarkdown(src: string): Block[] {
   return blocks;
 }
 
-function mountInline(doc: Document, parent: Node, nodes: Inline[]): void {
+export interface RenderOptions {
+  /** Sources the answer may cite as [n]: the shared pages, then web citations. */
+  sources?: Array<{ url: string; title?: string }>;
+}
+
+function mountInline(doc: Document, parent: Node, nodes: Inline[], opts: RenderOptions = {}): void {
   for (const n of nodes) {
     if (n.type === "text") parent.appendChild(doc.createTextNode(n.text));
-    else if (n.type === "code") {
+    else if (n.type === "math") parent.appendChild(texToMathML(doc, n.tex, false));
+    else if (n.type === "cite") {
+      const src = opts.sources?.[n.n - 1];
+      if (src && SAFE_URL.test(src.url)) {
+        const sup = doc.createElement("sup");
+        const a = doc.createElement("a");
+        a.setAttribute("href", src.url);
+        a.setAttribute("target", "_blank");
+        a.setAttribute("rel", "noopener noreferrer");
+        a.setAttribute("aria-label", "Source " + n.n + (src.title ? ": " + src.title : ""));
+        a.textContent = "[" + n.n + "]";
+        sup.appendChild(a);
+        parent.appendChild(sup);
+      } else parent.appendChild(doc.createTextNode("[" + n.n + "]"));
+    } else if (n.type === "code") {
       const el = doc.createElement("code");
       el.textContent = n.text;
       parent.appendChild(el);
@@ -191,43 +260,43 @@ function mountInline(doc: Document, parent: Node, nodes: Inline[]): void {
       el.setAttribute("href", n.href);
       el.setAttribute("target", "_blank");
       el.setAttribute("rel", "noopener noreferrer");
-      mountInline(doc, el, n.children);
+      mountInline(doc, el, n.children, opts);
       parent.appendChild(el);
     } else {
       const el = doc.createElement(n.type);
-      mountInline(doc, el, n.children);
+      mountInline(doc, el, n.children, opts);
       parent.appendChild(el);
     }
   }
 }
 
-function mountList(doc: Document, ordered: boolean, items: ListItem[]): HTMLElement {
+function mountList(doc: Document, ordered: boolean, items: ListItem[], opts: RenderOptions): HTMLElement {
   const el = doc.createElement(ordered ? "ol" : "ul");
   for (const item of items) {
     const li = doc.createElement("li");
-    mountInline(doc, li, item.children);
-    if (item.sub) li.appendChild(mountList(doc, item.sub.ordered, item.sub.items));
+    mountInline(doc, li, item.children, opts);
+    if (item.sub) li.appendChild(mountList(doc, item.sub.ordered, item.sub.items, opts));
     el.appendChild(li);
   }
   return el;
 }
 
-export function renderMarkdown(doc: Document, target: HTMLElement, src: string): void {
+export function renderMarkdown(doc: Document, target: HTMLElement, src: string, opts: RenderOptions = {}): void {
   target.replaceChildren();
   for (const b of parseMarkdown(src)) {
     if (b.type === "paragraph") {
       const el = doc.createElement("p");
-      mountInline(doc, el, b.children);
+      mountInline(doc, el, b.children, opts);
       target.appendChild(el);
     } else if (b.type === "heading") {
       const el = doc.createElement("h" + String(b.level + 2));
-      mountInline(doc, el, b.children);
+      mountInline(doc, el, b.children, opts);
       target.appendChild(el);
     } else if (b.type === "list") {
-      target.appendChild(mountList(doc, b.ordered, b.items));
+      target.appendChild(mountList(doc, b.ordered, b.items, opts));
     } else if (b.type === "quote") {
       const el = doc.createElement("blockquote");
-      mountInline(doc, el, b.children);
+      mountInline(doc, el, b.children, opts);
       target.appendChild(el);
     } else if (b.type === "table") {
       const wrap = doc.createElement("div");
@@ -238,7 +307,7 @@ export function renderMarkdown(doc: Document, target: HTMLElement, src: string):
       for (const cell of b.header) {
         const th = doc.createElement("th");
         th.setAttribute("scope", "col");
-        mountInline(doc, th, cell);
+        mountInline(doc, th, cell, opts);
         hr.appendChild(th);
       }
       head.appendChild(hr);
@@ -247,7 +316,7 @@ export function renderMarkdown(doc: Document, target: HTMLElement, src: string):
         const tr = doc.createElement("tr");
         for (const cell of row) {
           const td = doc.createElement("td");
-          mountInline(doc, td, cell);
+          mountInline(doc, td, cell, opts);
           tr.appendChild(td);
         }
         body.appendChild(tr);
@@ -257,12 +326,38 @@ export function renderMarkdown(doc: Document, target: HTMLElement, src: string):
       target.appendChild(wrap);
     } else if (b.type === "rule") {
       target.appendChild(doc.createElement("hr"));
+    } else if (b.type === "math") {
+      const wrap = doc.createElement("div");
+      wrap.className = "math-block";
+      wrap.appendChild(texToMathML(doc, b.tex, true));
+      target.appendChild(wrap);
     } else {
+      const wrap = doc.createElement("div");
+      wrap.className = "code-block";
+      const head = doc.createElement("div");
+      head.className = "code-head";
+      const lang = doc.createElement("span");
+      lang.className = "code-lang";
+      lang.textContent = b.lang ?? "";
+      const copy = doc.createElement("button");
+      copy.type = "button";
+      copy.className = "code-copy";
+      copy.textContent = "Copy";
+      copy.setAttribute("aria-label", "Copy code" + (b.lang ? " (" + b.lang + ")" : ""));
+      const text = b.text;
+      copy.addEventListener("click", () => {
+        void navigator.clipboard?.writeText(text).then(
+          () => (copy.textContent = "Copied"),
+          () => (copy.textContent = "Copy failed"),
+        );
+      });
+      head.append(lang, copy);
       const pre = doc.createElement("pre");
       const code = doc.createElement("code");
       code.textContent = b.text;
       pre.appendChild(code);
-      target.appendChild(pre);
+      wrap.append(head, pre);
+      target.appendChild(wrap);
     }
   }
 }

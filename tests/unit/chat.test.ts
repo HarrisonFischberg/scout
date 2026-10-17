@@ -204,3 +204,37 @@ describe("answer formatting rules (T029)", () => {
     expect(FORMAT_RULES).toContain("attribute claims to their source");
   });
 });
+
+describe("Part 2 rendering: math, citations, code", () => {
+  it("parses inline math but leaves prices alone", () => {
+    expect(parseInline("Area is $\\pi r^2$ here")).toEqual([
+      { type: "text", text: "Area is" },
+      { type: "text", text: " " },
+      { type: "math", tex: "\\pi r^2" },
+      { type: "text", text: " here" },
+    ]);
+    expect(parseInline("It costs $10 and $20.")).toEqual([{ type: "text", text: "It costs $10 and $20." }]);
+    expect(parseInline("From $5-$10 a month")).toEqual([{ type: "text", text: "From $5-$10 a month" }]);
+    expect(parseInline("see \\(x+1\\)")).toEqual([{ type: "text", text: "see " }, { type: "math", tex: "x+1" }]);
+    expect(parseInline("The widget costs **$10** with free shipping.").map((n) => n.type)).toEqual(["text", "strong", "text"]);
+  });
+
+  it("parses display math on one or several lines", () => {
+    expect(parseMarkdown("$$E = mc^2$$")).toEqual([{ type: "math", tex: "E = mc^2" }]);
+    expect(parseMarkdown("\\[\n\\frac{a}{b}\n\\]")).toEqual([{ type: "math", tex: "\\frac{a}{b}" }]);
+    expect(parseMarkdown("$$ unclosed").map((b) => b.type)).toEqual(["paragraph"]);
+  });
+
+  it("parses citations but not links", () => {
+    expect(parseInline("Rated 4.5 stars [2].")).toEqual([
+      { type: "text", text: "Rated 4.5 stars " },
+      { type: "cite", n: 2 },
+      { type: "text", text: "." },
+    ]);
+    expect(parseInline("[2](https://x.test)")[0]?.type).toBe("link");
+  });
+
+  it("keeps the code block language", () => {
+    expect(parseMarkdown("```python\nprint(1)\n```")).toEqual([{ type: "code", text: "print(1)", lang: "python" }]);
+  });
+});

@@ -46,9 +46,24 @@ declare const browser: {
     query(info: { active?: boolean; currentWindow?: boolean }): Promise<
       Array<{ id?: number; windowId?: number; title?: string; url?: string; active?: boolean; incognito?: boolean }>
     >;
+    // Part 2 tool host. Optional where the e2e stubs leave them out.
+    get?(tabId: number): Promise<{ id?: number; windowId?: number; title?: string; url?: string; active?: boolean; incognito?: boolean }>;
+    create?(props: { url: string; active?: boolean }): Promise<{ id?: number; windowId?: number; title?: string; url?: string }>;
+    remove?(tabIds: number | number[]): Promise<void>;
+    captureVisibleTab?(windowId?: number, options?: { format?: "jpeg" | "png"; quality?: number }): Promise<string>;
+    // Not in Safari (MDN browser-compat-data); kept so the host can use them where they exist.
+    group?(options: { tabIds: number[] }): Promise<number>;
+    ungroup?(tabIds: number[]): Promise<void>;
     sendMessage?(tabId: number, message: unknown): Promise<unknown>;
     onActivated?: { addListener(fn: (info: { tabId: number; windowId?: number }) => void): void };
     onRemoved?: { addListener(fn: (tabId: number) => void): void };
+  };
+  // Not in Safari (MDN browser-compat-data); search_tabs uses them where they exist.
+  history?: {
+    search(query: { text: string; maxResults?: number; startTime?: number }): Promise<Array<{ url?: string; title?: string }>>;
+  };
+  sessions?: {
+    getRecentlyClosed(filter?: { maxResults?: number }): Promise<Array<{ tab?: { url?: string; title?: string } }>>;
   };
   action?: {
     setIcon?(details: { path: Record<string, string>; tabId?: number }): Promise<void>;

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { withWorker } from "./worker";
 
 // Loads the built popup (run `npm run build` first) with a stubbed `browser`
 // namespace holding two fixture tabs. The provider is mocked at the network
@@ -40,7 +41,7 @@ async function openPopup(page: Page, opts: { backgroundReadFails?: boolean } = {
           onMessage: { addListener() {} },
         },
         // Sharing with the provider already allowed (consent.spec.ts covers asking).
-        storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 1 }, openai: { at: 1, version: 1 } } } : {}), set: async () => undefined, clear: async () => undefined } },
+        storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } } } : {}), set: async () => undefined, clear: async () => undefined } },
         tabs: {
           query: async (info: { active?: boolean }) => (info.active ? tabs.filter((t) => t.active) : tabs),
         },
@@ -65,6 +66,7 @@ async function openPopup(page: Page, opts: { backgroundReadFails?: boolean } = {
     bodies.push(r.request().postData() ?? "");
     await r.fulfill({ status: 200, contentType: "text/event-stream", body: ANSWER });
   });
+  await withWorker(page);
   await page.goto("/popup.html");
   return { bodies };
 }
@@ -72,7 +74,7 @@ async function openPopup(page: Page, opts: { backgroundReadFails?: boolean } = {
 test("a ticked tab is read and cited alongside the active page", async ({ page }) => {
   const { bodies } = await openPopup(page);
   await page.getByRole("button", { name: "More actions" }).click();
-  await page.getByRole("button", { name: "Use other tabs" }).click();
+  await page.getByRole("button", { name: "Attach tabs" }).click();
   await page.getByRole("checkbox", { name: "Reviews of Widget" }).check();
   await page.getByLabel("Ask about this page").fill("Is the widget good value?");
   await page.getByRole("button", { name: "Send" }).click();
@@ -82,26 +84,58 @@ test("a ticked tab is read and cited alongside the active page", async ({ page }
   expect(bodies[0]).toContain("Customers rate the Widget 4.5 stars.");
 });
 
-test("@mention selects a tab without ticking it", async ({ page }) => {
+test("typing @ suggests tabs; choosing one attaches it as a chip", async ({ page }) => {
   const { bodies } = await openPopup(page);
-  await page.getByLabel("Ask about this page").fill("Compare with @reviews");
-  await page.getByRole("button", { name: "Send" }).click();
+  const field = page.getByLabel("Ask about this page");
+  await field.fill("Compare with @rev");
+  await expect(page.getByRole("listbox", { name: "Tabs to attach" }).getByRole("option", { name: /Reviews of Widget/ })).toBeVisible();
+  await field.press("Enter");
+  await expect(page.getByRole("group", { name: "Attached tabs" }).getByText("Reviews of Widget")).toBeVisible();
+  await expect(field).toHaveValue("Compare with ");
+  await field.pressSequentially("it");
+  await field.press("Enter");
   await expect(page.getByRole("log").getByText("Reviews of Widget).")).toBeVisible();
   expect(bodies[0]).toContain("Customers rate the Widget 4.5 stars.");
+  await expect(page.getByRole("log").getByRole("list", { name: "Shared with this answer" })).toContainText("Reviews of Widget (reviews.test)");
+});
+
+test("an @word that is not chosen attaches nothing", async ({ page }) => {
+  const { bodies } = await openPopup(page);
+  await page.getByLabel("Ask about this page").fill("Compare with @nothing-like-this");
+  await expect(page.getByRole("listbox", { name: "Tabs to attach" })).toBeHidden();
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("log").getByText("Reviews of Widget).")).toBeVisible();
+  expect(bodies[0]).not.toContain("Customers rate the Widget");
+});
+
+test("a removed chip detaches the tab", async ({ page }) => {
+  const { bodies } = await openPopup(page);
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("button", { name: "Attach tabs" }).click();
+  await page.getByRole("checkbox", { name: "Reviews of Widget" }).check();
+  await page.getByRole("button", { name: "Remove Reviews of Widget" }).click();
+  await expect(page.getByRole("checkbox", { name: "Reviews of Widget" })).not.toBeChecked();
+  await page.getByLabel("Ask about this page").fill("How much?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("log").getByText("It costs $10 (Test shop)")).toBeVisible();
+  expect(bodies[0]).not.toContain("Customers rate the Widget");
 });
 
 test("an untouched tab is never read", async ({ page }) => {
   const { bodies } = await openPopup(page);
   await page.getByLabel("Ask about this page").fill("How much?");
   await page.getByRole("button", { name: "Send" }).click();
-  await expect(page.getByRole("log").getByText("Test shop")).toBeVisible();
+  await expect(page.getByRole("log").getByText("It costs $10 (Test shop)")).toBeVisible();
   expect(bodies[0]).not.toContain("Customers rate the Widget");
+  // Only the current tab is listed as shared under the answer.
+  const shared = page.getByRole("log").getByRole("list", { name: "Shared with this answer" });
+  await expect(shared.getByRole("listitem")).toHaveText(["Test shop (shop.test)"]);
 });
 
 test("a tab that cannot be read is named in the conversation, not just the status line", async ({ page }) => {
   const { bodies } = await openPopup(page, { backgroundReadFails: true });
   await page.getByRole("button", { name: "More actions" }).click();
-  await page.getByRole("button", { name: "Use other tabs" }).click();
+  await page.getByRole("button", { name: "Attach tabs" }).click();
   await page.getByRole("checkbox", { name: "Reviews of Widget" }).check();
   await page.getByLabel("Ask about this page").fill("Price and rating?");
   await page.getByRole("button", { name: "Send" }).click();

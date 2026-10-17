@@ -2,7 +2,8 @@ import SafariServices
 import os
 
 // Native messaging endpoint shared by the macOS and iOS extension targets.
-// Keychain messages are handled by KeychainBridge (T004).
+// Keychain messages are handled by KeychainBridge (T004); policy.get, the
+// organization blocklist, by ManagedPolicy (Part 2).
 final class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
     func beginRequest(with context: NSExtensionContext) {
         let request = context.inputItems.first as? NSExtensionItem
@@ -20,7 +21,7 @@ final class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         }
         #endif
         let response = NSExtensionItem()
-        response.userInfo = [SFExtensionMessageKey: KeychainBridge.handle(message)]
+        response.userInfo = [SFExtensionMessageKey: ManagedPolicy.handle(message) ?? KeychainBridge.handle(message)]
         context.completeRequest(returningItems: [response], completionHandler: nil)
     }
 }

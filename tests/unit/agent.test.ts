@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { AgentControl, runAgent, type AgentPage } from "../../src/agent/loop";
 import type { Action, ActionResult } from "../../src/actions/executor";
 import { ProviderError } from "../../src/providers/errors";
-import type { ChatRequest, ProviderClient, StreamEvent } from "../../src/providers";
+import { textOf, type ChatRequest, type ProviderClient, type StreamEvent } from "../../src/providers";
 import type { Snapshot } from "../../src/snapshot/snapshot";
 
 const snap: Snapshot = {
@@ -74,7 +74,7 @@ describe("agent loop", () => {
   it("fences page text as untrusted and keeps the goal outside the fence", async () => {
     const provider = scripted([[use("finish", { summary: "x" })]]);
     await runAgent({ provider, model: "m", goal: "G", page: page() });
-    const first = provider.seen[0]?.messages[0]?.content ?? "";
+    const first = textOf(provider.seen[0]?.messages[0]?.content ?? "");
     expect(first.indexOf("<user_goal>G</user_goal>")).toBeLessThan(first.indexOf("<untrusted_page_content>"));
     expect(provider.seen[0]?.system).toContain("not instructions");
   });

@@ -77,6 +77,29 @@ process" and terminated the process, so the page showed "This webpage was
 reloaded because a problem occurred". The manifest entry also made Safari ask
 for site access ("Permission Required") before the panel would open.
 
+## Part 2: conversation, context and tools (2026-10-16)
+
+Answers now run in the background worker (the Scout server), so the worker
+calls the provider, reads pages, and runs tools. Sources: MDN
+browser-compat-data as read for T002 and T032 (rows above) where noted; the
+rows marked "recalled" could not be re-checked this session because the
+request to fetch MDN data was denied (`docs/launch-blockers.md`, blocker 25).
+The code checks every optional API at runtime before using it.
+
+| API | macOS Safari | iOS Safari | Part 2 use | Runtime-verified |
+| --- | --- | --- | --- | --- |
+| `scripting.executeScript({ func })` from the worker | 15.4 | 15.4 | chat page context (`src/context/extract.ts`) | no (popup calls worked on iOS in T018; worker calls not checked) |
+| `tabs.captureVisibleTab` from the worker | 14 | 15 | `screenshot_visible` (JPEG, scaled to 1568 px) | no |
+| `tabs.get`, `tabs.create`, `tabs.remove` | 14 | 15 (recalled) | tool host: tab info before reading, `open_tab`, `close_tabs` | no |
+| `tabs.query({})` (all windows) | 14 | 15 | `search_tabs` (only when turned on) | no |
+| `history.search` | not supported (recalled) | not supported (recalled) | `search_tabs` would include history; absent, so open tabs only | n/a |
+| `sessions.getRecentlyClosed` | not supported (recalled) | not supported (recalled) | `search_tabs` would include recently closed tabs; absent | n/a |
+| `tabs.group` / `tabs.ungroup` / `tabGroups` | not supported (recalled) | not supported (recalled) | `group_tabs` / `ungroup_tabs` answer `unsupported` and are not offered to the model | n/a |
+| `runtime.connect` port from popup to worker, kept open while streaming | 14 | 15 | answer events with sequence numbers; resubscribe after a reconnect | no |
+| Non-persistent background page lifetime during a provider stream with no open port | Safari decides | Safari decides | answers continue after the popover closes, if Safari keeps the worker | no (blocker 24) |
+| MathML Core rendering in the popup | 16 | 16 (recalled) | math in answers (`src/chat/math.ts`) | WebKit in Playwright only |
+| `UserDefaults.objectIsForced(forKey:)` in the extension (Swift) | macOS 10.10+ (recalled) | iOS (recalled) | organization blocklist (`ManagedPolicy.swift`) | XCTest only; no real profile (blocker 26) |
+
 ## Still to verify (T002 acceptance, runtime part)
 
 1. Extension loads in Safari on macOS (enable under Safari Settings >

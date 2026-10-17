@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { withWorker } from "./worker";
 
 // Debug-build diagnostics: an error offers "Copy diagnostics"; the copied
 // report is the "Actual behavior" block and never contains the key, page
@@ -11,7 +12,7 @@ async function openPopup(page: Page): Promise<void> {
   await page.addInitScript(
     ({ key, pageData }) => {
       // Sharing with the provider already allowed (consent.spec.ts covers asking).
-      const data: Record<string, unknown> = { aiConsent: { anthropic: { at: 1, version: 1 }, openai: { at: 1, version: 1 } } };
+      const data: Record<string, unknown> = { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } } };
       (globalThis as unknown as { browser: unknown }).browser = {
         runtime: {
           sendMessage: async () => ({ ok: true }),
@@ -47,6 +48,7 @@ async function openPopup(page: Page): Promise<void> {
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
   await page.route("https://api.anthropic.com/**", (r) => r.fulfill({ status: 401, body: "{}" }));
+  await withWorker(page);
   await page.goto("/popup.html");
   await expect(page.getByLabel("Ask about this page")).toBeVisible();
 }

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { withWorker } from "./worker";
 
 // Part 1: the Scout panel keeps one conversation per tab, says hello to the
 // background worker over the "scout-panel" port, is off in Private Browsing,
@@ -26,7 +27,7 @@ async function openPanel(page: Page, tab: { id: number; incognito?: boolean }): 
     ({ key, pageData, firstTab }) => {
       const g = globalThis as unknown as Record<string, unknown>;
       const ss = g.sessionStorage as Storage;
-      const fake = JSON.parse(ss.getItem("__fake") ?? JSON.stringify({ data: { aiConsent: { anthropic: { at: 1, version: 1 }, openai: { at: 1, version: 1 } } }, hellos: [] }));
+      const fake = JSON.parse(ss.getItem("__fake") ?? JSON.stringify({ data: { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } } } }));
       const save = () => ss.setItem("__fake", JSON.stringify(fake));
       const tab = JSON.parse(ss.getItem("__tab") ?? JSON.stringify(firstTab));
       g.__fake = fake;
@@ -37,20 +38,7 @@ async function openPanel(page: Page, tab: { id: number; incognito?: boolean }): 
           sendMessage: async () => ({ ok: true }),
           sendNativeMessage: async (_app: string, m: { type: string }) => (m.type === "keychain.get" ? { ok: true, value: key } : { ok: true }),
           onMessage: { addListener() {} },
-          connect: ({ name }: { name: string }) => {
-            const listeners: Array<(m: unknown) => void> = [];
-            return {
-              name,
-              postMessage: (m: { type: string; request_id: string; payload: { tabId: number } }) => {
-                fake.hellos.push({ name, ...m });
-                save();
-                setTimeout(() => listeners.forEach((f) => f({ type: "panel.ack", request_id: m.request_id, payload: { tabId: m.payload.tabId } })), 0);
-              },
-              disconnect() {},
-              onMessage: { addListener: (f: (m: unknown) => void) => listeners.push(f) },
-              onDisconnect: { addListener() {} },
-            };
-          },
+          // runtime.connect and the worker come from tests/e2e/worker.ts.
         },
         tabs: { query: async () => [{ id: tab.id, windowId: 1, url: pageData.url, title: pageData.title, active: true, incognito: tab.incognito === true }] },
         permissions: { request: async () => true, getAll: async () => ({ origins: [] }), remove: async () => true },
@@ -79,7 +67,14 @@ async function openPanel(page: Page, tab: { id: number; incognito?: boolean }): 
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
   await page.route("**/icons/**", (r) => r.fulfill({ status: 200, contentType: "image/png", body: "" }));
   await page.route("https://api.anthropic.com/v1/models**", (r) => r.fulfill({ status: 401, body: "{}" }));
+  await withWorker(page);
   await page.goto("/popup.html");
+}
+
+/** panel.hello messages the panel posted on its port, across reloads (tests/e2e/worker.ts logs them). */
+async function portHellos(page: Page): Promise<Array<{ name: string; type: string; payload: { tabId: number } }>> {
+  const log = await page.evaluate(() => JSON.parse(sessionStorage.getItem("__scoutPortLog") ?? "[]") as Array<{ name: string; type: string; payload: { tabId: number } }>);
+  return log.filter((m) => m.type === "panel.hello");
 }
 
 async function switchTab(page: Page, tab: { id: number; incognito?: boolean }): Promise<void> {
@@ -105,7 +100,7 @@ test("each tab keeps its own conversation, restored when the panel reopens on it
   await expect(log.getByText("What moved the market today?")).toBeVisible();
 
   // The panel said hello on the scout-panel port with the tab it shows.
-  const hellos = await page.evaluate(() => (globalThis as unknown as { __fake: { hellos: Array<{ name: string; type: string; payload: { tabId: number } }> } }).__fake.hellos);
+  const hellos = await portHellos(page);
   expect(hellos.map((h) => [h.name, h.type, h.payload.tabId])).toEqual([
     ["scout-panel", "panel.hello", 1],
     ["scout-panel", "panel.hello", 2],
@@ -133,6 +128,5 @@ test("the panel is off in Private Browsing, with a short explanation", async ({ 
   await expect(page.locator("#status")).toHaveText("Scout for Safari is off in Private Browsing.");
   await expect(page.locator("#composer")).toBeHidden();
   await expect(page.getByRole("button", { name: "Settings" })).toBeHidden();
-  const hellos = await page.evaluate(() => (globalThis as unknown as { __fake: { hellos: unknown[] } }).__fake.hellos);
-  expect(hellos).toEqual([]);
+  expect(await portHellos(page)).toEqual([]);
 });

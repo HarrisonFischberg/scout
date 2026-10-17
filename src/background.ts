@@ -1,8 +1,10 @@
 // Scout background worker (non-persistent). Part 1: answers bridge requests,
 // tracks the panel port (per-tab open state, toolbar title), keeps the toolbar
 // icon matched to the light/dark theme, and drops state for closed tabs.
-// Parts 2 and 3 add the tool host, permission gate, agent runner, and overlay.
+// Part 2 adds the Scout server, page context, tool host, and permission gate
+// (src/server/worker.ts). Part 3 adds the agent runner and overlay.
 import { PANEL_EVENTS, PANEL_PORT, checkSchema, classifySender, createRouter, envelope, parseEnvelope, type MessageSender, type Self } from "./bridge/messages";
+import { createScoutWorker } from "./server/worker";
 import { edgeMatches, EDGE_SCRIPT_ID, PAGE_BUTTON_KEY, parsePageButton, sameMatches } from "./panel/edge";
 import { clearTabStates, forgetTab, loadTabStates, setPanelOpen, tabKey } from "./panel/state";
 import { openPanel, toolbarIcon, TITLE_CLOSE, TITLE_OPEN } from "./panel/toolbar";
@@ -19,8 +21,10 @@ syncIcon();
 dark?.addEventListener?.("change", syncIcon);
 
 // ---------- Request/response ----------
+const scout = createScoutWorker(storage);
 const route = createRouter(
   {
+    ...scout.handlers,
     ping: () => ({ from: "background" }),
     "panel.state": async (p: { tabId: number }) => {
       const states = storage ? await loadTabStates(storage) : {};
@@ -50,8 +54,10 @@ browser.runtime.onConnect?.addListener((port) => {
     return;
   }
   let tabId: number | undefined;
+  const chat = scout.attachChatPort(port);
   port.onMessage.addListener((raw) => {
     const parsed = parseEnvelope(raw);
+    if (parsed.ok && chat(parsed.env)) return;
     if (!parsed.ok || parsed.env.type !== "panel.hello" || checkSchema(PANEL_EVENTS["panel.hello"], parsed.env.payload)) return;
     tabId = (parsed.env.payload as { tabId: number }).tabId;
     void browser.action?.setTitle?.({ title: TITLE_CLOSE })?.catch(() => undefined);

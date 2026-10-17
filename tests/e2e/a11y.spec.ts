@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { withWorker } from "./worker";
 
 // T017 evidence for safeguards 13, 14, 15: axe-core WCAG 2.2 A/AA rules in
 // WebKit (Safari's engine), light and dark, plus a keyboard walk. Stubbed
@@ -9,7 +10,7 @@ async function openPopup(page: Page): Promise<void> {
     const data: Record<string, unknown> = {
       settings: { provider: "anthropic", model: "claude-sonnet-5-5", retention: "7" },
       // OpenAI allowed, Anthropic not: Settings shows a Withdraw button and the first chat request asks.
-      aiConsent: { openai: { at: 1, version: 1 } },
+      aiConsent: { openai: { at: 1, version: 2 } },
     };
     (globalThis as unknown as { browser: unknown }).browser = {
       runtime: {
@@ -39,6 +40,7 @@ async function openPopup(page: Page): Promise<void> {
   }
   // No live provider calls (Settings loads the model list).
   await page.route("https://api.anthropic.com/**", (r) => r.fulfill({ status: 401, body: "{}" }));
+  await withWorker(page);
   await page.goto("/popup.html");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 }

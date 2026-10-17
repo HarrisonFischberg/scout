@@ -258,6 +258,36 @@
       label.check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
       label.check input { margin: 3px 0 0; }
 
+      /* Part 2: what was shared, sources, code, math, tool prompts, attached tabs. */
+      .msg .shared { margin: 6px 0 0; font-size: 12px; color: var(--text-muted); }
+      .msg .shared ul { display: inline; margin: 0; padding: 0; list-style: none; }
+      .msg .shared li { display: inline; }
+      .msg .shared li + li::before { content: " · "; }
+      .msg .sources { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: var(--text-muted); }
+      .msg sup a { text-decoration: none; font-size: 11px; }
+      .msg .code-block { margin: 0 0 10px; border-radius: 8px; background: var(--bg-subtle); }
+      .msg .code-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 0 10px; font-size: 12px; color: var(--text-secondary); }
+      .msg .code-copy { min-height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--accent-text); font-size: 12px; }
+      .msg .code-block pre { margin: 0; padding-top: 2px; }
+      .msg .math-block { margin: 0 0 10px; overflow-x: auto; }
+      .msg.error .continue { display: block; margin-top: 6px; }
+      #attached { justify-content: flex-start; margin: 2px 0 4px; }
+      #attached .chip { display: inline-flex; align-items: center; gap: 2px; min-height: 28px; max-width: 100%; padding: 0 2px 0 10px; font-size: 13px; }
+      #attached .chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+      #attached .chip button { display: inline-grid; place-items: center; min-width: 24px; height: 24px; border: 0; border-radius: 50%; background: transparent; color: var(--text-secondary); }
+      #mention-list {
+        position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); max-height: 220px; overflow-y: auto; margin: 0; padding: 6px;
+        list-style: none; background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 12px; box-shadow: var(--shadow);
+      }
+      #mention-list li { padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 14px; overflow-wrap: anywhere; }
+      #mention-list li[aria-selected="true"] { background: var(--selected); }
+      #mention-list .host { margin-left: 6px; font-size: 12px; color: var(--text-secondary); }
+      #tool-ask ul { margin: 6px 0; padding-left: 18px; font-size: 14px; overflow-wrap: anywhere; }
+      #settings-view h4 { margin: 6px 0 0; font-size: 14px; font-weight: 600; }
+      #settings-view .list { margin: 0; padding-left: 18px; overflow-wrap: anywhere; font-size: 14px; }
+      #settings-view .list li { margin: 4px 0; }
+      #activity-list { font-size: 13px; }
+
       @media (prefers-reduced-motion: no-preference) {
         .icon-btn, .chip, .segmented label, #plus-menu button, #model-menu button { transition: background-color 150ms, color 150ms, border-color 150ms; }
       }
@@ -334,6 +364,14 @@
           </div>
         </section>
 
+        <!-- Part 2: a tool needs the user's answer (close_tabs, screenshots). Filled from script. -->
+        <section id="tool-ask" class="card" role="alertdialog" aria-labelledby="tool-ask-title" aria-describedby="tool-ask-what" hidden>
+          <h2 id="tool-ask-title" tabindex="-1"></h2>
+          <p id="tool-ask-what"></p>
+          <ul id="tool-ask-list"></ul>
+          <div id="tool-ask-buttons" class="row"></div>
+        </section>
+
         <section id="coupons" class="card" aria-labelledby="coupons-title" hidden>
           <h2 id="coupons-title">Coupon results</h2>
           <p id="coupons-summary" class="hint" role="status"></p>
@@ -365,7 +403,7 @@
           <li><button id="coupons-run" type="button">
             <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12 12 20 3 11V3h8Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Find coupons</button></li>
           <li><button id="tabs-toggle" type="button" aria-expanded="false" aria-controls="tabs">
-            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M8 5v4"/></svg>Use other tabs</button></li>
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M8 5v4"/></svg>Attach tabs</button></li>
         </ul>
         <!-- Filled from script (renderModelMenu in popup.ts). -->
         <div id="model-menu" role="menu" aria-label="Model and effort" hidden>
@@ -373,6 +411,8 @@
           <div id="model-menu-sep" role="separator"></div>
           <div id="model-menu-efforts" role="group" aria-label="Effort levels"></div>
         </div>
+        <!-- Typing @ suggests tabs to attach (src/panel/attach.ts). -->
+        <ul id="mention-list" role="listbox" aria-label="Tabs to attach" hidden></ul>
         <div class="composer-box">
           <div id="mode-chip" hidden>
             <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 7 16 2-7 7-2Z"/></svg>
@@ -382,12 +422,13 @@
             </button>
           </div>
           <fieldset id="tabs" hidden>
-            <legend>Also use these tabs (or type @name)</legend>
+            <legend>Attach tabs to your question (or type @)</legend>
             <div id="tab-list"></div>
           </fieldset>
+          <div id="attached" class="chips" role="group" aria-label="Attached tabs" hidden></div>
           <label for="question" class="sr-only">Ask about this page or describe a task</label>
-          <textarea id="question" rows="1" placeholder="Ask anything…" autocomplete="off" aria-describedby="composer-help"></textarea>
-          <p id="composer-help" class="sr-only">Press Enter to send, Shift+Enter for a new line.</p>
+          <textarea id="question" rows="1" placeholder="Ask anything…" autocomplete="off" aria-describedby="composer-help" aria-controls="mention-list"></textarea>
+          <p id="composer-help" class="sr-only">Press Enter to send, Shift+Enter for a new line. Type @ to attach a tab.</p>
           <div class="composer-foot">
             <button id="plus" class="round" type="button" aria-label="More actions" aria-expanded="false" aria-controls="plus-menu">
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -493,6 +534,39 @@
           <ul id="site-list" aria-labelledby="sites-title"></ul>
         </section>
 
+        <section aria-labelledby="access-title">
+          <h3 id="access-title">Page access</h3>
+          <label class="check"><input id="access-read" type="checkbox" aria-describedby="access-read-help" />Share the current page with each question</label>
+          <p id="access-read-help" class="hint">On: Scout for Safari sends the page you are on with your question. Off: only tabs you attach.</p>
+          <label class="check"><input id="access-search" type="checkbox" aria-describedby="access-search-help" />Let Scout for Safari search your open tabs and history</label>
+          <p id="access-search-help" class="hint"></p>
+          <h4>Screenshots</h4>
+          <p class="hint">Scout for Safari asks before each screenshot of a site, unless you chose Always or Never for it.</p>
+          <ul id="shot-list" class="list" aria-label="Screenshot choices"></ul>
+          <h4>Blocked sites</h4>
+          <p class="hint">Scout for Safari never reads or screenshots these sites or their subdomains.</p>
+          <form id="block-form" class="row" autocomplete="off">
+            <label class="field" style="flex: 1 1 60%">
+              <span>Site to block</span>
+              <input id="block-input" type="text" placeholder="example.com" spellcheck="false" autocapitalize="off" aria-describedby="block-status" />
+            </label>
+            <button class="btn" type="submit">Block</button>
+            <button id="block-current" class="btn" type="button">Block this site</button>
+          </form>
+          <ul id="block-list" class="list" aria-label="Blocked sites"></ul>
+          <p id="block-status" class="hint" role="status"></p>
+          <div id="admin-box" hidden>
+            <p class="hint">Blocked by your organization. You cannot change this here.</p>
+            <ul id="admin-list" class="list" aria-label="Blocked by your organization"></ul>
+          </div>
+        </section>
+
+        <section aria-labelledby="activity-title">
+          <h3 id="activity-title">Activity</h3>
+          <p class="hint">Tools Scout for Safari used for your answers: the tool, the site, how long it took, and the result. No page text. Kept as long as chat history.</p>
+          <ul id="activity-list" class="list" aria-labelledby="activity-title"></ul>
+        </section>
+
         <section aria-labelledby="pagebutton-title">
           <h3 id="pagebutton-title">Button on webpages</h3>
           <label class="check"><input id="pagebutton-on" type="checkbox" aria-describedby="pagebutton-help" />Show a Scout button on the edge of webpages</label>
@@ -527,6 +601,7 @@
             Never includes page text, API keys, or form values.
           </p>
           <label><input id="diag-question" type="checkbox" /> Also record the question I type</label>
+          <label><input id="diag-mock" type="checkbox" /> Answer from the local mock server (scripts/mock-scout-server.mjs, Anthropic only)</label>
           <div class="row">
             <button id="diag-copy" class="btn" type="button">Copy diagnostics</button>
             <button id="diag-clear" class="btn" type="button">Clear diagnostics</button>

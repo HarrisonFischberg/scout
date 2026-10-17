@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { withWorker } from "./worker";
 
 // T021–T026: chat-first popup. Stubbed browser APIs, in-memory Keychain and
 // storage, provider mocked at the network layer. Synthetic data only.
@@ -54,7 +55,7 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
       };
     },
     // Sharing with the providers already allowed (consent.spec.ts covers asking).
-    { keys: opts.keys ?? {}, data: { aiConsent: { anthropic: { at: 1, version: 1 }, openai: { at: 1, version: 1 } }, ...(opts.data ?? {}) }, pageData: PAGE },
+    { keys: opts.keys ?? {}, data: { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } }, ...(opts.data ?? {}) }, pageData: PAGE },
   );
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
@@ -65,6 +66,7 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
   await page.route("https://api.anthropic.com/v1/messages", (r) =>
     r.fulfill({ status: 200, contentType: "text/event-stream", body: sse("The widget costs **$10**.") }),
   );
+  await withWorker(page);
   await page.goto("/popup.html");
 }
 

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { withWorker } from "./worker";
 
 // App Store Review Guideline 5.1.2(i): Scout for Safari asks once per provider
 // before it sends anything to Anthropic or OpenAI. Loads the built popup (run
@@ -8,7 +9,7 @@ import { expect, test, type Page } from "@playwright/test";
 const PAGE = { url: "https://shop.test/a", title: "Test shop", text: "Widget costs $10. Free shipping." };
 const KEY = "sk-ant-test-synthetic-0123456789abcdef";
 const OPENAI_KEY = "sk-test-synthetic-0123456789abcdef";
-const ALLOWED = { at: Date.UTC(2026, 9, 16), version: 1 };
+const ALLOWED = { at: Date.UTC(2026, 9, 16), version: 2 };
 
 function sse(events: Array<Record<string, unknown>>): string {
   return events.map((e) => "event: " + String(e.type) + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
@@ -79,6 +80,7 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
     calls.openai.push(r.request().url());
     await r.fulfill({ status: 401, body: "{}" });
   });
+  await withWorker(page);
   await page.goto("/popup.html");
   return calls;
 }
@@ -99,7 +101,10 @@ test("the first request asks first, and nothing reaches Anthropic before Allow",
   await expect(dialog.getByRole("button", { name: "Allow" })).not.toBeFocused();
   await expect(dialog.getByRole("button", { name: "Not now" })).not.toBeFocused();
   await expect(dialog).toContainText("Your messages");
-  await expect(dialog).toContainText("the page's address, title, and text");
+  await expect(dialog).toContainText("the page's address, title, description, and text");
+  await expect(dialog).toContainText("What you typed into forms, password fields, and hidden fields are left out");
+  await expect(dialog).toContainText("A screenshot of the visible page, only when you allow it for that site.");
+  await expect(dialog).toContainText("Titles and addresses of your open tabs, only if you turn on tab search in Settings.");
   await expect(dialog).toContainText("Your API key, only to sign in to Anthropic");
   await expect(dialog).not.toContainText("OpenAI");
   await expect(dialog.getByRole("link", { name: "Anthropic privacy policy" })).toHaveAttribute("href", "https://www.anthropic.com/legal/privacy");
@@ -112,7 +117,7 @@ test("the first request asks first, and nothing reaches Anthropic before Allow",
   await expect(dialog).toBeHidden();
   await expect(page.getByRole("log").getByText("The widget costs $10.")).toBeVisible();
   expect(calls.anthropic).toHaveLength(1);
-  expect(await stored(page)).toMatchObject({ anthropic: { version: 1 } });
+  expect(await stored(page)).toMatchObject({ anthropic: { version: 2 } });
   expect(await stored(page)).not.toHaveProperty("openai");
 
   // Asked once: reopening the popup and asking again sends without a prompt.
@@ -227,7 +232,7 @@ test("consent is per provider: switching to OpenAI asks again before any OpenAI 
   await expect.poll(() => calls.openai.length).toBe(1);
   expect(calls.openai[0]).toContain("api.openai.com/v1/responses");
   expect(calls.anthropic).toHaveLength(n);
-  expect(await stored(page)).toMatchObject({ anthropic: { version: 1 }, openai: { version: 1 } });
+  expect(await stored(page)).toMatchObject({ anthropic: { version: 2 }, openai: { version: 2 } });
 });
 
 test("withdrawing in Settings blocks every request until the user allows again", async ({ page }) => {

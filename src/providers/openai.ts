@@ -1,8 +1,24 @@
 import { ProviderError, errorFromStatus } from "./errors";
 import { readSse } from "./sse";
-import type { ChatRequest, ProviderClient, ProviderConfig, StreamEvent } from "./types";
+import type { ChatMessage, ChatRequest, ProviderClient, ProviderConfig, StreamEvent } from "./types";
 
 const DEFAULT_URL = "https://api.openai.com/v1/responses";
+
+/** Responses API input: string content as is, parts as input_text and data-URL input_image. */
+export function openaiInput(messages: ChatMessage[]): unknown[] {
+  return messages.map((m) =>
+    typeof m.content === "string"
+      ? m
+      : {
+          role: m.role,
+          content: m.content.map((p) =>
+            p.type === "text"
+              ? { type: m.role === "assistant" ? "output_text" : "input_text", text: p.text }
+              : { type: "input_image", image_url: "data:" + p.mediaType + ";base64," + p.data },
+          ),
+        },
+  );
+}
 
 interface Call {
   callId: string;
@@ -26,7 +42,7 @@ export function createOpenAI(cfg: ProviderConfig): ProviderClient {
         stream: true,
         instructions: req.system,
         max_output_tokens: req.maxTokens,
-        input: req.messages,
+        input: openaiInput(req.messages),
         tools: tools.length ? tools : undefined,
         reasoning: req.effort ? { effort: req.effort } : undefined,
       };

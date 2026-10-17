@@ -1,0 +1,215 @@
+// Part 2 wiring in the background worker: the Scout server, page context
+// reads, the tool host with its permission gate, and the tool log. The
+// background script registers the request handlers and hands each panel port
+// to attachChatPort for streaming.
+import { envelope, PANEL_EVENTS, checkSchema, type Envelope } from "../bridge/messages";
+import type { PortLike } from "../bridge/port";
+import { extractPage } from "../context/extract";
+import { readTabs, readTab, type GatherDeps, type TabRef } from "../context/gather";
+import { createKeychain, nativeSend, type Provider } from "../keychain";
+import { loadPageAccess, parsePolicy, savePageAccess, type ScreenshotChoice } from "../permissions/gate";
+import { createProvider, ProviderError, type Effort } from "../providers";
+import { Consent, gatedFetch } from "../settings/consent";
+import { appendHistory, loadSettings, type StorageArea } from "../settings/settings";
+import { runTool, type ToolDecision, type ToolHostDeps } from "../tools/host";
+import { shrinkScreenshot } from "../tools/image";
+import { ToolLog } from "../tools/log";
+import { offeredTools, type ToolStatus } from "../tools/registry";
+import { DEV_MOCK_KEY, mockServerUrl } from "./dev";
+import { ScoutServer, type SharedRef } from "./engine";
+import { toWire } from "./protocol";
+
+const POLICY_TTL_MS = 5 * 60_000;
+
+function toRef(t: { id?: number; url?: string; title?: string; windowId?: number; active?: boolean; incognito?: boolean } | undefined): TabRef | null {
+  if (!t || t.id === undefined) return null;
+  return {
+    id: t.id,
+    url: t.url ?? "",
+    title: t.title ?? "",
+    ...(t.windowId !== undefined ? { windowId: t.windowId } : {}),
+    ...(t.active !== undefined ? { active: t.active } : {}),
+    ...(t.incognito !== undefined ? { incognito: t.incognito } : {}),
+  };
+}
+
+export function createScoutWorker(storage: StorageArea | undefined) {
+  const keychain = createKeychain(nativeSend);
+  let policy: { at: number; list: string[] } | null = null;
+
+  // Organization blocklist (managed setting in the host app). Cached briefly.
+  const admin = async (): Promise<string[]> => {
+    if (policy && Date.now() - policy.at < POLICY_TTL_MS) return policy.list;
+    const list = parsePolicy(await nativeSend({ type: "policy.get" }).catch(() => null));
+    policy = { at: Date.now(), list };
+    return list;
+  };
+  const access = () => loadPageAccess(storage);
+
+  const tab = async (id: number): Promise<TabRef | null> => {
+    try {
+      if (browser.tabs.get) return toRef(await browser.tabs.get(id));
+      return toRef((await browser.tabs.query({})).find((t) => t.id === id));
+    } catch {
+      return null;
+    }
+  };
+  const extract = async (tabId: number): Promise<unknown> => {
+    const [res] = await browser.scripting.executeScript({ target: { tabId }, func: extractPage });
+    return res?.result;
+  };
+  const gatherDeps = async (): Promise<GatherDeps> => ({ tab, extract, access: await access(), admin: await admin() });
+
+  const toolLog = new ToolLog(storage, async () => (storage ? (await loadSettings(storage)).retention : "off"));
+
+  const toolDeps: ToolHostDeps = {
+    access,
+    admin,
+    saveScreenshotChoice: async (host: string, choice: ScreenshotChoice) => {
+      if (!storage || !host) return;
+      const a = await access();
+      await savePageAccess(storage, { ...a, screenshots: { ...a.screenshots, [host]: choice } });
+    },
+    tab,
+    allTabs: async () => (await browser.tabs.query({})).flatMap((t) => toRef(t) ?? []),
+    readTab: async (id) => readTab(id, await gatherDeps()),
+    openTab: async (url) => {
+      if (!browser.tabs.create) throw new Error("tabs.create unavailable");
+      const t = toRef(await browser.tabs.create({ url, active: false }));
+      if (!t) throw new Error("no tab");
+      return t;
+    },
+    closeTabs: async (ids) => {
+      if (!browser.tabs.remove) throw new Error("tabs.remove unavailable");
+      await browser.tabs.remove(ids);
+    },
+    ...(browser.tabs.group && browser.tabs.ungroup
+      ? {
+          groupTabs: async (ids: number[]) => void (await browser.tabs.group!({ tabIds: ids })),
+          ungroupTabs: async (ids: number[]) => void (await browser.tabs.ungroup!(ids)),
+        }
+      : {}),
+    capture: async (t) => {
+      if (!browser.tabs.captureVisibleTab) throw new Error("captureVisibleTab unavailable");
+      return shrinkScreenshot(await browser.tabs.captureVisibleTab(t.windowId, { format: "jpeg", quality: 80 }));
+    },
+    ...(browser.history
+      ? {
+          searchHistory: async (query: string, max: number) =>
+            (await browser.history!.search({ text: query, maxResults: max, startTime: 0 })).flatMap((h) => (h.url ? [{ url: h.url, title: h.title ?? h.url }] : [])),
+        }
+      : {}),
+    ...(browser.sessions
+      ? {
+          recentlyClosed: async (max: number) =>
+            (await browser.sessions!.getRecentlyClosed({ maxResults: max })).flatMap((s) => (s.tab?.url ? [{ url: s.tab.url, title: s.tab.title ?? s.tab.url }] : [])),
+        }
+      : {}),
+    now: () => Date.now(),
+  };
+
+  const server = new ScoutServer({
+    provider: async (p: Provider, _model: string) => {
+      const consent = await Consent.load(storage);
+      if (!consent.has(p)) throw new ProviderError(p, "consent_required");
+      const apiKey = await keychain.getKey(p).catch(() => null);
+      if (!apiKey) throw new ProviderError(p, "no_key");
+      let baseUrl: string | null = null;
+      if (__SCOUT_DEBUG__ && storage && p === "anthropic") {
+        baseUrl = mockServerUrl((await storage.get(DEV_MOCK_KEY).catch(() => ({}) as Record<string, unknown>))[DEV_MOCK_KEY]);
+      }
+      return createProvider(p, {
+        apiKey,
+        fetch: gatedFetch((q) => consent.has(q), (i, init) => fetch(i, init)),
+        ...(baseUrl ? { baseUrl } : {}),
+      });
+    },
+    tools: async () => offeredTools({ searchTabs: (await access()).searchTabs, tabGroups: !!(browser.tabs.group && browser.tabs.ungroup) }),
+    save: async (e) => {
+      if (!storage) return;
+      const { retention } = await loadSettings(storage);
+      await appendHistory(storage, retention, {
+        at: e.at,
+        question: e.question,
+        answer: e.answer,
+        kind: "chat",
+        conv: e.conv,
+        ...(e.shared.length ? { shared: e.shared } : {}),
+      });
+    },
+    now: () => Date.now(),
+  });
+
+  const handlers = {
+    "context.read": async (p: { current_tab?: number; attached: number[]; include_current: boolean }) => {
+      const deps = await gatherDeps();
+      const current = p.include_current && p.current_tab !== undefined && deps.access.readCurrent ? [p.current_tab] : [];
+      const reads = await readTabs([...current, ...p.attached], deps);
+      return {
+        pages: reads.flatMap((r) => (r.page ? [r.page] : [])),
+        shared: reads.map((r) => r.shared),
+        read_current: deps.access.readCurrent,
+      };
+    },
+    "chat.start": (p: {
+      message_id: string;
+      conv: string;
+      provider: Provider;
+      model: string;
+      effort?: Effort;
+      question: string;
+      history: Array<{ role: "user" | "assistant"; content: string }>;
+      pages: Array<{ url: string; title: string; text: string }>;
+      shared?: SharedRef[];
+      display_question?: string;
+      answer_prefix?: string;
+    }) => {
+      server.start(p);
+      return { message_id: p.message_id };
+    },
+    "chat.stop": (p: { message_id: string }) => ({ stopped: server.stop(p.message_id) }),
+    "chat.tool_result": (p: {
+      message_id: string;
+      request_id: string;
+      status: ToolStatus;
+      text: string;
+      image_type?: "image/jpeg" | "image/png";
+      image_data?: string;
+      shared_title?: string;
+      shared_host?: string;
+    }) => ({
+      accepted: server.toolResult(p.message_id, p.request_id, {
+        status: p.status,
+        text: p.text,
+        ...(p.image_type && p.image_data ? { image: { mediaType: p.image_type, data: p.image_data } } : {}),
+        ...(p.shared_title !== undefined && p.shared_host !== undefined ? { shared: { title: p.shared_title, host: p.shared_host } } : {}),
+      }),
+    }),
+    "chat.active": (p: { conv: string }) => ({ messages: server.active(p.conv) }),
+    "tool.run": (p: { request_id: string; name: string; input: unknown; tabs: number[]; current_tab?: number; decision?: ToolDecision }) => runTool(p, toolDeps, toolLog),
+    "tools.log": async () => ({ entries: (await toolLog.list(Date.now())).slice(0, 50) }),
+  };
+
+  /** Streams answers to one panel port: subscribe on request, unsubscribe when the port closes. */
+  function attachChatPort(port: Pick<PortLike, "postMessage" | "onDisconnect">): (env: Envelope) => boolean {
+    const subs = new Map<string, () => void>();
+    port.onDisconnect.addListener(() => {
+      for (const off of subs.values()) off();
+      subs.clear();
+    });
+    return (env) => {
+      if (env.type !== "chat.subscribe" || checkSchema(PANEL_EVENTS["chat.subscribe"], env.payload)) return false;
+      const { message_id, after_seq } = env.payload as { message_id: string; after_seq: number };
+      subs.get(message_id)?.();
+      const off = server.subscribe(message_id, after_seq, (n) => port.postMessage(envelope("chat.event", toWire(message_id, n))));
+      if (off) subs.set(message_id, off);
+      else {
+        subs.delete(message_id);
+        port.postMessage(envelope("chat.lost", { message_id }));
+      }
+      return true;
+    };
+  }
+
+  return { handlers, attachChatPort, server, toolLog };
+}

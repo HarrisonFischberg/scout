@@ -25,6 +25,8 @@ export interface HistoryEntry {
   kind?: HistoryKind;
   /** Conversation the entry belongs to (one per tab, src/panel/state.ts). Absent on entries saved before per-tab chats. */
   conv?: string;
+  /** Part 2: tabs and screenshots shared for this answer (title, host, status). Never page text. */
+  shared?: Array<{ title: string; host: string; status: string }>;
 }
 
 /** Start of the single conversation used before per-tab chats. Read only to migrate it (src/panel/state.ts). */
@@ -97,6 +99,17 @@ export function pruneHistory(
   return entries.filter((e) => e.at > cutoff).slice(-MAX_ENTRIES);
 }
 
+function parseShared(raw: unknown[]): NonNullable<HistoryEntry["shared"]> {
+  return raw
+    .flatMap((x: unknown) => {
+      const r = x as { title?: unknown; host?: unknown; status?: unknown } | null;
+      return r && typeof r.title === "string" && typeof r.host === "string" && typeof r.status === "string"
+        ? [{ title: r.title.slice(0, 200), host: r.host.slice(0, 200), status: r.status.slice(0, 20) }]
+        : [];
+    })
+    .slice(0, 20);
+}
+
 function parseHistory(raw: unknown): HistoryEntry[] {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((e: unknown) => {
@@ -109,6 +122,7 @@ function parseHistory(raw: unknown): HistoryEntry[] {
             answer: r.answer,
             ...(r.kind === "agent" || r.kind === "coupons" || r.kind === "chat" ? { kind: r.kind } : {}),
             ...(typeof r.conv === "string" && r.conv ? { conv: r.conv } : {}),
+            ...(Array.isArray(r.shared) ? { shared: parseShared(r.shared) } : {}),
           },
         ]
       : [];
