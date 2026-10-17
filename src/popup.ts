@@ -1579,9 +1579,13 @@ async function main(): Promise<void> {
     const id = p.task_id as string;
     if (!task || task.id !== id) return;
     switch (p.kind) {
-      case "log":
-        appendTaskLog(String(p.text ?? ""), String(p.status ?? "note"));
+      case "log": {
+        const text = String(p.text ?? "");
+        appendTaskLog(text, String(p.status ?? "note"));
+        // Diagnostics: the overlay's failure reason (app-generated, never page text).
+        if (text.startsWith("Overlay could not be shown")) trace("task:overlay-failed " + (/\(([^)]*)\)/.exec(text)?.[1] ?? ""));
         break;
+      }
       case "state": {
         const state = String(p.state);
         taskTake.textContent = state === "paused" ? "Resume" : "Take control";

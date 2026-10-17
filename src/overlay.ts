@@ -46,7 +46,7 @@ function registerAngle(): void {
 }
 
 // Savanna gold -> amber -> acacia green (spec 9).
-const CSS = `
+const STYLE_TEXT = `
 :host { all: initial; }
 .layer { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity ${FADE_OUT_MS}ms ease; overflow: hidden; }
 .layer.on { opacity: 1; transition-duration: ${FADE_IN_MS}ms; }
@@ -109,6 +109,12 @@ const HOST_STYLE = [
   "background: transparent",
   "pointer-events: none",
   "z-index: 2147483647",
+  "opacity: 1",
+  "visibility: visible",
+  "transform: none",
+  "filter: none",
+  "clip-path: none",
+  "contain: none",
   "color-scheme: normal",
 ]
   .map((d) => d + " !important")
@@ -151,7 +157,7 @@ if (!g[FLAG]) {
     // The page can inspect the overlay; it cannot press its buttons (trusted events only).
     const root = host.attachShadow({ mode: "open" });
     const style = document.createElement("style");
-    style.textContent = CSS;
+    style.textContent = STYLE_TEXT;
     layer = document.createElement("div");
     layer.className = "layer";
     layer.setAttribute("role", "group");
@@ -192,17 +198,22 @@ if (!g[FLAG]) {
     document.addEventListener("visibilitychange", () => layer?.classList.toggle("hidden-tab", document.hidden));
   };
 
+  // Attached the way the page button is (src/edge.ts, checked in Safari): the
+  // popover attribute set before the host joins the document, on the root
+  // element, then shown into the top layer so page z-indexes cannot cover the pill.
   const mount = (): void => {
     build();
-    if (!host!.isConnected) (document.body ?? document.documentElement).appendChild(host!);
-    // Top layer where available, so page z-indexes cannot cover the pill.
-    try {
-      if ("showPopover" in host! && !host!.matches(":popover-open")) {
-        host!.setAttribute("popover", "manual");
-        (host as HTMLElement & { showPopover(): void }).showPopover();
+    const h = host as HTMLElement & { showPopover?(): void };
+    if (h.isConnected) return;
+    const usePopover = typeof h.showPopover === "function";
+    if (usePopover) h.setAttribute("popover", "manual");
+    document.documentElement.appendChild(h);
+    if (usePopover) {
+      try {
+        h.showPopover!();
+      } catch {
+        // Stays a fixed element with the top z-index.
       }
-    } catch {
-      // Not supported: the max z-index does the job on most pages.
     }
   };
 
