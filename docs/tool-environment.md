@@ -8,7 +8,6 @@ Verified: 2026-10-15
 | REA (MCP tools answer, not just skill installed) | partial | rea MCP (version not reported) | `mcp__rea__list_browser_targets` returned a structured `provider_unavailable` error: server answers, but no loopback CDP browser is running. Web capture tools BLOCKED until a Chrome with `--remote-debugging-port` is started with owner approval. |
 | Claude Code `/goal` | yes | Claude Code 2.1.299 | Headless test 2026-10-15: `claude -p "/goal The file ok.txt exists..."` → "The goal is met." |
 | Ralph fresh-context shell loop | yes (original reimplementation) | coleam00/ralph-loop-quickstart @ f6a7781 reviewed | Repo has no license, so `ralph/ralph.sh` is original code following its contract. Plugin `ralph-loop` 1.0.0 (same-context) not used. |
-| Caveman | yes | caveman 3.2.0 | installed_plugins.json; SessionStart hook active |
 
 ## Platform toolchain
 
