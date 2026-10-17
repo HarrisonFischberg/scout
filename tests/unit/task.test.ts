@@ -286,11 +286,25 @@ describe("Scout mode runner", () => {
     h.deps.page.snapshot = async () => ({ ...SNAP, text: "Please verify you are human" });
     expect((await runTask(h.deps)).status).toBe("captcha");
     expect(provider.seen).toHaveLength(0);
-    const loop = harness(scripted([[act([{ type: "scroll", direction: "down" }])]]));
-    loop.deps.budget = { maxRounds: 3 };
+    const loop = harness(scripted([[act([{ type: "scroll", direction: "down" }])], [act([{ type: "scroll", direction: "up" }])], [act([{ type: "scroll", direction: "down" }])]]));
+    loop.deps.budget = { maxRounds: 2 };
     const out = await runTask(loop.deps);
     expect(out.status).toBe("step_budget");
-    expect(loop.acts).toHaveLength(3);
+    expect(loop.acts).toHaveLength(2);
+  });
+
+  it("sends the batch results and the next observation as one user turn, and stops a model that repeats the same batch", async () => {
+    const provider = scripted([[act([{ type: "scroll", direction: "down" }])]]);
+    const h = harness(provider);
+    const out = await runTask(h.deps);
+    expect(out).toMatchObject({ status: "step_budget", summary: "Stopped: the same actions were proposed 3 times in a row." });
+    expect(h.acts).toHaveLength(2);
+    // Round 2: observation 1, the batch, then one user turn with the results and observation 2
+    // (the history array is shared across rounds, so only its first three turns are round 2's).
+    const turn = provider.seen[1]!.messages;
+    expect(turn.slice(0, 3).map((m) => m.role)).toEqual(["user", "assistant", "user"]);
+    const second = textOf(turn[2]!.content);
+    expect(second.indexOf("Action results")).toBeLessThan(second.indexOf("<untrusted_page_content>"));
   });
 
   it("treats a model answer without a tool call as the finish, and a provider error as an error", async () => {

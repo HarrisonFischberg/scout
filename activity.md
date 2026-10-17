@@ -1354,3 +1354,12 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
   2. The runner swallowed every overlay error, so the report could not say whether `overlay.js` was injected or the handler threw. Now the first failure is one "Overlay could not be shown (<reason>)" line in the action log and a `task:overlay-failed <reason>` stage in diagnostics.
   3. The host is now attached the way the page button is (`src/edge.ts`, checked in Safari): popover attribute before joining the document, appended to the root element, then `showPopover()`; host style also pins opacity, visibility, transform, filter, clip-path and contain.
 - Checks: lint clean; unit 337; e2e overlay + scout 15/15 (Chromium). Next report from the owner decides the cause.
+
+## 2026-10-17 — Bug: mock task looped to the 25-round budget (owner Mac run #35)
+
+- Actual: with the mock server on, the fixture goal `[mock:actions=fill e1 Ada|click e5 approved|hack]` asked for the Send confirmation (Always allow chosen), then ran 25 rounds and stopped on the step budget (625 in / 1000 out: 25 mock rounds).
+- Expected: one batch, then the mock's finish summary.
+- Cause: the runner sent the batch results and the next observation as two consecutive user turns; the mock server read only the last turn, never saw "Action results", and proposed the same batch every round. A live model also saw two user turns in a row.
+- Fix: the results travel in the same user turn as the next observation (`pendingResults` in `src/agent/task.ts`); the mock looks for "Action results" anywhere in the last turn; a model that proposes the identical batch three times in a row now stops the task ("the same actions were proposed 3 times in a row", `MAX_REPEATS`).
+- Evidence: unit 338/338 (new runner case), e2e scout 8/8 (Chromium); the mock scenario driven directly finishes on round 2 with "Mock task finished: 1 action(s) done, 1 not done."
+- Open: whether the border and pill showed on the Mac during run #35 (the owner's build predates the overlay-failure trace, 5ba8868).
