@@ -1,0 +1,695 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T19-07-03",
+  "results": [
+    {
+      "name": "Paleovalley",
+      "url": "https://paleovalley.com",
+      "group": "food",
+      "outcome": "blocked: could not add to cart (the Add to cart click did not put the item in the cart)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "a06fd1fd67",
+      "startedAt": "2026-10-17T19:07:03.752Z",
+      "seconds": 119
+    },
+    {
+      "name": "Javvy Coffee",
+      "url": "https://javvycoffee.com",
+      "group": "food",
+      "outcome": "blocked: no Checkout button on the cart",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "a06fd1fd67",
+      "startedAt": "2026-10-17T19:09:05.975Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://javvycoffee.com/?openCart=true"
+      },
+      "checkout": {
+        "ok": false,
+        "reason": "no Checkout button on the cart"
+      },
+      "seconds": 20
+    },
+    {
+      "name": "BYLT Basics",
+      "url": "https://byltbasics.com",
+      "group": "apparel",
+      "outcome": "applied",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:pages listed=8 opened=8 read-first",
+        "coupons:page couponbind.com/coupons/byltbasics.com ok 29938",
+        "coupons:page usa.coupert.com/coupons/byltbasics-com-discount-code url_not_accessible 0",
+        "coupons:page wethrift.com/codes/byltbasics.com ok 13269",
+        "coupons:page wethrift.com/bylt-basics ok 9572",
+        "coupons:page byltbasics.tenereteam.com/coupons url_not_allowed 0",
+        "coupons:page wethrift.com/byltbasics url_not_accessible 0",
+        "coupons:page dontpayfull.com/at/byltbasics.com url_not_accessible 0",
+        "coupons:page us.hotdeals.com/store/byltbasics-coupon url_not_accessible 0",
+        "coupons:page byltbasics.knoji.com/promo-codes ok 104582",
+        "coupons:page dealhack.com/coupons/bylt-basics ok 36867",
+        "coupons:candidates store=0 verified=39 reported=0 dropped=0 masked=8 ignored=0 read=18",
+        "coupons:attempt 1 rejected",
+        "coupons:attempt 2 rejected",
+        "coupons:attempt 3 rejected",
+        "coupons:attempt 4 rejected",
+        "coupons:attempt 5 saving",
+        "coupons:attempt 6 rejected",
+        "coupons:attempt 7 rejected",
+        "coupons:attempt 8 rejected",
+        "coupons:attempt 9 rejected",
+        "coupons:attempt 10 rejected",
+        "coupons:attempt 11 saving",
+        "coupons:attempt 12 saving",
+        "coupons:attempt 13 rejected",
+        "coupons:attempt 14 saving",
+        "coupons:attempt 15 saving",
+        "coupons:attempt 16 rejected",
+        "coupons:attempt 17 rejected",
+        "coupons:attempt 18 rejected",
+        "coupons:attempt 19 rejected",
+        "coupons:attempt 20 rejected",
+        "coupons:attempt 21 rejected",
+        "coupons:attempt 22 rejected",
+        "coupons:attempt 23 rejected",
+        "coupons:attempt 24 saving",
+        "coupons:attempt 25 rejected",
+        "coupons:attempt 26 saving",
+        "coupons:attempt 27 rejected",
+        "coupons:attempt 28 rejected",
+        "coupons:attempt 29 rejected",
+        "coupons:attempt 30 saving",
+        "coupons:attempt 31 rejected",
+        "coupons:attempt 32 rejected",
+        "coupons:attempt 33 rejected",
+        "coupons:attempt 34 rejected",
+        "coupons:attempt 35 rejected",
+        "coupons:attempt 36 rejected",
+        "coupons:attempt 37 rejected",
+        "coupons:attempt 38 rejected",
+        "coupons:attempt 39 rejected",
+        "coupons:attempt 40 combo rejected",
+        "coupons:attempt 41 combo rejected",
+        "coupons:status done best applied",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 26,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 26.1,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 26.1,
+          "stage": "coupons:merchant other-host"
+        },
+        {
+          "t": 26.3,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 26.9,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 26.9,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 232.6,
+          "stage": "coupons:pages listed=8 opened=8 read-first"
+        },
+        {
+          "t": 232.6,
+          "stage": "coupons:page couponbind.com/coupons/byltbasics.com ok 29938"
+        },
+        {
+          "t": 232.6,
+          "stage": "coupons:page usa.coupert.com/coupons/byltbasics-com-discount-code url_not_accessible 0"
+        },
+        {
+          "t": 232.6,
+          "stage": "coupons:page wethrift.com/codes/byltbasics.com ok 13269"
+        },
+        {
+          "t": 232.6,
+          "stage": "coupons:page wethrift.com/bylt-basics ok 9572"
+        },
+        {
+          "t": 232.6,
+          "stage": "coupons:page byltbasics.tenereteam.com/coupons url_not_allowed 0"
+        },
+        {
+          "t": 232.6,
+          "stage": "coupons:page wethrift.com/byltbasics url_not_accessible 0"
+        },
+        {
+          "t": 232.6,
+          "stage": "coupons:page dontpayfull.com/at/byltbasics.com url_not_accessible 0"
+        },
+        {
+          "t": 232.6,
+          "stage": "coupons:page us.hotdeals.com/store/byltbasics-coupon url_not_accessible 0"
+        },
+        {
+          "t": 232.6,
+          "stage": "coupons:page byltbasics.knoji.com/promo-codes ok 104582"
+        },
+        {
+          "t": 232.6,
+          "stage": "coupons:page dealhack.com/coupons/bylt-basics ok 36867"
+        },
+        {
+          "t": 232.6,
+          "stage": "coupons:candidates store=0 verified=39 reported=0 dropped=0 masked=8 ignored=0 read=18"
+        },
+        {
+          "t": 233.6,
+          "stage": "coupons:attempt 1 rejected"
+        },
+        {
+          "t": 234.6,
+          "stage": "coupons:attempt 2 rejected"
+        },
+        {
+          "t": 235.5,
+          "stage": "coupons:attempt 3 rejected"
+        },
+        {
+          "t": 236.4,
+          "stage": "coupons:attempt 4 rejected"
+        },
+        {
+          "t": 237.4,
+          "stage": "coupons:attempt 5 saving"
+        },
+        {
+          "t": 238.8,
+          "stage": "coupons:attempt 6 rejected"
+        },
+        {
+          "t": 239.7,
+          "stage": "coupons:attempt 7 rejected"
+        },
+        {
+          "t": 240.7,
+          "stage": "coupons:attempt 8 rejected"
+        },
+        {
+          "t": 241.6,
+          "stage": "coupons:attempt 9 rejected"
+        },
+        {
+          "t": 242.6,
+          "stage": "coupons:attempt 10 rejected"
+        },
+        {
+          "t": 243.7,
+          "stage": "coupons:attempt 11 saving"
+        },
+        {
+          "t": 244.7,
+          "stage": "coupons:attempt 12 saving"
+        },
+        {
+          "t": 245.6,
+          "stage": "coupons:attempt 13 rejected"
+        },
+        {
+          "t": 246.5,
+          "stage": "coupons:attempt 14 saving"
+        },
+        {
+          "t": 247.5,
+          "stage": "coupons:attempt 15 saving"
+        },
+        {
+          "t": 248.4,
+          "stage": "coupons:attempt 16 rejected"
+        },
+        {
+          "t": 249.4,
+          "stage": "coupons:attempt 17 rejected"
+        },
+        {
+          "t": 250.5,
+          "stage": "coupons:attempt 18 rejected"
+        },
+        {
+          "t": 252.1,
+          "stage": "coupons:attempt 19 rejected"
+        },
+        {
+          "t": 253,
+          "stage": "coupons:attempt 20 rejected"
+        },
+        {
+          "t": 254,
+          "stage": "coupons:attempt 21 rejected"
+        },
+        {
+          "t": 255,
+          "stage": "coupons:attempt 22 rejected"
+        },
+        {
+          "t": 255.9,
+          "stage": "coupons:attempt 23 rejected"
+        },
+        {
+          "t": 256.8,
+          "stage": "coupons:attempt 24 saving"
+        },
+        {
+          "t": 257.9,
+          "stage": "coupons:attempt 25 rejected"
+        },
+        {
+          "t": 258.9,
+          "stage": "coupons:attempt 26 saving"
+        },
+        {
+          "t": 259.8,
+          "stage": "coupons:attempt 27 rejected"
+        },
+        {
+          "t": 261.3,
+          "stage": "coupons:attempt 28 rejected"
+        },
+        {
+          "t": 262.3,
+          "stage": "coupons:attempt 29 rejected"
+        },
+        {
+          "t": 263.5,
+          "stage": "coupons:attempt 30 saving"
+        },
+        {
+          "t": 264.5,
+          "stage": "coupons:attempt 31 rejected"
+        },
+        {
+          "t": 265.4,
+          "stage": "coupons:attempt 32 rejected"
+        },
+        {
+          "t": 266.3,
+          "stage": "coupons:attempt 33 rejected"
+        },
+        {
+          "t": 267.2,
+          "stage": "coupons:attempt 34 rejected"
+        },
+        {
+          "t": 268.1,
+          "stage": "coupons:attempt 35 rejected"
+        },
+        {
+          "t": 269.1,
+          "stage": "coupons:attempt 36 rejected"
+        },
+        {
+          "t": 269.9,
+          "stage": "coupons:attempt 37 rejected"
+        },
+        {
+          "t": 271.6,
+          "stage": "coupons:attempt 38 rejected"
+        },
+        {
+          "t": 272.6,
+          "stage": "coupons:attempt 39 rejected"
+        },
+        {
+          "t": 273.6,
+          "stage": "coupons:attempt 40 combo rejected"
+        },
+        {
+          "t": 274.2,
+          "stage": "coupons:attempt 41 combo rejected"
+        },
+        {
+          "t": 274.9,
+          "stage": "coupons:status done best applied"
+        },
+        {
+          "t": 274.9,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "a06fd1fd67",
+      "startedAt": "2026-10-17T19:09:28.999Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://byltbasics.com/cart"
+      },
+      "checkout": {
+        "ok": true,
+        "url": "https://checkout.byltbasics.com/checkouts/cn/hWNI5L4dAJpSklx8t1qqzUSf/en-us?_r=AQABnaBg3vRAIXSDFRuEIjdcjVkCxlzxaR_nYYUxjF60DhOIJXp9&_s=9edd1992-5a21-40d7-bd42-5aab441f7b2a&_y=424b4e8b-481a-4466-a9de-251a34773114&auto_redirect=false&edge_redirect=true&skip_shop_pay=true",
+        "step": "information"
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for BYLT Basics codes. Found 39 codes read on the pages that post them. 8 codes shown masked or behind a button could not be read, so they were not tested. I tested 39 codes. HONEY is the best: your total drops from $87.50 to $70.00 (you save $17.50, 20% off). It's applied to your cart, and I didn't go to checkout. Conditions seen with it: expires 01/09/2027.\n\nCode\tResult\tWhere it was found\nHONEY\tsaves $17.50, total $70.00\tseen on couponbind.com\nPRESSLEY\tsaves $1.75, total $85.75\tseen on couponbind.com\nSARAHLIT\tsaves $1.75, total $85.75\tseen on couponbind.com\nTANNER\tsaves $1.75, total $85.75\tseen on couponbind.com\nJOHN\tsaves $1.75, total $85.75\tseen on couponbind.com\nCHLOE\tsaves $1.75, total $85.75\tseen on couponbind.com\nJOHNSON\tsaves $1.75, total $85.75\tseen on wethrift.com\nSCOTTY\tsaves $1.75, total $85.75\tseen on couponbind.com\n\nDidn't work: CYRUS, TEN, SUMMER25, REFER20, CARLA, EXTRA5, EXTRA10, TIM, DANNY, BIOS and 21 more.\n\nCode-free offers the pages mention (not tested): 30% Off Sitewide + Free Gift with $200+ with byltbasics Email Sign up\" email signup offer; BYLT Basics offers a 30% Off discount when you sign up for their newsletter\" newsletter offer; the page says it was last; Save up to 45% Off on BYLT Basics clearance items\" clearance, no code needed.\n\nCheckout can still change the final price, for example tax, shipping, or whether the code applies to later orders.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for BYLT Basics codes…",
+        "I searched the web for BYLT Basics codes. Found 39 codes read on the pages that post them. 8 codes shown masked or behind a button could not be read, so they were not tested.",
+        "Testing 39 codes on your cart, one at a time…"
+      ],
+      "attempts": [
+        {
+          "code": "CYRUS",
+          "text": "CYRUS · $87.50 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/bylt-basics",
+          "evidence": "The best BYLT Basics discount code to try right now is CYRUS. Shoppers have used it 50 times. (Wethrift lists the button code as hidden (CYR…). 31% chance it works, last used 7d ago)",
+          "good": false
+        },
+        {
+          "code": "TEN",
+          "text": "TEN · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "30% Off Save Up to 30% Off (BYLT Basics Coupons expires 01/08/2027 182 Verified Get Code TEN)",
+          "good": false
+        },
+        {
+          "code": "SUMMER25",
+          "text": "SUMMER25 · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "25% Off Save Up to 25% Off on any purchase expires 01/09/2027 80 Verified Get Code SUMMER25 (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "REFER20",
+          "text": "REFER20 · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "20% Off 20% Off (Sitewide) at BYLT Basics expires 01/09/2027 139 Verified Get Code REFER20 (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "HONEY",
+          "text": "HONEY · $70.00 · saves $17.50 · Saves $17.50. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "20% Off Enjoy Save Up to 20% Off On Sitewide expires 01/09/2027 97 Verified Get Code HONEY (expires 01/09/2027)",
+          "good": true
+        },
+        {
+          "code": "CARLA",
+          "text": "CARLA · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Get up to 2% Off Store-wide at BYLT Basics expires 11/07/2026 112 Verified Get Code CARLA (expires 11/07/2026)",
+          "good": false
+        },
+        {
+          "code": "EXTRA5",
+          "text": "EXTRA5 · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "5% Off Get Up to 5% Off at BYLT Basics expires 11/26/2026 178 Verified Get Code EXTRA5 (expires 11/26/2026)",
+          "good": false
+        },
+        {
+          "code": "EXTRA10",
+          "text": "EXTRA10 · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "10% Off Save up to 10% Off (Sitewide) at BYLT Basics expires 01/09/2027 93 Verified Get Code extra10 (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "TIM",
+          "text": "TIM · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "5% Off Save 5% Off On Your All Order expires 01/09/2027 168 Verified Get Code TIM (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "DANNY",
+          "text": "DANNY · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Exclusive 2% Off On Your All Orders, When you Purchase at BYLT Basics expires 10/22/2026 123 Verified Get Code DANNY (expires 10/22/2026)",
+          "good": false
+        },
+        {
+          "code": "PRESSLEY",
+          "text": "PRESSLEY · $85.75 · saves $1.75 · Saves $1.75. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Get 2% Off on all your order expires 10/22/2026 176 Verified Get Code Pressley (expires 10/22/2026)",
+          "good": true
+        },
+        {
+          "code": "SARAHLIT",
+          "text": "SARAHLIT · $85.75 · saves $1.75 · Saves $1.75. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off BYLT Basics Coupons (2% off On Sitewide expires 11/07/2026 110 Verified Get Code SARAHLIT)",
+          "good": true
+        },
+        {
+          "code": "BIOS",
+          "text": "BIOS · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "30% Off Up to 30% Off at BYLT Basics expires 01/09/2027 72 Verified Get Code BIOS (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "TANNER",
+          "text": "TANNER · $85.75 · saves $1.75 · Saves $1.75. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off 2% Off (Sitewide) at BYLT Basics expires 01/09/2027 146 Verified Get Code TANNER (expires 01/09/2027)",
+          "good": true
+        },
+        {
+          "code": "JOHN",
+          "text": "JOHN · $85.75 · saves $1.75 · Saves $1.75. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Enjoy Save Up to 2% Off On Sitewide expires 01/09/2027 84 Verified Get Code JOHN (expires 01/09/2027)",
+          "good": true
+        },
+        {
+          "code": "GRONK",
+          "text": "GRONK · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Get Up to 2% Off all products expires 01/09/2027 20 Verified Get Code gronk (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "JOHNHUNTER",
+          "text": "JOHNHUNTER · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Up to 2% Off Your any Order expires 01/09/2027 170 Verified Get Code JOHNHUNTER (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "ASHLEY",
+          "text": "ASHLEY · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Get up to 2% Off Store-wide at BYLT Basics expires 01/09/2027 29 Verified Get Code ASHLEY (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "BELBEL",
+          "text": "BELBEL · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Enjoy Save Up to 2% Off your entire purchase when you spend expires 01/09/2027 45 Verified Get Code BELBEL (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "OLIVIA",
+          "text": "OLIVIA · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Save 2% Off On Your All Order expires 01/09/2027 85 Verified Get Code OLIVIA (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "COLIN",
+          "text": "COLIN · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Get Up to 2% Off at BYLT Basics expires 01/09/2027 26 Verified Get Code COLIN (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "BRIAN",
+          "text": "BRIAN · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Save Up to 2% Off (BYLT Basics Coupons expires 01/09/2027 20 Verified Get Code BRIAN)",
+          "good": false
+        },
+        {
+          "code": "CKMET",
+          "text": "CKMET · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off 2% Off BYLT Basics Products expires 01/09/2027 107 Verified Get Code CKMET (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "CHLOE",
+          "text": "CHLOE · $85.75 · saves $1.75 · Saves $1.75. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Get 2% Off on all your order expires soon 152 Verified Get Code CHLOE (expires soon)",
+          "good": true
+        },
+        {
+          "code": "BOZDOGAN",
+          "text": "BOZDOGAN · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Up to 2% Off Items on Selected Lines expires soon 102 Get Code BOZDOGAN (expires soon)",
+          "good": false
+        },
+        {
+          "code": "JOHNSON",
+          "text": "JOHNSON · $85.75 · saves $1.75 · Saves $1.75. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/byltbasics.com",
+          "evidence": "The best code to try is JOHNSON. It worked at checkout this week. (Wethrift lists the button code as hidden (JOHNS…). 24% chance it works)",
+          "good": true
+        },
+        {
+          "code": "WELCOME20",
+          "text": "WELCOME20 · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "20% Off Get 20% Off (Site-wide) at BYLT Basics expires 01/09/2027 95 Verified Get Code WELCOME20 (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "JASONKENNEDY",
+          "text": "JASONKENNEDY · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "20% Off Get up to 20% Off Select Items at BYLT Basics expires 01/09/2027 94 Verified Get Code JASONKENNEDY (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "CLAIRE",
+          "text": "CLAIRE · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Get save up to 2% Off Select Items at BYLT Basics expires 01/09/2027 55 Verified Get Code Claire (expires 01/09/2027)",
+          "good": false
+        },
+        {
+          "code": "SCOTTY",
+          "text": "SCOTTY · $85.75 · saves $1.75 · Saves $1.75. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off Get up to 2% Off Select Items at BYLT Basics expires 01/09/2027 94 Verified Get Code SCOTTY (expires 01/09/2027)",
+          "good": true
+        },
+        {
+          "code": "SCOTTY20",
+          "text": "SCOTTY20 · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "20% Off Save 20% Off (Sitewide) at Byltbasics.com ... Expired 100 Get Code SCOTTY20 (listed under \"Expired BYLT Basics Promo Codes might still work)",
+          "good": false
+        },
+        {
+          "code": "LUCAS20",
+          "text": "LUCAS20 · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "20% Off Get 20% Off (Site-wide) at BYLT Basics ... Expired 100 Get Code LUCAS20 (listed as expired)",
+          "good": false
+        },
+        {
+          "code": "SURVEY20",
+          "text": "SURVEY20 · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "25% Off Up To 25% Off Your Purchase at Byltbasics.com w/Coupon Code ... Expired 100 Get Code SURVEY20 (listed as expired)",
+          "good": false
+        },
+        {
+          "code": "DICKERSON",
+          "text": "DICKERSON · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "2% Off 2% Off Drop Cut at BYLT Basics ... Expired 100 Get Code DICKERSON (listed as expired)",
+          "good": false
+        },
+        {
+          "code": "EXTRA20",
+          "text": "EXTRA20 · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "20% Off 20% Off Mens Last Call at BYLT Basics ... Expired 100 Get Code EXTRA20 (listed as expired)",
+          "good": false
+        },
+        {
+          "code": "MATTBARKLEY",
+          "text": "MATTBARKLEY · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "15% Off Storewide ... Get the free BYLT Basics coupon code ... Expired 100 Get Code MattBarkley (listed as expired; the description on that page also mentions heated-blanket items and looks mixed up with another store)",
+          "good": false
+        },
+        {
+          "code": "RIGHT",
+          "text": "RIGHT · $87.50 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/byltbasics.com",
+          "evidence": "checkout this week. There are 29 more on this page, ranked by real shopper results. BEST CODE RIGHT NOW BYLT Basics discount code Save on your order at BYLT Basics with code JOHNSON. JOH",
+          "good": false
+        },
+        {
+          "code": "LIFESPAN",
+          "text": "LIFESPAN · $87.50 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/byltbasics.com",
+          "evidence": "ce LAST WORKING CODEtoday WEEKS WITH WORKING CODES4 / 46 NEW CODES · 30 DAYS2 TYPICAL CODE LIFESPAN~58 days BYLT Basics discount codes, ranked | Discount |",
+          "good": false
+        },
+        {
+          "code": "SAVE20",
+          "text": "SAVE20 · $87.50 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/byltbasics.com",
+          "evidence": "20% Off Up To 20% Off $200 or More Select Items at Byltbasics.com ... Expired 100 Get Code SAVE20 (listed as expired)",
+          "good": false
+        },
+        {
+          "code": "HONEY + PRESSLEY",
+          "text": "HONEY + PRESSLEY · $70.00 · The store does not combine these codes. · both codes, applied together",
+          "source": "",
+          "evidence": "",
+          "good": false
+        },
+        {
+          "code": "HONEY + SARAHLIT",
+          "text": "HONEY + SARAHLIT · $70.00 · The store does not combine these codes. · both codes, applied together",
+          "source": "",
+          "evidence": "",
+          "good": false
+        }
+      ],
+      "cartAfter": {
+        "total": 70,
+        "codes": [
+          {
+            "code": "HONEY",
+            "applicable": true
+          }
+        ],
+        "fields": {
+          "items": 1,
+          "subtotal": 7000,
+          "original": 8750,
+          "discount": 1750,
+          "currency": "USD"
+        }
+      },
+      "verify": {
+        "before": null,
+        "after": 70,
+        "codes": [
+          {
+            "code": "HONEY",
+            "applicable": true
+          }
+        ],
+        "claimed": "$70.00",
+        "confirmed": true
+      },
+      "seconds": 278
+    }
+  ]
+}

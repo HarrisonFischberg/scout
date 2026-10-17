@@ -1,19 +1,24 @@
-// Coupon finder (T013, T031): try candidate codes one at a time against the
-// real cart, keep the best, apply it, and never touch checkout. The try loop is
-// plain code, not model-driven, so page content cannot steer it.
+// Coupon finder: test the codes found online one at a time against the real
+// cart, keep the best, apply it, and never touch checkout. The try loop is
+// plain code, not model-driven, so page content cannot steer it, and it only
+// ever tests codes that were seen on a page (candidates.ts): never guesses.
 //
 // Two ways to test a code:
-//   shopify - the store's own cart endpoint (/cart/update.js), the same one its
-//             Apply button uses, in the user's session. Fast and exact.
-//   page    - type the code in the page's coupon box, press Apply, read the total.
-// Codes are tested in batches (default 25). Owner, 2026-10-16: after a batch,
-// a code that saves money is applied and the search ends; only when none does
-// is the user asked whether to find and test 25 more.
+//   cart API - the store's own cart endpoint (Shopify /cart/update.js,
+//              WooCommerce, BigCommerce), the same one its Apply button uses,
+//              in the user's session. Fast and exact; can also try two codes
+//              together where the store allows stacking.
+//   page     - type the code in the page's coupon box, press Apply, read the total.
+// The coupon box (or cart API) is opened before the web search, so a page
+// with no way to test codes stops at once instead of after a long search.
+// Codes are tested as the search finds them (`incoming`), not after it ends.
+// Every code a search finds is tested, not just until the first saving; when
+// none of them saves, the user is asked whether to search the web again.
 import type { Action, ActionResult } from "../actions/executor";
 import type { AgentControl } from "../agent/control";
 import { detectCaptcha } from "../safety/classifier";
 import type { Snapshot } from "../snapshot/snapshot";
-import { CODE_RE, originLabel, type CandidateOrigin, type CouponCandidate } from "./candidates";
+import { CODE_RE, type CandidateOrigin, type CouponCandidate } from "./candidates";
 import { findForm, newLines, removeTarget, revealTargets, showsCode, storeReply, type FormHints, type StoreReply } from "./form";
 import { formatMoney, readTotal } from "./money";
 
@@ -42,26 +47,33 @@ export interface CouponPage {
 }
 
 export interface CouponAttempt {
+  /** The code, or "A,B" for two codes applied together. */
   code: string;
   origin: CandidateOrigin;
   sourceUrl?: string;
+  /** Words from the source page around the code. */
+  context?: string;
+  conditions?: string;
+  /** Set when `code` is two codes applied together. */
+  combo?: string[];
   /** Total after applying the code, or null if unreadable. */
   total: number | null;
   /** Baseline total minus this total; 0 means no saving. */
   saving: number | null;
-  /** Shopify: whether the store accepted the code. Page path: unknown (null). */
+  /** Cart API: whether the store accepted the code. Page path: unknown (null). */
   accepted: boolean | null;
   note: string;
 }
 
-export type CouponStatus = "done" | "no_form" | "no_codes" | "captcha" | "stopped" | "rate_limited" | "error";
+export type CouponStatus = "done" | "no_form" | "no_codes" | "search_failed" | "captcha" | "stopped" | "rate_limited" | "error";
 
 // Plain-language status line for the popup; never shows the internal code.
 export function couponStatusText(status: CouponStatus): string {
   switch (status) {
     case "done": return "Coupon search finished.";
     case "no_form": return "Coupon search stopped: no coupon box on this page.";
-    case "no_codes": return "Coupon search found no codes to try.";
+    case "no_codes": return "Coupon search found no codes posted online.";
+    case "search_failed": return "Coupon search could not search the web.";
     case "captcha": return "Coupon search stopped at a CAPTCHA.";
     case "stopped": return "Coupon search stopped.";
     case "rate_limited": return "Coupon search paused: the store asked to slow down.";
@@ -89,8 +101,10 @@ export interface CouponOutcome {
   message: string;
 }
 
-export const BATCH_SIZE = 25;
-export const MAX_TOTAL = 200;
+/** Most codes one run tests, across all its searches. */
+export const MAX_TOTAL = 80;
+/** Pairs tried on top of the best single code, on stores whose cart API allows stacking. */
+const MAX_COMBOS = 2;
 const STOPWORDS = new Set(["NONE", "N/A", "CODE", "CODES", "COUPON", "SORRY", "NOTE", "THE", "AND"]);
 
 /** Candidate codes from free text: one per token, upper-cased, deduped, capped. */
@@ -120,7 +134,7 @@ export function bestOf(attempts: CouponAttempt[]): CouponAttempt | undefined {
   return best;
 }
 
-interface TryResult {
+export interface TryResult {
   total: number | null;
   accepted: boolean | null;
   note?: string;
@@ -130,32 +144,49 @@ interface TryResult {
   halt?: boolean;
 }
 
-interface Tester {
+/** A way to test codes on the user's cart: the store's cart API or its coupon box. */
+export interface CouponTester {
   method: string;
   baseline: number;
   currency?: string;
   tryCode(code: string): Promise<TryResult>;
+  /** Cart APIs: several codes at once ("A,B"); accepted only when the store takes all of them. */
+  tryCombo?(codes: string[]): Promise<TryResult>;
   /** Applies one code (or "" to clear) and returns the confirmed total. */
   apply(code: string): Promise<number | null>;
   /** Leaves the cart as the user expects: winner applied, or original codes back. */
   finish(winner: string | null): Promise<void>;
 }
 
-async function cartTester(cart: CartApi): Promise<Tester | null> {
+export interface TesterError {
+  error: CouponStatus;
+  message: string;
+}
+
+async function cartTester(cart: CartApi): Promise<CouponTester | TesterError | null> {
   const start = await cart.info();
   // Only a real cart (numeric total) counts; anything else falls back to the page path.
   if (!start || typeof start.total !== "number" || !Array.isArray(start.codes)) return null;
+  // Nothing to lower: an empty cart, or one whose price the store sets at checkout.
+  if (start.total <= 0) {
+    return { error: "error", message: "The cart total is " + formatMoney(0, start.currency) + ", so no code could lower it. Add an item to the cart first." };
+  }
   const original = start.codes.map((c) => c.code).join(",");
+  const outcome = (r: CartState | { rateLimited: true } | null, asked: string[]): TryResult => {
+    if (!r) return { total: null, accepted: null, note: "The store did not answer." };
+    if ("rateLimited" in r) return { total: null, accepted: null, rateLimited: true, note: "The store asked to slow down." };
+    const accepted = asked.every((code) => r.codes.find((c) => c.code.toUpperCase() === code.toUpperCase())?.applicable === true);
+    return { total: r.total, accepted };
+  };
   return {
     method: start.platform ?? "shopify",
     baseline: start.total,
     ...(start.currency ? { currency: start.currency } : {}),
     async tryCode(code) {
-      const r = await cart.update(code);
-      if (!r) return { total: null, accepted: null, note: "The store did not answer." };
-      if ("rateLimited" in r) return { total: null, accepted: null, rateLimited: true, note: "The store asked to slow down." };
-      const hit = r.codes.find((c) => c.code.toUpperCase() === code.toUpperCase());
-      return { total: r.total, accepted: hit ? hit.applicable : false };
+      return outcome(await cart.update(code), [code]);
+    },
+    async tryCombo(codes) {
+      return outcome(await cart.update(codes.join(",")), codes);
     },
     async apply(code) {
       const r = await cart.update(code);
@@ -178,14 +209,36 @@ export interface SettleTimes {
 }
 const POLL_MS = 300;
 const MIN_QUIET_MS = 600;
+const CHECKOUT_CONTROL = /\bcheck\s*out\b/i;
+const CART_PAGE = /\b(?:cart|bag|basket)\b/i;
+
+/**
+ * Why no code can be tested here. Many stores (headless and drawer-only
+ * Shopify fronts among them) take codes only on the checkout page; a cart
+ * page with a Checkout button says so, so the user knows where to go.
+ */
+export function noBoxMessage(snap: Snapshot): string {
+  const checkout = snap.elements.some((e) => (e.tag === "button" || e.role === "button" || e.role === "link" || e.tag === "a") && CHECKOUT_CONTROL.test(e.name));
+  const onCart = CART_PAGE.test(snap.title) || CART_PAGE.test(snap.url) || /openCart|cart=/i.test(snap.url);
+  if (checkout && onCart) {
+    return "No coupon box on this cart. This store takes codes on its checkout page: open Checkout (nothing is bought until you confirm there) and run Find coupons again.";
+  }
+  return "No coupon box found on this page. Open the cart or checkout page first.";
+}
 const EPS = 0.004;
-const KEPT_NOTE = "The store kept the earlier code on the order and shows no remove button I can use safely, so I stopped testing there.";
+// Why the page path stopped with a code still on the order: each says which
+// step failed, so a live run's summary tells the two apart.
+const REMOVE_FAILED_NOTE = "The store kept the earlier code on the order: I pressed its remove control, but the total did not go back, so I stopped testing there.";
+const BOX_GONE_NOTE =
+  "The store kept the earlier code on the order and shows no remove button I can use safely, and its coupon box is not available while that code is on, so I stopped testing there.";
+const stackedNote = (kept: string, code: string): string =>
+  "The store kept " + kept + " on the order and added " + code + " on top of it, so the total now counts both codes. Codes cannot be measured one at a time here, so I stopped testing.";
 
 async function pageTester(
   page: CouponPage,
   times: SettleTimes,
   locate?: (snap: Snapshot) => Promise<FormHints | null>,
-): Promise<Tester | { error: CouponStatus; message: string }> {
+): Promise<CouponTester | TesterError> {
   const pause = async (ms: number): Promise<void> => void (await page.act({ type: "wait", ms }).catch(() => null));
   // A page that is reloading (a store whose Apply submits a form) does not answer for a moment.
   const look = async (): Promise<Snapshot | null> => {
@@ -237,10 +290,11 @@ async function pageTester(
       opened = await open(first);
     }
   }
-  if (!opened) return { error: "no_form", message: "No coupon box found on this page. Open the cart or checkout page first." };
+  if (!opened) return { error: "no_form", message: noBoxMessage(first) };
   const base = totalOf(opened.snap);
   if (!base) return { error: "error", message: "Could not read a total on this page, so savings cannot be measured." };
   const baseline = base.amount;
+  const inputRef = opened.form.input.ref;
 
   // A code that lowered the total and is still on the order.
   let kept: { code: string; total: number } | null = null;
@@ -266,17 +320,19 @@ async function pageTester(
     let before = await look();
     if (!before) return { total: null, accepted: null, note: "Could not read the page." };
     if (detectCaptcha(before)) return { total: null, accepted: null, captcha: true };
-    // Measure codes one at a time: take the last working code off first.
+    // Measure codes one at a time: take the last working code off first. A
+    // store with no remove control keeps it on; the read after Apply then
+    // tells whether this code replaced it (see below).
     if (kept) {
       const off = await takeOff(before, kept.code);
-      if (off === null) return { total: null, accepted: null, halt: true, note: KEPT_NOTE };
+      if (off === null) return { total: null, accepted: null, halt: true, note: REMOVE_FAILED_NOTE };
       if (off !== "none") {
         before = off;
         kept = null;
       }
     }
     const box = await open(before);
-    if (!box) return { total: null, accepted: null, ...(kept ? { halt: true, note: KEPT_NOTE } : { note: "The coupon box is gone." }) };
+    if (!box) return { total: null, accepted: null, ...(kept ? { halt: true, note: BOX_GONE_NOTE } : { note: "The coupon box is gone." }) };
     const typed = await act({ type: "type", ref: box.form.input.ref, text: code, clear: true });
     if (!typed.ok) return { total: null, accepted: null, note: "Could not type the code: " + typed.message };
     // Some stores enable Apply only once a code is typed.
@@ -320,10 +376,21 @@ async function pageTester(
     if (answeredAt !== null) answerMs = Math.max(answerMs ?? 0, answeredAt);
     const total = totalOf(after)?.amount ?? null;
     if (total === null) return { total: null, accepted: null, note: "Total not readable after applying." };
-    // The earlier code is still on (same total, or still listed) and nothing could
-    // take it off: this total would count both codes, so stop measuring here.
-    if (kept && kept.code !== code && (Math.abs(total - kept.total) <= EPS || showsCode(after.text, kept.code))) {
-      return { total: null, accepted: null, halt: true, note: KEPT_NOTE };
+    // The earlier code could not be taken off first (no remove control). Its
+    // line gone from the page, with a different total or a sign this one was
+    // taken, means the store swapped it for this code: this total is this
+    // code's alone. Still listed with a lower total, the store stacked them,
+    // and no single code can be measured here. Otherwise the store kept the
+    // earlier code and did not take this one in its place.
+    if (kept && kept.code !== code) {
+      const keptOn = showsCode(after.text, kept.code);
+      const same = Math.abs(total - kept.total) <= EPS;
+      const back = Math.abs(total - baseline) <= EPS;
+      const swapped = !keptOn && (back || (reply !== "rejected" && (!same || reply === "accepted" || showsCode(after.text, code))));
+      if (!swapped) {
+        if (keptOn && total < kept.total - EPS) return { total: null, accepted: null, halt: true, note: stackedNote(kept.code, code) };
+        return { total: null, accepted: reply === "rejected" ? false : null, note: "The store kept " + kept.code + " on the order and did not take this code in its place." };
+      }
     }
     const lowered = total < baseline - EPS;
     kept = lowered ? { code, total } : null;
@@ -342,44 +409,119 @@ async function pageTester(
       }
       return (await tryCode(code)).total;
     },
-    async finish() {
-      // The page path cannot clear a typed code reliably; the last one stays in the box.
+    async finish(winner) {
+      // The page path cannot take a rejected code's text out of the box
+      // reliably on every store; it clears the box when nothing won so the
+      // user is not left with a failed code typed in.
+      if (winner === null && !kept) await act({ type: "type", ref: inputRef, text: "", clear: true });
     },
   };
 }
 
-export interface BatchState {
-  tried: number;
-  /** Codes already found and not yet tried. */
-  remaining: number;
-  /** How many the next batch tests; when few remain, more are searched for first. */
-  next: number;
-}
-
-export interface CouponInput {
-  page: CouponPage;
-  codes: CouponCandidate[];
-  control?: AgentControl;
-  signal?: AbortSignal;
+export interface TesterOptions {
   /** Page path: how long a code that changed nothing gets before it counts as no saving (default 2500 ms). */
   settleMs?: number;
   /** Page path: longest wait while the store says it is applying the code (default 8000 ms). */
   maxSettleMs?: number;
   /** Page path: asks the model which controls are the coupon box, Apply, and the total, when the rules find none. */
   locate?: (snap: Snapshot) => Promise<FormHints | null>;
+}
+
+/**
+ * Opens a way to test codes on this page: the store's cart API when it has
+ * one, else its coupon box. Reads the baseline total. Done before the web
+ * search, so a page with no coupon box fails fast.
+ */
+export async function openCouponTester(page: CouponPage, opts: TesterOptions = {}): Promise<CouponTester | TesterError> {
+  const viaCart = page.cart ? await cartTester(page.cart).catch(() => null) : null;
+  if (viaCart && !("error" in viaCart)) return viaCart;
+  const quietMs = opts.settleMs ?? 2500;
+  const viaPage = await pageTester(page, { quietMs, maxMs: Math.max(opts.maxSettleMs ?? 8000, quietMs) }, opts.locate);
+  // A cart API that answers an empty cart on a page that shows an order (a
+  // headless storefront's checkout, whose cart lives elsewhere) is not the
+  // last word: the page's own coupon box and total still count. Only when
+  // the page has neither does the empty cart explain the stop.
+  if (viaCart && "error" in viaCart && "error" in viaPage && viaPage.error === "no_form") return viaCart;
+  return viaPage;
+}
+
+export interface BatchState {
+  /** Codes tested so far; none of them lowered the total. */
+  tried: number;
+}
+
+/** Codes found while a search is still running, handed to the tester as they come. */
+export class CodeQueue implements AsyncIterable<CouponCandidate[]> {
+  private items: CouponCandidate[][] = [];
+  private waiting: ((r: IteratorResult<CouponCandidate[]>) => void) | null = null;
+  private closed = false;
+
+  push(list: CouponCandidate[]): void {
+    if (this.closed || list.length === 0) return;
+    if (this.waiting) {
+      const w = this.waiting;
+      this.waiting = null;
+      w({ value: list, done: false });
+    } else this.items.push(list);
+  }
+
+  /** No more codes will come (the search ended or was stopped). */
+  close(): void {
+    this.closed = true;
+    if (this.waiting) {
+      const w = this.waiting;
+      this.waiting = null;
+      w({ value: undefined, done: true });
+    }
+  }
+
+  [Symbol.asyncIterator](): AsyncIterator<CouponCandidate[]> {
+    return {
+      next: () => {
+        const item = this.items.shift();
+        if (item) return Promise.resolve({ value: item, done: false });
+        if (this.closed) return Promise.resolve({ value: undefined, done: true });
+        return new Promise((resolve) => (this.waiting = resolve));
+      },
+    };
+  }
+}
+
+export interface CouponInput extends TesterOptions {
+  page: CouponPage;
+  /** An already opened tester (see `openCouponTester`); otherwise one is opened from `page`. */
+  tester?: CouponTester;
+  codes: CouponCandidate[];
+  /** More codes from the search still running; each is tested as it arrives, and the first round ends when this does. */
+  incoming?: AsyncIterable<CouponCandidate[]>;
+  control?: AgentControl;
+  signal?: AbortSignal;
   /** Pause between codes, to be gentle with the store. */
   delayMs?: number;
-  batchSize?: number;
   /**
-   * Asked after a batch in which no code saved money, while codes remain or
-   * more can be found; false stops. Absent: test every code given, no prompt.
+   * Asked after a round (every code one search found) in which no code saved
+   * money, when more can be found; false stops. Absent: no further search.
    */
   askMore?: (s: BatchState) => Promise<boolean>;
-  /** Finds codes not in `known` (new web search, more guesses). Used only after askMore says yes. */
-  findMore?: (known: string[]) => Promise<CouponCandidate[]>;
+  /** Finds codes not in `known` (a new web search). Used only after askMore says yes; a stream is tested as it arrives. */
+  findMore?: (known: string[]) => Promise<CouponCandidate[]> | AsyncIterable<CouponCandidate[]>;
+  /** Called just before each code is tried. */
+  onTry?: (code: string) => void;
   /** `currency` as the store prints it, for showing amounts. */
   onAttempt?: (a: CouponAttempt, index: number, total: number, currency?: string) => void;
 }
+
+const attemptOf = (cand: CouponCandidate, r: { total: number | null; accepted: boolean | null }, saving: number | null, note: string): CouponAttempt => ({
+  code: cand.code,
+  origin: cand.origin,
+  ...(cand.sourceUrl ? { sourceUrl: cand.sourceUrl } : {}),
+  ...(cand.context ? { context: cand.context } : {}),
+  ...(cand.conditions ? { conditions: cand.conditions } : {}),
+  total: r.total,
+  saving,
+  accepted: r.accepted,
+  note,
+});
 
 export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome> {
   const { control, signal } = input;
@@ -397,9 +539,7 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
   };
   add(input.codes);
 
-  const viaCart = input.page.cart ? await cartTester(input.page.cart).catch(() => null) : null;
-  const quietMs = input.settleMs ?? 2500;
-  const tester = viaCart ?? (await pageTester(input.page, { quietMs, maxMs: Math.max(input.maxSettleMs ?? 8000, quietMs) }, input.locate));
+  const tester = input.tester ?? (await openCouponTester(input.page, input));
   if ("error" in tester) {
     return { status: tester.error, method: null, baseline: null, attempts, applied: false, untested: codes.length, message: tester.message };
   }
@@ -416,37 +556,58 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
       attempts,
       ...(best ? { best } : {}),
       applied: false,
-      untested: codes.length - attempts.length,
+      untested: Math.max(codes.length - attempts.filter((a) => !a.combo).length, 0),
       message,
       ...extra,
     };
   };
-  if (codes.length === 0) return result("no_codes", "No codes to try.");
+  if (codes.length === 0 && !input.incoming) {
+    await tester.finish(null).catch(() => undefined);
+    return result("no_codes", "No codes to try.");
+  }
+  const savingOf = (total: number | null): number | null => (total === null ? null : Math.round((baseline - total) * 100) / 100);
+  const noteOf = (r: TryResult, saving: number | null): string =>
+    r.note ??
+    (r.accepted === false
+      ? "Not accepted by the store."
+      : saving !== null && saving > 0
+        ? "Saves " + formatMoney(saving, tester.currency) + "."
+        : r.accepted
+          ? "Accepted, but no lower total."
+          : "No saving.");
 
-  const size = Math.max(1, input.batchSize ?? BATCH_SIZE);
   let stoppedEarly: CouponStatus | null = null;
   let exhausted = false;
   let i = 0;
-  outer: while (i < codes.length) {
-    const batch = codes.slice(i, i + size);
-    for (const cand of batch) {
+  // One round per search: the codes it found, tested as they arrive (owner,
+  // 2026-10-17: test as many as the search found, not a fixed batch).
+  let feed: AsyncIterator<CouponCandidate[]> | undefined = input.incoming?.[Symbol.asyncIterator]();
+  /** How many codes were known when the latest extra search started. */
+  let searchedFrom: number | null = null;
+  outer: for (;;) {
+    for (;;) {
+      if (i >= codes.length) {
+        if (!feed) break;
+        const next = await feed.next();
+        if (next.done) {
+          feed = undefined;
+          break;
+        }
+        add(next.value);
+        continue;
+      }
+      const cand = codes[i]!;
       await control?.gate();
       if (halted()) {
         stoppedEarly = "stopped";
         break outer;
       }
+      i++;
+      input.onTry?.(cand.code);
       const r = await tester.tryCode(cand.code);
       if (r.captcha) {
         // Recorded so the user sees which code was being tried; then a hard stop.
-        const attempt: CouponAttempt = {
-          code: cand.code,
-          origin: cand.origin,
-          ...(cand.sourceUrl ? { sourceUrl: cand.sourceUrl } : {}),
-          total: null,
-          saving: null,
-          accepted: null,
-          note: "The page asked for a CAPTCHA.",
-        };
+        const attempt = attemptOf(cand, { total: null, accepted: null }, null, "The page asked for a CAPTCHA.");
         attempts.push(attempt);
         input.onAttempt?.(attempt, attempts.length, codes.length, tester.currency);
         stoppedEarly = "captcha";
@@ -460,45 +621,63 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
         haltNote = r.note ?? "";
         break outer;
       }
-      const saving = r.total === null ? null : Math.round((baseline - r.total) * 100) / 100;
-      const note =
-        r.note ??
-        (r.accepted === false
-          ? "Not accepted by the store."
-          : saving !== null && saving > 0
-            ? "Saves " + formatMoney(saving, tester.currency) + "."
-            : r.accepted
-              ? "Accepted, but no lower total."
-              : "No saving.");
-      const attempt: CouponAttempt = {
-        code: cand.code,
-        origin: cand.origin,
-        ...(cand.sourceUrl ? { sourceUrl: cand.sourceUrl } : {}),
-        total: r.total,
-        saving,
-        accepted: r.accepted,
-        note,
-      };
+      const saving = savingOf(r.total);
+      const attempt = attemptOf(cand, r, saving, noteOf(r, saving));
       attempts.push(attempt);
       input.onAttempt?.(attempt, attempts.length, codes.length, tester.currency);
       if (input.delayMs) await new Promise((res) => setTimeout(res, input.delayMs));
     }
-    i += batch.length;
-    // A code that saves money ends the search; the best one is applied below.
-    if (bestOf(attempts)) break;
-    if (!input.askMore) continue;
-    const canFind = input.findMore !== undefined && codes.length < MAX_TOTAL;
-    if (i >= codes.length && !canFind) break;
-    const next = canFind ? size : Math.min(size, codes.length - i);
-    const more = await input.askMore({ tried: i, remaining: codes.length - i, next });
+    if (halted()) {
+      stoppedEarly = "stopped";
+      break;
+    }
+    // A search after the first that added nothing new: nothing left to find.
+    if (searchedFrom !== null && codes.length === searchedFrom) {
+      exhausted = true;
+      break;
+    }
+    // Once a code saves money no further search is offered: the "search
+    // again" question is for runs where nothing has worked yet.
+    if (bestOf(attempts) || !input.askMore || !input.findMore || codes.length >= MAX_TOTAL || codes.length === 0) break;
+    const more = await input.askMore({ tried: i });
     if (!more || halted()) break;
-    if (canFind && codes.length - i < size) {
-      add(await input.findMore!(codes.map((c) => c.code)).catch(() => []));
-      if (halted()) {
-        stoppedEarly = "stopped";
-        break;
+    searchedFrom = codes.length;
+    const found = input.findMore(codes.map((c) => c.code));
+    if (Symbol.asyncIterator in found) feed = found[Symbol.asyncIterator]();
+    else add(await found.catch(() => []));
+  }
+  if (feed) await feed.return?.();
+  // Nothing found to test (a stop during the search included): the caller says why.
+  if (attempts.length === 0 && codes.length === 0) {
+    await tester.finish(null).catch(() => undefined);
+    return result("no_codes", "No codes to try.");
+  }
+
+  // Stores whose cart API allows stacking: the best code with each of the next
+  // best, kept only when the store takes both and the total drops further.
+  if (!stoppedEarly && !haltNote && tester.tryCombo) {
+    const winners = attempts.filter((a) => !a.combo && a.accepted !== false && a.saving !== null && a.saving > 0).sort((a, b) => (b.saving ?? 0) - (a.saving ?? 0));
+    const top = winners[0];
+    if (top) {
+      for (const other of winners.slice(1, 1 + MAX_COMBOS)) {
+        if (halted()) break;
+        const combo = [top.code, other.code];
+        const r = await tester.tryCombo(combo).catch((): TryResult => ({ total: null, accepted: null, note: "The store did not answer." }));
+        if (r.rateLimited || r.captcha) break;
+        const beats = r.accepted === true && r.total !== null && r.total < (top.total ?? baseline) - EPS;
+        const saving = savingOf(r.total);
+        const attempt: CouponAttempt = {
+          code: combo.join(","),
+          combo,
+          origin: top.origin,
+          total: r.total,
+          saving,
+          accepted: r.accepted === true ? (beats ? true : false) : r.accepted,
+          note: beats ? "Together: saves " + formatMoney(saving ?? 0, tester.currency) + "." : r.accepted === true ? "Both accepted, but no lower total." : "The store does not combine these codes.",
+        };
+        attempts.push(attempt);
+        input.onAttempt?.(attempt, attempts.length, codes.length, tester.currency);
       }
-      if (i >= codes.length) exhausted = true;
     }
   }
 
@@ -520,60 +699,83 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
   const total = await tester.apply(best.code).catch(() => null);
   const applied = total !== null && total <= best.total + 0.005;
   await tester.finish(applied ? best.code : null).catch(() => undefined);
-  return result(stoppedEarly ?? "done", applied ? "Best code " + best.code + " applied." : "Best code " + best.code + " could not be re-applied.", { applied });
+  const shown = best.combo ? best.combo.join(" + ") : best.code;
+  return result(stoppedEarly ?? "done", applied ? "Best code " + shown + " applied." : "Best code " + shown + " could not be re-applied.", { applied });
 }
 
-
-const percentOff = (baseline: number, total: number): string => {
+/** "20% off" for the drop from `baseline` to `total`. */
+export const percentOff = (baseline: number, total: number): string => {
   const p = baseline > 0 ? ((baseline - total) / baseline) * 100 : 0;
   return p >= 1 ? Math.round(p) + "% off" : "under 1% off";
 };
 
-/** Chat summary of a run, in the same plain style as other answers. Built in code, not by the model. */
-export function couponSummary(o: CouponOutcome): string {
+/** What the web search found, for the summary's first line. */
+export interface DiscoveryInfo {
+  brand: string;
+  searched: boolean;
+  error?: { code: string; message: string };
+  /** Codes from the store's own site. */
+  store: number;
+  verified: number;
+  reported: number;
+  masked: number;
+  dropped: number;
+  offers?: string[];
+}
+
+export const plural = (n: number, what: string): string => n + " " + what + (n === 1 ? "" : "s");
+
+/** How the codes were found, in plain words. Built in code, not by the model. */
+export function discoveryLine(d: DiscoveryInfo): string {
+  const found = d.store + d.verified + d.reported;
+  const parts: string[] = [];
+  if (d.store) parts.push(plural(d.store, "code") + " on the store's own site");
+  if (d.verified) parts.push(plural(d.verified, "code") + " read on the pages that post them");
+  if (d.reported) parts.push(plural(d.reported, "code") + " the search reported from pages it returned");
+  const list = parts.length > 1 ? parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1] : (parts[0] ?? "");
+  let line = "";
+  if (!d.searched) line = "I did not search the web.";
+  else if (d.error) line = "The web search ended early (" + d.error.message.replace(/\.$/, "") + ").";
+  else line = "I searched the web for " + d.brand + " codes.";
+  line += found ? " Found " + (parts.length > 1 ? plural(found, "code") + ": " + list : list) + "." : " No code posted for " + d.brand + " could be found.";
+  if (d.masked) line += " " + plural(d.masked, "code") + " shown masked or behind a button could not be read, so " + (d.masked === 1 ? "it was" : "they were") + " not tested.";
+  if (d.dropped) line += " " + plural(d.dropped, "code") + " the search mentioned without a page it had opened " + (d.dropped === 1 ? "was" : "were") + " left out.";
+  return line;
+}
+
+/**
+ * Chat summary of a run: one to four sentences on what was done and what came
+ * of it (owner, 2026-10-17). Each code's result stays in the Working card.
+ * Built in code, not by the model.
+ */
+export function couponSummary(o: CouponOutcome, discovery?: DiscoveryInfo): string {
   const money = (v: number): string => formatMoney(v, o.currency);
-  const n = o.attempts.length;
-  const tested = "**" + n + " code" + (n === 1 ? "" : "s") + "**";
-  const lines: string[] = [];
-  if (o.status === "no_form" || o.status === "error" || o.status === "no_codes") return o.message;
-  if (o.status === "captcha") lines.push("I stopped after " + tested + " because the page asked for a CAPTCHA. Complete it yourself, then try again.");
-  else if (o.status === "rate_limited") lines.push("I stopped after " + tested + " because the store asked to slow down. Try again in a few minutes.");
+  const n = o.attempts.filter((a) => !a.combo).length;
+  const tested = "**" + plural(n, "code") + "**";
+  if (o.status === "no_form" || o.status === "error" || o.status === "no_codes" || o.status === "search_failed" || (o.status === "stopped" && n === 0)) {
+    const head = discovery ? discoveryLine(discovery) : "";
+    return (head ? head + " " : "") + o.message;
+  }
+  const found = discovery?.searched ? " found online for " + discovery.brand : "";
+  const out: string[] = [];
+  if (o.status === "captcha") out.push("I stopped after " + tested + " because the page asked for a CAPTCHA. Complete it yourself, then try again.");
+  else if (o.status === "rate_limited") out.push("I stopped after " + tested + " because the store asked to slow down. Try again in a few minutes.");
   if (o.best && o.best.total !== null && o.baseline !== null) {
-    const head =
-      "I tested " + tested + ". **" + o.best.code + "** is the best: your total drops from **" + money(o.baseline) + "** to **" +
-      money(o.best.total) + "** (you save " + money(o.baseline - o.best.total) + ", " + percentOff(o.baseline, o.best.total) + ").";
-    lines.unshift(
-      head +
-        (o.applied ? " It's applied to your cart, and I didn't go to checkout." : " I couldn't re-apply it, so enter it yourself in the coupon box."),
+    const shown = o.best.combo ? "**" + o.best.combo.join("** + **") + "** together" : "**" + o.best.code + "**";
+    if (o.status !== "captcha" && o.status !== "rate_limited") out.push("I tested " + tested + found + ".");
+    out.push(
+      shown + " is the best: your total drops from **" + money(o.baseline) + "** to **" + money(o.best.total) + "** (you save " +
+        money(o.baseline - o.best.total) + ", " + percentOff(o.baseline, o.best.total) + ").",
     );
+    out.push(o.applied ? "It's applied to your cart, and I didn't go to checkout." : "I couldn't re-apply it, so enter it yourself in the coupon box.");
+    if (o.best.conditions) out.push("Conditions seen with it: " + o.best.conditions + ".");
   } else if (o.status === "done" || o.status === "stopped") {
-    lines.unshift(
-      "I tested " + tested + " and none lowered your total" + (o.baseline !== null ? " of " + money(o.baseline) : "") + "." +
-        (o.exhausted
-          ? " I couldn't find any more codes to try."
-          : o.untested > 0
-            ? " " + o.untested + " more codes were left untested."
-            : ""),
+    out.push(
+      "I tested " + tested + found + " and none lowered your total" + (o.baseline !== null ? " of " + money(o.baseline) : "") + ", so your cart is unchanged." +
+        (o.exhausted ? " I couldn't find any more codes to try." : o.untested > 0 ? " " + o.untested + " more codes were left untested." : ""),
     );
+    if (discovery?.error && discovery.error.code !== "stopped") out.push("The web search ended early, so other codes may exist.");
   }
-  const worked = o.attempts.filter((a) => a.saving !== null && a.saving > 0 && a.accepted !== false).sort((a, b) => (b.saving ?? 0) - (a.saving ?? 0));
-  if (worked.length) {
-    lines.push("", "| Code | Result | Where it came from |", "|---|---|---|");
-    for (const a of worked) {
-      const where = a.sourceUrl && (a.origin === "sourced" || a.origin === "unverified") ? "[" + originLabel(a) + "](" + a.sourceUrl + ")" : originLabel(a);
-      lines.push("| " + a.code + " | saves " + money(a.saving ?? 0) + ", total " + money(a.total ?? 0) + " | " + where + " |");
-    }
-  }
-  const failed = o.attempts.filter((a) => !worked.includes(a));
-  if (failed.length) {
-    const named = failed.filter((a) => a.origin === "sourced" || a.origin === "unverified").map((a) => a.code);
-    const guesses = failed.length - named.length;
-    const parts: string[] = [];
-    if (named.length) parts.push(named.slice(0, 8).join(", ") + (named.length > 8 ? " and " + (named.length - 8) + " more found online" : ""));
-    if (guesses) parts.push(guesses + " guessed code" + (guesses === 1 ? "" : "s"));
-    lines.push("", "Didn't work: " + parts.join(", plus ") + ".");
-  }
-  if (o.note) lines.push("", o.note);
-  if (o.best) lines.push("", "Checkout can still change the final price, for example tax, shipping, or whether the code applies to later orders.");
-  return lines.join("\n");
+  if (o.note) out.push(o.note);
+  return out.join(" ");
 }

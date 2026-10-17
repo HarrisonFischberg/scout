@@ -1,0 +1,3123 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T13-40-19",
+  "results": [
+    {
+      "name": "Grip6",
+      "url": "https://grip6.com",
+      "group": "apparel",
+      "outcome": "no working code",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant store-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=16 reported=24 dropped=0 masked=0",
+        "coupons:attempt 1 rejected",
+        "coupons:attempt 2 rejected",
+        "coupons:attempt 3 rejected",
+        "coupons:attempt 4 rejected",
+        "coupons:attempt 5 rejected",
+        "coupons:attempt 6 rejected",
+        "coupons:attempt 7 rejected",
+        "coupons:attempt 8 rejected",
+        "coupons:attempt 9 rejected",
+        "coupons:attempt 10 rejected",
+        "coupons:attempt 11 rejected",
+        "coupons:attempt 12 rejected",
+        "coupons:attempt 13 rejected",
+        "coupons:attempt 14 rejected",
+        "coupons:attempt 15 rejected",
+        "coupons:attempt 16 rejected",
+        "coupons:attempt 17 rejected",
+        "coupons:attempt 18 rejected",
+        "coupons:attempt 19 rejected",
+        "coupons:attempt 20 rejected",
+        "coupons:attempt 21 rejected",
+        "coupons:attempt 22 rejected",
+        "coupons:attempt 23 rejected",
+        "coupons:attempt 24 rejected",
+        "coupons:attempt 25 rejected",
+        "coupons:ask-more tried=25 remaining=15 next=25",
+        "coupons:overlay-failed",
+        "coupons:more yes",
+        "coupons:find-more known=40",
+        "coupons:overlay-failed",
+        "coupons:candidates verified=0 reported=0 dropped=0 masked=0",
+        "coupons:attempt 26 rejected",
+        "coupons:attempt 27 rejected",
+        "coupons:attempt 28 rejected",
+        "coupons:attempt 29 rejected",
+        "coupons:attempt 30 rejected",
+        "coupons:attempt 31 rejected",
+        "coupons:attempt 32 rejected",
+        "coupons:attempt 33 rejected",
+        "coupons:attempt 34 rejected",
+        "coupons:attempt 35 rejected",
+        "coupons:attempt 36 rejected",
+        "coupons:attempt 37 rejected",
+        "coupons:attempt 38 rejected",
+        "coupons:attempt 39 rejected",
+        "coupons:attempt 40 rejected",
+        "coupons:ask-more tried=40 remaining=0 next=25",
+        "coupons:overlay-failed",
+        "coupons:more no",
+        "coupons:overlay-failed",
+        "coupons:status done none",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 7.2,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 7.2,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 7.2,
+          "stage": "coupons:merchant store-host named"
+        },
+        {
+          "t": 7.4,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 8.3,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 8.3,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 59.7,
+          "stage": "coupons:candidates store=0 verified=16 reported=24 dropped=0 masked=0"
+        },
+        {
+          "t": 60.3,
+          "stage": "coupons:attempt 1 rejected"
+        },
+        {
+          "t": 61.1,
+          "stage": "coupons:attempt 2 rejected"
+        },
+        {
+          "t": 61.9,
+          "stage": "coupons:attempt 3 rejected"
+        },
+        {
+          "t": 62.8,
+          "stage": "coupons:attempt 4 rejected"
+        },
+        {
+          "t": 63.6,
+          "stage": "coupons:attempt 5 rejected"
+        },
+        {
+          "t": 64.3,
+          "stage": "coupons:attempt 6 rejected"
+        },
+        {
+          "t": 65.3,
+          "stage": "coupons:attempt 7 rejected"
+        },
+        {
+          "t": 66.7,
+          "stage": "coupons:attempt 8 rejected"
+        },
+        {
+          "t": 67.5,
+          "stage": "coupons:attempt 9 rejected"
+        },
+        {
+          "t": 68.3,
+          "stage": "coupons:attempt 10 rejected"
+        },
+        {
+          "t": 69.1,
+          "stage": "coupons:attempt 11 rejected"
+        },
+        {
+          "t": 69.9,
+          "stage": "coupons:attempt 12 rejected"
+        },
+        {
+          "t": 70.7,
+          "stage": "coupons:attempt 13 rejected"
+        },
+        {
+          "t": 71.5,
+          "stage": "coupons:attempt 14 rejected"
+        },
+        {
+          "t": 72.2,
+          "stage": "coupons:attempt 15 rejected"
+        },
+        {
+          "t": 72.9,
+          "stage": "coupons:attempt 16 rejected"
+        },
+        {
+          "t": 73.8,
+          "stage": "coupons:attempt 17 rejected"
+        },
+        {
+          "t": 74.7,
+          "stage": "coupons:attempt 18 rejected"
+        },
+        {
+          "t": 75.6,
+          "stage": "coupons:attempt 19 rejected"
+        },
+        {
+          "t": 76.5,
+          "stage": "coupons:attempt 20 rejected"
+        },
+        {
+          "t": 77.4,
+          "stage": "coupons:attempt 21 rejected"
+        },
+        {
+          "t": 78.2,
+          "stage": "coupons:attempt 22 rejected"
+        },
+        {
+          "t": 79,
+          "stage": "coupons:attempt 23 rejected"
+        },
+        {
+          "t": 79.9,
+          "stage": "coupons:attempt 24 rejected"
+        },
+        {
+          "t": 80.8,
+          "stage": "coupons:attempt 25 rejected"
+        },
+        {
+          "t": 81.1,
+          "stage": "coupons:ask-more tried=25 remaining=15 next=25"
+        },
+        {
+          "t": 81.1,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 81.6,
+          "stage": "coupons:more yes"
+        },
+        {
+          "t": 81.7,
+          "stage": "coupons:find-more known=40"
+        },
+        {
+          "t": 81.7,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 195.7,
+          "stage": "coupons:candidates verified=0 reported=0 dropped=0 masked=0"
+        },
+        {
+          "t": 196.4,
+          "stage": "coupons:attempt 26 rejected"
+        },
+        {
+          "t": 197.7,
+          "stage": "coupons:attempt 27 rejected"
+        },
+        {
+          "t": 198.5,
+          "stage": "coupons:attempt 28 rejected"
+        },
+        {
+          "t": 199.4,
+          "stage": "coupons:attempt 29 rejected"
+        },
+        {
+          "t": 200.1,
+          "stage": "coupons:attempt 30 rejected"
+        },
+        {
+          "t": 200.9,
+          "stage": "coupons:attempt 31 rejected"
+        },
+        {
+          "t": 201.7,
+          "stage": "coupons:attempt 32 rejected"
+        },
+        {
+          "t": 202.5,
+          "stage": "coupons:attempt 33 rejected"
+        },
+        {
+          "t": 203.3,
+          "stage": "coupons:attempt 34 rejected"
+        },
+        {
+          "t": 204.2,
+          "stage": "coupons:attempt 35 rejected"
+        },
+        {
+          "t": 205.1,
+          "stage": "coupons:attempt 36 rejected"
+        },
+        {
+          "t": 206,
+          "stage": "coupons:attempt 37 rejected"
+        },
+        {
+          "t": 207,
+          "stage": "coupons:attempt 38 rejected"
+        },
+        {
+          "t": 207.9,
+          "stage": "coupons:attempt 39 rejected"
+        },
+        {
+          "t": 208.8,
+          "stage": "coupons:attempt 40 rejected"
+        },
+        {
+          "t": 209,
+          "stage": "coupons:ask-more tried=40 remaining=0 next=25"
+        },
+        {
+          "t": 209,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 209.3,
+          "stage": "coupons:more no"
+        },
+        {
+          "t": 209.3,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 209.8,
+          "stage": "coupons:status done none"
+        },
+        {
+          "t": 209.8,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T13:40:19.494Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://grip6.com/cart"
+      },
+      "cartBefore": {
+        "total": 49.99,
+        "codes": []
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for GRIP6 codes. Found 40 codes: 16 codes read on the pages that post them and 24 codes the search reported from pages it returned. I tested 40 codes and none lowered your total of $49.99, so your cart is unchanged.\n\nDidn't work: SECRET40, CUSTOMER20, MOBILE15, KEVIN15, HURRY10, GUY25, WELCOME15, WELCOME10, HELLO20, BLK25 and 30 more.\n\nCode-free offers the pages mention (not tested): Free Domestic Shipping over $50 Intl. $75\" no code needed; Earn 1 Point Per $1 Spent From Grip6\" rewards program; also 50 points for a birthday and 10 points for each social follo.",
+      "secondPass": true,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for GRIP6 codes…",
+        "I searched the web for GRIP6 codes. Found 40 codes: 16 codes read on the pages that post them and 24 codes the search reported from pages it returned.",
+        "Testing 40 codes on your cart, one at a time…",
+        "Searching the web again for GRIP6 codes, in other places…",
+        "No more codes found."
+      ],
+      "attempts": [
+        {
+          "code": "SECRET40",
+          "text": "SECRET40 · $49.99 · Not accepted by the store. · seen on coupons.mobilemall.co",
+          "source": "https://coupons.mobilemall.co/grip6-com",
+          "evidence": "Save 40% off Factory Seconds Belts, Buckles, Wallets & Socks (Secret40)",
+          "good": false
+        },
+        {
+          "code": "CUSTOMER20",
+          "text": "CUSTOMER20 · $49.99 · Not accepted by the store. · seen on coupons.mobilemall.co",
+          "source": "https://coupons.mobilemall.co/grip6-com",
+          "evidence": "Earn A 20% Discount … Use code: CUSTOMER20 (https://grip6.valuecom.com/ also says \"Promo code CUSTOMER20 successfully applied on GRIP6 checkout page)",
+          "good": false
+        },
+        {
+          "code": "MOBILE15",
+          "text": "MOBILE15 · $49.99 · Not accepted by the store. · seen on coupons.mobilemall.co",
+          "source": "https://coupons.mobilemall.co/grip6-com",
+          "evidence": "Save 15% on Every Purchase at GRIP6. Use code: MOBILE15 (listed expiry Dec 31, 2026)",
+          "good": false
+        },
+        {
+          "code": "KEVIN15",
+          "text": "KEVIN15 · $49.99 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/grip6.com",
+          "evidence": "Save 15% Off Wallets, Belts, Hoodies & More … KEVIN15 (listed as expiring soon; valuecom says full-price items only)",
+          "good": false
+        },
+        {
+          "code": "HURRY10",
+          "text": "HURRY10 · $49.99 · Not accepted by the store. · seen on coupons.mobilemall.co",
+          "source": "https://coupons.mobilemall.co/grip6-com",
+          "evidence": "Grip6 Coupon - 10% off (HURRY10)",
+          "good": false
+        },
+        {
+          "code": "GUY25",
+          "text": "GUY25 · $49.99 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/grip6.com",
+          "evidence": "25% Off Holiday Cheer … GUY25",
+          "good": false
+        },
+        {
+          "code": "WELCOME15",
+          "text": "WELCOME15 · $49.99 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/grip6.com",
+          "evidence": "Get 15% Off on Your First Order … WELCOME15 (first order only, new customers; listed expiry Oct 14, 2026)",
+          "good": false
+        },
+        {
+          "code": "WELCOME10",
+          "text": "WELCOME10 · $49.99 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/grip6.com",
+          "evidence": "Enjoy 10% Off Your First Grip6 Purchase with Coupon … WELCOME10 (first order only, full-price items only)",
+          "good": false
+        },
+        {
+          "code": "HELLO20",
+          "text": "HELLO20 · $49.99 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/grip6.com",
+          "evidence": "Grip6 Promo Code: Save 20% at Checkout … HELLO20 (first order only, new customers)",
+          "good": false
+        },
+        {
+          "code": "BLK25",
+          "text": "BLK25 · $49.99 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/grip6.com",
+          "evidence": "40% Off Stackable Packs Sale … BLK25 (minimum purchase $99)",
+          "good": false
+        },
+        {
+          "code": "WELCOME20",
+          "text": "WELCOME20 · $49.99 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/grip6.com",
+          "evidence": "Receive 20% Off your First Order with code … WELCOME20 (first order only, new customers)",
+          "good": false
+        },
+        {
+          "code": "TOPSPIN",
+          "text": "TOPSPIN · $49.99 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/grip6.com",
+          "evidence": "$5 Off Your First Tennis Trunk … TOPSPIN (first order only)",
+          "good": false
+        },
+        {
+          "code": "DAD26",
+          "text": "DAD26 · $49.99 · Not accepted by the store. · dontpayfull.com (reported by the search)",
+          "source": "https://www.dontpayfull.com/at/grip6.com",
+          "evidence": "Jun 2026 (3)",
+          "good": false
+        },
+        {
+          "code": "BOGO50",
+          "text": "BOGO50 · $49.99 · Not accepted by the store. · extrabux.com (reported by the search)",
+          "source": "https://www.extrabux.com/en/coupons/grip6",
+          "evidence": "50% Off Buy 1 Get 1 50% Off Storewide … Get Code go50 (Extrabux prints it as \"go50\"; other pages print bogo50 and BOGO50, e.g. https://www.easyfindsavings.com/coupons/grip6 \"B)",
+          "good": false
+        },
+        {
+          "code": "SECONDSSALE",
+          "text": "SECONDSSALE · $49.99 · Not accepted by the store. · dontpayfull.com (reported by the search)",
+          "source": "https://www.dontpayfull.com/at/grip6.com",
+          "evidence": "Mar 2026 (2)",
+          "good": false
+        },
+        {
+          "code": "FAMILY35",
+          "text": "FAMILY35 · $49.99 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/grip6.com",
+          "evidence": "Receive 35% Off Your Purchase … FAMILY35 (Coupert lists it as recently expired or invalid)",
+          "good": false
+        },
+        {
+          "code": "SWEET50",
+          "text": "SWEET50 · $49.99 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/grip6.com",
+          "evidence": "Get 50% off When You Shop Now … SWEET50 (Coupert lists it as recently expired or invalid)",
+          "good": false
+        },
+        {
+          "code": "LABORDAY20",
+          "text": "LABORDAY20 · $49.99 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/grip6.com",
+          "evidence": "Shop Now for 20% Off Sitewide on Every Order … LABORDAY20 (Labor Day offer; Coupert lists it as expired or invalid)",
+          "good": false
+        },
+        {
+          "code": "FESTIVE20",
+          "text": "FESTIVE20 · $49.99 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/grip6.com",
+          "evidence": "Up to 40% Off Men's Series Orders … FESTIVE20 (Coupert lists it as expired or invalid)",
+          "good": false
+        },
+        {
+          "code": "BIL20",
+          "text": "BIL20 · $49.99 · Not accepted by the store. · grip6.tenereteam.com (reported by the search)",
+          "source": "https://grip6.tenereteam.com/coupons",
+          "evidence": "Click 'Get Code' to reveal your promo code: BIL20 (20% off per the page's \"UP TO 20% OFF\" label)",
+          "good": false
+        },
+        {
+          "code": "GRIP15",
+          "text": "GRIP15 · $49.99 · Not accepted by the store. · couponsvilla.com (reported by the search)",
+          "source": "https://couponsvilla.com/store/grip6/",
+          "evidence": "15% Off Entire Order (Exclude Sale Items) at GRIP6 … GRIP15 (excludes sale items)",
+          "good": false
+        },
+        {
+          "code": "QUIZ15",
+          "text": "QUIZ15 · $49.99 · Not accepted by the store. · couponsvilla.com (reported by the search)",
+          "source": "https://couponsvilla.com/store/grip6/",
+          "evidence": "Get 15% Off All Orders SiteWide (Coupon Code Applied On Full Price Items) … QUIZ15 (full-price items)",
+          "good": false
+        },
+        {
+          "code": "P25",
+          "text": "P25 · $49.99 · Not accepted by the store. · extrabux.com (reported by the search)",
+          "source": "https://www.extrabux.com/en/coupons/grip6",
+          "evidence": "Bundle 3 Items to Your Pack & Save 25% on Your Order … Get Code P25 (bundle of 3 items)",
+          "good": false
+        },
+        {
+          "code": "DAVE20",
+          "text": "DAVE20 · $49.99 · Not accepted by the store. · coupons.mobilemall.co (reported by the search)",
+          "source": "https://coupons.mobilemall.co/grip6-com",
+          "evidence": "Redeem 20% Off Belts & Buckles … DAVE20 (excludes sale items)",
+          "good": false
+        },
+        {
+          "code": "FREESHIP",
+          "text": "FREESHIP · $49.99 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/grip6-com-coupon-codes",
+          "evidence": "Free Shipping Storewide at Grip6 · FREESHIP (listed expiry Mar 13, 2026)",
+          "good": false
+        },
+        {
+          "code": "EMAIL15",
+          "text": "EMAIL15 · $49.99 · Not accepted by the store. · coupons.mobilemall.co (reported by the search)",
+          "source": "https://coupons.mobilemall.co/grip6-com",
+          "evidence": "Take an Extra 15% Off highlighted items at Grip6.com. Use code: EMAIL15",
+          "good": false
+        },
+        {
+          "code": "TDZ1",
+          "text": "TDZ1 · $49.99 · Not accepted by the store. · reeoffers.com (reported by the search)",
+          "source": "https://www.reeoffers.com/grip6/",
+          "evidence": "More $10 Off on Men's Classic Pack … SHOW CODE TDZ1 ($10 off Men's Classic Pack)",
+          "good": false
+        },
+        {
+          "code": "FB10",
+          "text": "FB10 · $49.99 · Not accepted by the store. · reeoffers.com (reported by the search)",
+          "source": "https://www.reeoffers.com/grip6/",
+          "evidence": "Get an Extra 10% Discount on All Orders … SHOW CODE FB10",
+          "good": false
+        },
+        {
+          "code": "FB15",
+          "text": "FB15 · $49.99 · Not accepted by the store. · reeoffers.com (reported by the search)",
+          "source": "https://www.reeoffers.com/grip6/",
+          "evidence": "Have 15% Off on Any Order … SHOW CODE FB15",
+          "good": false
+        },
+        {
+          "code": "FB20",
+          "text": "FB20 · $49.99 · Not accepted by the store. · reeoffers.com (reported by the search)",
+          "source": "https://www.reeoffers.com/grip6/",
+          "evidence": "Receive 20% Discount on Each Purchase … SHOW CODE FB20",
+          "good": false
+        },
+        {
+          "code": "CART10",
+          "text": "CART10 · $49.99 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/grip6-com-coupon-codes",
+          "evidence": "10% Off Storewide at Grip6 · CART10 (listed expiry Mar 13, 2026)",
+          "good": false
+        },
+        {
+          "code": "EMAIL10",
+          "text": "EMAIL10 · $49.99 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/grip6-com-coupon-codes",
+          "evidence": "Grip6 Promo Code: 10% Off … EMAIL10 … 10% Off Any Purchase at Grip6",
+          "good": false
+        },
+        {
+          "code": "PRE35",
+          "text": "PRE35 · $49.99 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/grip6-com-coupon-codes",
+          "evidence": "35% Off for Your Order with Grip6 Coupon … PRE35 (Pre-Crastinators flash sale, Oct 2025; probably expired)",
+          "good": false
+        },
+        {
+          "code": "DAD25",
+          "text": "DAD25 · $49.99 · Not accepted by the store. · grip6.tenereteam.com (reported by the search)",
+          "source": "https://grip6.tenereteam.com/coupons",
+          "evidence": "Grip6 coupon code: 25% off with DAD25 (Father's Day offer; may be expired)",
+          "good": false
+        },
+        {
+          "code": "TACTICAL30",
+          "text": "TACTICAL30 · $49.99 · Not accepted by the store. · coupons.mobilemall.co (reported by the search)",
+          "source": "https://coupons.mobilemall.co/grip6-com",
+          "evidence": "Flash Sale: 30% discount on tactical socks and belts. Use code: TACTICAL30 (flash sale; may be expired)",
+          "good": false
+        },
+        {
+          "code": "FREESHIPPING",
+          "text": "FREESHIPPING · $49.99 · Not accepted by the store. · reeoffers.com (reported by the search)",
+          "source": "https://www.reeoffers.com/grip6/",
+          "evidence": "Free shipping on Your Orders Using Code … SHOW CODE FREESHIPPING (Extrabux https://www.extrabux.com/en/coupons/grip6 lists it as expired 08-30-25)",
+          "good": false
+        },
+        {
+          "code": "FACTORY30",
+          "text": "FACTORY30 · $49.99 · Not accepted by the store. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/grip6.com",
+          "evidence": "30% Off Grip6 Promo Code … FACTORY30 (valuecom says valid on selected products, current stock levels; DontPayFull says factory seconds only)",
+          "good": false
+        },
+        {
+          "code": "GIFT20",
+          "text": "GIFT20 · $49.99 · Not accepted by the store. · easyfindsavings.com (reported by the search)",
+          "source": "https://www.easyfindsavings.com/coupons/grip6",
+          "evidence": "Enjoy 20% Off All Orders Holiday Sale At Grip6 … GIFT20 (page marks it expired; DontPayFull said it ended Oct 3, 2026)",
+          "good": false
+        },
+        {
+          "code": "FLAG20",
+          "text": "FLAG20 · $49.99 · Not accepted by the store. · easyfindsavings.com (reported by the search)",
+          "source": "https://www.easyfindsavings.com/coupons/grip6",
+          "evidence": "20% Off Storewide: The Best Grip6 Discount Code … FLAG20 (page marks it expired)",
+          "good": false
+        },
+        {
+          "code": "FRIENDS30",
+          "text": "FRIENDS30 · $49.99 · Not accepted by the store. · grip6.tenereteam.com (reported by the search)",
+          "source": "https://grip6.tenereteam.com/coupons",
+          "evidence": "Click 'Get Code' to reveal your promo code: FRIENDS30 (Friends & Family sale; may be expired)",
+          "good": false
+        }
+      ],
+      "cartAfter": {
+        "total": 49.99,
+        "codes": []
+      },
+      "seconds": 213
+    },
+    {
+      "name": "Nomad",
+      "url": "https://nomadgoods.com",
+      "group": "gear",
+      "outcome": "no coupon box",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant store-host",
+        "coupons:locate",
+        "coupons:locate none",
+        "coupons:method none status no_form",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 11.2,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 11.3,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 11.3,
+          "stage": "coupons:merchant store-host"
+        },
+        {
+          "t": 12.5,
+          "stage": "coupons:locate"
+        },
+        {
+          "t": 13.8,
+          "stage": "coupons:locate none"
+        },
+        {
+          "t": 13.8,
+          "stage": "coupons:method none status no_form"
+        },
+        {
+          "t": 13.8,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T13:43:55.728Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://nomadgoods.com/?openCart=true"
+      },
+      "apiErrors": [],
+      "summary": "No coupon box found on this page. Open the cart or checkout page first. No codes were searched for or tested.\nCopy diagnostics",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…"
+      ],
+      "attempts": [],
+      "seconds": 17
+    },
+    {
+      "name": "Tackform",
+      "url": "https://www.tackform.com",
+      "group": "gear",
+      "outcome": "no codes found",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=2",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 6,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 6.1,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 6.1,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 6.3,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 6.7,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 6.7,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 176.8,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=2"
+        },
+        {
+          "t": 177,
+          "stage": "coupons:status no_codes"
+        },
+        {
+          "t": 177,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T13:44:16.347Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://www.tackform.com/cart"
+      },
+      "cartBefore": {
+        "total": 60,
+        "codes": []
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Tackform codes. No code posted for Tackform could be found. 2 codes shown masked or behind a button could not be read, so they were not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Tackform codes…",
+        "I searched the web for Tackform codes. No code posted for Tackform could be found. 2 codes shown masked or behind a button could not be read, so they were not tested."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 60,
+        "codes": []
+      },
+      "seconds": 181
+    },
+    {
+      "name": "Quad Lock",
+      "url": "https://www.quadlockcase.com",
+      "group": "gear",
+      "outcome": "no codes found",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=4",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 5.7,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 5.8,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 5.8,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 5.9,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 6.2,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 6.2,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 116,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=4"
+        },
+        {
+          "t": 116.1,
+          "stage": "coupons:status no_codes"
+        },
+        {
+          "t": 116.1,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T13:47:20.140Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://www.quadlockcase.com/cart"
+      },
+      "cartBefore": {
+        "total": 34.99,
+        "codes": []
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Quad Lock USA codes. No code posted for Quad Lock USA could be found. 4 codes shown masked or behind a button could not be read, so they were not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Quad Lock USA codes…",
+        "I searched the web for Quad Lock USA codes. No code posted for Quad Lock USA could be found. 4 codes shown masked or behind a button could not be read, so they were not tested."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 34.99,
+        "codes": []
+      },
+      "seconds": 119
+    },
+    {
+      "name": "Peak Design",
+      "url": "https://www.peakdesign.com",
+      "group": "gear",
+      "outcome": "no coupon box",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:locate",
+        "coupons:locate totalLabel",
+        "coupons:method none status no_form",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 12.7,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 12.8,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 12.8,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 13.8,
+          "stage": "coupons:locate"
+        },
+        {
+          "t": 14.9,
+          "stage": "coupons:locate totalLabel"
+        },
+        {
+          "t": 14.9,
+          "stage": "coupons:method none status no_form"
+        },
+        {
+          "t": 14.9,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T13:49:22.390Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.peakdesign.com/?show=cart"
+      },
+      "apiErrors": [],
+      "summary": "No coupon box found on this page. Open the cart or checkout page first. No codes were searched for or tested.\nCopy diagnostics",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…"
+      ],
+      "attempts": [],
+      "seconds": 19
+    },
+    {
+      "name": "Luno",
+      "url": "https://lunolife.com",
+      "group": "gear",
+      "outcome": "no codes found",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant store-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=5",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 6.8,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 6.9,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 6.9,
+          "stage": "coupons:merchant store-host named"
+        },
+        {
+          "t": 7,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 7.6,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 7.6,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 108.6,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=5"
+        },
+        {
+          "t": 108.8,
+          "stage": "coupons:status no_codes"
+        },
+        {
+          "t": 108.8,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T13:49:44.225Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://lunolife.com/cart"
+      },
+      "cartBefore": {
+        "total": 54.99,
+        "codes": []
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Luno codes. No code posted for Luno could be found. 5 codes shown masked or behind a button could not be read, so they were not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Luno codes…",
+        "I searched the web for Luno codes. No code posted for Luno could be found. 5 codes shown masked or behind a button could not be read, so they were not tested."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 54.99,
+        "codes": []
+      },
+      "seconds": 112
+    },
+    {
+      "name": "Rumpl",
+      "url": "https://www.rumpl.com",
+      "group": "gear",
+      "outcome": "no working code",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=5 reported=30 dropped=0 masked=3",
+        "coupons:attempt 1 rejected",
+        "coupons:attempt 2 rejected",
+        "coupons:attempt 3 rejected",
+        "coupons:attempt 4 rejected",
+        "coupons:attempt 5 rejected",
+        "coupons:attempt 6 rejected",
+        "coupons:attempt 7 rejected",
+        "coupons:attempt 8 rejected",
+        "coupons:attempt 9 rejected",
+        "coupons:attempt 10 rejected",
+        "coupons:attempt 11 rejected",
+        "coupons:attempt 12 rejected",
+        "coupons:attempt 13 rejected",
+        "coupons:attempt 14 rejected",
+        "coupons:attempt 15 rejected",
+        "coupons:attempt 16 rejected",
+        "coupons:attempt 17 rejected",
+        "coupons:attempt 18 rejected",
+        "coupons:attempt 19 rejected",
+        "coupons:attempt 20 rejected",
+        "coupons:attempt 21 rejected",
+        "coupons:attempt 22 rejected",
+        "coupons:attempt 23 rejected",
+        "coupons:attempt 24 rejected",
+        "coupons:attempt 25 rejected",
+        "coupons:ask-more tried=25 remaining=10 next=25",
+        "coupons:overlay-failed",
+        "coupons:more yes",
+        "coupons:find-more known=35",
+        "coupons:overlay-failed",
+        "coupons:candidates verified=1 reported=11 dropped=0 masked=4",
+        "coupons:attempt 26 rejected",
+        "coupons:attempt 27 rejected",
+        "coupons:attempt 28 rejected",
+        "coupons:attempt 29 rejected",
+        "coupons:attempt 30 rejected",
+        "coupons:attempt 31 rejected",
+        "coupons:attempt 32 rejected",
+        "coupons:attempt 33 rejected",
+        "coupons:attempt 34 rejected",
+        "coupons:attempt 35 rejected",
+        "coupons:attempt 36 rejected",
+        "coupons:attempt 37 rejected",
+        "coupons:attempt 38 rejected",
+        "coupons:attempt 39 rejected",
+        "coupons:attempt 40 rejected",
+        "coupons:attempt 41 rejected",
+        "coupons:attempt 42 rejected",
+        "coupons:attempt 43 rejected",
+        "coupons:attempt 44 rejected",
+        "coupons:attempt 45 rejected",
+        "coupons:attempt 46 rejected",
+        "coupons:attempt 47 rejected",
+        "coupons:ask-more tried=47 remaining=0 next=25",
+        "coupons:overlay-failed",
+        "coupons:more no",
+        "coupons:overlay-failed",
+        "coupons:status done none",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 6.4,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 6.5,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 6.5,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 6.7,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 7.2,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 7.2,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 108,
+          "stage": "coupons:candidates store=0 verified=5 reported=30 dropped=0 masked=3"
+        },
+        {
+          "t": 108.6,
+          "stage": "coupons:attempt 1 rejected"
+        },
+        {
+          "t": 109.6,
+          "stage": "coupons:attempt 2 rejected"
+        },
+        {
+          "t": 110.6,
+          "stage": "coupons:attempt 3 rejected"
+        },
+        {
+          "t": 111.3,
+          "stage": "coupons:attempt 4 rejected"
+        },
+        {
+          "t": 112.1,
+          "stage": "coupons:attempt 5 rejected"
+        },
+        {
+          "t": 112.9,
+          "stage": "coupons:attempt 6 rejected"
+        },
+        {
+          "t": 113.7,
+          "stage": "coupons:attempt 7 rejected"
+        },
+        {
+          "t": 114.5,
+          "stage": "coupons:attempt 8 rejected"
+        },
+        {
+          "t": 115.5,
+          "stage": "coupons:attempt 9 rejected"
+        },
+        {
+          "t": 116.4,
+          "stage": "coupons:attempt 10 rejected"
+        },
+        {
+          "t": 117.3,
+          "stage": "coupons:attempt 11 rejected"
+        },
+        {
+          "t": 118.6,
+          "stage": "coupons:attempt 12 rejected"
+        },
+        {
+          "t": 119.5,
+          "stage": "coupons:attempt 13 rejected"
+        },
+        {
+          "t": 120.3,
+          "stage": "coupons:attempt 14 rejected"
+        },
+        {
+          "t": 121,
+          "stage": "coupons:attempt 15 rejected"
+        },
+        {
+          "t": 121.8,
+          "stage": "coupons:attempt 16 rejected"
+        },
+        {
+          "t": 122.6,
+          "stage": "coupons:attempt 17 rejected"
+        },
+        {
+          "t": 123.3,
+          "stage": "coupons:attempt 18 rejected"
+        },
+        {
+          "t": 124.1,
+          "stage": "coupons:attempt 19 rejected"
+        },
+        {
+          "t": 125.7,
+          "stage": "coupons:attempt 20 rejected"
+        },
+        {
+          "t": 126.5,
+          "stage": "coupons:attempt 21 rejected"
+        },
+        {
+          "t": 127.4,
+          "stage": "coupons:attempt 22 rejected"
+        },
+        {
+          "t": 128.1,
+          "stage": "coupons:attempt 23 rejected"
+        },
+        {
+          "t": 128.9,
+          "stage": "coupons:attempt 24 rejected"
+        },
+        {
+          "t": 129.9,
+          "stage": "coupons:attempt 25 rejected"
+        },
+        {
+          "t": 130.2,
+          "stage": "coupons:ask-more tried=25 remaining=10 next=25"
+        },
+        {
+          "t": 130.2,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 131,
+          "stage": "coupons:more yes"
+        },
+        {
+          "t": 131,
+          "stage": "coupons:find-more known=35"
+        },
+        {
+          "t": 131,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 233.3,
+          "stage": "coupons:candidates verified=1 reported=11 dropped=0 masked=4"
+        },
+        {
+          "t": 234,
+          "stage": "coupons:attempt 26 rejected"
+        },
+        {
+          "t": 234.8,
+          "stage": "coupons:attempt 27 rejected"
+        },
+        {
+          "t": 235.7,
+          "stage": "coupons:attempt 28 rejected"
+        },
+        {
+          "t": 236.5,
+          "stage": "coupons:attempt 29 rejected"
+        },
+        {
+          "t": 237.5,
+          "stage": "coupons:attempt 30 rejected"
+        },
+        {
+          "t": 238.4,
+          "stage": "coupons:attempt 31 rejected"
+        },
+        {
+          "t": 239.2,
+          "stage": "coupons:attempt 32 rejected"
+        },
+        {
+          "t": 240,
+          "stage": "coupons:attempt 33 rejected"
+        },
+        {
+          "t": 240.9,
+          "stage": "coupons:attempt 34 rejected"
+        },
+        {
+          "t": 241.9,
+          "stage": "coupons:attempt 35 rejected"
+        },
+        {
+          "t": 243.5,
+          "stage": "coupons:attempt 36 rejected"
+        },
+        {
+          "t": 244.3,
+          "stage": "coupons:attempt 37 rejected"
+        },
+        {
+          "t": 245.2,
+          "stage": "coupons:attempt 38 rejected"
+        },
+        {
+          "t": 246.1,
+          "stage": "coupons:attempt 39 rejected"
+        },
+        {
+          "t": 247,
+          "stage": "coupons:attempt 40 rejected"
+        },
+        {
+          "t": 247.9,
+          "stage": "coupons:attempt 41 rejected"
+        },
+        {
+          "t": 248.7,
+          "stage": "coupons:attempt 42 rejected"
+        },
+        {
+          "t": 249.5,
+          "stage": "coupons:attempt 43 rejected"
+        },
+        {
+          "t": 250.3,
+          "stage": "coupons:attempt 44 rejected"
+        },
+        {
+          "t": 251.1,
+          "stage": "coupons:attempt 45 rejected"
+        },
+        {
+          "t": 251.9,
+          "stage": "coupons:attempt 46 rejected"
+        },
+        {
+          "t": 252.7,
+          "stage": "coupons:attempt 47 rejected"
+        },
+        {
+          "t": 253,
+          "stage": "coupons:ask-more tried=47 remaining=0 next=25"
+        },
+        {
+          "t": 253,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 253.6,
+          "stage": "coupons:more no"
+        },
+        {
+          "t": 253.6,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 254.2,
+          "stage": "coupons:status done none"
+        },
+        {
+          "t": 254.2,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T13:51:39.421Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://www.rumpl.com/cart"
+      },
+      "cartBefore": {
+        "total": 89.95,
+        "codes": []
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Rumpl codes. Found 47 codes: 6 codes read on the pages that post them and 41 codes the search reported from pages it returned. 7 codes shown masked or behind a button could not be read, so they were not tested. I tested 47 codes and none lowered your total of $89.95, so your cart is unchanged.\n\nDidn't work: MASK, RETAILPRODEAL, PRODEAL, MOLOVE10, RUMPL-10KD75XBMXR, DAY1RUMPL, SRIKEL15, TEAGAN10, DIRTBAG15, HOLIDAYGIFT and 37 more.\n\nCode-free offers the pages mention (not tested): 4 other deals are available, including 30% off the clearance page.\" automatic sale, no code needed; Sign Up for Emails: Get up to $20 off first order\" email signup offer; the page also lists rewards that earn free shippi; Give $10 Off, Get 10% Off for every successful referral.\" referral program.",
+      "secondPass": true,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Rumpl codes…",
+        "I searched the web for Rumpl codes. Found 35 codes: 5 codes read on the pages that post them and 30 codes the search reported from pages it returned. 3 codes shown masked or behind a button could not be read, so they were not tested.",
+        "Testing 35 codes on your cart, one at a time…",
+        "Searching the web again for Rumpl codes, in other places…",
+        "Found 12 more codes to try. Testing them on your cart…"
+      ],
+      "attempts": [
+        {
+          "code": "MASK",
+          "text": "MASK · $89.95 · Not accepted by the store. · seen on rumpl.tenereteam.com",
+          "source": "https://rumpl.tenereteam.com/coupons",
+          "evidence": "Free shipping on 2 or more masks (2 or more masks)",
+          "good": false
+        },
+        {
+          "code": "RETAILPRODEAL",
+          "text": "RETAILPRODEAL · $89.95 · Not accepted by the store. · seen on rumpl.tenereteam.com",
+          "source": "https://rumpl.tenereteam.com/coupons",
+          "evidence": "Get A 40% Discount With This Promo Code From Rumpl ... RETAILPRODEAL (not valid on sale or clearance items, gift cards or taxes; cannot be combined; rumpl.valuecom.com shows 50% OFF expiring)",
+          "good": false
+        },
+        {
+          "code": "PRODEAL",
+          "text": "PRODEAL · $89.95 · Not accepted by the store. · seen on rumpl.tenereteam.com",
+          "source": "https://rumpl.tenereteam.com/coupons",
+          "evidence": "40% Off Rumpl Coupon on Your Order ... PRODEAL (40% off; same terms as RETAILPRODEAL)",
+          "good": false
+        },
+        {
+          "code": "MOLOVE10",
+          "text": "MOLOVE10 · $89.95 · Not accepted by the store. · seen on rumpl.tenereteam.com",
+          "source": "https://rumpl.tenereteam.com/coupons",
+          "evidence": "Use Rumpl Coupon for Extra 10% Off Your Selected Orders! (10% off selected orders)",
+          "good": false
+        },
+        {
+          "code": "RUMPL-10KD75XBMXR",
+          "text": "RUMPL-10KD75XBMXR · $89.95 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "$10 off your first purchase: with code RUMPL-10KD75XBMXR (first purchase; may be a single-use code)",
+          "good": false
+        },
+        {
+          "code": "DAY1RUMPL",
+          "text": "DAY1RUMPL · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "FREE blanket that matches your tent: with code DAY1RUMPL (also listed on rumpl.valuecom.com and rumpl.tenereteam.com, expiry Oct 07, 2026)",
+          "good": false
+        },
+        {
+          "code": "SRIKEL15",
+          "text": "SRIKEL15 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "15% off: with code SRIKEL15",
+          "good": false
+        },
+        {
+          "code": "TEAGAN10",
+          "text": "TEAGAN10 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "10% off @gorumpl: with code TEAGAN10 (last reported working about 1 year before the listing)",
+          "good": false
+        },
+        {
+          "code": "DIRTBAG15",
+          "text": "DIRTBAG15 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "15% off: with code DIRTBAG15",
+          "good": false
+        },
+        {
+          "code": "HOLIDAYGIFT",
+          "text": "HOLIDAYGIFT · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "Free beer blanket with purchase: with code HOLIDAYGIFT (older holiday code)",
+          "good": false
+        },
+        {
+          "code": "RAIDERS58",
+          "text": "RAIDERS58 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "50% off Raiders Blankets: with code RAIDERS58 (older code)",
+          "good": false
+        },
+        {
+          "code": "SCORE48",
+          "text": "SCORE48 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "48% Off + BOGO Free NFL Blankets: with code SCORE48 (older code)",
+          "good": false
+        },
+        {
+          "code": "BIGTHINGBF",
+          "text": "BIGTHINGBF · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "25% off: with code BIGTHINGBF (Black Friday code, older)",
+          "good": false
+        },
+        {
+          "code": "VIPDAY",
+          "text": "VIPDAY · $89.95 · Not accepted by the store. · rumpl.couponory.com (reported by the search)",
+          "source": "https://rumpl.couponory.com/",
+          "evidence": "user_4s3pu2p used VIPDAY successfully. (the page gives no offer details)",
+          "good": false
+        },
+        {
+          "code": "RUMPL30",
+          "text": "RUMPL30 · $89.95 · Not accepted by the store. · rumpl.couponory.com (reported by the search)",
+          "source": "https://rumpl.couponory.com/",
+          "evidence": "user_9sz466ntn used RUMPL30 successfully. (the page gives no offer details)",
+          "good": false
+        },
+        {
+          "code": "P25",
+          "text": "P25 · $89.95 · Not accepted by the store. · rumpl.couponory.com (reported by the search)",
+          "source": "https://rumpl.couponory.com/",
+          "evidence": "user_opfo2k used P25 successfully. (the page gives no offer details)",
+          "good": false
+        },
+        {
+          "code": "OUTDOORBLANKET",
+          "text": "OUTDOORBLANKET · $89.95 · Not accepted by the store. · rumpl.couponory.com (reported by the search)",
+          "source": "https://rumpl.couponory.com/",
+          "evidence": "wiley.Cutshall confirmed OUTDOORBLANKET still works. (the page gives no offer details)",
+          "good": false
+        },
+        {
+          "code": "RUMPL25",
+          "text": "RUMPL25 · $89.95 · Not accepted by the store. · rumpl.couponory.com (reported by the search)",
+          "source": "https://rumpl.couponory.com/",
+          "evidence": "samatha.Kraft confirmed RUMPL25 still works. (the page gives no offer details)",
+          "good": false
+        },
+        {
+          "code": "EXLUSIVE-12",
+          "text": "EXLUSIVE-12 · $89.95 · Not accepted by the store. · rumpl.couponory.com (reported by the search)",
+          "source": "https://rumpl.couponory.com/",
+          "evidence": "user_yx5ho771p2 used EXLUSIVE-12 successfully. (spelled exactly as on the page; the page gives no offer details)",
+          "good": false
+        },
+        {
+          "code": "BUILTWITHPURPOSE",
+          "text": "BUILTWITHPURPOSE · $89.95 · Not accepted by the store. · rumpl.valuecom.com (reported by the search)",
+          "source": "https://rumpl.valuecom.com/",
+          "evidence": "BUILTWITHPURPOSE · 30% OFF · 30% Off Select Gear for a Limited Time · October 07,2026 (expiry October 07, 2026)",
+          "good": false
+        },
+        {
+          "code": "PERKSPOT-83C36U",
+          "text": "PERKSPOT-83C36U · $89.95 · Not accepted by the store. · rumpl.tenereteam.com (reported by the search)",
+          "source": "https://rumpl.tenereteam.com/coupons",
+          "evidence": "The Working code PERKSPOT-83C36U was verified by users at Rumpl (the page gives no offer details; may be a single-use code)",
+          "good": false
+        },
+        {
+          "code": "TOPITOFF",
+          "text": "TOPITOFF · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "Free hat or beanie with orders over $99: with code TOPITOFF ($99 minimum; older code)",
+          "good": false
+        },
+        {
+          "code": "SAVE10",
+          "text": "SAVE10 · $89.95 · Not accepted by the store. · rumpl.worthepenny.com (reported by the search)",
+          "source": "https://rumpl.worthepenny.com/coupon/",
+          "evidence": "this regular Rumpl coupon code SAVE10 still allows students to receive 10% off (10% off)",
+          "good": false
+        },
+        {
+          "code": "7RAMG7OY",
+          "text": "7RAMG7OY · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "The latest Rumpl discount code is '7RAMG7OY'. This discount code helps customers save 25% (25% off)",
+          "good": false
+        },
+        {
+          "code": "NEEDED",
+          "text": "NEEDED · $89.95 · Not accepted by the store. · dealdrop.com (reported by the search)",
+          "source": "https://www.dealdrop.com/rumpl-1",
+          "evidence": "The best Rumpl discount codes is NEEDED, giving customers 25% off at Rumpl. (25% off; the DealDrop page was truncated, so check it carefully)",
+          "good": false
+        },
+        {
+          "code": "HEYNADINE20",
+          "text": "HEYNADINE20 · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Rumpl Coupon for 20% Off ... heynadine20 (online orders only)",
+          "good": false
+        },
+        {
+          "code": "FINDINGMASTERY",
+          "text": "FINDINGMASTERY · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Rumpl Promo Code: 15% Off ... FINDINGMASTERY (15% off; rumpl.valuecom.com shows expiry October 09, 2026)",
+          "good": false
+        },
+        {
+          "code": "RERUMPL",
+          "text": "RERUMPL · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Free Shipping With Two Or More Select Totes Order · RERUMPL (Coupert showed Jul 24, 2026; Tenere also lists it)",
+          "good": false
+        },
+        {
+          "code": "RMPL10301910",
+          "text": "RMPL10301910 · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Rumpl Coupon for 10% Off ... RMPL10301910 (online only)",
+          "good": false
+        },
+        {
+          "code": "WCHOLIDAY72",
+          "text": "WCHOLIDAY72 · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Extra Savings on Cold-Weather Gear ... WCHOLIDAY72",
+          "good": false
+        },
+        {
+          "code": "MANDUKA15",
+          "text": "MANDUKA15 · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "15% Off First Time Customers ... MANDUKA15 (first-time customers; rumpl.valuecom.com shows expiry October 08, 2026)",
+          "good": false
+        },
+        {
+          "code": "NUGGET",
+          "text": "NUGGET · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "First Order Discount · 10% Off Your First Order · NUGGET (first order; Coupert showed Jul 23, 2026)",
+          "good": false
+        },
+        {
+          "code": "RUMPL1C7EF7F1",
+          "text": "RUMPL1C7EF7F1 · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Take 10% Off Your Order with This Rumpl Promo Code ... RUMPL1C7EF7F1 (10% off select items)",
+          "good": false
+        },
+        {
+          "code": "CNNDADS",
+          "text": "CNNDADS · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Free Beer Blanket 6-Pack with orders $150 ... CNNDADS ($150 minimum)",
+          "good": false
+        },
+        {
+          "code": "ADVENT10",
+          "text": "ADVENT10 · $89.95 · Not accepted by the store. · dontpayfull.com (reported by the search)",
+          "source": "https://www.dontpayfull.com/at/rumpl.com",
+          "evidence": "10% Off Your Purchase ... Expired Dec 15, 2025 ADVENT10 (expired Dec 15, 2025)",
+          "good": false
+        },
+        {
+          "code": "DUCK15",
+          "text": "DUCK15 · $89.95 · Not accepted by the store. · seen on rumpl.com",
+          "source": "https://www.rumpl.com/pages/duckcallroom",
+          "evidence": "Duck Call Room Podcast X Rumpl Coupon Code DUCK15 ... Use the discount code below for 15% off your order: DUCK15 (15% off order, podcast code)",
+          "good": false
+        },
+        {
+          "code": "GIVING25",
+          "text": "GIVING25 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "The best Rumpl discount code is GIVING25 Added 24 days ago by Nick via social media (25% off sitewide (listed Dec 2025). The page now masks it, and the source is an Instagram post)",
+          "good": false
+        },
+        {
+          "code": "BOGORUMPL",
+          "text": "BOGORUMPL · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "Wethrift added the code BOGORUMPL as a New coupon at Rumpl (Wethrift's history entry names it. The offer is listed as 50% off Buy One Get One. Conditions unknown)",
+          "good": false
+        },
+        {
+          "code": "RUMPLDE8C1E48",
+          "text": "RUMPLDE8C1E48 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "Wethrift verified the code RUMPLDE8C1E48 is a Working coupon at Rumpl (Verified about 18 months before the snapshot. Offer not stated)",
+          "good": false
+        },
+        {
+          "code": "GE2H56TT",
+          "text": "GE2H56TT · $89.95 · Not accepted by the store. · rumpl.valuecom.com (reported by the search)",
+          "source": "https://rumpl.valuecom.com/",
+          "evidence": "Promo code GE2H56TT successfully applied on Rumpl checkout page (Offer not stated. Valuecom's own claim)",
+          "good": false
+        },
+        {
+          "code": "DEC25",
+          "text": "DEC25 · $89.95 · Not accepted by the store. · anycodes.com (reported by the search)",
+          "source": "https://www.anycodes.com/promo-codes/rumpl.com",
+          "evidence": "Get 25% Off Any Rumpl Purchase ... 10/09/26 - details DEC25 Get Coupon (25% off. Page shows date 10/09/26)",
+          "good": false
+        },
+        {
+          "code": "DEEP15",
+          "text": "DEEP15 · $89.95 · Not accepted by the store. · anycodes.com (reported by the search)",
+          "source": "https://www.anycodes.com/promo-codes/rumpl.com",
+          "evidence": "Save 15% on Any Rumpl Order ... 10/09/26 - details DEEP15 Get Coupon (15% off. Page shows date 10/09/26)",
+          "good": false
+        },
+        {
+          "code": "FALLBREAK",
+          "text": "FALLBREAK · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "Free Shipping: with code FALLBREAK Last reported working 2 years ago by shoppers (Old, free shipping. Wethrift lists an Instagram post as the source)",
+          "good": false
+        },
+        {
+          "code": "FRIENDS2024",
+          "text": "FRIENDS2024 · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Rumpl Coupon: 25% Off Orders FRIENDS2024 ... Restriction1: Full price items only (25% off, full-price items only, new and existing customers. Older code)",
+          "good": false
+        },
+        {
+          "code": "GODEEP",
+          "text": "GODEEP · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "10% off: with code GODEEP Last reported working 2 years ago by shoppers (Old, 10% off. Wethrift lists a YouTube video as the source)",
+          "good": false
+        },
+        {
+          "code": "RUMPL3F68466D",
+          "text": "RUMPL3F68466D · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "10% off: with code RUMPL3F68466D Last reported working 2 years ago by shoppers (Old, 10% off)",
+          "good": false
+        },
+        {
+          "code": "GWPBB6",
+          "text": "GWPBB6 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "25% off: with code GWPBB6 Last reported working 2 years ago by shoppers (Old, 25% off with free gift)",
+          "good": false
+        }
+      ],
+      "cartAfter": {
+        "total": 89.95,
+        "codes": []
+      },
+      "seconds": 257
+    },
+    {
+      "name": "Matador",
+      "url": "https://www.matadorequipment.com",
+      "group": "gear",
+      "outcome": "no codes found",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=6",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 6.6,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 6.6,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 6.6,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 6.8,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 7.3,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 7.3,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 37.1,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=6"
+        },
+        {
+          "t": 37.2,
+          "stage": "coupons:status no_codes"
+        },
+        {
+          "t": 37.2,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T13:56:00.023Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://www.matadorequipment.com/cart"
+      },
+      "cartBefore": {
+        "total": 309,
+        "codes": []
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Matador codes. No code posted for Matador could be found. 6 codes shown masked or behind a button could not be read, so they were not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Matador codes…",
+        "I searched the web for Matador codes. No code posted for Matador could be found. 6 codes shown masked or behind a button could not be read, so they were not tested."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 309,
+        "codes": []
+      },
+      "seconds": 41
+    },
+    {
+      "name": "Viori",
+      "url": "https://viori.com",
+      "group": "home",
+      "outcome": "applied",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant store-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 1",
+        "coupons:search",
+        "coupons:candidates store=1 verified=5 reported=34 dropped=0 masked=6",
+        "coupons:attempt 1 saving",
+        "coupons:attempt 2 saving",
+        "coupons:attempt 3 saving",
+        "coupons:attempt 4 saving",
+        "coupons:attempt 5 saving",
+        "coupons:attempt 6 saving",
+        "coupons:attempt 7 rejected",
+        "coupons:attempt 8 saving",
+        "coupons:attempt 9 saving",
+        "coupons:attempt 10 saving",
+        "coupons:attempt 11 saving",
+        "coupons:attempt 12 saving",
+        "coupons:attempt 13 saving",
+        "coupons:attempt 14 saving",
+        "coupons:attempt 15 saving",
+        "coupons:attempt 16 rejected",
+        "coupons:attempt 17 saving",
+        "coupons:attempt 18 saving",
+        "coupons:attempt 19 saving",
+        "coupons:attempt 20 saving",
+        "coupons:attempt 21 saving",
+        "coupons:attempt 22 rejected",
+        "coupons:attempt 23 saving",
+        "coupons:attempt 24 saving",
+        "coupons:attempt 25 saving",
+        "coupons:attempt 26 saving",
+        "coupons:attempt 27 saving",
+        "coupons:attempt 28 rejected",
+        "coupons:attempt 29 rejected",
+        "coupons:attempt 30 rejected",
+        "coupons:attempt 31 saving",
+        "coupons:attempt 32 saving",
+        "coupons:attempt 33 rejected",
+        "coupons:attempt 34 saving",
+        "coupons:attempt 35 saving",
+        "coupons:attempt 36 saving",
+        "coupons:attempt 37 saving",
+        "coupons:attempt 38 saving",
+        "coupons:attempt 39 saving",
+        "coupons:attempt 40 combo rejected",
+        "coupons:attempt 41 combo rejected",
+        "coupons:status done best applied",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 6.8,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 6.8,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 6.8,
+          "stage": "coupons:merchant store-host named"
+        },
+        {
+          "t": 7,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 7.4,
+          "stage": "coupons:store-codes 1"
+        },
+        {
+          "t": 7.4,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 74.2,
+          "stage": "coupons:candidates store=1 verified=5 reported=34 dropped=0 masked=6"
+        },
+        {
+          "t": 74.7,
+          "stage": "coupons:attempt 1 saving"
+        },
+        {
+          "t": 75.7,
+          "stage": "coupons:attempt 2 saving"
+        },
+        {
+          "t": 76.5,
+          "stage": "coupons:attempt 3 saving"
+        },
+        {
+          "t": 77.2,
+          "stage": "coupons:attempt 4 saving"
+        },
+        {
+          "t": 78,
+          "stage": "coupons:attempt 5 saving"
+        },
+        {
+          "t": 79.3,
+          "stage": "coupons:attempt 6 saving"
+        },
+        {
+          "t": 80,
+          "stage": "coupons:attempt 7 rejected"
+        },
+        {
+          "t": 80.7,
+          "stage": "coupons:attempt 8 saving"
+        },
+        {
+          "t": 81.5,
+          "stage": "coupons:attempt 9 saving"
+        },
+        {
+          "t": 82.2,
+          "stage": "coupons:attempt 10 saving"
+        },
+        {
+          "t": 83,
+          "stage": "coupons:attempt 11 saving"
+        },
+        {
+          "t": 83.7,
+          "stage": "coupons:attempt 12 saving"
+        },
+        {
+          "t": 84.5,
+          "stage": "coupons:attempt 13 saving"
+        },
+        {
+          "t": 85.2,
+          "stage": "coupons:attempt 14 saving"
+        },
+        {
+          "t": 85.9,
+          "stage": "coupons:attempt 15 saving"
+        },
+        {
+          "t": 86.7,
+          "stage": "coupons:attempt 16 rejected"
+        },
+        {
+          "t": 87.4,
+          "stage": "coupons:attempt 17 saving"
+        },
+        {
+          "t": 88.2,
+          "stage": "coupons:attempt 18 saving"
+        },
+        {
+          "t": 89,
+          "stage": "coupons:attempt 19 saving"
+        },
+        {
+          "t": 89.7,
+          "stage": "coupons:attempt 20 saving"
+        },
+        {
+          "t": 90.4,
+          "stage": "coupons:attempt 21 saving"
+        },
+        {
+          "t": 91.2,
+          "stage": "coupons:attempt 22 rejected"
+        },
+        {
+          "t": 92,
+          "stage": "coupons:attempt 23 saving"
+        },
+        {
+          "t": 92.8,
+          "stage": "coupons:attempt 24 saving"
+        },
+        {
+          "t": 93.5,
+          "stage": "coupons:attempt 25 saving"
+        },
+        {
+          "t": 94.3,
+          "stage": "coupons:attempt 26 saving"
+        },
+        {
+          "t": 95.1,
+          "stage": "coupons:attempt 27 saving"
+        },
+        {
+          "t": 95.8,
+          "stage": "coupons:attempt 28 rejected"
+        },
+        {
+          "t": 96.6,
+          "stage": "coupons:attempt 29 rejected"
+        },
+        {
+          "t": 97.3,
+          "stage": "coupons:attempt 30 rejected"
+        },
+        {
+          "t": 98.1,
+          "stage": "coupons:attempt 31 saving"
+        },
+        {
+          "t": 98.8,
+          "stage": "coupons:attempt 32 saving"
+        },
+        {
+          "t": 99.6,
+          "stage": "coupons:attempt 33 rejected"
+        },
+        {
+          "t": 100.3,
+          "stage": "coupons:attempt 34 saving"
+        },
+        {
+          "t": 101,
+          "stage": "coupons:attempt 35 saving"
+        },
+        {
+          "t": 101.9,
+          "stage": "coupons:attempt 36 saving"
+        },
+        {
+          "t": 102.7,
+          "stage": "coupons:attempt 37 saving"
+        },
+        {
+          "t": 103.4,
+          "stage": "coupons:attempt 38 saving"
+        },
+        {
+          "t": 104.2,
+          "stage": "coupons:attempt 39 saving"
+        },
+        {
+          "t": 105.5,
+          "stage": "coupons:attempt 40 combo rejected"
+        },
+        {
+          "t": 106.1,
+          "stage": "coupons:attempt 41 combo rejected"
+        },
+        {
+          "t": 106.6,
+          "stage": "coupons:status done best applied"
+        },
+        {
+          "t": 106.6,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T13:56:43.721Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://viori.com/"
+      },
+      "cartBefore": {
+        "total": 26.99,
+        "codes": []
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Viori codes. Found 40 codes: 1 code on the store's own site, 5 codes read on the pages that post them and 34 codes the search reported from pages it returned. 6 codes shown masked or behind a button could not be read, so they were not tested. I tested 39 codes. PRO50 is the best: your total drops from $26.99 to $13.50 (you save $13.49, 50% off). It's applied to your cart, and I didn't go to checkout. Conditions seen with it: Tenere lists it as not stackable, excluding sale items and gift cards, online only.\n\nCode\tResult\tWhere it was found\nPRO50\tsaves $13.49, total $13.50\tseen on viori.tenereteam.com\nTRYVIORI40ZZ\tsaves $10.79, total $16.20\tseen on viori.tenereteam.com\nVIP25OFF\tsaves $6.74, total $20.25\tseen on viori.tenereteam.com\nTRYVIORI25\tsaves $6.74, total $20.25\tviori.tenereteam.com (reported by the search)\nLUXURY\tsaves $5.39, total $21.60\tviori.knoji.com (reported by the search)\nVIORI20\tsaves $5.39, total $21.60\tviori.knoji.com (reported by the search)\nBLONDE25\tsaves $4.04, total $22.95\tseen on viori.tenereteam.com\nSHARONNMAISON\tsaves $4.04, total $22.95\tseen on viori.tenereteam.com\nJESSICACARRIELEE\tsaves $4.04, total $22.95\tdontpayfull.com (reported by the search)\nMYCOZYGLAM\tsaves $4.04, total $22.95\tviori.knoji.com (reported by the search)\nCESTJULS\tsaves $4.04, total $22.95\tviori.knoji.com (reported by the search)\nTRY-V-NOW\tsaves $4.04, total $22.95\tviori.knoji.com (reported by the search)\nALICENARANG\tsaves $4.04, total $22.95\tcouponchief.com (reported by the search)\nKATYAHOSLER\tsaves $4.04, total $22.95\tviori.valuecom.com (reported by the search)\nSAFEOPT15\tsaves $4.04, total $22.95\tviori.valuecom.com (reported by the search)\nTILTEDMAP\tsaves $4.04, total $22.95\ttiltedmap.com (reported by the search)\n15VIORI\tsaves $4.04, total $22.95\tviori.valuecom.com (reported by the search)\nHELLOVIORI10\tsaves $2.69, total $24.30\tthe store's own site (viori.com)\nMARYYHATCH\tsaves $2.69, total $24.30\tviori.tenereteam.com (reported by the search)\nLUXURYLIFEINC\tsaves $2.69, total $24.30\tdontpayfull.com (reported by the search)\nHANASBLUG\tsaves $2.69, total $24.30\tdontpayfull.com (reported by the search)\nMYLAASD\tsaves $2.69, total $24.30\tviori.knoji.com (reported by the search)\nREALVANESSATORRES\tsaves $2.69, total $24.30\tviori.knoji.com (reported by the search)\nMICHEFFS\tsaves $2.69, total $24.30\tviori.valuecom.com (reported by the search)\nASPIREWITHASMA\tsaves $2.69, total $24.30\tviori.valuecom.com (reported by the search)\nRUNAA\tsaves $2.69, total $24.30\tviori.valuecom.com (reported by the search)\nLOTUSGRACE11\tsaves $2.69, total $24.30\tcouponplay.com (reported by the search)\nTRYVIORI\tsaves $2.69, total $24.30\tviori.valuecom.com (reported by the search)\nDONNAGAILBLOG\tsaves $2.69, total $24.30\tdonnagailblog.com (reported by the search)\nDREAMLIKEDIANA\tsaves $2.69, total $24.30\tdreamlikediana.com (reported by the search)\nCAROLYNBRADEN\tsaves $2.69, total $24.30\tcarolynsbloomingcreations.com (reported by the search)\nDUCHESS\tsaves $2.69, total $24.30\tyoutube.com (reported by the search)\n\nDidn't work: MAGDALENATAR17, TRYVIORI20, CHIEF10, HNYVI35, SNAPV20, TRYVIORI15, TRYVIORIFIRST.\n\nCode-free offers the pages mention (not tested): Every subscription makes you a member: 20% off everything you subscribe to ... No code.\" The same page says \"Subscribe &; Viori offers FREE shipping for order over $40; FREE BAMBOO COMB W/ PURCHASES OVER $60 USD.\n\nCheckout can still change the final price, for example tax, shipping, or whether the code applies to later orders.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Viori codes…",
+        "I searched the web for Viori codes. Found 40 codes: 1 code on the store's own site, 5 codes read on the pages that post them and 34 codes the search reported from pages it returned. 6 codes shown masked or behind a button could not be read, so they were not tested.",
+        "Testing 39 codes on your cart, one at a time…"
+      ],
+      "attempts": [
+        {
+          "code": "HELLOVIORI10",
+          "text": "HELLOVIORI10 · $24.30 · saves $2.69 · Saves $2.69. · the store's own site (viori.com)",
+          "source": "https://viori.com/",
+          "evidence": "data rates may apply. Reply STOP to opt out. Thanks for signing up! Here is your discount code: HELLOVIORI10 Copy Your discount code was also sent to you directly. GROW STRONGER, THICKER HAIR WITH V",
+          "good": true
+        },
+        {
+          "code": "TRYVIORI40ZZ",
+          "text": "TRYVIORI40ZZ · $16.20 · saves $10.79 · Saves $10.79. · seen on viori.tenereteam.com",
+          "source": "https://viori.tenereteam.com/coupons",
+          "evidence": "Click \"Get Code\" to reveal your promo code: TRYVIORI40ZZ\" (up to 40% off) (Tenere lists it as not combinable, excluding sale items)",
+          "good": true
+        },
+        {
+          "code": "BLONDE25",
+          "text": "BLONDE25 · $22.95 · saves $4.04 · Saves $4.04. · seen on viori.tenereteam.com",
+          "source": "https://viori.tenereteam.com/coupons",
+          "evidence": "Click \"Get Code\" to reveal your promo code: BLONDE25\" (up to 15% off) (Tenere says it is not valid on sale items and cannot be combined)",
+          "good": true
+        },
+        {
+          "code": "VIP25OFF",
+          "text": "VIP25OFF · $20.25 · saves $6.74 · Saves $6.74. · seen on viori.tenereteam.com",
+          "source": "https://viori.tenereteam.com/coupons",
+          "evidence": "Click \"Get Code\" to reveal your promo code: VIP25OFF\" (up to 25% off) (Tenere says it cannot be stacked; also on Valuecom, Knoji and DontPayFull)",
+          "good": true
+        },
+        {
+          "code": "SHARONNMAISON",
+          "text": "SHARONNMAISON · $22.95 · saves $4.04 · Saves $4.04. · seen on viori.tenereteam.com",
+          "source": "https://viori.tenereteam.com/coupons",
+          "evidence": "Click \"Get Code\" to reveal your promo code: SHARONNMAISON\" (up to 15% off)",
+          "good": true
+        },
+        {
+          "code": "PRO50",
+          "text": "PRO50 · $13.50 · saves $13.49 · Saves $13.49. · seen on viori.tenereteam.com",
+          "source": "https://viori.tenereteam.com/coupons",
+          "evidence": "Click \"Get Code\" to reveal your promo code: PRO50\" (up to 50% off first order) (Tenere lists it as not stackable, excluding sale items and gift cards, online only)",
+          "good": true
+        },
+        {
+          "code": "MAGDALENATAR17",
+          "text": "MAGDALENATAR17 · $26.99 · Not accepted by the store. · dontpayfull.com (reported by the search)",
+          "source": "https://www.dontpayfull.com/at/viori.com",
+          "evidence": "On Jul 22, 2025 Shariful I. tested the code \"MAGDALENATAR17\" at checkout on viori.com. (listed as 10% off sitewide plus free shipping)",
+          "good": false
+        },
+        {
+          "code": "TRYVIORI25",
+          "text": "TRYVIORI25 · $20.25 · saves $6.74 · Saves $6.74. · viori.tenereteam.com (reported by the search)",
+          "source": "https://viori.tenereteam.com/coupons",
+          "evidence": "TRYVIORI25 TRY THIS CODE ... Verified Working (no offer amount shown)",
+          "good": true
+        },
+        {
+          "code": "MARYYHATCH",
+          "text": "MARYYHATCH · $24.30 · saves $2.69 · Saves $2.69. · viori.tenereteam.com (reported by the search)",
+          "source": "https://viori.tenereteam.com/coupons",
+          "evidence": "MARYYHATCH TRY THIS CODE ... Verified Working (no offer amount shown)",
+          "good": true
+        },
+        {
+          "code": "LUXURYLIFEINC",
+          "text": "LUXURYLIFEINC · $24.30 · saves $2.69 · Saves $2.69. · dontpayfull.com (reported by the search)",
+          "source": "https://www.dontpayfull.com/at/viori.com",
+          "evidence": "On Jun 24, 2026 Anika T. tested the code \"LUXURYLIFEINC\" at checkout on viori.com. (listed as \"Get 70% Off Orders)",
+          "good": true
+        },
+        {
+          "code": "HANASBLUG",
+          "text": "HANASBLUG · $24.30 · saves $2.69 · Saves $2.69. · dontpayfull.com (reported by the search)",
+          "source": "https://www.dontpayfull.com/at/viori.com",
+          "evidence": "On Jun 24, 2026 Anika T. tested the code \"HANASBLUG\" at checkout on viori.com. (listed as 10% off your purchase)",
+          "good": true
+        },
+        {
+          "code": "JESSICACARRIELEE",
+          "text": "JESSICACARRIELEE · $22.95 · saves $4.04 · Saves $4.04. · dontpayfull.com (reported by the search)",
+          "source": "https://www.dontpayfull.com/at/viori.com",
+          "evidence": "Jan 2026 ... JESSICACARRIELEE (87% Off)",
+          "good": true
+        },
+        {
+          "code": "LUXURY",
+          "text": "LUXURY · $21.60 · saves $5.39 · Saves $5.39. · viori.knoji.com (reported by the search)",
+          "source": "https://viori.knoji.com/promo-codes/",
+          "evidence": "LUXURY 20% Off Extra 20% Off Store-Wide (also on Valuecom (20% off) and Tenere)",
+          "good": true
+        },
+        {
+          "code": "MYCOZYGLAM",
+          "text": "MYCOZYGLAM · $22.95 · saves $4.04 · Saves $4.04. · viori.knoji.com (reported by the search)",
+          "source": "https://viori.knoji.com/promo-codes/",
+          "evidence": "MYCOZYGLAM 15% Off Get 15% Off Sitewide (first issued Dec 24, 2025)",
+          "good": true
+        },
+        {
+          "code": "CESTJULS",
+          "text": "CESTJULS · $22.95 · saves $4.04 · Saves $4.04. · viori.knoji.com (reported by the search)",
+          "source": "https://viori.knoji.com/promo-codes/",
+          "evidence": "CESTJULS 15% Off Get 15% Off Store-Wide (first issued Dec 20, 2025)",
+          "good": true
+        },
+        {
+          "code": "TRYVIORI20",
+          "text": "TRYVIORI20 · $26.99 · Not accepted by the store. · viori.knoji.com (reported by the search)",
+          "source": "https://viori.knoji.com/promo-codes/",
+          "evidence": "TRYVIORI20 20% Off Get 20% Off Store-Wide",
+          "good": false
+        },
+        {
+          "code": "VIORI20",
+          "text": "VIORI20 · $21.60 · saves $5.39 · Saves $5.39. · viori.knoji.com (reported by the search)",
+          "source": "https://viori.knoji.com/promo-codes/",
+          "evidence": "VIORI20 20% Off 20% Off Site-wide",
+          "good": true
+        },
+        {
+          "code": "TRY-V-NOW",
+          "text": "TRY-V-NOW · $22.95 · saves $4.04 · Saves $4.04. · viori.knoji.com (reported by the search)",
+          "source": "https://viori.knoji.com/promo-codes/",
+          "evidence": "TRY-V-NOW 15% Off Get Up To 15% Off Store-Wide",
+          "good": true
+        },
+        {
+          "code": "MYLAASD",
+          "text": "MYLAASD · $24.30 · saves $2.69 · Saves $2.69. · viori.knoji.com (reported by the search)",
+          "source": "https://viori.knoji.com/promo-codes/",
+          "evidence": "MYLAASD 10% Off Get Up To 10% Off Sitewide (first issued Dec 20, 2025)",
+          "good": true
+        },
+        {
+          "code": "REALVANESSATORRES",
+          "text": "REALVANESSATORRES · $24.30 · saves $2.69 · Saves $2.69. · viori.knoji.com (reported by the search)",
+          "source": "https://viori.knoji.com/promo-codes/",
+          "evidence": "REALVANESSATORRES 10% Off Get an Extra 10% Off Store-Wide (first issued Jan 31, 2025; CouponChief says \"Take 20% off with code REALVANESSATORRES)",
+          "good": true
+        },
+        {
+          "code": "ALICENARANG",
+          "text": "ALICENARANG · $22.95 · saves $4.04 · Saves $4.04. · couponchief.com (reported by the search)",
+          "source": "https://www.couponchief.com/viori",
+          "evidence": "15% off entire with code: alicenarang (CouponChief shows expiry 08/31/2026)",
+          "good": true
+        },
+        {
+          "code": "CHIEF10",
+          "text": "CHIEF10 · $26.99 · Not accepted by the store. · couponchief.com (reported by the search)",
+          "source": "https://www.couponchief.com/viori",
+          "evidence": "Get 10% off with code CHIEF10",
+          "good": false
+        },
+        {
+          "code": "KATYAHOSLER",
+          "text": "KATYAHOSLER · $22.95 · saves $4.04 · Saves $4.04. · viori.valuecom.com (reported by the search)",
+          "source": "https://viori.valuecom.com/",
+          "evidence": "KATYAHOSLER · 15% OFF · 15% Off Storewide at Viori (listed as expiring August 08, 2026)",
+          "good": true
+        },
+        {
+          "code": "SAFEOPT15",
+          "text": "SAFEOPT15 · $22.95 · saves $4.04 · Saves $4.04. · viori.valuecom.com (reported by the search)",
+          "source": "https://viori.valuecom.com/",
+          "evidence": "verified screenshot for code SAFEOPT15\" (15% off storewide) (listed as 15% off; also on Knoji and Troupon)",
+          "good": true
+        },
+        {
+          "code": "MICHEFFS",
+          "text": "MICHEFFS · $24.30 · saves $2.69 · Saves $2.69. · viori.valuecom.com (reported by the search)",
+          "source": "https://viori.valuecom.com/",
+          "evidence": "verified screenshot for code MICHEFFS (also Knoji: \"MICHEFFS 45% Off Get up to 45% Off Store-wide)",
+          "good": true
+        },
+        {
+          "code": "ASPIREWITHASMA",
+          "text": "ASPIREWITHASMA · $24.30 · saves $2.69 · Saves $2.69. · viori.valuecom.com (reported by the search)",
+          "source": "https://viori.valuecom.com/",
+          "evidence": "10% Off Storewide at Viori ... code ASPIREWITHASMA (listed as ending 08/08/2026)",
+          "good": true
+        },
+        {
+          "code": "RUNAA",
+          "text": "RUNAA · $24.30 · saves $2.69 · Saves $2.69. · viori.valuecom.com (reported by the search)",
+          "source": "https://viori.valuecom.com/",
+          "evidence": "10% Off VIORI Discount Code. Get Code RUNAA.",
+          "good": true
+        },
+        {
+          "code": "HNYVI35",
+          "text": "HNYVI35 · $26.99 · Not accepted by the store. · couponplay.com (reported by the search)",
+          "source": "https://www.couponplay.com/stores/viori/",
+          "evidence": "35% OFF Your Purchase ... HNYVI35 Get code (listed as \"On Going)",
+          "good": false
+        },
+        {
+          "code": "SNAPV20",
+          "text": "SNAPV20 · $26.99 · Not accepted by the store. · couponplay.com (reported by the search)",
+          "source": "https://www.couponplay.com/stores/viori/",
+          "evidence": "20% OFF Your Purchase ... SNAPV20 Get code (listed as \"On Going)",
+          "good": false
+        },
+        {
+          "code": "TRYVIORI15",
+          "text": "TRYVIORI15 · $26.99 · Not accepted by the store. · couponplay.com (reported by the search)",
+          "source": "https://www.couponplay.com/stores/viori/",
+          "evidence": "15% OFF First Order ... TRYVIORI15 Get code (listed as \"On Going)",
+          "good": false
+        },
+        {
+          "code": "LOTUSGRACE11",
+          "text": "LOTUSGRACE11 · $24.30 · saves $2.69 · Saves $2.69. · couponplay.com (reported by the search)",
+          "source": "https://www.couponplay.com/stores/viori/",
+          "evidence": "10% OFF Your Order ... LOTUSGRACE11 Get code (listed as \"On Going)",
+          "good": true
+        },
+        {
+          "code": "TILTEDMAP",
+          "text": "TILTEDMAP · $22.95 · saves $4.04 · Saves $4.04. · tiltedmap.com (reported by the search)",
+          "source": "https://www.tiltedmap.com/viori-shampoo-bar-review/",
+          "evidence": "Use the code TILTEDMAP for 15% off your first Viori order. (the same page also calls it 10% off; the author says it works on any order)",
+          "good": true
+        },
+        {
+          "code": "TRYVIORIFIRST",
+          "text": "TRYVIORIFIRST · $26.99 · Not accepted by the store. · slickdeals.net (reported by the search)",
+          "source": "https://slickdeals.net/f/19023148-free-viori-shampoo-or-conditioner-bar-13-99-13-99-3-50-shipping-3-50",
+          "evidence": "Code TRYVIORIFIRST takes up to $13.99 off any shampoo or conditioner bar. (posted Dec 26, 2025; US shipping $3.50)",
+          "good": false
+        },
+        {
+          "code": "TRYVIORI",
+          "text": "TRYVIORI · $24.30 · saves $2.69 · Saves $2.69. · viori.valuecom.com (reported by the search)",
+          "source": "https://viori.valuecom.com/",
+          "evidence": "10% Off Your First Order ... verified screenshot for code TRYVIORI (first order only; listed as ending 08/07/2026)",
+          "good": true
+        },
+        {
+          "code": "DONNAGAILBLOG",
+          "text": "DONNAGAILBLOG · $24.30 · saves $2.69 · Saves $2.69. · donnagailblog.com (reported by the search)",
+          "source": "https://donnagailblog.com/sales-and-coupon-codes/viori-coupon-code/",
+          "evidence": "Enter code DONNAGAILBLOG at checkout\" (10% off) (blog page marked verified August 2026)",
+          "good": true
+        },
+        {
+          "code": "DREAMLIKEDIANA",
+          "text": "DREAMLIKEDIANA · $24.30 · saves $2.69 · Saves $2.69. · dreamlikediana.com (reported by the search)",
+          "source": "https://www.dreamlikediana.com/blog/viori-shampoo-conditioner-review-tips",
+          "evidence": "Use code DREAMLIKEDIANA at checkout to get 10% off your order!",
+          "good": true
+        },
+        {
+          "code": "CAROLYNBRADEN",
+          "text": "CAROLYNBRADEN · $24.30 · saves $2.69 · Saves $2.69. · carolynsbloomingcreations.com (reported by the search)",
+          "source": "https://www.carolynsbloomingcreations.com/blog/2024/11/19/how-to-get-the-most-beautiful-hair-with-viori",
+          "evidence": "Either use code CAROLYNBRADEN at checkout on Viori's website\" (10% off)",
+          "good": true
+        },
+        {
+          "code": "15VIORI",
+          "text": "15VIORI · $22.95 · saves $4.04 · Saves $4.04. · viori.valuecom.com (reported by the search)",
+          "source": "https://viori.valuecom.com/",
+          "evidence": "15% Off Your First Order ... verified screenshot for code 15VIORI (first order only)",
+          "good": true
+        },
+        {
+          "code": "DUCHESS",
+          "text": "DUCHESS · $24.30 · saves $2.69 · Saves $2.69. · youtube.com (reported by the search)",
+          "source": "https://www.youtube.com/shorts/hUWA8c3cec4",
+          "evidence": "10% Discount Code: DUCHESS (older creator video)",
+          "good": true
+        },
+        {
+          "code": "PRO50 + TRYVIORI40ZZ",
+          "text": "PRO50 + TRYVIORI40ZZ · $13.50 · The store does not combine these codes. · both codes, applied together",
+          "source": "",
+          "evidence": "",
+          "good": false
+        },
+        {
+          "code": "PRO50 + VIP25OFF",
+          "text": "PRO50 + VIP25OFF · $13.50 · The store does not combine these codes. · both codes, applied together",
+          "source": "",
+          "evidence": "",
+          "good": false
+        }
+      ],
+      "cartAfter": {
+        "total": 13.5,
+        "codes": [
+          {
+            "code": "PRO50",
+            "applicable": true
+          }
+        ]
+      },
+      "verify": {
+        "before": 26.99,
+        "after": 13.5,
+        "codes": [
+          {
+            "code": "PRO50",
+            "applicable": true
+          }
+        ],
+        "claimed": "$13.50",
+        "confirmed": true
+      },
+      "seconds": 110
+    },
+    {
+      "name": "Dr. Squatch",
+      "url": "https://www.drsquatch.com",
+      "group": "home",
+      "outcome": "blocked: could not add to cart (no Add to cart button on the product page)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T13:58:37.344Z",
+      "seconds": 6
+    },
+    {
+      "name": "Duke Cannon",
+      "url": "https://dukecannon.com",
+      "group": "home",
+      "outcome": "applied",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant store-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=9 reported=1 dropped=0 masked=0",
+        "coupons:attempt 1 saving",
+        "coupons:attempt 2 rejected",
+        "coupons:attempt 3 rejected",
+        "coupons:attempt 4 rejected",
+        "coupons:attempt 5 rejected",
+        "coupons:attempt 6 rejected",
+        "coupons:attempt 7 rejected",
+        "coupons:attempt 8 rejected",
+        "coupons:attempt 9 rejected",
+        "coupons:attempt 10 rejected",
+        "coupons:status done best applied",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 5.8,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 5.9,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 5.9,
+          "stage": "coupons:merchant store-host named"
+        },
+        {
+          "t": 6.1,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 6.3,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 6.3,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 82.5,
+          "stage": "coupons:candidates store=0 verified=9 reported=1 dropped=0 masked=0"
+        },
+        {
+          "t": 83.1,
+          "stage": "coupons:attempt 1 saving"
+        },
+        {
+          "t": 84.4,
+          "stage": "coupons:attempt 2 rejected"
+        },
+        {
+          "t": 85.4,
+          "stage": "coupons:attempt 3 rejected"
+        },
+        {
+          "t": 86.2,
+          "stage": "coupons:attempt 4 rejected"
+        },
+        {
+          "t": 87.3,
+          "stage": "coupons:attempt 5 rejected"
+        },
+        {
+          "t": 88.1,
+          "stage": "coupons:attempt 6 rejected"
+        },
+        {
+          "t": 89,
+          "stage": "coupons:attempt 7 rejected"
+        },
+        {
+          "t": 89.9,
+          "stage": "coupons:attempt 8 rejected"
+        },
+        {
+          "t": 90.7,
+          "stage": "coupons:attempt 9 rejected"
+        },
+        {
+          "t": 91.5,
+          "stage": "coupons:attempt 10 rejected"
+        },
+        {
+          "t": 92.5,
+          "stage": "coupons:status done best applied"
+        },
+        {
+          "t": 92.5,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T13:58:46.376Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://dukecannon.com/cart"
+      },
+      "cartBefore": {
+        "total": 40,
+        "codes": []
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Duke Cannon codes. Found 10 codes: 9 codes read on the pages that post them and 1 code the search reported from pages it returned. I tested 10 codes. PUCK20 is the best: your total drops from $40.00 to $32.00 (you save $8.00, 20% off). It's applied to your cart, and I didn't go to checkout. Conditions seen with it: no expiry shown; Coupert shows it as recently used.\n\nCode\tResult\tWhere it was found\nPUCK20\tsaves $8.00, total $32.00\tseen on coupert.com\n\nDidn't work: THEBOYS20, BUSSIN10, BBKUMANIUK, AMERICA10, 250OFF100, 100OFF50, 25OFF100, 10OFF50, BB5588.\n\nCode-free offers the pages mention (not tested): Sign up for email and SMS to receive 20% off your first order with your welcome code at checkout.\" first-time customers ; Free shipping on orders over $75\" (and \"Free shipping at $50\" elsewhere on the same page) no code needed; the page gives; Subscribe to Duke Cannon Supply Co & Save 20% on Every Order + Free Shipping on Orders Over $50\" subscription orders; no.\n\nCheckout can still change the final price, for example tax, shipping, or whether the code applies to later orders.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Duke Cannon codes…",
+        "I searched the web for Duke Cannon codes. Found 10 codes: 9 codes read on the pages that post them and 1 code the search reported from pages it returned.",
+        "Testing 10 codes on your cart, one at a time…"
+      ],
+      "attempts": [
+        {
+          "code": "PUCK20",
+          "text": "PUCK20 · $32.00 · saves $8.00 · Saves $8.00. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/dukecannon.com",
+          "evidence": "Take Up to 20% Off at Duke Cannon ... PUCK20\" (listed as a verified code) (no expiry shown; Coupert shows it as recently used)",
+          "good": true
+        },
+        {
+          "code": "THEBOYS20",
+          "text": "THEBOYS20 · $40.00 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/dukecannon.com",
+          "evidence": "20% Off Sitewide Duke Cannon Coupon ... THEBOYS20 (no expiry shown)",
+          "good": false
+        },
+        {
+          "code": "BUSSIN10",
+          "text": "BUSSIN10 · $40.00 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/dukecannon.com",
+          "evidence": "20% Off Sitewide Duke Cannon Coupon Code ... BUSSIN10\" (the same page's tile for this code says 15% Off Sitewide) (no expiry shown; the offer shows as 20% in one place and 15% in another)",
+          "good": false
+        },
+        {
+          "code": "BBKUMANIUK",
+          "text": "BBKUMANIUK · $40.00 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/dukecannon.com",
+          "evidence": "15% Off Sitewide ... Expires soon ... BBKUMANIUK (cannot be combined with other offers; no date shown)",
+          "good": false
+        },
+        {
+          "code": "AMERICA10",
+          "text": "AMERICA10 · $40.00 · Not accepted by the store. · seen on coupert.com",
+          "source": "https://www.coupert.com/store/dukecannon.com",
+          "evidence": "10% Off Sitewide ... Expires soon ... AMERICA10 (no date shown)",
+          "good": false
+        },
+        {
+          "code": "250OFF100",
+          "text": "250OFF100 · $40.00 · Not accepted by the store. · seen on dukecannon.com",
+          "source": "https://dukecannon.com/collections/labor-day-sale",
+          "evidence": "spend $100+ and save $25 with code 250OFF100 (Labor Day sale 9/3/26–9/8/26; this differs from the 25OFF100 shown in the banner image, so test both)",
+          "good": false
+        },
+        {
+          "code": "100OFF50",
+          "text": "100OFF50 · $40.00 · Not accepted by the store. · seen on dukecannon.com",
+          "source": "https://dukecannon.com/collections/labor-day-sale",
+          "evidence": "Spend $50+ and save $10 with code 100OFF50 (Labor Day sale 9/3/26–9/8/26; this differs from the 10OFF50 shown in the banner image, so test both)",
+          "good": false
+        },
+        {
+          "code": "25OFF100",
+          "text": "25OFF100 · $40.00 · Not accepted by the store. · seen on dukecannon.com",
+          "source": "https://dukecannon.com/collections/labor-day-sale",
+          "evidence": "SPEND $100 AND SAVE $25 ... USE CODE: 25OFF100\" (text in the banner image description) (Labor Day sale 9/3/26–9/8/26; excludes subscriptions and bundles; one code per order. The fine print on the same page na)",
+          "good": false
+        },
+        {
+          "code": "10OFF50",
+          "text": "10OFF50 · $40.00 · Not accepted by the store. · seen on dukecannon.com",
+          "source": "https://dukecannon.com/collections/labor-day-sale",
+          "evidence": "SPEND $50 AND SAVE $10 ... USE CODE: 10OFF50\" (text in the banner image description) (Labor Day sale 9/3/26–9/8/26; excludes subscriptions and bundles. The fine print on the same page names a different stri)",
+          "good": false
+        },
+        {
+          "code": "BB5588",
+          "text": "BB5588 · $40.00 · Not accepted by the store. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/dukecannon.com",
+          "evidence": "Search-result snippet of the Coupert page listed \"BB5588\" beside a \"$25 OFF\" tile. I did not see it on the page when I opened it. (unconfirmed; my search quota ran out before I could check, so test it with care)",
+          "good": false
+        }
+      ],
+      "cartAfter": {
+        "total": 32,
+        "codes": [
+          {
+            "code": "PUCK20",
+            "applicable": true
+          }
+        ]
+      },
+      "verify": {
+        "before": 40,
+        "after": 32,
+        "codes": [
+          {
+            "code": "PUCK20",
+            "applicable": true
+          }
+        ],
+        "claimed": "$32.00",
+        "confirmed": true
+      },
+      "seconds": 96
+    },
+    {
+      "name": "Huron",
+      "url": "https://usehuron.com",
+      "group": "home",
+      "outcome": "no codes found",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant store-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=1",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 6.8,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 6.9,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 6.9,
+          "stage": "coupons:merchant store-host named"
+        },
+        {
+          "t": 7,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 7.4,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 7.4,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 76.9,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=1"
+        },
+        {
+          "t": 77.1,
+          "stage": "coupons:status no_codes"
+        },
+        {
+          "t": 77.1,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T14:00:25.562Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://usehuron.com/"
+      },
+      "cartBefore": {
+        "total": 96,
+        "codes": []
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Huron codes. No code posted for Huron could be found. 1 code shown masked or behind a button could not be read, so it was not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Huron codes…",
+        "I searched the web for Huron codes. No code posted for Huron could be found. 1 code shown masked or behind a button could not be read, so it was not tested."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 96,
+        "codes": []
+      },
+      "seconds": 80
+    },
+    {
+      "name": "Pura",
+      "url": "https://pura.com",
+      "group": "home",
+      "outcome": "no coupon box",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant store-host named",
+        "coupons:locate",
+        "coupons:locate totalLabel",
+        "coupons:method none status no_form",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 12.4,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 12.5,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 12.5,
+          "stage": "coupons:merchant store-host named"
+        },
+        {
+          "t": 14.5,
+          "stage": "coupons:locate"
+        },
+        {
+          "t": 15.8,
+          "stage": "coupons:locate totalLabel"
+        },
+        {
+          "t": 15.8,
+          "stage": "coupons:method none status no_form"
+        },
+        {
+          "t": 15.8,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T14:01:48.797Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://pura.com/cart"
+      },
+      "apiErrors": [],
+      "summary": "No coupon box found on this page. Open the cart or checkout page first. No codes were searched for or tested.\nCopy diagnostics",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…"
+      ],
+      "attempts": [],
+      "seconds": 20
+    },
+    {
+      "name": "Brumate",
+      "url": "https://brumate.com",
+      "group": "extra",
+      "outcome": "blocked: unreadable total",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:locate",
+        "coupons:locate input,apply",
+        "coupons:method none status error",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 15,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 15.1,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 15.1,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 18.6,
+          "stage": "coupons:locate"
+        },
+        {
+          "t": 23.4,
+          "stage": "coupons:locate input,apply"
+        },
+        {
+          "t": 23.4,
+          "stage": "coupons:method none status error"
+        },
+        {
+          "t": 23.4,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T14:02:11.625Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.brumate.com/?cart=true"
+      },
+      "apiErrors": [],
+      "summary": "Could not read a total on this page, so savings cannot be measured.\nCopy diagnostics",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…"
+      ],
+      "attempts": [],
+      "seconds": 28
+    },
+    {
+      "name": "Chubbies",
+      "url": "https://www.chubbiesshorts.com",
+      "group": "extra",
+      "outcome": "no coupon box",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host",
+        "coupons:locate",
+        "coupons:locate none",
+        "coupons:method none status no_form",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 12.3,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 12.4,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 12.4,
+          "stage": "coupons:merchant other-host"
+        },
+        {
+          "t": 13.5,
+          "stage": "coupons:locate"
+        },
+        {
+          "t": 14.7,
+          "stage": "coupons:locate none"
+        },
+        {
+          "t": 14.7,
+          "stage": "coupons:method none status no_form"
+        },
+        {
+          "t": 14.8,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T14:02:42.418Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.chubbiesshorts.com/cart"
+      },
+      "apiErrors": [],
+      "summary": "No coupon box found on this page. Open the cart or checkout page first. No codes were searched for or tested.\nCopy diagnostics",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…"
+      ],
+      "attempts": [],
+      "seconds": 19
+    },
+    {
+      "name": "Kettle & Fire",
+      "url": "https://www.kettleandfire.com",
+      "group": "extra",
+      "outcome": "no codes found",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=5",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 6.1,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 6.1,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 6.1,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 6.3,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 6.5,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 6.5,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 208.4,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=5"
+        },
+        {
+          "t": 208.5,
+          "stage": "coupons:status no_codes"
+        },
+        {
+          "t": 208.5,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T14:03:04.272Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://www.kettleandfire.com/cart"
+      },
+      "cartBefore": {
+        "total": 57.96,
+        "codes": []
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Kettle & Fire codes. No code posted for Kettle & Fire could be found. 5 codes shown masked or behind a button could not be read, so they were not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Kettle & Fire codes…",
+        "I searched the web for Kettle & Fire codes. No code posted for Kettle & Fire could be found. 5 codes shown masked or behind a button could not be read, so they were not tested."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 57.96,
+        "codes": []
+      },
+      "seconds": 212
+    },
+    {
+      "name": "Four Sigmatic",
+      "url": "https://us.foursigmatic.com",
+      "group": "extra",
+      "outcome": "no codes found",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=3",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 9,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 9.1,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 9.1,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 9.3,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 10.2,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 10.2,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 158.6,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=3"
+        },
+        {
+          "t": 158.8,
+          "stage": "coupons:status no_codes"
+        },
+        {
+          "t": 158.8,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T14:06:39.210Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://us.foursigmatic.com/?action=open-cart-drawer"
+      },
+      "cartBefore": {
+        "total": 30,
+        "codes": []
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Four Sigmatic codes. No code posted for Four Sigmatic could be found. 3 codes shown masked or behind a button could not be read, so they were not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Four Sigmatic codes…",
+        "I searched the web for Four Sigmatic codes. No code posted for Four Sigmatic could be found. 3 codes shown masked or behind a button could not be read, so they were not tested."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 30,
+        "codes": []
+      },
+      "seconds": 162
+    },
+    {
+      "name": "Caraway",
+      "url": "https://www.carawayhome.com",
+      "group": "extra",
+      "outcome": "no coupon box",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:locate",
+        "coupons:locate totalLabel",
+        "coupons:method none status no_form",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 11.4,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 11.5,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 11.5,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 12.8,
+          "stage": "coupons:locate"
+        },
+        {
+          "t": 16.3,
+          "stage": "coupons:locate totalLabel"
+        },
+        {
+          "t": 16.4,
+          "stage": "coupons:method none status no_form"
+        },
+        {
+          "t": 16.4,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T14:09:24.010Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.carawayhome.com/cart"
+      },
+      "apiErrors": [],
+      "summary": "No coupon box found on this page. Open the cart or checkout page first. No codes were searched for or tested.\nCopy diagnostics",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…"
+      ],
+      "attempts": [],
+      "seconds": 19
+    },
+    {
+      "name": "Bombas",
+      "url": "https://bombas.com",
+      "group": "extra",
+      "outcome": "no coupon box",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant store-host",
+        "coupons:locate",
+        "coupons:locate totalLabel",
+        "coupons:method none status no_form",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 12.2,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 12.3,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 12.3,
+          "stage": "coupons:merchant store-host"
+        },
+        {
+          "t": 14.1,
+          "stage": "coupons:locate"
+        },
+        {
+          "t": 15.3,
+          "stage": "coupons:locate totalLabel"
+        },
+        {
+          "t": 15.3,
+          "stage": "coupons:method none status no_form"
+        },
+        {
+          "t": 15.3,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T14:09:46.620Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://bombas.com/cart"
+      },
+      "apiErrors": [],
+      "summary": "No coupon box found on this page. Open the cart or checkout page first. No codes were searched for or tested.\nCopy diagnostics",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…"
+      ],
+      "attempts": [],
+      "seconds": 24
+    }
+  ]
+}

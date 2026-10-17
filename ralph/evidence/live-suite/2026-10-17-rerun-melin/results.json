@@ -1,0 +1,89 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T13-35-53",
+  "results": [
+    {
+      "name": "Melin",
+      "url": "https://melin.com",
+      "group": "apparel",
+      "outcome": "no codes found",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant store-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=6",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 6.2,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 6.3,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 6.3,
+          "stage": "coupons:merchant store-host named"
+        },
+        {
+          "t": 6.4,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 7,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 7,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 119,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=6"
+        },
+        {
+          "t": 119.1,
+          "stage": "coupons:status no_codes"
+        },
+        {
+          "t": 119.1,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "472377364d",
+      "startedAt": "2026-10-17T13:35:54.027Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://melin.com/cart"
+      },
+      "cartBefore": {
+        "total": 89,
+        "codes": []
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for melin codes. No code posted for melin could be found. 6 codes shown masked or behind a button could not be read, so they were not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for melin codes…",
+        "I searched the web for melin codes. No code posted for melin could be found. 6 codes shown masked or behind a button could not be read, so they were not tested."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 89,
+        "codes": []
+      },
+      "seconds": 123
+    }
+  ]
+}

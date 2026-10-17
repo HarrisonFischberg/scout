@@ -1,0 +1,595 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T17-08-40",
+  "results": [
+    {
+      "name": "Tackform",
+      "url": "https://www.tackform.com",
+      "group": "gear",
+      "outcome": "applied",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:pages listed=8 opened=8",
+        "coupons:candidates store=0 verified=34 reported=3 dropped=0 masked=2",
+        "coupons:attempt 1 rejected",
+        "coupons:attempt 2 rejected",
+        "coupons:attempt 3 rejected",
+        "coupons:attempt 4 rejected",
+        "coupons:attempt 5 rejected",
+        "coupons:attempt 6 rejected",
+        "coupons:attempt 7 rejected",
+        "coupons:attempt 8 rejected",
+        "coupons:attempt 9 rejected",
+        "coupons:attempt 10 rejected",
+        "coupons:attempt 11 rejected",
+        "coupons:attempt 12 rejected",
+        "coupons:attempt 13 rejected",
+        "coupons:attempt 14 rejected",
+        "coupons:attempt 15 rejected",
+        "coupons:attempt 16 rejected",
+        "coupons:attempt 17 saving",
+        "coupons:attempt 18 rejected",
+        "coupons:attempt 19 rejected",
+        "coupons:attempt 20 rejected",
+        "coupons:attempt 21 rejected",
+        "coupons:attempt 22 rejected",
+        "coupons:attempt 23 rejected",
+        "coupons:attempt 24 rejected",
+        "coupons:attempt 25 rejected",
+        "coupons:attempt 26 rejected",
+        "coupons:attempt 27 rejected",
+        "coupons:attempt 28 saving",
+        "coupons:attempt 29 rejected",
+        "coupons:attempt 30 rejected",
+        "coupons:attempt 31 rejected",
+        "coupons:attempt 32 rejected",
+        "coupons:attempt 33 rejected",
+        "coupons:attempt 34 rejected",
+        "coupons:attempt 35 rejected",
+        "coupons:attempt 36 rejected",
+        "coupons:attempt 37 rejected",
+        "coupons:attempt 38 combo rejected",
+        "coupons:status done best applied",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 6.2,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 6.3,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 6.3,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 6.5,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 6.9,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 6.9,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 127.8,
+          "stage": "coupons:pages listed=8 opened=8"
+        },
+        {
+          "t": 127.8,
+          "stage": "coupons:candidates store=0 verified=34 reported=3 dropped=0 masked=2"
+        },
+        {
+          "t": 128.3,
+          "stage": "coupons:attempt 1 rejected"
+        },
+        {
+          "t": 129,
+          "stage": "coupons:attempt 2 rejected"
+        },
+        {
+          "t": 129.8,
+          "stage": "coupons:attempt 3 rejected"
+        },
+        {
+          "t": 130.5,
+          "stage": "coupons:attempt 4 rejected"
+        },
+        {
+          "t": 131.3,
+          "stage": "coupons:attempt 5 rejected"
+        },
+        {
+          "t": 132.2,
+          "stage": "coupons:attempt 6 rejected"
+        },
+        {
+          "t": 133,
+          "stage": "coupons:attempt 7 rejected"
+        },
+        {
+          "t": 133.8,
+          "stage": "coupons:attempt 8 rejected"
+        },
+        {
+          "t": 134.9,
+          "stage": "coupons:attempt 9 rejected"
+        },
+        {
+          "t": 135.7,
+          "stage": "coupons:attempt 10 rejected"
+        },
+        {
+          "t": 136.5,
+          "stage": "coupons:attempt 11 rejected"
+        },
+        {
+          "t": 137.2,
+          "stage": "coupons:attempt 12 rejected"
+        },
+        {
+          "t": 138,
+          "stage": "coupons:attempt 13 rejected"
+        },
+        {
+          "t": 138.7,
+          "stage": "coupons:attempt 14 rejected"
+        },
+        {
+          "t": 139.5,
+          "stage": "coupons:attempt 15 rejected"
+        },
+        {
+          "t": 140.3,
+          "stage": "coupons:attempt 16 rejected"
+        },
+        {
+          "t": 141.1,
+          "stage": "coupons:attempt 17 saving"
+        },
+        {
+          "t": 141.8,
+          "stage": "coupons:attempt 18 rejected"
+        },
+        {
+          "t": 142.7,
+          "stage": "coupons:attempt 19 rejected"
+        },
+        {
+          "t": 143.4,
+          "stage": "coupons:attempt 20 rejected"
+        },
+        {
+          "t": 144.2,
+          "stage": "coupons:attempt 21 rejected"
+        },
+        {
+          "t": 145,
+          "stage": "coupons:attempt 22 rejected"
+        },
+        {
+          "t": 145.9,
+          "stage": "coupons:attempt 23 rejected"
+        },
+        {
+          "t": 146.9,
+          "stage": "coupons:attempt 24 rejected"
+        },
+        {
+          "t": 147.6,
+          "stage": "coupons:attempt 25 rejected"
+        },
+        {
+          "t": 148.4,
+          "stage": "coupons:attempt 26 rejected"
+        },
+        {
+          "t": 149.3,
+          "stage": "coupons:attempt 27 rejected"
+        },
+        {
+          "t": 150.1,
+          "stage": "coupons:attempt 28 saving"
+        },
+        {
+          "t": 150.8,
+          "stage": "coupons:attempt 29 rejected"
+        },
+        {
+          "t": 151.5,
+          "stage": "coupons:attempt 30 rejected"
+        },
+        {
+          "t": 152.2,
+          "stage": "coupons:attempt 31 rejected"
+        },
+        {
+          "t": 153.2,
+          "stage": "coupons:attempt 32 rejected"
+        },
+        {
+          "t": 154,
+          "stage": "coupons:attempt 33 rejected"
+        },
+        {
+          "t": 154.8,
+          "stage": "coupons:attempt 34 rejected"
+        },
+        {
+          "t": 155.6,
+          "stage": "coupons:attempt 35 rejected"
+        },
+        {
+          "t": 156.3,
+          "stage": "coupons:attempt 36 rejected"
+        },
+        {
+          "t": 157.1,
+          "stage": "coupons:attempt 37 rejected"
+        },
+        {
+          "t": 158.1,
+          "stage": "coupons:attempt 38 combo rejected"
+        },
+        {
+          "t": 158.7,
+          "stage": "coupons:status done best applied"
+        },
+        {
+          "t": 158.7,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "44d043d3f4",
+      "startedAt": "2026-10-17T17:08:40.353Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://www.tackform.com/cart"
+      },
+      "cartBefore": {
+        "total": 60,
+        "codes": [],
+        "fields": {
+          "items": 1,
+          "subtotal": 6000,
+          "original": 6000,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Tackform codes. Found 37 codes: 34 codes read on the pages that post them and 3 codes the search reported from pages it returned. 2 codes shown masked or behind a button could not be read, so they were not tested. I tested 37 codes. YG8KW-A37JM is the best: your total drops from $60.00 to $54.00 (you save $6.00, 10% off). It's applied to your cart, and I didn't go to checkout. Conditions seen with it: HotDeals expiry January 21, 2028; Tenere says the source is the email newsletter and the code cannot be combined with ot.\n\nCode\tResult\tWhere it was found\nYG8KW-A37JM\tsaves $6.00, total $54.00\tseen on us.hotdeals.com\nARCTIC10\tsaves $6.00, total $54.00\tseen on wethrift.com\n\nDidn't work: NEWQVC25, FITCHECK, FREESHIPPING, 3KSALE, GX-M7019WMNOD, STREETDEAL, RUGGED20, GIFT15, TACKMAS15, REV15 and 25 more.\n\nCode-free offers the pages mention (not tested): $20 off first order discount ... Enjoy a $20 discount on your first order at Tackform!\" New customers, first purchase on; 15% Discount for Military Personnel, First Responders, Teachers, and Government Employees\" Military discount; no fixed c.\n\nCheckout can still change the final price, for example tax, shipping, or whether the code applies to later orders.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Tackform codes…",
+        "I searched the web for Tackform codes. Found 37 codes: 34 codes read on the pages that post them and 3 codes the search reported from pages it returned. 2 codes shown masked or behind a button could not be read, so they were not tested.",
+        "Testing 37 codes on your cart, one at a time…"
+      ],
+      "attempts": [
+        {
+          "code": "NEWQVC25",
+          "text": "NEWQVC25 · $60.00 · Not accepted by the store. · seen on us.hotdeals.com",
+          "source": "https://us.hotdeals.com/store/tackform-coupon",
+          "evidence": "25% Off All Orders with Discount Code ... NEWQVC25",
+          "good": false
+        },
+        {
+          "code": "FITCHECK",
+          "text": "FITCHECK · $60.00 · Not accepted by the store. · seen on us.hotdeals.com",
+          "source": "https://us.hotdeals.com/store/tackform-coupon",
+          "evidence": "Save Your Products at Checkmate for $1 off Every Product ... FITCheck",
+          "good": false
+        },
+        {
+          "code": "FREESHIPPING",
+          "text": "FREESHIPPING · $60.00 · Not accepted by the store. · seen on us.hotdeals.com",
+          "source": "https://us.hotdeals.com/store/tackform-coupon",
+          "evidence": "Enjoy Free Shipping - No Minimum Spend Required ... FREESHIPPING (HotDeals expiry October 19, 2026)",
+          "good": false
+        },
+        {
+          "code": "3KSALE",
+          "text": "3KSALE · $60.00 · Not accepted by the store. · seen on us.hotdeals.com",
+          "source": "https://us.hotdeals.com/store/tackform-coupon",
+          "evidence": "Save Sitewide on All Products This Season ... 3KSALE (HotDeals says up to 20% off)",
+          "good": false
+        },
+        {
+          "code": "GX-M7019WMNOD",
+          "text": "GX-M7019WMNOD · $60.00 · Not accepted by the store. · seen on us.hotdeals.com",
+          "source": "https://us.hotdeals.com/store/tackform-coupon",
+          "evidence": "15% OFF GX-M7019WMNOD (Under HotDeals' \"Verified Tackform Discount Codes with Checkout Proof\", tested 1 month ago; looks like a single-use GovX)",
+          "good": false
+        },
+        {
+          "code": "STREETDEAL",
+          "text": "STREETDEAL · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "10% off free shipping (STREETDEAL)",
+          "good": false
+        },
+        {
+          "code": "RUGGED20",
+          "text": "RUGGED20 · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "20% off everything (RUGGED20)",
+          "good": false
+        },
+        {
+          "code": "GIFT15",
+          "text": "GIFT15 · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "15% off storewide (GIFT15)",
+          "good": false
+        },
+        {
+          "code": "TACKMAS15",
+          "text": "TACKMAS15 · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "15% off storewide (TACKMAS15)",
+          "good": false
+        },
+        {
+          "code": "REV15",
+          "text": "REV15 · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "15% off storewide (REV15)",
+          "good": false
+        },
+        {
+          "code": "RIDEFREEUSA",
+          "text": "RIDEFREEUSA · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "15% off storewide (RIDEFREEUSA)",
+          "good": false
+        },
+        {
+          "code": "EARLY15",
+          "text": "EARLY15 · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "15% off early access to Black Friday (EARLY15)",
+          "good": false
+        },
+        {
+          "code": "BFCM15",
+          "text": "BFCM15 · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "15% Off (BFCM15)",
+          "good": false
+        },
+        {
+          "code": "LABORDAY15",
+          "text": "LABORDAY15 · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "15% off everything (LABORDAY15)",
+          "good": false
+        },
+        {
+          "code": "FREEDOM15",
+          "text": "FREEDOM15 · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "15% off 4th of July Sale (FREEDOM15)",
+          "good": false
+        },
+        {
+          "code": "MDATACK",
+          "text": "MDATACK · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "15% off everything (MDATACK)",
+          "good": false
+        },
+        {
+          "code": "YG8KW-A37JM",
+          "text": "YG8KW-A37JM · $54.00 · saves $6.00 · Saves $6.00. · seen on us.hotdeals.com",
+          "source": "https://us.hotdeals.com/store/tackform-coupon",
+          "evidence": "Book and Get up to 10% Discount ... YG8KW-A37JM (HotDeals expiry January 21, 2028; Tenere says the source is the email newsletter and the code cannot be combined with ot)",
+          "good": true
+        },
+        {
+          "code": "TS23SC",
+          "text": "TS23SC · $60.00 · Not accepted by the store. · seen on us.hotdeals.com",
+          "source": "https://us.hotdeals.com/store/tackform-coupon",
+          "evidence": "Extra 5% Off Selected Items ... TS23SC",
+          "good": false
+        },
+        {
+          "code": "WELCOME20",
+          "text": "WELCOME20 · $60.00 · Not accepted by the store. · seen on us.hotdeals.com",
+          "source": "https://us.hotdeals.com/store/tackform-coupon",
+          "evidence": "Tackform Promo Code: Enjoy 20% off Your Order ... WELCOME20 (First-order code for new shoppers; HotDeals expiry October 19, 2026)",
+          "good": false
+        },
+        {
+          "code": "WELCOME10",
+          "text": "WELCOME10 · $60.00 · Not accepted by the store. · seen on us.hotdeals.com",
+          "source": "https://us.hotdeals.com/store/tackform-coupon",
+          "evidence": "Get 10% off Your Purchase, Limited Time Offer ... WELCOME10 (First order)",
+          "good": false
+        },
+        {
+          "code": "TFLD26",
+          "text": "TFLD26 · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "12% off (Source Email)",
+          "good": false
+        },
+        {
+          "code": "TACOLIFE",
+          "text": "TACOLIFE · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "10% off storewide (TACOLIFE)",
+          "good": false
+        },
+        {
+          "code": "THANKS10",
+          "text": "THANKS10 · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "10% off storewide (THANKS10)",
+          "good": false
+        },
+        {
+          "code": "MD20",
+          "text": "MD20 · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "$20 off Sitewide (MD20)",
+          "good": false
+        },
+        {
+          "code": "TACK250",
+          "text": "TACK250 · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "10% off everything (TACK250)",
+          "good": false
+        },
+        {
+          "code": "TACKDAD",
+          "text": "TACKDAD · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "10% off sitewide (TACKDAD)",
+          "good": false
+        },
+        {
+          "code": "VETERANSDAY",
+          "text": "VETERANSDAY · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "15% off site-wide (VETERANSDAY)",
+          "good": false
+        },
+        {
+          "code": "ARCTIC10",
+          "text": "ARCTIC10 · $54.00 · saves $6.00 · Saves $6.00. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "Use code ARCTIC10 to save on your order at Tackform. (Wethrift credits a TikTok video from @arctic.mojave (https://www.tiktok.com/@arctic.mojave/video/7696195050794913038); H)",
+          "good": true
+        },
+        {
+          "code": "SUMMER25",
+          "text": "SUMMER25 · $60.00 · Not accepted by the store. · seen on us.hotdeals.com",
+          "source": "https://us.hotdeals.com/store/tackform-coupon",
+          "evidence": "10% off All Orders ... SUMMER25 (Listed under expired coupons)",
+          "good": false
+        },
+        {
+          "code": "LABORDAY",
+          "text": "LABORDAY · $60.00 · Not accepted by the store. · seen on us.hotdeals.com",
+          "source": "https://us.hotdeals.com/store/tackform-coupon",
+          "evidence": "Snatch 10% off ... LABORDAY (Listed under expired coupons)",
+          "good": false
+        },
+        {
+          "code": "THANKYOU-QREAXK",
+          "text": "THANKYOU-QREAXK · $60.00 · Not accepted by the store. · seen on us.hotdeals.com",
+          "source": "https://us.hotdeals.com/store/tackform-coupon",
+          "evidence": "Receive a 15% Discount on Every Order ... THANKYOU-QREAXK (Listed under expired coupons; looks like a unique single-use code)",
+          "good": false
+        },
+        {
+          "code": "GX-OCTBMLFF8Q",
+          "text": "GX-OCTBMLFF8Q · $60.00 · Not accepted by the store. · seen on us.hotdeals.com",
+          "source": "https://us.hotdeals.com/store/tackform-coupon",
+          "evidence": "15% off Everything In-store ... GX-OCTBMLFF8Q (Listed under expired coupons; the \"GX-\" prefix looks like a GovX single-use code)",
+          "good": false
+        },
+        {
+          "code": "CYBERTACK",
+          "text": "CYBERTACK · $60.00 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/tackform.com",
+          "evidence": "20% off Cyber Monday Extended (CYBERTACK)",
+          "good": false
+        },
+        {
+          "code": "SERGEI10",
+          "text": "SERGEI10 · $60.00 · Not accepted by the store. · seen on couponbind.com",
+          "source": "https://www.couponbind.com/coupons/tackform.com",
+          "evidence": "Extra 10% Off Store-wide at Tackform.com w/Coupon Code ... sergei10 (Listed as expired)",
+          "good": false
+        },
+        {
+          "code": "THANKYOU15",
+          "text": "THANKYOU15 · $60.00 · Not accepted by the store. · brokescholar.com (reported by the search)",
+          "source": "https://brokescholar.com/coupon-codes/tackform",
+          "evidence": "THANKYOU15 (15% Off)",
+          "good": false
+        },
+        {
+          "code": "SAVE15",
+          "text": "SAVE15 · $60.00 · Not accepted by the store. · brokescholar.com (reported by the search)",
+          "source": "https://brokescholar.com/coupon-codes/tackform",
+          "evidence": "SAVE15 (15% Off)",
+          "good": false
+        },
+        {
+          "code": "CYBER24",
+          "text": "CYBER24 · $60.00 · Not accepted by the store. · dealpromo.net (reported by the search)",
+          "source": "https://www.dealpromo.net/coupons/tackform.com",
+          "evidence": "Enjoy big savings at tackform.com today! CYBER24 (Listed under expired coupons)",
+          "good": false
+        },
+        {
+          "code": "YG8KW-A37JM + ARCTIC10",
+          "text": "YG8KW-A37JM + ARCTIC10 · $54.00 · The store does not combine these codes. · both codes, applied together",
+          "source": "",
+          "evidence": "",
+          "good": false
+        }
+      ],
+      "cartAfter": {
+        "total": 54,
+        "codes": [
+          {
+            "code": "YG8KW-A37JM",
+            "applicable": true
+          }
+        ],
+        "fields": {
+          "items": 1,
+          "subtotal": 6000,
+          "original": 6000,
+          "discount": 600,
+          "currency": "USD"
+        }
+      },
+      "verify": {
+        "before": 60,
+        "after": 54,
+        "codes": [
+          {
+            "code": "YG8KW-A37JM",
+            "applicable": true
+          }
+        ],
+        "claimed": "$54.00",
+        "confirmed": true
+      },
+      "seconds": 162
+    },
+    {
+      "name": "Brumate",
+      "url": "https://brumate.com",
+      "group": "extra",
+      "outcome": "blocked: could not add to cart (the Add to cart click did not put the item in the cart)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "44d043d3f4",
+      "startedAt": "2026-10-17T17:11:25.572Z",
+      "seconds": 23
+    }
+  ]
+}

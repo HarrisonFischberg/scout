@@ -210,13 +210,64 @@ test("a page cannot open Scout with a synthetic click", async ({ page }) => {
   expect(await panelOpens(page)).toBe(0);
 });
 
+/** A later page: the tab already showed itself open once. */
+async function openLaterPage(page: Page): Promise<void> {
+  await stub(page, { on: true });
+  await page.addInitScript(() => {
+    ((window.top ?? window) as unknown as { __fake: Fake }).__fake.data.pageButtonIntroduced = true;
+  });
+  await page.goto("/index.html");
+  await page.addScriptTag({ path: "apple/Extension/Resources/edge.js" });
+}
+
+test("the tab shows itself open once, then starts tucked and a mouse still opens Scout in one click", async ({ page }) => {
+  await openPage(page);
+  const vp = page.viewportSize() ?? { width: 1280, height: 720 };
+  const y = Math.round(vp.height * 0.45);
+  // The very first page shows the full tab and remembers that it did.
+  await expect.poll(() => tabThere(page, { x: vp.width - 56, y })).toBe(true);
+  await expect.poll(async () => (await fake(page)).data.pageButtonIntroduced).toBe(true);
+
+  // Every later page: tucked from the start, never popping open by itself.
+  const later = await page.context().newPage();
+  await openLaterPage(later);
+  await expect.poll(() => tabThere(later, { x: vp.width - 28, y })).toBe(true);
+  expect(await tabThere(later, { x: vp.width - 56, y })).toBe(false);
+  await later.waitForTimeout(500);
+  expect(await tabThere(later, { x: vp.width - 56, y })).toBe(false);
+  await later.mouse.click(vp.width - 8, y);
+  await expect.poll(() => panelOpens(later)).toBe(1);
+});
+
+test.describe("touch", () => {
+  test.use({ hasTouch: true });
+  test("a tap on the tucked tab brings it out; the next tap opens Scout", async ({ page }) => {
+    await openLaterPage(page);
+    const vp = page.viewportSize() ?? { width: 1280, height: 720 };
+    const y = Math.round(vp.height * 0.45);
+    await expect.poll(() => tabThere(page, { x: vp.width - 8, y })).toBe(true);
+    expect(await tabThere(page, { x: vp.width - 56, y })).toBe(false);
+
+    await page.touchscreen.tap(vp.width - 8, y);
+    await expect.poll(() => tabThere(page, { x: vp.width - 56, y })).toBe(true);
+    await page.waitForTimeout(300);
+    expect(await panelOpens(page)).toBe(0);
+
+    await page.touchscreen.tap(vp.width - 30, y);
+    await expect.poll(() => panelOpens(page)).toBe(1);
+  });
+});
+
 test("Settings turns the button on: asks Safari for site access and shows it on this page", async ({ page }) => {
   await stub(page, undefined);
   await withWorker(page);
   await page.goto("/popup.html");
   await page.getByRole("button", { name: "Settings" }).click();
   const box = page.getByRole("checkbox", { name: "Show a Scout button on the edge of webpages" });
-  await expect(box).not.toBeChecked();
+  // On from a fresh install (owner request 2026-10-17); it shows once a site is granted.
+  await expect(box).toBeChecked();
+  await expect(page.locator("#pagebutton-status")).toHaveText("On. It appears on a site after you let Scout for Safari access it.");
+  await box.uncheck();
   await expect(page.locator("#pagebutton-status")).toHaveText("Off.");
   await box.check();
   await expect(page.locator("#pagebutton-status")).toHaveText("On for every website.");

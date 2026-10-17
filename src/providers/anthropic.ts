@@ -1,4 +1,4 @@
-import { ProviderError, errorFromStatus } from "./errors";
+import { ProviderError, errorDetail, errorFromStatus } from "./errors";
 import { readSse } from "./sse";
 import type { ChatMessage, ChatRequest, ProviderClient, ProviderConfig, StreamEvent } from "./types";
 
@@ -33,7 +33,9 @@ type RawBlock = Record<string, unknown>;
  * often before the model has written its answer. The turn goes on when it is
  * sent back unchanged as the last assistant message; at most this many times.
  */
-export const MAX_RESUMES = 3;
+export const MAX_RESUMES = 4;
+/** Longest page the fetch tool hands the model (tokens). */
+export const FETCH_MAX_CONTENT_TOKENS = 40_000;
 
 /** The assistant turn as the API expects it back: no empty text blocks or null fields. */
 function resumable(content: Array<RawBlock | undefined>): RawBlock[] {
@@ -59,8 +61,19 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
         input_schema: t.parameters,
       }));
       if (req.webSearch) tools.push({ type: "web_search_20260209", name: "web_search", max_uses: req.webSearchMaxUses ?? 3 });
-      // Web fetch only opens URLs already in the conversation (e.g. search results).
-      if (req.webSearch && req.webFetch) tools.push({ type: "web_fetch_20260209", name: "web_fetch", max_uses: req.webSearchMaxUses ?? 3 });
+      // Web fetch only opens URLs already in the conversation (search results,
+      // or pages the request names; it works without the search tool).
+      // Citations on, so quoted passages come back as page text; page size
+      // bounded so one long page cannot eat the budget.
+      if (req.webFetch) {
+        tools.push({
+          type: "web_fetch_20260209",
+          name: "web_fetch",
+          max_uses: req.webFetchMaxUses ?? req.webSearchMaxUses ?? 3,
+          citations: { enabled: true },
+          max_content_tokens: FETCH_MAX_CONTENT_TOKENS,
+        });
+      }
       let inputTokens = 0;
       let outputTokens = 0;
       let webSearches = 0;
@@ -101,11 +114,14 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
           if (err instanceof ProviderError) throw err;
           throw new ProviderError("anthropic", "network");
         }
-        if (!res.ok) throw errorFromStatus("anthropic", res);
+        if (!res.ok) throw errorFromStatus("anthropic", res, await errorDetail(res));
         if (!res.body) throw new ProviderError("anthropic", "stream_error");
 
         const blocks = new Map<number, Block>();
         const content: Array<RawBlock | undefined> = [];
+        // Pages the model asked the fetch tool for, by tool call id, so a failed
+        // fetch (whose result names no page) can still be reported.
+        const asked = new Map<string, string>();
         let respOut = 0;
         let respSearches = 0;
         let stop: string | undefined;
@@ -119,13 +135,29 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
               break;
             case "content_block_start": {
               const cb = ev.content_block ?? {};
-              if (cb.type === "web_fetch_tool_result" && typeof cb.content?.url === "string") {
-                yield { type: "source", url: cb.content.url };
+              if (cb.type === "web_fetch_tool_result") {
+                const url = typeof cb.content?.url === "string" ? cb.content.url : asked.get(String(cb.tool_use_id ?? ""));
+                if (cb.content?.type === "web_fetch_tool_result_error") {
+                  if (url) yield { type: "fetch", url, ok: false, error: typeof cb.content.error_code === "string" ? cb.content.error_code : "error" };
+                } else if (url) {
+                  // The fetched document's text travels with the result: page
+                  // text the coupon finder checks codes against.
+                  const doc = cb.content?.content ?? {};
+                  const data = doc?.source?.data;
+                  const page = typeof data === "string" && doc?.source?.type === "text" ? data : undefined;
+                  yield { type: "fetch", url, ok: true, chars: page?.length ?? 0 };
+                  yield { type: "source", url, ...(typeof doc?.title === "string" ? { title: doc.title } : {}), ...(page !== undefined ? { page } : {}) };
+                }
               }
               if (cb.type === "web_search_tool_result" && Array.isArray(cb.content)) {
                 for (const r of cb.content) {
                   if (r?.type === "web_search_result" && typeof r.url === "string") {
-                    yield { type: "source", url: r.url, ...(typeof r.title === "string" ? { title: r.title } : {}) };
+                    yield {
+                      type: "source",
+                      url: r.url,
+                      ...(typeof r.title === "string" ? { title: r.title } : {}),
+                      ...(typeof r.page_age === "string" ? { age: r.page_age } : {}),
+                    };
                   }
                 }
               }
@@ -166,6 +198,10 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
                 } catch {
                   throw new ProviderError("anthropic", "stream_error");
                 }
+              }
+              if (kept?.type === "server_tool_use" && kept.name === "web_fetch") {
+                const url = (kept.input as { url?: unknown } | undefined)?.url;
+                if (typeof url === "string" && url) asked.set(String(kept.id ?? ""), url);
               }
               if (b?.kind === "tool_use") {
                 let input: unknown;

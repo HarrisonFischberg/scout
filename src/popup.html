@@ -174,6 +174,8 @@
       }
       .round.send { border: 0; background: var(--accent); color: var(--accent-on); }
       .round.send svg.i { stroke-width: 2.2; }
+      /* Send turns into Stop while Scout works: the same blue button, a filled square. */
+      #stop svg.i rect { fill: currentColor; }
       fieldset.segmented {
         align-self: flex-start; display: inline-flex; min-width: max-content; margin: 0; padding: 2px; border: 1px solid var(--hairline); border-radius: 999px; gap: 2px;
       }
@@ -188,6 +190,9 @@
       .segmented label:has(input:focus-visible) { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
       .composer-foot .segmented { gap: 1px; }
       .composer-foot .segmented label { padding: 0 8px; }
+      /* Mode switch is icon-only: monochrome line glyphs (search for Chat, binoculars for Scout) in the label's
+         own text color; the mode name stays as sr-only text and a title tooltip. */
+      .segmented label svg.i { width: 17px; height: 17px; }
       /* The one item that gives way when the row is narrow: its text ends in "…". */
       .composer-foot > #model-pill { flex: 0 1 auto; }
       #model-pill {
@@ -352,8 +357,25 @@
       .trace .attempt .code { font: 600 13px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-primary); }
       .trace .attempt.good { color: var(--text-primary); }
       .trace .attempt.good .code { color: var(--accent-text); }
-      .trace .more { display: flex; flex-direction: column; gap: 8px; }
-      .trace .more p { margin: 0; }
+      .trace .more, #coupons-more { display: flex; flex-direction: column; gap: 8px; }
+      .trace .more p, #coupons-more p { margin: 0; }
+      /* Find coupons: milestone lines in the chat, outside the folded card;
+         the newest has a moving indicator, earlier ones a check. */
+      .coupon-step { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; color: var(--text-secondary); }
+      .coupon-step.busy { color: var(--text-primary); }
+      .coupon-step .done-mark { width: 18px; height: 18px; flex: none; color: var(--accent-text); }
+      .pulse {
+        display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+        width: 18px; height: 18px; flex: none; box-sizing: border-box; border-radius: 50%;
+        border: 1px solid var(--hairline); background: var(--bg-subtle); color: var(--text-secondary);
+      }
+      .pulse i { display: block; width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+      @media (prefers-reduced-motion: no-preference) {
+        .pulse i { animation: scout-pulse 1.2s ease-in-out infinite; }
+        .pulse i:nth-child(2) { animation-delay: 0.2s; }
+        .pulse i:nth-child(3) { animation-delay: 0.4s; }
+      }
+      @keyframes scout-pulse { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
 
       @media (prefers-reduced-motion: no-preference) {
         .icon-btn, .chip, .segmented label, #plus-menu button, #model-menu button { transition: background-color 150ms, color 150ms, border-color 150ms; }
@@ -456,7 +478,7 @@
         <ul id="mention-list" role="listbox" aria-label="Tabs to attach" hidden></ul>
         <div class="composer-box">
           <div id="mode-chip" hidden>
-            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 7 16 2-7 7-2Z"/></svg>
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="16.5" r="4"/><circle cx="18" cy="16.5" r="4"/><path d="M3.5 13.4V8.5A1.5 1.5 0 0 1 5 7h2a1.5 1.5 0 0 1 1.5 1.5v4.9M15.5 13.4V8.5A1.5 1.5 0 0 1 17 7h2a1.5 1.5 0 0 1 1.5 1.5v4.9M8.5 11h7M4.5 7V4.5h3V7M16.5 7V4.5h3V7"/></svg>
             <span>Scout mode</span>
             <button id="mode-clear" class="icon-btn" type="button" aria-label="Back to Chat mode">
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
@@ -476,15 +498,15 @@
             </button>
             <fieldset class="segmented">
               <legend>Mode</legend>
-              <label><input type="radio" name="mode" value="chat" checked />Chat</label>
-              <label><input type="radio" name="mode" value="scout" />Scout</label>
+              <label title="Chat"><input type="radio" name="mode" value="chat" checked /><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><span class="sr-only">Chat</span></label>
+              <label title="Scout"><input type="radio" name="mode" value="scout" /><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="16.5" r="4"/><circle cx="18" cy="16.5" r="4"/><path d="M3.5 13.4V8.5A1.5 1.5 0 0 1 5 7h2a1.5 1.5 0 0 1 1.5 1.5v4.9M15.5 13.4V8.5A1.5 1.5 0 0 1 17 7h2a1.5 1.5 0 0 1 1.5 1.5v4.9M8.5 11h7M4.5 7V4.5h3V7M16.5 7V4.5h3V7"/></svg><span class="sr-only">Scout</span></label>
             </fieldset>
             <button id="model-pill" type="button" aria-label="Change model" aria-haspopup="menu" aria-expanded="false" aria-controls="model-menu">
               <span id="model-pill-text"></span>
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
             </button>
-            <button id="stop" class="round" type="button" aria-label="Stop" hidden>
-              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>
+            <button id="stop" class="round send" type="button" aria-label="Stop" hidden>
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="8" rx="1.5"/></svg>
             </button>
             <button id="send" class="round send" type="submit" aria-label="Send">
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
@@ -637,8 +659,8 @@
           <h3 id="pagebutton-title">Button on webpages</h3>
           <label class="check"><input id="pagebutton-on" type="checkbox" aria-describedby="pagebutton-help" />Show a Scout button on the edge of webpages</label>
           <p id="pagebutton-help" class="hint">
-            Handy on iPhone and iPad, where Safari keeps Scout for Safari in the page menu. Tap the button to open Scout for Safari.
-            Drag it up, down, or to the other side; it shrinks when you are not using it. It shows only on sites Scout for Safari
+            Handy on iPhone and iPad, where Safari keeps Scout for Safari in the page menu. It stays tucked against the edge; tap it
+            once to bring it out and again to open Scout for Safari. Drag it up, down, or to the other side. It shows only on sites Scout for Safari
             can access, never in Private Browsing, and reads nothing from the page.
           </p>
           <fieldset class="segmented" id="pagebutton-side">
