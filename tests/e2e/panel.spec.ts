@@ -93,7 +93,7 @@ test("each tab keeps its own conversation, restored when the panel reopens on it
   await expect(log.getByText("Answer for this tab.")).toBeVisible();
 
   await switchTab(page, { id: 2 });
-  await expect(page.getByRole("heading", { name: "How can I help?" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Suggestions" })).toBeVisible();
   await expect(log.getByText("What moved the market today?")).toHaveCount(0);
 
   await switchTab(page, { id: 1 });

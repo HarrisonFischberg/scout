@@ -71,11 +71,17 @@ async function openPopup(page: Page, opts: { backgroundReadFails?: boolean } = {
   return { bodies };
 }
 
-test("a ticked tab is read and cited alongside the active page", async ({ page }) => {
+// Owner, 2026-10-17: the + menu no longer has Attach tabs; typing @ attaches one.
+async function attachByMention(page: Page, title: string): Promise<void> {
+  const field = page.getByLabel("Ask about this page");
+  await field.fill("@" + title.slice(0, 3));
+  await page.getByRole("listbox", { name: "Tabs to attach" }).getByRole("option", { name: new RegExp(title) }).click();
+  await expect(page.getByRole("group", { name: "Attached tabs" }).getByText(title)).toBeVisible();
+}
+
+test("an attached tab is read and cited alongside the active page", async ({ page }) => {
   const { bodies } = await openPopup(page);
-  await page.getByRole("button", { name: "More actions" }).click();
-  await page.getByRole("button", { name: "Attach tabs" }).click();
-  await page.getByRole("checkbox", { name: "Reviews of Widget" }).check();
+  await attachByMention(page, "Reviews of Widget");
   await page.getByLabel("Ask about this page").fill("Is the widget good value?");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByRole("log").getByText("rated 4.5 stars (Reviews of Widget)")).toBeVisible();
@@ -110,11 +116,9 @@ test("an @word that is not chosen attaches nothing", async ({ page }) => {
 
 test("a removed chip detaches the tab", async ({ page }) => {
   const { bodies } = await openPopup(page);
-  await page.getByRole("button", { name: "More actions" }).click();
-  await page.getByRole("button", { name: "Attach tabs" }).click();
-  await page.getByRole("checkbox", { name: "Reviews of Widget" }).check();
+  await attachByMention(page, "Reviews of Widget");
   await page.getByRole("button", { name: "Remove Reviews of Widget" }).click();
-  await expect(page.getByRole("checkbox", { name: "Reviews of Widget" })).not.toBeChecked();
+  await expect(page.getByRole("group", { name: "Attached tabs" })).toBeHidden();
   await page.getByLabel("Ask about this page").fill("How much?");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByRole("log").getByText("It costs $10 (Test shop)")).toBeVisible();
@@ -134,9 +138,7 @@ test("an untouched tab is never read", async ({ page }) => {
 
 test("a tab that cannot be read is named in the conversation, not just the status line", async ({ page }) => {
   const { bodies } = await openPopup(page, { backgroundReadFails: true });
-  await page.getByRole("button", { name: "More actions" }).click();
-  await page.getByRole("button", { name: "Attach tabs" }).click();
-  await page.getByRole("checkbox", { name: "Reviews of Widget" }).check();
+  await attachByMention(page, "Reviews of Widget");
   await page.getByLabel("Ask about this page").fill("Price and rating?");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByRole("log").getByText("Could not read: Reviews of Widget.")).toBeVisible();
