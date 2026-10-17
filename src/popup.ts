@@ -18,6 +18,7 @@ import { ConversationStore, type StoredMessage } from "./chat/store";
 import { MAX_EXTRA_TABS, type TabInfo } from "./chat/tabs";
 import { suggestCodes, type SuggestedCodes } from "./coupons/codes";
 import { browserTrace, type BrowserTarget, type PageBrowser } from "./coupons/browser-read";
+import { READER_HOSTS_KEY, browserFirstSites, countFetch, parseReaderHosts } from "./coupons/reader-hosts";
 import { locateForm } from "./coupons/locate";
 import { identifyMerchant, type MerchantMeta } from "./coupons/merchant";
 import { formatMoney } from "./coupons/money";
@@ -2650,11 +2651,19 @@ async function main(): Promise<void> {
         const queue = new CodeQueue();
         const storeFound = new Set(onSite.map((c) => c.code));
         trace("coupons:search");
+        // Sites that refused the reader on this device go to a background tab first; each fetch is counted.
+        let readerHosts = parseReaderHosts(storage ? (await storage.get(READER_HOSTS_KEY).catch(() => ({}) as Record<string, unknown>))[READER_HOSTS_KEY] : undefined);
         const browserPages = {
           tabs: backgroundTabs(tab.windowId),
           allow: allowBrowserPages,
           onPage: (p: Parameters<typeof browserTrace>[0]) => trace(browserTrace(p)),
+          firstHosts: browserFirstSites(readerHosts),
+          onReader: (url: string, ok: boolean) => {
+            readerHosts = countFetch(readerHosts, url, ok, Date.now());
+            if (storage) void storage.set({ [READER_HOSTS_KEY]: readerHosts }).catch(() => undefined);
+          },
         };
+        trace("coupons:browser-first " + browserPages.firstHosts.length);
         const searching = suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
           browser: browserPages,
           onFound: (fresh) => {
