@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   clearHistory,
+  loadRatings,
+  ratingKey,
+  saveRating,
   loadConversation,
   appendHistory,
   deleteAllData,
@@ -159,5 +162,39 @@ describe("conversation", () => {
     expect(conv).toEqual([{ at: 3000, question: "Fill the form", answer: "Done", kind: "agent", conv: "c-b" }]);
     await clearHistory(s);
     expect(await loadConversation(s, "7", 4000, "c-b")).toEqual([]);
+  });
+
+  it("keeps an answer's numbered sources and drops malformed ones", async () => {
+    const s = fakeStorage({
+      history: [
+        {
+          at: 1000,
+          question: "q",
+          answer: "a [1]",
+          conv: "c",
+          sources: [{ url: "https://shop.test/a", title: "Shop", kind: "page" }, { url: "javascript:alert(1)" }, { url: "https://w.test/", kind: "evil" }],
+        },
+      ],
+    });
+    const [e] = await loadConversation(s, "7", 2000, "c");
+    expect(e?.sources).toEqual([{ url: "https://shop.test/a", title: "Shop", kind: "page" }, { url: "https://w.test/" }]);
+  });
+});
+
+describe("answer ratings (owner item 10)", () => {
+  it("sets, toggles off, ignores junk, and is cleared with history", async () => {
+    const s = fakeStorage({ ratings: { old: "meh" } });
+    const k = ratingKey("q", "a");
+    expect(k).toBe(ratingKey("q", "a"));
+    expect(k).not.toBe(ratingKey("q", "b"));
+    await saveRating(s, k, "up");
+    expect(await loadRatings(s)).toEqual({ [k]: "up" });
+    await saveRating(s, k, "down");
+    expect(await loadRatings(s)).toEqual({ [k]: "down" });
+    await saveRating(s, k, null);
+    expect(await loadRatings(s)).toEqual({});
+    await saveRating(s, k, "up");
+    await clearHistory(s);
+    expect(await loadRatings(s)).toEqual({});
   });
 });

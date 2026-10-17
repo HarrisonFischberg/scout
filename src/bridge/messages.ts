@@ -152,8 +152,10 @@ export const REQUESTS = {
         /** Continue after a drop: history shows this question and the answer starts with this text. */
         display_question: "string",
         answer_prefix: "string",
+        /** Sources numbered in answer_prefix, so the saved answer keeps them. */
+        prefix_sources: { array: { object: { url: "string", title: "string" } } },
       },
-      optional: ["effort", "shared", "display_question", "answer_prefix"],
+      optional: ["effort", "shared", "display_question", "answer_prefix", "prefix_sources"],
     },
   },
   "chat.stop": { senders: ["panel"], payload: { object: { message_id: "string" } } },
