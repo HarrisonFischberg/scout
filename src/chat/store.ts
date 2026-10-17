@@ -109,6 +109,14 @@ export class ConversationStore {
     m.error = { code: "lost", message };
   }
 
+  /** The user stopped this answer and the worker is gone: end it as stopped, keeping what arrived. */
+  stopLocally(id: string): void {
+    const m = this.messages.get(id);
+    if (!m || m.status === "complete" || m.status === "error") return;
+    m.status = "complete";
+    m.stopped = true;
+  }
+
   clear(): void {
     this.messages.clear();
   }
