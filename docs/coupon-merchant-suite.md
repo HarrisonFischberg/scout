@@ -116,13 +116,16 @@ lost 20 merchants to "The provider rejected the request" before the cause
 was known); a $0 cart is refused before any search (b9268b7); a drawer's
 total is read from its Checkout button (ca11f85, Brumate); an empty answer
 from the cart API falls back to the page (1c2b867, Nomad); a cart with a
-Checkout button and no coupon box says where the field is (0a2fd0f).
+Checkout button and no coupon box says where the field is (0a2fd0f); on a
+store with no remove control, the page path keeps testing when the store
+swaps the kept code for the next working one and stops only when it stacks
+them, saying so (after the sweep; Brumate had tested 1 code of 24).
 
 Still open: Tackform's STREETDEALX (verified by hand against its cart API,
 $60 → $54) was never found by the engine in three runs (masked codes only,
 or the search timed out); OLIPOP's 48 codes were all refused; four more
-stores ended with masked codes only; the page path stops after the first
-applied code when the store keeps it (Brumate); the seven remaining checkout-only
+stores ended with masked codes only; Brumate's re-run on the swap-aware
+page path is pending; the seven remaining checkout-only
 stores await the owner-run checkout-step pass (`--checkout-step`; the
 sandbox's policy forbids opening checkout from the agent's side); the
 runner cannot add Dr. Squatch's, Paleovalley's, Pura's or Chubbies' products

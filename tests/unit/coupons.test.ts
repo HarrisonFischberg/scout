@@ -164,6 +164,90 @@ describe("runCouponSearch", () => {
   });
 });
 
+/**
+ * Fake cart drawer (live sweep 2026-10-17, Brumate): a working code stays
+ * listed on the order with no remove control. "replace" swaps it for the next
+ * working code; "stack" adds the next one on top. A failed code leaves the
+ * earlier one on and shows a message unless `silent`.
+ */
+function drawer(mode: "replace" | "stack", opts: { silent?: boolean } = {}): CouponPage & { applied: string[]; ordered: number } {
+  let typed = "";
+  let message = "";
+  const s = {
+    applied: [] as string[],
+    ordered: 0,
+    async snapshot(): Promise<Snapshot> {
+      const total = 100 - s.applied.reduce((sum, c) => sum + (PCT[c] ?? 0), 0);
+      const lines = [
+        "Your cart",
+        "Subtotal: $100.00",
+        ...s.applied.map((c) => "Discount " + c + ": -$" + (PCT[c] ?? 0).toFixed(2)),
+        ...(message ? [message] : []),
+        "Total: $" + total.toFixed(2),
+      ];
+      return {
+        url: "https://shop.test/?openCart=true",
+        title: "Cart",
+        text: lines.join("\n"),
+        elements: [
+          { ref: "e1", tag: "input", role: "textbox", name: "Discount code", type: "text" },
+          { ref: "e2", tag: "button", role: "button", name: "Apply" },
+          { ref: "e3", tag: "button", role: "button", name: "Checkout" },
+        ],
+        truncated: false,
+      };
+    },
+    async act(a: Action): Promise<ActionResult> {
+      if (a.type === "type") {
+        typed = a.text;
+        message = "";
+      }
+      if (a.type === "click" && a.ref === "e2") {
+        if (PCT[typed]) s.applied = mode === "replace" ? [typed] : [...s.applied.filter((c) => c !== typed), typed];
+        else message = opts.silent ? "" : "This code is not valid.";
+      }
+      if (a.type === "click" && a.ref === "e3") s.ordered++;
+      return { ok: true, action: a.type, message: "ok" };
+    },
+  };
+  return s;
+}
+
+describe("page path on a drawer that keeps the applied code", () => {
+  const names = ["WELCOME5", "SAVE10", "FREESHIP", "SAVE20", "BOGUS99"];
+  const five = names.map((code) => ({ code, origin: "verified" as const, sourceUrl: "https://deals.test/" + code.toLowerCase() }));
+
+  it("keeps testing when the store swaps the earlier code for the next one, and the best of all of them wins", async () => {
+    for (const silent of [false, true]) {
+      const p = drawer("replace", { silent });
+      const out = await runCouponSearch({ page: p, codes: five, settleMs: 0 });
+      expect(out.status).toBe("done");
+      expect(out.note).toBeUndefined();
+      expect(out.attempts.map((a) => a.code)).toEqual(names);
+      // A failed code after a working one is not the working one's total.
+      expect(out.attempts.map((a) => a.total)).toEqual([100, 90, null, 80, null]);
+      expect(out.attempts[2]?.note).toBe("The store kept SAVE10 on the order and did not take this code in its place.");
+      expect(out.attempts[2]?.accepted).toBe(silent ? null : false);
+      expect(out.best?.code).toBe("SAVE20");
+      expect(out.applied).toBe(true);
+      expect(p.applied).toEqual(["SAVE20"]);
+      expect(p.ordered).toBe(0);
+    }
+  });
+
+  it("stops when the store stacks the next working code on the earlier one, and says so", async () => {
+    const p = drawer("stack");
+    const out = await runCouponSearch({ page: p, codes: five, settleMs: 0 });
+    expect(out.attempts.map((a) => a.total)).toEqual([100, 90, null]);
+    expect(out.best?.code).toBe("SAVE10");
+    expect(out.note).toBe(
+      "The store kept SAVE10 on the order and added SAVE20 on top of it, so the total now counts both codes. Codes cannot be measured one at a time here, so I stopped testing.",
+    );
+    expect(p.applied).toEqual(["SAVE10", "SAVE20"]);
+    expect(p.ordered).toBe(0);
+  });
+});
+
 // Owner rule 2026-10-17: never guess. Every tested code was seen on a page,
 // and the page, the words around the code and any conditions travel with it.
 describe("candidates and evidence", () => {
