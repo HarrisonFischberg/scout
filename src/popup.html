@@ -427,6 +427,11 @@
         #model-pill { min-height: 38px; padding: 0 16px; font-size: 15px; }
         .composer-foot .segmented label { min-height: 34px; padding: 0 10px; }
         .sheet-list button { min-height: 56px; font-size: 17px; }
+        /* Safari's own sheet bar already shows the name (owner item 6, 2026-10-17):
+           the chat header keeps only New chat and Settings, the title stays for VoiceOver. */
+        #chat-view > header { justify-content: flex-end; padding: 4px 12px; border-bottom: 0; }
+        #chat-view > header picture { display: none; }
+        #chat-view > header h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
       }
 
       @media (prefers-reduced-motion: no-preference) {
