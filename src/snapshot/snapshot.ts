@@ -24,6 +24,8 @@ export interface SnapElement {
   redacted?: boolean;
   disabled?: boolean;
   href?: string;
+  /** aria-expanded on a toggle: false while what it controls is collapsed. */
+  expanded?: boolean;
 }
 
 export interface Snapshot {
@@ -86,7 +88,7 @@ export function isSensitiveField(node: SnapNode): boolean {
 function roleOf(node: SnapNode): string | null {
   const explicit = node.attrs.role;
   if (node.tag === "a") return node.attrs.href !== undefined ? "link" : null;
-  if (node.tag === "button") return "button";
+  if (node.tag === "button" || node.tag === "summary") return "button";
   if (node.tag === "select") return "combobox";
   if (node.tag === "textarea") return "textbox";
   if (node.tag === "input") {
@@ -194,6 +196,7 @@ export function buildSnapshot(root: SnapNode, opts: SnapshotOptions): Snapshot {
         if (node.tag === "input") el.type = (node.attrs.type ?? "text").toLowerCase();
         if (node.attrs.disabled !== undefined) el.disabled = true;
         if (node.tag === "a") el.href = squash(node.attrs.href ?? "", MAX_VALUE);
+        if (node.attrs["aria-expanded"] === "true" || node.attrs["aria-expanded"] === "false") el.expanded = node.attrs["aria-expanded"] === "true";
         if (sensitive) {
           el.redacted = true;
           el.value = REDACTED;

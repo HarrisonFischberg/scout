@@ -41,11 +41,17 @@ and results. Use Pause or Stop at any time.
 
 The coupon finder tries codes one at a time and reports the real cart total
 after each. It does not place orders. It does not guarantee savings or the
-best price. Codes come from your AI provider's web search and from common
-code patterns for the store (guesses). Each result shows where the code came
+best price. Codes come from your AI provider's web search, from the store's
+own site (for example a banner that names a code), and from common code
+patterns for the store (guesses). If the web search fails, the other codes
+are still tried and the summary says why the search failed. Each result shows where the code came
 from, and guesses are labeled as guesses. The store decides whether a code is
-valid. On Shopify stores, codes are tested through the store's own cart
-endpoint (the one its Apply button uses) in your browser session. Scout for Safari
+valid. On Shopify, WooCommerce, and BigCommerce stores, codes are tested
+through the store's own cart endpoint (the one its coupon box uses) in your
+browser session. On other stores, Scout for Safari types each code into the
+page's coupon box, may open the box when it is hidden, and may remove a code
+it applied before trying the next. It never presses an order or payment
+button. Scout for Safari
 asks before testing more than 25 codes at a time. Codes may be expired or
 invalid. Some merchants prohibit automated code entry or may block it:
 you are responsible for complying with merchant terms (legal review,

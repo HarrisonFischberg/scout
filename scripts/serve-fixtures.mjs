@@ -34,9 +34,43 @@ async function cartApi(req, res, path) {
   res.writeHead(200, headers).end(JSON.stringify(cartJson(carts.get(id))));
 }
 
+// Fake WooCommerce Store API for tests/fixtures/woo-cart.html, answered only
+// for pages that set the cookie platform=woo (so other fixtures stay
+// non-WooCommerce). Synthetic codes: save10 = 10%, save20 = 20%; they stack.
+// Changes need the nonce from GET /cart, like the real API.
+const WOO_PCT = { save10: 10, save20: 20 };
+const wooCarts = new Map();
+async function wooApi(req, res, route) {
+  const id = /(?:^|;\s*)cart=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "anon";
+  const coupons = wooCarts.get(id) ?? [];
+  const json = (status, body, extra = {}) => res.writeHead(status, { "content-type": "application/json", ...extra }).end(JSON.stringify(body));
+  const cart = () => {
+    const off = coupons.reduce((s, c) => s + (WOO_PCT[c] ?? 0), 0);
+    return { coupons: coupons.map((code) => ({ code })), totals: { total_price: String(Math.round(15000 * (1 - off / 100))), currency_code: "EUR", currency_minor_unit: 2 } };
+  };
+  if (route === "/cart" && req.method === "GET") return json(200, cart(), { Nonce: "fixture-nonce" });
+  if (req.method !== "POST") return json(405, {});
+  if (req.headers.nonce !== "fixture-nonce") return json(401, { code: "woocommerce_rest_missing_nonce" });
+  let body = "";
+  for await (const chunk of req) body += chunk;
+  const code = String(JSON.parse(body || "{}").code ?? "").toLowerCase();
+  if (route === "/cart/apply-coupon") {
+    if (!WOO_PCT[code]) return json(400, { code: "woocommerce_rest_cart_coupon_error", message: 'Coupon "' + code + '" does not exist!' });
+    if (!coupons.includes(code)) coupons.push(code);
+  } else if (route === "/cart/remove-coupon") {
+    const i = coupons.indexOf(code);
+    if (i >= 0) coupons.splice(i, 1);
+  } else return json(404, {});
+  wooCarts.set(id, coupons);
+  return json(200, cart());
+}
+
 createServer(async (req, res) => {
   const path = new URL(req.url ?? "/", "http://localhost").pathname;
   if (path === "/cart.js" || path === "/cart/update.js") return cartApi(req, res, path);
+  if (path.startsWith("/wp-json/wc/store/v1/") && /(?:^|;\s*)platform=woo/.test(req.headers.cookie ?? "")) {
+    return wooApi(req, res, path.slice("/wp-json/wc/store/v1".length));
+  }
   const file = resolve(join(root, normalize(path === "/" ? "/index.html" : path)));
   if (!file.startsWith(root + "/")) {
     res.writeHead(403).end("forbidden");

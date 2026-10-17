@@ -60,8 +60,8 @@ export interface Usage {
 export type StreamEvent =
   | { type: "text"; delta: string }
   | { type: "tool_call"; id: string; name: string; input: unknown }
-  /** A page the provider's web search returned or cited. */
-  | { type: "source"; url: string; title?: string }
+  /** A page the provider's web search returned or cited; `text` is the quoted passage of a citation (Anthropic). */
+  | { type: "source"; url: string; title?: string; text?: string }
   | { type: "usage"; usage: Usage }
   | { type: "done" };
 

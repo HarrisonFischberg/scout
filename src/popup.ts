@@ -11,7 +11,10 @@ import { renderMarkdown } from "./chat/markdown";
 import { ConversationStore } from "./chat/store";
 import { MAX_EXTRA_TABS, type TabInfo } from "./chat/tabs";
 import { suggestCodes } from "./coupons/codes";
-import { originLabel } from "./coupons/candidates";
+import { locateForm } from "./coupons/locate";
+import { formatMoney } from "./coupons/money";
+import { codesInText, MAX_STORE_CODES } from "./coupons/store";
+import { mergeCandidates, originLabel } from "./coupons/candidates";
 import { couponStatusText, couponSummary, runCouponSearch, type BatchState, type CartApi, type CartState } from "./coupons/finder";
 import { formatCostLine } from "./cost";
 import { buildReport, describeBrowser, Diagnostics, disabledRun, type RunHandle, type RunKind } from "./diagnostics";
@@ -21,7 +24,7 @@ import { connectPanelPort, type PanelPort } from "./bridge/port";
 import type { ReadStatus, SharedTab } from "./context/gather";
 import { activityLine, dropMention, mentionAt, sharedLabel, suggestTabs, toolLabel } from "./panel/attach";
 import { hostOf, loadPageAccess, normalizeSite, parsePolicy, savePageAccess, screenshotDecision, type PageAccess } from "./permissions/gate";
-import { DEV_MOCK_KEY, DEV_MOCK_URL } from "./server/dev";
+import { DEV_MOCK_KEY, DEV_MOCK_URL, mockServerUrl } from "./server/dev";
 import { fromWire } from "./server/protocol";
 import type { ToolDecision, ToolResult } from "./tools/host";
 import type { ToolLogEntry } from "./tools/log";
@@ -180,14 +183,27 @@ async function copyDiagnostics(anchor: HTMLElement, statusNode: HTMLElement): Pr
 }
 
 // The content script is injected on demand into the active tab only.
-async function tabAgentPage(): Promise<(AgentPage & { cart: CartApi }) | null> {
+async function tabAgentPage(): Promise<(AgentPage & { cart: CartApi; storeCodes(): Promise<string[]> }) | null> {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   if (tab?.id === undefined) return null;
   current.page(tab.url);
   const tabId = tab.id;
   await browser.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
-  // Same isolated world as content.js, so its handler is visible here.
+  // A page that reloads (a store whose Apply button submits a form) loses the
+  // content script: inject it again and retry, for up to about 4 s.
   const call = async (req: ContentRequest): Promise<unknown> => {
+    for (let attempt = 0; ; attempt++) {
+      const out = await callOnce(req).catch(() => ({ ok: false as const, why: "threw-inject" }));
+      if (out.ok || attempt >= 10 || !/no-handler|threw-inject|null-result/.test(out.why)) {
+        if (!out.ok) trace("content:" + req.type + " " + out.why);
+        return out.ok ? out.value : null;
+      }
+      await new Promise((r) => setTimeout(r, 400));
+      await browser.scripting.executeScript({ target: { tabId }, files: ["content.js"] }).catch(() => undefined);
+    }
+  };
+  // Same isolated world as content.js, so its handler is visible here.
+  const callOnce = async (req: ContentRequest): Promise<{ ok: true; value: unknown } | { ok: false; why: string }> => {
     const [res] = await browser.scripting.executeScript({
       target: { tabId },
       // Returns an envelope so a failure inside the page is reported, not
@@ -215,20 +231,21 @@ async function tabAgentPage(): Promise<(AgentPage & { cart: CartApi }) | null> {
       args: [req, CONTENT_HANDLER],
     });
     const env = res?.result as { ok?: boolean; value?: unknown; why?: string } | null | undefined;
-    if (!env || env.ok !== true) {
-      trace("content:" + req.type + " " + (env ? env.why ?? "bad-envelope" : "null-result"));
-      return null;
-    }
-    return env.value;
+    if (!env || env.ok !== true) return { ok: false, why: env ? (env.why ?? "bad-envelope") : "null-result" };
+    return { ok: true, value: env.value };
   };
 
   return {
-    snapshot: async () => (await call({ type: "scout:snapshot" })) as Snapshot,
+    snapshot: async (limits: { maxElements?: number; maxTextChars?: number } = {}) => (await call({ type: "scout:snapshot", ...limits })) as Snapshot,
     act: async (action: Action) => (await call({ type: "scout:act", action })) as ActionResult,
     cart: {
       info: async () => (await call({ type: "scout:cart-info" })) as CartState | null,
       update: async (discount: string) => (await call({ type: "scout:cart-update", discount })) as CartState | { rateLimited: true } | null,
       reload: async () => void (await call({ type: "scout:reload" })),
+    },
+    storeCodes: async () => {
+      const codes = await call({ type: "scout:store-codes" });
+      return Array.isArray(codes) ? codes.filter((c): c is string => typeof c === "string") : [];
     },
   };
 }
@@ -410,7 +427,8 @@ async function main(): Promise<void> {
     const mockSet = storage ? await storage.get(DEV_MOCK_KEY).catch(() => ({}) as Record<string, unknown>) : {};
     diagMock.checked = typeof mockSet[DEV_MOCK_KEY] === "string";
     diagMock.addEventListener("change", () => {
-      void storage?.set({ [DEV_MOCK_KEY]: diagMock.checked ? DEV_MOCK_URL : null }).then(() => {
+      void storage?.set({ [DEV_MOCK_KEY]: diagMock.checked ? DEV_MOCK_URL : null }).then(async () => {
+        await connect();
         diagStatus.textContent = diagMock.checked ? "Answers now come from the local mock server." : "Answers come from your provider again.";
       });
     });
@@ -536,9 +554,14 @@ async function main(): Promise<void> {
       return;
     }
     const effort = effortForId(found.settings.provider, found.settings.model, found.settings.effort, knownModels[found.settings.provider]);
+    // Debug builds: Find coupons and agent runs also use the local mock server when it is on.
+    let mockUrl: string | null = null;
+    if (__SCOUT_DEBUG__ && storage && found.settings.provider === "anthropic") {
+      mockUrl = mockServerUrl((await storage.get(DEV_MOCK_KEY).catch(() => ({}) as Record<string, unknown>))[DEV_MOCK_KEY]);
+    }
     session = {
       settings: found.settings,
-      provider: createProvider(found.settings.provider, { apiKey: found.apiKey, fetch: providerFetch }),
+      provider: createProvider(found.settings.provider, { apiKey: found.apiKey, fetch: providerFetch, ...(mockUrl ? { baseUrl: mockUrl } : {}) }),
       ...(effort ? { effort } : {}),
       ...(found.fellBackFrom ? { fellBackFrom: found.fellBackFrom } : {}),
     };
@@ -1218,7 +1241,7 @@ async function main(): Promise<void> {
       title: "Allow a screenshot?",
       what:
         "Scout for Safari wants a screenshot of the visible part of " + site + " to answer, and would send it to " + PROVIDER_NAME[provider] +
-        " (" + prettyModel(model) + ").",
+        " (" + prettyModel(model) + "). It shows everything on screen, including anything typed into the page.",
       items: [],
       choices: [
         { label: "Allow once", value: "once" },
@@ -1568,9 +1591,12 @@ async function main(): Promise<void> {
     });
   }
 
-  function addAttemptRow(a: { code: string; total: number | null; note: string; origin: Parameters<typeof originLabel>[0]["origin"]; sourceUrl?: string }): void {
+  function addAttemptRow(
+    a: { code: string; total: number | null; note: string; origin: Parameters<typeof originLabel>[0]["origin"]; sourceUrl?: string },
+    currency?: string,
+  ): void {
     const tr = document.createElement("tr");
-    for (const t of [a.code, a.total === null ? "unknown" : "$" + a.total.toFixed(2), a.note]) {
+    for (const t of [a.code, a.total === null ? "unknown" : formatMoney(a.total, currency), a.note]) {
       const td = document.createElement("td");
       td.textContent = t;
       tr.appendChild(td);
@@ -1588,6 +1614,8 @@ async function main(): Promise<void> {
     tr.appendChild(src);
     couponsRows.appendChild(tr);
   }
+
+  const COUPON_SNAPSHOT = { maxElements: 600, maxTextChars: 100_000 };
 
   async function runCoupons(): Promise<void> {
     if (activeChat || control || !session) return;
@@ -1618,11 +1646,17 @@ async function main(): Promise<void> {
     couponsStop.addEventListener("click", onStop);
     let used: Usage = { inputTokens: 0, outputTokens: 0 };
     let summary = "";
+    let searchNote = "";
     try {
       const snap = await page.snapshot();
       const merchant = new URL(snap.url).hostname;
       const ac = new AbortController();
       couponsStop.addEventListener("click", () => ac.abort(), { once: true });
+      // Codes the store advertises itself (banner, announcement bar): this page
+      // and its home page, read on the device. Tried first, search or not.
+      const onSite = [...new Set([...codesInText(snap.text), ...(await page.storeCodes().catch(() => []))])].slice(0, MAX_STORE_CODES);
+      const storeUrl = new URL("/", snap.url).toString();
+      trace("coupons:store-codes " + onSite.length);
       trace("coupons:search");
       const sug = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal, s.effort ? { effort: s.effort } : {});
       used = { inputTokens: sug.inputTokens, outputTokens: sug.outputTokens, ...(sug.webSearches ? { webSearches: sug.webSearches } : {}) };
@@ -1634,12 +1668,46 @@ async function main(): Promise<void> {
           ...(searches ? { webSearches: searches } : {}),
         };
       };
-      trace("coupons:candidates found=" + sug.found + " guessed=" + sug.guessed);
+      if (sug.error) trace("coupons:search-error " + sug.error.code);
+      // A failed search is not the end: the store's own codes and the guesses are still tried.
+      if (sug.error && sug.error.code !== "stopped") {
+        const plural = (n: number, what: string): string => n + " " + what + (n === 1 ? "" : "s");
+        const parts = [
+          ...(sug.found ? [plural(sug.found, "code") + " it found before then"] : []),
+          ...(onSite.length ? [plural(onSite.length, "code") + " from the store's own site"] : []),
+          "common guesses",
+        ];
+        const list = parts.length > 1 ? parts.slice(0, -1).join(", ") + (parts.length > 2 ? "," : "") + " and " + parts[parts.length - 1] : parts[0];
+        searchNote = sug.error.message + " I tested " + list + " instead.";
+      }
+      const codes = mergeCandidates(
+        onSite.map((code) => ({ code, origin: "sourced" as const, sourceUrl: storeUrl })),
+        sug.codes,
+      );
+      const found = codes.filter((c) => c.origin === "sourced" || c.origin === "unverified").length;
+      trace("coupons:candidates found=" + found + " guessed=" + sug.guessed + " store=" + onSite.length);
       couponsSummary.textContent =
-        "Found " + sug.found + " code" + (sug.found === 1 ? "" : "s") + " online and " + sug.guessed + " common guesses. Testing them on your cart…";
+        (sug.error && sug.error.code !== "stopped" ? sug.error.message + " " : "") +
+        "Found " + found + " code" + (found === 1 ? "" : "s") + " online and " + sug.guessed + " common guesses. Testing them on your cart…";
       const outcome = await runCouponSearch({
-        page,
-        codes: sug.codes,
+        // Checkout summaries sit late in big pages: read more of them than the agent does.
+        // Waits run here, not in the page, so they outlast a page that reloads.
+        page: {
+          ...page,
+          snapshot: () => page.snapshot(COUPON_SNAPSHOT),
+          act: (a) =>
+            a.type === "wait"
+              ? new Promise((r) => setTimeout(() => r({ ok: true, action: "wait", message: "Waited." }), Math.min(Math.max(a.ms, 0), 10_000)))
+              : page.act(a),
+        },
+        codes,
+        locate: async (snap) => {
+          trace("coupons:locate");
+          const r = await locateForm(s.provider, s.settings.model, snap, ac.signal, s.effort);
+          addUsage({ ...r.usage, webSearches: 0 });
+          trace("coupons:locate " + (r.hints ? Object.keys(r.hints).join(",") : "none"));
+          return r.hints;
+        },
         control,
         delayMs: 250,
         askMore: askMoreCodes,
@@ -1652,20 +1720,21 @@ async function main(): Promise<void> {
             ...(s.effort ? { effort: s.effort } : {}),
           });
           addUsage(more);
+          if (more.error) trace("coupons:search-error " + more.error.code);
           trace("coupons:candidates found=" + more.found + " guessed=" + more.guessed);
           couponsSummary.textContent =
             more.codes.length > 0 ? "Found " + more.codes.length + " more codes to try. Testing them on your cart…" : "No more codes found.";
           return more.codes;
         },
-        onAttempt: (a, index, total) => {
+        onAttempt: (a, index, total, currency) => {
           trace("coupons:attempt " + index + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none"));
           couponsSummary.textContent = "Testing code " + index + " of " + total + "…";
-          addAttemptRow(a);
+          addAttemptRow(a, currency);
           scrollToEnd();
         },
       });
       trace("coupons:method " + (outcome.method ?? "none") + " status " + outcome.status);
-      summary = couponSummary(outcome);
+      summary = (searchNote && outcome.status !== "no_form" && outcome.status !== "error" ? searchNote + "\n\n" : "") + couponSummary(outcome);
       couponsSummary.textContent = outcome.best
         ? "Best: " + outcome.best.code + (outcome.applied ? " (applied)" : "")
         : outcome.status === "done" || outcome.status === "stopped"

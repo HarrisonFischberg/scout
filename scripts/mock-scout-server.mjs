@@ -5,6 +5,9 @@
 // is checked or stored; nothing is forwarded anywhere.
 //
 //   node scripts/mock-scout-server.mjs [port]      (default 4318)
+//   MOCK_LOG=file node scripts/mock-scout-server.mjs   also appends each
+//   request body (JSON, one per line) to `file`, to check what the extension
+//   sends. Use synthetic pages only: the log holds page text as sent.
 //
 // Debug builds use it when Settings > Diagnostics > "Answer from the local
 // mock server" is on. Put a marker in the question to pick a scenario:
@@ -12,17 +15,25 @@
 //   [mock:tool=open_tab {"url":"https://example.com/"}]   with this input,
 //   [mock:drop]                   send part of the answer, then cut the connection,
 //   [mock:slow]                   stream slowly (for Stop and reconnect tests),
+//   [mock:long]                   stream 40 words over about 24 s (close and reopen the panel meanwhile),
 //   [mock:error]                  answer HTTP 500.
 // Without a marker it streams a sample answer with Markdown, a table, code, and math.
+//
+// Find coupons (a request with the web search tool) gets a coupon search that
+// pauses once, as the real server loop does ("pause_turn"); the resumed turn
+// must send the paused one back intact (thinking signature, tool input) or it
+// gets HTTP 400. Codes come from MOCK_COUPONS (a file of "CODE | url" lines)
+// or default to the synthetic codes of the local fake Shopify store.
+import { appendFileSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
 
 const port = Number(process.argv[2] ?? process.env.MOCK_PORT ?? 4318);
 
 const DEFAULT_INPUT = {
   read_page: {},
-  search_tabs: { query: "widget" },
+  search_tabs: { query: "fixture" },
   screenshot_visible: {},
-  open_tab: { url: "https://example.com/" },
+  open_tab: { url: "http://127.0.0.1:4317/forms.html" },
   close_tabs: { tab_ids: [2] },
   group_tabs: { tab_ids: [1, 2] },
   run_task: { goal: "test" },
@@ -61,18 +72,34 @@ function textOf(content) {
 function plan(body) {
   const messages = Array.isArray(body?.messages) ? body.messages : [];
   const last = messages[messages.length - 1];
-  const all = messages.map((m) => textOf(m.content)).join("\n");
   const lastText = textOf(last?.content);
+  // Markers count only in the newest question, not earlier turns in the history.
+  const all = lastText;
   if (/Tool results/.test(lastText)) {
     const status = /status="([\w-]+)"/.exec(lastText)?.[1] ?? "unknown";
     const name = /<tool_result name="([\w-]+)"/.exec(lastText)?.[1] ?? "tool";
-    return { text: "The " + name + " tool answered with status " + status + ". That finishes the mock answer." };
+    // Echo what is not page text: notes after the fenced data, or the message
+    // of a result that is not ok, and how many images came with it.
+    const body = /<tool_result[^>]*>\n([\s\S]*?)\n<\/tool_result>/.exec(lastText)?.[1] ?? "";
+    const fenced = body.includes("</untrusted_page_content>");
+    const note = fenced ? body.split("</untrusted_page_content>").pop().trim() : body.slice(0, 160);
+    const images = Array.isArray(last?.content) ? last.content.filter((p) => p && p.type === "image").length : 0;
+    return {
+      text:
+        "The " + name + " tool answered with status " + status + "." +
+        (images ? " It came with " + images + (images === 1 ? " image." : " images.") : "") +
+        (note ? " Note: " + note : "") +
+        " That finishes the mock answer.",
+    };
   }
   // Continue after a drop: the rest of the answer, without the start again.
   if (/^Continue your previous answer/.test(lastText)) return { text: ["and the rest ", "of the answer."] };
   const tool = /\[mock:tool=([\w-]+)(?:\s+(\{[^\]]*\}))?\]/.exec(all);
   if (tool) {
-    let input = DEFAULT_INPUT[tool[1]] ?? {};
+    // close_tabs closes the tab an earlier open_tab answer named, when there was one.
+    const history = messages.map((m) => textOf(m.content)).join("\n");
+    const opened = [...history.matchAll(/Opened tab (\d+)/g)].pop();
+    let input = tool[1] === "close_tabs" && opened ? { tab_ids: [Number(opened[1])] } : DEFAULT_INPUT[tool[1]] ?? {};
     try {
       if (tool[2]) input = JSON.parse(tool[2]);
     } catch {
@@ -81,6 +108,9 @@ function plan(body) {
     return { text: "Let me use a tool. ", tool: { name: tool[1], input } };
   }
   if (/\[mock:error\]/.test(all)) return { status: 500 };
+  if (/\[mock:long\]/.test(all)) {
+    return { text: Array.from({ length: 40 }, (_, i) => "w" + (i + 1) + (i === 39 ? "." : " ")), delay: 600 };
+  }
   const words = (/\[mock:(?:drop|slow)\]/.test(all) ? "One two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen." : SAMPLE).split(/(?<= )/);
   return { text: words, drop: /\[mock:drop\]/.test(all), slow: /\[mock:slow\]/.test(all) };
 }
@@ -105,7 +135,7 @@ async function stream(res, p) {
       res.destroy();
       return;
     }
-    await wait(p.slow ? 150 : 15);
+    await wait(p.delay ?? (p.slow ? 150 : 15));
   }
   sse(res, { type: "content_block_stop", index: 0 });
   if (p.tool) {
@@ -114,6 +144,76 @@ async function stream(res, p) {
     sse(res, { type: "content_block_stop", index: 1 });
   }
   sse(res, { type: "message_delta", delta: { stop_reason: p.tool ? "tool_use" : "end_turn" }, usage: { output_tokens: 40 } });
+  sse(res, { type: "message_stop" });
+  res.end();
+}
+
+const DEFAULT_COUPONS = [
+  "NOPE10 | http://127.0.0.1:4317/deals.html",
+  "**KETO10** | [deals](http://127.0.0.1:4317/deals.html)",
+  "BEEFY15 | http://127.0.0.1:4317/deals.html",
+];
+
+function couponLines() {
+  if (!process.env.MOCK_COUPONS) return DEFAULT_COUPONS;
+  return readFileSync(process.env.MOCK_COUPONS, "utf8").split("\n").map((l) => l.trim()).filter(Boolean);
+}
+
+const SIGNATURE = "mock-signature-1";
+
+/** The first half of the lines, then a pause; the rest once the paused turn comes back intact. */
+async function couponStream(res, body) {
+  const messages = Array.isArray(body.messages) ? body.messages : [];
+  const last = messages[messages.length - 1];
+  const lines = couponLines();
+  const half = Math.ceil(lines.length / 2);
+  const urls = [...new Set(lines.map((l) => /(https?:\/\/[^\s)\]]+)/.exec(l)?.[1]).filter(Boolean))];
+  if (last?.role === "assistant") {
+    const blocks = Array.isArray(last.content) ? last.content : [];
+    const intact =
+      blocks.some((b) => b.type === "thinking" && b.signature === SIGNATURE) &&
+      blocks.some((b) => b.type === "server_tool_use" && b.input && typeof b.input.query === "string") &&
+      blocks.some((b) => b.type === "web_search_tool_result") &&
+      blocks.every((b) => b.type !== "text" || (typeof b.text === "string" && b.text !== ""));
+    if (!intact) return res.writeHead(400, { ...CORS, "content-type": "application/json" }).end('{"type":"error","error":{"type":"invalid_request_error","message":"paused turn not sent back intact"}}');
+    res.writeHead(200, { ...CORS, "content-type": "text/event-stream", "cache-control": "no-cache" });
+    sse(res, { type: "message_start", message: { usage: { input_tokens: 900, output_tokens: 1 } } });
+    sse(res, { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } });
+    for (const l of lines.slice(half)) {
+      sse(res, { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: l + "\n" } });
+      await wait(30);
+    }
+    sse(res, { type: "content_block_stop", index: 0 });
+    sse(res, { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 60, server_tool_use: { web_search_requests: 1 } } });
+    sse(res, { type: "message_stop" });
+    return res.end();
+  }
+  res.writeHead(200, { ...CORS, "content-type": "text/event-stream", "cache-control": "no-cache" });
+  sse(res, { type: "message_start", message: { usage: { input_tokens: 400, output_tokens: 1 } } });
+  sse(res, { type: "content_block_start", index: 0, content_block: { type: "thinking", thinking: "" } });
+  sse(res, { type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "Search coupon sites first." } });
+  sse(res, { type: "content_block_delta", index: 0, delta: { type: "signature_delta", signature: SIGNATURE } });
+  sse(res, { type: "content_block_stop", index: 0 });
+  sse(res, { type: "content_block_start", index: 1, content_block: { type: "server_tool_use", id: "srvtoolu_mock_1", name: "web_search", input: {} } });
+  sse(res, { type: "content_block_delta", index: 1, delta: { type: "input_json_delta", partial_json: '{"query":"store promo code"}' } });
+  sse(res, { type: "content_block_stop", index: 1 });
+  sse(res, {
+    type: "content_block_start",
+    index: 2,
+    content_block: {
+      type: "web_search_tool_result",
+      tool_use_id: "srvtoolu_mock_1",
+      content: urls.map((url) => ({ type: "web_search_result", url, title: "Mock coupon page", encrypted_content: "mock" })),
+    },
+  });
+  sse(res, { type: "content_block_stop", index: 2 });
+  sse(res, { type: "content_block_start", index: 3, content_block: { type: "text", text: "" } });
+  for (const l of lines.slice(0, half)) {
+    sse(res, { type: "content_block_delta", index: 3, delta: { type: "text_delta", text: l + "\n" } });
+    await wait(30);
+  }
+  sse(res, { type: "content_block_stop", index: 3 });
+  sse(res, { type: "message_delta", delta: { stop_reason: "pause_turn" }, usage: { output_tokens: 80, server_tool_use: { web_search_requests: 1 } } });
   sse(res, { type: "message_stop" });
   res.end();
 }
@@ -131,6 +231,8 @@ createServer(async (req, res) => {
   } catch {
     return res.writeHead(400, CORS).end("{}");
   }
+  if (process.env.MOCK_LOG) appendFileSync(process.env.MOCK_LOG, JSON.stringify({ at: new Date().toISOString(), body }) + "\n");
+  if (Array.isArray(body.tools) && body.tools.some((t) => String(t?.type).startsWith("web_search"))) return couponStream(res, body);
   const p = plan(body);
   if (p.status) return res.writeHead(p.status, { ...CORS, "content-type": "application/json" }).end("{}");
   await stream(res, p);

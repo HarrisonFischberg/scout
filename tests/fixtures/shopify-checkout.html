@@ -58,7 +58,11 @@
           '<span aria-hidden="true" class="sr">' + s + '</span><span><span aria-label="' + s + '">' + spelled + "</span></span>";
       }
       showTotal(SUBTOTAL);
-      input.addEventListener("input", () => (apply.disabled = input.value.trim() === ""));
+      // Like Shopify, typing in the field clears the last error.
+      input.addEventListener("input", () => {
+        apply.disabled = input.value.trim() === "";
+        document.getElementById("message").textContent = "";
+      });
       apply.addEventListener("click", () => {
         const code = input.value.trim().toUpperCase();
         const pct = codes[code] ?? 0;

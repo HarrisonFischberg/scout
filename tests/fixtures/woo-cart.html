@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>WooCommerce-style cart (synthetic)</title></head>
+  <body>
+    <!-- A WooCommerce cart: the fixture server answers its Store API
+         (/wp-json/wc/store/v1) for this page only (cookie platform=woo).
+         Synthetic codes: SAVE10 = 10%, SAVE20 = 20%; they stack. -->
+    <script>
+      document.cookie = "platform=woo; path=/";
+      if (!/(?:^|;\s*)cart=/.test(document.cookie)) document.cookie = "cart=" + Math.random().toString(36).slice(2) + "; path=/";
+    </script>
+    <h1>Cart</h1>
+    <p>1 x Synthetic tent</p>
+    <input id="coupon_code" name="coupon_code" type="text" placeholder="Coupon code" />
+    <button id="apply" type="button" name="apply_coupon">Apply coupon</button>
+    <p id="total">Total: …</p>
+    <a id="checkout" href="#checkout">Proceed to checkout</a>
+    <p id="status"></p>
+    <script>
+      const show = (c) => (document.getElementById("total").textContent = "Total: €" + (Number(c.totals.total_price) / 100).toFixed(2));
+      fetch("/wp-json/wc/store/v1/cart").then((r) => r.json()).then(show);
+      document.getElementById("checkout").addEventListener("click", () => (document.getElementById("status").textContent = "Checkout opened."));
+    </script>
+  </body>
+</html>

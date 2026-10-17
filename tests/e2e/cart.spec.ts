@@ -40,3 +40,9 @@ test("returns null on a store that is not Shopify", async ({ page }) => {
   await page.addScriptTag({ path: "apple/Extension/Resources/content.js" });
   expect(await call(page, { type: "scout:cart-info" })).toBeNull();
 });
+
+test("lists the codes the store's home page advertises, not ones inside scripts", async ({ page }) => {
+  await load(page);
+  // The fixture home page has a "use code KETO10" banner and a script naming another code.
+  expect(await call<string[]>(page, { type: "scout:store-codes" })).toEqual(["KETO10"]);
+});

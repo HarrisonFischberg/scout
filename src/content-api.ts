@@ -3,11 +3,14 @@
 import type { Action } from "./actions/executor";
 
 export type ContentRequest =
-  | { type: "scout:snapshot" }
+  // Coupon runs ask for more of the page (order summaries sit late in it); the content script caps both.
+  | { type: "scout:snapshot"; maxElements?: number; maxTextChars?: number }
   | { type: "scout:act"; action: Action }
-  // Store cart API (Shopify), T031: same-origin, user's session, never checkout.
+  // Store cart API (Shopify, WooCommerce, BigCommerce), T031/T040: same-origin, user's session, never checkout.
   | { type: "scout:cart-info" }
   | { type: "scout:cart-update"; discount: string }
+  // Codes the store's home page advertises (same origin); only the codes come back.
+  | { type: "scout:store-codes" }
   | { type: "scout:reload" };
 
 /** Global the content script registers its handler under (isolated world). */

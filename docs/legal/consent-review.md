@@ -9,7 +9,8 @@ recorded in `activity.md` the same day. Not bundled into the app.
 Changed after review (Part 2, 2026-10-16): the extension's consent wording
 is now version 2 (`src/settings/consent.ts`): it adds the page description,
 says form entries, password fields, and hidden fields are left out and secrets
-removed, and adds screenshots (per site) and open-tab search (off by default).
+removed, and adds screenshots (per site; they show everything on screen, including
+anything typed into the page) and open-tab search (off by default).
 Counsel reviewed version 1 only; version 2 is not reviewed
 (`docs/launch-blockers.md`, blocker 23). The text below is version 1.
 
