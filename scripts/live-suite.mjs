@@ -118,7 +118,7 @@ async function addViaShopify(shop, origin) {
         return j && Array.isArray(j.products) ? j.products : null;
       }, origin + path).catch(() => null);
     if (!products) continue;
-    const variant = products.flatMap((p) => (Array.isArray(p.variants) ? p.variants : [])).find((v) => v && v.available !== false && typeof v.id === "number" && Number(v.price) > 0);
+    const variant = products.flatMap((p) => (Array.isArray(p.variants) ? p.variants : [])).find((v) => v && v.available !== false && v.requires_selling_plan !== true && typeof v.id === "number" && Number(v.price) > 0);
     if (!variant) return { ok: false, reason: "shopify catalog has no available variant" };
     const added = await evalWithin(shop, async ([o, id]) => {
         const r = await fetch(o + "/cart/add.js", {
@@ -146,7 +146,8 @@ async function addViaProductJson(shop, origin) {
       const r = await fetch(path + ".js", { credentials: "same-origin", headers: { accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
       if (!r.ok) return null;
       const p = await r.json().catch(() => null);
-      const v = p && Array.isArray(p.variants) ? p.variants.find((x) => x && x.available !== false && typeof x.id === "number" && Number(x.price) > 0) : null;
+      // A one-time purchase: subscription-only variants can land in the cart at $0 (Lineage Provisions, 2026-10-17).
+      const v = p && Array.isArray(p.variants) ? p.variants.find((x) => x && x.available !== false && x.requires_selling_plan !== true && typeof x.id === "number" && Number(x.price) > 0) : null;
       if (!v) return null;
       const a = await fetch("/cart/add.js", {
         method: "POST",
