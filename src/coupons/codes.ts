@@ -13,8 +13,13 @@ import { identifyMerchant, type Merchant } from "./merchant";
 import { codesWithContext } from "./store";
 
 export const MAX_FOUND = 40;
-/** The whole search, resumed turns included; what was found by then is kept. */
-export const SEARCH_TIME_MS = 150_000;
+/**
+ * The whole search, resumed turns included; what was found by then is kept.
+ * Live sweep 2026-10-17: most searches finish in about a minute, but one that
+ * fetches several slow pages before writing its first code line was cut off
+ * at 150 s with nothing kept, so the budget is four minutes.
+ */
+export const SEARCH_TIME_MS = 240_000;
 /** Web searches and page fetches the model may run per search. */
 export const SEARCH_USES = 10;
 export const FETCH_USES = 8;
