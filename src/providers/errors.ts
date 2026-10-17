@@ -8,7 +8,9 @@ export type ProviderErrorCode =
   | "bad_request"
   | "stream_error"
   | "consent_required"
-  | "no_key";
+  | "no_key"
+  /** The account has no API credit (Anthropic "credit balance is too low", OpenAI "insufficient_quota"). */
+  | "no_credit";
 
 const MESSAGES: Record<ProviderErrorCode, string> = {
   auth_invalid: "The API key was rejected. Check the key in Scout for Safari settings.",
@@ -19,7 +21,11 @@ const MESSAGES: Record<ProviderErrorCode, string> = {
   stream_error: "The response stream ended with an error.",
   consent_required: "Scout for Safari needs your permission before it sends anything to this provider. Nothing was sent.",
   no_key: "No API key is saved for this provider. Add one in Settings.",
+  no_credit: "Your {provider} account has no API credit left. Add credits in the provider's billing console, then try again.",
 };
+const PROVIDER_NAME: Record<ProviderId, string> = { anthropic: "Anthropic", openai: "OpenAI" };
+// What providers say when the account cannot pay for the request.
+const NO_CREDIT = /credit balance|insufficient[_ ]quota|exceeded your current quota|purchase credits|plans\s*&\s*billing|billing details/i;
 
 export class ProviderError extends Error {
   constructor(
@@ -30,7 +36,7 @@ export class ProviderError extends Error {
     /** The provider's own one-line reason for a rejected request (see `errorDetail`), when it gave one. */
     readonly detail?: string,
   ) {
-    super(MESSAGES[code]);
+    super(MESSAGES[code].replace("{provider}", PROVIDER_NAME[provider]));
     this.name = "ProviderError";
   }
 
@@ -76,6 +82,8 @@ export function errorFromStatus(provider: ProviderId, res: Response, detail?: st
   const s = res.status;
   const retry = Number(res.headers.get("retry-after"));
   const retryAfter = Number.isFinite(retry) && retry > 0 ? retry : undefined;
+  // An account out of credit answers 400 (Anthropic) or 429 with insufficient_quota (OpenAI).
+  if (detail && NO_CREDIT.test(detail) && (s === 400 || s === 402 || s === 403 || s === 429)) return new ProviderError(provider, "no_credit", s, undefined, detail);
   if (s === 401 || s === 403) return new ProviderError(provider, "auth_invalid", s, undefined, detail);
   if (s === 429) return new ProviderError(provider, "rate_limited", s, retryAfter, detail);
   if (s >= 500) return new ProviderError(provider, "provider_unavailable", s, undefined, detail);
