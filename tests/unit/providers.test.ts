@@ -249,13 +249,26 @@ describe("web search depth and fetch (T031)", () => {
 describe("rejected requests carry the provider's reason", () => {
   const search = { model: "m", messages: [{ role: "user" as const, content: "find codes" }], maxTokens: 64 };
   it.each(["anthropic", "openai"] as const)("%s: a JSON 400 names the reason, without key-like strings", async (id) => {
-    const body = JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "Your credit balance is too low to access the API.\n  Key sk-ant-abcdefghijklmnop was used." } });
+    const body = JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "messages.0.content: field required.\n  Key sk-ant-abcdefghijklmnop was used." } });
     const f: FetchLike = async () => new Response(body, { status: 400, headers: { "content-type": "application/json" } });
     const err = await collect(createProvider(id, { apiKey: "k", fetch: f }).stream(search)).catch((e) => e);
     expect(err).toBeInstanceOf(ProviderError);
     expect(err.code).toBe("bad_request");
-    expect(err.userMessage).toBe("The provider rejected the request. The provider said: Your credit balance is too low to access the API. Key [removed] was used.");
+    expect(err.userMessage).toBe("The provider rejected the request. The provider said: messages.0.content: field required. Key [removed] was used.");
     expect(err.userMessage).not.toContain("sk-ant");
+  });
+
+  it("an account out of credit gets its own message, on either provider", async () => {
+    const anthropic = JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits." } });
+    let f: FetchLike = async () => new Response(anthropic, { status: 400 });
+    let err = await collect(createProvider("anthropic", { apiKey: "k", fetch: f }).stream(search)).catch((e) => e);
+    expect(err.code).toBe("no_credit");
+    expect(err.userMessage).toBe("Your Anthropic account has no API credit left. Add credits in the provider's billing console, then try again.");
+    const openai = JSON.stringify({ error: { message: "You exceeded your current quota, please check your plan and billing details.", type: "insufficient_quota", code: "insufficient_quota" } });
+    f = async () => new Response(openai, { status: 429 });
+    err = await collect(createProvider("openai", { apiKey: "k", fetch: f }).stream(search)).catch((e) => e);
+    expect(err.code).toBe("no_credit");
+    expect(err.userMessage).toBe("Your OpenAI account has no API credit left. Add credits in the provider's billing console, then try again.");
   });
 
   it("a 429 or 500 keeps its plain message", async () => {
