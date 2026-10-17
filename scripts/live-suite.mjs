@@ -168,6 +168,16 @@ async function addViaProductJson(shop, origin) {
 }
 
 const PRODUCT_LINKS = 'a[href*="/product/"], a[href*="/products/"], a[href*="/shop/"], a[href*="/store/"], a[href*="/item/"]';
+/** The first product link that is not a gift card (Dr. Squatch's home page leads with one). */
+async function firstProductLink(shop) {
+  for (const a of await shop.$(PRODUCT_LINKS)) {
+    const href = (await a.getAttribute("href")) || "";
+    const text = ((await a.textContent().catch(() => "")) || "").trim();
+    if (/gift[-\s]?card|e-?gift/i.test(href + " " + text)) continue;
+    return a;
+  }
+  return null;
+}
 /** A size or other option to pick before Add to cart appears (BYLT "Select a size", Cuts "Select Size"). */
 async function pickFirstOption(shop) {
   const picker = shop.getByRole("button", { name: /select (a |your )?(size|option)/i }).first();
@@ -188,14 +198,14 @@ async function addToCart(shop, origin) {
   if (viaApi) return viaApi;
   // Other stores: open a product page (a product link, or a "Shop now" / collection link and then
   // a product link on that page), press Add to cart, open the cart.
-  let productLink = await shop.$(PRODUCT_LINKS);
+  let productLink = await firstProductLink(shop);
   if (!productLink) {
     const entry = await shop.$('a:has-text("shop now"), a:has-text("buy now"), a[href*="/collections/"], a[href*="/collection/"]');
     if (!entry) return { ok: false, reason: "no product link found on the home page" };
     const entryHref = await entry.getAttribute("href");
     await shop.goto(new URL(entryHref, origin).toString(), { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
     await wait(1500);
-    productLink = await shop.$(PRODUCT_LINKS);
+    productLink = await firstProductLink(shop);
   }
   const onProductPage = !productLink && /\/(products?|store|item)\//.test(shop.url());
   if (!productLink && !onProductPage) return { ok: false, reason: "no product link found on the home page" };
