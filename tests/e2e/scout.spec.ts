@@ -187,6 +187,8 @@ test("a task runs a batch, logs each step in plain language, shows the overlay a
   await openPopup(page, [toolTurn("act", { actions: [{ type: "fill_field", target: { ref: "e1" }, value: "Ada" }, { type: "click", target: { ref: "e3" } }] }, "Found the name field, filling it and applying."), finish("Applied the code.\n- Filled the name")]);
   await startTask(page, "Apply my code");
   await expect(traceHead(page)).toContainText("Working");
+  // The moving indicator shows while the task works (owner item 14).
+  await expect(traceHead(page).locator(".pulse")).toHaveCount(1);
   // Folded by default; the chevron opens it.
   await expect(page.locator("#task .trace-body")).toBeHidden();
   await traceHead(page).click();
@@ -198,6 +200,7 @@ test("a task runs a batch, logs each step in plain language, shows the overlay a
   await expect(log.getByText("Applied the code.")).toBeVisible();
   // The trace stays inline, folded under "Finished", with the steps under its Steps row.
   await expect(traceHead(page)).toContainText("Finished");
+  await expect(traceHead(page).locator(".pulse")).toHaveCount(0);
   await expect(page.locator("#task .controls")).toHaveCount(0);
   await expect(page.locator("#task .step")).toHaveText(["Browsed · 2 actions"]);
   await expect(page.locator("#task .steps summary")).toHaveText("Steps (4)");

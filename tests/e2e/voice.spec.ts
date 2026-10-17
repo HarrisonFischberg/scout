@@ -220,19 +220,3 @@ test("voice chat: what was said is sent, the answer is read aloud, then Scout li
   expect(await page.evaluate(() => (window as unknown as { __listening: boolean }).__listening)).toBe(false);
   await expect(foot(page).getByRole("button", { name: "Start voice chat" })).toBeVisible();
 });
-
-test("@preview mic and voice buttons", async ({ page }) => {
-  test.skip(!process.env.SCOUT_PREVIEW, "preview screenshots only");
-  await stubSpeech(page);
-  await page.setViewportSize({ width: 390, height: 640 });
-  await page.emulateMedia({ colorScheme: "dark" });
-  await openPopup(page, { keys: { anthropic: GOOD_KEY } });
-  const out = process.env.SCOUT_PREVIEW!;
-  await page.locator("#composer").screenshot({ path: out + "/empty.png" });
-  await page.getByLabel("Ask about this page").fill("Is there free shipping?");
-  await page.locator("#composer").screenshot({ path: out + "/typed.png" });
-  await page.getByLabel("Ask about this page").fill("");
-  await foot(page).getByRole("button", { name: "Dictate" }).click();
-  await page.evaluate(() => (window as unknown as { __hear: (t: string, f: boolean) => void }).__hear("Find cheaper shoes", false));
-  await page.locator("#composer").screenshot({ path: out + "/dictating.png" });
-});

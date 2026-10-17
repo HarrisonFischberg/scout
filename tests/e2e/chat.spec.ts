@@ -68,6 +68,24 @@ test("ask about the page streams a Markdown answer", async ({ page }) => {
   expect(bodies[0]).toContain("Widget costs $10.");
 });
 
+test("an answer shows the moving indicator until its first words", async ({ page }) => {
+  await openPopup(page, { key: "sk-test-synthetic" });
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((r) => (release = r));
+  await page.route("https://api.anthropic.com/**", async (r) => {
+    await gate;
+    await r.fulfill({ status: 200, contentType: "text/event-stream", body: ANSWER });
+  });
+  await page.getByLabel("Ask about this page").fill("How much is the widget?");
+  await page.getByRole("button", { name: "Send" }).click();
+  const log = page.getByRole("log", { name: "Conversation" });
+  await expect(log.locator(".msg.assistant .thinking .pulse")).toHaveCount(1);
+  await expect(log.locator(".msg.assistant .thinking")).toHaveText("Thinking…");
+  release();
+  await expect(log.getByText("with free shipping.")).toBeVisible();
+  await expect(log.locator(".pulse")).toHaveCount(0);
+});
+
 test("summarize button works", async ({ page }) => {
   await openPopup(page, { key: "sk-test-synthetic" });
   await page.getByRole("button", { name: "Summarize this page" }).click();
@@ -101,6 +119,23 @@ test.describe("touch device", () => {
     await expect(page.getByLabel("Ask about this page")).toBeVisible();
     await expect(page.getByLabel("Ask about this page")).not.toBeFocused();
   });
+
+  // Owner item 6 (2026-10-17): Safari's sheet bar already names Scout, so the
+  // chat header drops its own icon and title but keeps New chat and Settings.
+  test("the chat header shows no repeated name, only New chat and Settings", async ({ page }) => {
+    await openPopup(page, { key: "sk-test-synthetic" });
+    const header = page.locator("#chat-view > header");
+    await expect(header.locator("img")).toBeHidden();
+    await expect(page.getByRole("heading", { name: "Scout for Safari", level: 1 })).toHaveCSS("width", "1px");
+    await expect(page.getByRole("button", { name: "New chat" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
+  });
+});
+
+test("on Mac the chat header keeps the icon and the name", async ({ page }) => {
+  await openPopup(page, { key: "sk-test-synthetic" });
+  await expect(page.locator("#chat-view > header img")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scout for Safari", level: 1 })).toBeVisible();
 });
 
 // T018: with OpenAI chosen but only an Anthropic key saved, the popup used

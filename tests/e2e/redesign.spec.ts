@@ -107,6 +107,10 @@ test("Scout mode shows a bold chip and switches the send action", async ({ page 
   await expect(page.locator("#mode-chip")).toBeVisible();
   await expect(page.locator("#mode-chip span")).toHaveText("Scout mode");
   expect(await page.locator("#mode-chip").evaluate((n) => getComputedStyle(n).fontWeight)).toBe("700");
+  // No color, like the mode switch icons (owner item 11): the chip and its icon use the plain text color.
+  const colors = await page.locator("#mode-chip").evaluate((n) => [getComputedStyle(n).color, getComputedStyle(document.body).color, getComputedStyle(n.querySelector("svg")!).stroke]);
+  expect(colors[0]).toBe(colors[1]);
+  expect(colors[2]).toBe(colors[0]);
   // With text in the box the button is Send (Start task); empty, it may be the voice button.
   await page.getByLabel("Ask about this page").fill("Add the blue one to the cart");
   await expect(page.getByRole("button", { name: "Start task" })).toBeVisible();
