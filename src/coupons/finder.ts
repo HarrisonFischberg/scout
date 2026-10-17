@@ -208,6 +208,22 @@ export interface SettleTimes {
 }
 const POLL_MS = 300;
 const MIN_QUIET_MS = 600;
+const CHECKOUT_CONTROL = /\bcheck\s*out\b/i;
+const CART_PAGE = /\b(?:cart|bag|basket)\b/i;
+
+/**
+ * Why no code can be tested here. Many stores (headless and drawer-only
+ * Shopify fronts among them) take codes only on the checkout page; a cart
+ * page with a Checkout button says so, so the user knows where to go.
+ */
+export function noBoxMessage(snap: Snapshot): string {
+  const checkout = snap.elements.some((e) => (e.tag === "button" || e.role === "button" || e.role === "link" || e.tag === "a") && CHECKOUT_CONTROL.test(e.name));
+  const onCart = CART_PAGE.test(snap.title) || CART_PAGE.test(snap.url) || /openCart|cart=/i.test(snap.url);
+  if (checkout && onCart) {
+    return "No coupon box on this cart. This store takes codes on its checkout page: open Checkout (nothing is bought until you confirm there) and run Find coupons again.";
+  }
+  return "No coupon box found on this page. Open the cart or checkout page first.";
+}
 const EPS = 0.004;
 const KEPT_NOTE = "The store kept the earlier code on the order and shows no remove button I can use safely, so I stopped testing there.";
 
@@ -267,7 +283,7 @@ async function pageTester(
       opened = await open(first);
     }
   }
-  if (!opened) return { error: "no_form", message: "No coupon box found on this page. Open the cart or checkout page first." };
+  if (!opened) return { error: "no_form", message: noBoxMessage(first) };
   const base = totalOf(opened.snap);
   if (!base) return { error: "error", message: "Could not read a total on this page, so savings cannot be measured." };
   const baseline = base.amount;
