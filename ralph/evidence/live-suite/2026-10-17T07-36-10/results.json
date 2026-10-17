@@ -3921,6 +3921,16 @@
         "codes": []
       },
       "seconds": 13
+    },
+    {
+      "name": "Trayvax",
+      "url": "https://www.trayvax.com",
+      "group": "apparel",
+      "outcome": "blocked: could not add to cart (shopify /cart/add.js refused)",
+      "notes": [],
+      "stages": [],
+      "startedAt": "2026-10-17T08:17:45.141Z",
+      "seconds": 18502
     }
   ]
 }
