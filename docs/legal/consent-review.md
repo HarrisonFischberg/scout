@@ -41,7 +41,7 @@ directly; engineering will copy changes into the app word for word.
   directly from the user's device to `api.anthropic.com` or
   `api.openai.com` under the user's own provider account, which the
   provider bills.
-- Features that send data: chat questions, Summarize page, Control Browser
+- Features that send data: chat questions, Summarize page, Scout mode (named "Scout mode" when this packet was reviewed)
   (an agent that clicks and types on the page after per-action approval),
   Find coupons (provider web search for codes, then tests codes on the
   cart), testing a key, and loading the provider's model list.
@@ -62,8 +62,8 @@ provider, using your own API key. Each time you use Safari Scout, Anthropic
 receives:
 
 - Your messages and the tasks you type.
-- When a request uses the page (questions, Summarize, Control Browser, Find
-  coupons): the page's address, title, and text, and for Control Browser
+- When a request uses the page (questions, Summarize, Scout mode, Find
+  coupons): the page's address, title, and text, and for Scout mode
   and Find coupons its links, buttons, and form fields. Password and card
   fields are hidden first.
 - Text of other tabs only when you choose them.
@@ -124,8 +124,8 @@ provider, using your own API key. Anthropic receives:
 
 - Now, to test your key: only the key, so Anthropic can check it.
 - Later, in Safari: your messages and the tasks you type.
-- When a request uses the page (questions, Summarize, Control Browser, Find
-  coupons): the page's address, title, and text, and for Control Browser
+- When a request uses the page (questions, Summarize, Scout mode, Find
+  coupons): the page's address, title, and text, and for Scout mode
   and Find coupons its links, buttons, and form fields. Password and card
   fields are hidden first.
 - Text of other tabs only when you choose them.
