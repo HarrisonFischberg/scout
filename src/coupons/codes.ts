@@ -275,7 +275,7 @@ export async function suggestCodes(
           role: "user" as const,
           content:
             "Store: " + merchant.brand + "\nStore website: " + merchant.domain +
-            (merchant.host !== merchant.domain ? "\nCheckout host: " + merchant.host : "") +
+            (merchant.host.replace(/^www\./, "") !== merchant.domain ? "\nCheckout host: " + merchant.host : "") +
             (aka.length ? "\nAlso written as: " + aka.join(", ") : "") +
             (opts.more ? "\n" + MORE_FOCUS : "") +
             (opts.exclude?.length
