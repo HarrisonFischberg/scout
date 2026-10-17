@@ -118,7 +118,11 @@ async function addViaShopify(shop, origin) {
         return j && Array.isArray(j.products) ? j.products : null;
       }, origin + path).catch(() => null);
     if (!products) continue;
-    const variant = products.flatMap((p) => (Array.isArray(p.variants) ? p.variants : [])).find((v) => v && v.available !== false && v.requires_selling_plan !== true && typeof v.id === "number" && Number(v.price) > 0);
+    // A real product, not a gift card (Brumate's catalog starts with a $10 e-gift card, which no code discounts).
+    const variant = products
+      .filter((p) => !/gift\s*card|e-?gift/i.test((p.title || "") + " " + (p.product_type || "")))
+      .flatMap((p) => (Array.isArray(p.variants) ? p.variants : []))
+      .find((v) => v && v.available !== false && v.requires_selling_plan !== true && typeof v.id === "number" && Number(v.price) > 0);
     if (!variant) return { ok: false, reason: "shopify catalog has no available variant" };
     const added = await evalWithin(shop, async ([o, id]) => {
         const r = await fetch(o + "/cart/add.js", {
