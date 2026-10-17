@@ -103,11 +103,11 @@ test("checkout page without a cart API: types codes only into the discount box, 
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   await expect(answer).toContainText(
-    "I tested 5 codes. SAVE20 is the best: your total drops from $170.00 to $136.00 (you save $34.00, 20% off).",
+    /I tested 5 codes found online for .+?\. SAVE20 is the best: your total drops from \$170\.00 to \$136\.00 \(you save \$34\.00, 20% off\)\./,
     RUN_WAIT,
   );
   await expect(answer).toContainText("It's applied to your cart, and I didn't go to checkout.");
-  // A batch with a saving ends the search: no prompt for more.
+  // A run with a saving ends the search: no prompt for more.
   await expect(page.locator("#coupons-more")).toBeHidden();
   // The trace is folded by default: open it to read the code lines.
   await page.locator("#task .trace-head").click();
@@ -132,7 +132,7 @@ test("checkout page on a Shopify store: tests codes through the cart API and app
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   await expect(answer).toContainText(
-    "I tested 3 codes. BEEFY15 is the best: your total drops from $151.79 to $135.81 (you save $15.98, 11% off).",
+    /I tested 3 codes found online for .+?\. BEEFY15 is the best: your total drops from \$151\.79 to \$135\.81 \(you save \$15\.98, 11% off\)\./,
     RUN_WAIT,
   );
   await expect(answer).toContainText("It's applied to your cart");
