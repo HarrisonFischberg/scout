@@ -68,8 +68,13 @@ export type StreamEvent =
    * model fetched (Anthropic web fetch); `age` is the search result's age.
    */
   | { type: "source"; url: string; title?: string; text?: string; page?: string; age?: string }
-  /** A page the model asked the provider to fetch (Anthropic web fetch), whether or not it loaded. */
-  | { type: "fetch"; url: string }
+  /**
+   * The outcome of a page the model asked the provider to fetch (Anthropic
+   * web fetch): `ok` with the text length, or the provider's error code
+   * ("url_not_accessible" for a 403, "unavailable", …). A failed fetch is
+   * never a source.
+   */
+  | { type: "fetch"; url: string; ok: boolean; chars?: number; error?: string }
   | { type: "usage"; usage: Usage }
   | { type: "done" };
 

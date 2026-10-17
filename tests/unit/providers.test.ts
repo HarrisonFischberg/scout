@@ -224,7 +224,7 @@ describe("web search depth and fetch (T031)", () => {
     });
     const events = [];
     for await (const ev of p.stream({ model: "m", messages: [{ role: "user", content: "x" }], maxTokens: 10, webSearch: true, webFetch: true })) events.push(ev);
-    expect(events.filter((e) => e.type === "fetch")).toEqual([{ type: "fetch", url: "https://deals.test/blocked" }]);
+    expect(events.filter((e) => e.type === "fetch")).toEqual([{ type: "fetch", url: "https://deals.test/blocked", ok: false, error: "url_not_accessible" }]);
     // A fetch that failed is no source: nothing was retrieved from it.
     expect(events.some((e) => e.type === "source")).toBe(false);
   });
@@ -267,6 +267,7 @@ describe("web search depth and fetch (T031)", () => {
       { type: "web_search_20260209", name: "web_search", max_uses: 8 },
       { type: "web_fetch_20260209", name: "web_fetch", max_uses: 5, citations: { enabled: true }, max_content_tokens: 40_000 },
     ]);
+    expect(events).toContainEqual({ type: "fetch", url: "https://linktr.ee/example", ok: true, chars: 30 });
     expect(events).toContainEqual({ type: "source", url: "https://linktr.ee/example", title: "Example links", page: "Use code CREATOR10 for 10% off" });
     expect(events).toContainEqual({ type: "source", url: "https://deals.test/x", title: "Deals", age: "June 7, 2026" });
   });
