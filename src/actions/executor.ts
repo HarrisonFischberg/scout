@@ -44,6 +44,10 @@ export interface ActionEl {
   /** Pick an option by value or visible label. Returns false if none matches. */
   select(value: string): boolean;
   scrollIntoView(): void;
+  /** Coupon runs: move the visible pointer here and show the press, before `click`. */
+  showClick?(): Promise<void>;
+  /** Coupon runs: start from `start` and type `text` one character at a time, in view. */
+  typeVisibly?(start: string, text: string): Promise<void>;
 }
 
 export interface ActionPage {
@@ -88,6 +92,10 @@ export async function executeAction(page: ActionPage, action: Action): Promise<A
         if (isResult(el)) return el;
         if (el.disabled) return fail("click", "disabled", `Element ${action.ref} is disabled.`, action.ref);
         el.scrollIntoView();
+        if (el.showClick) {
+          await el.showClick();
+          if (!el.connected) return fail("click", "stale_ref", `Element ${action.ref} is no longer on the page. Take a new snapshot.`, action.ref);
+        }
         el.click();
         return { ok: true, action: "click", ref: action.ref, message: `Clicked ${action.ref}.` };
       }
@@ -100,7 +108,9 @@ export async function executeAction(page: ActionPage, action: Action): Promise<A
           el.tag === "textarea" || (el.tag === "input" && TYPEABLE_INPUT_TYPES.has((el.type ?? "").toLowerCase()));
         if (!typeable) return fail("type", "not_typeable", `Element ${action.ref} does not accept text.`, action.ref);
         el.scrollIntoView();
-        el.setValue(action.clear === false ? el.getValue() + action.text : action.text);
+        const start = action.clear === false ? el.getValue() : "";
+        if (el.typeVisibly && action.text !== "") await el.typeVisibly(start, action.text);
+        else el.setValue(start + action.text);
         return {
           ok: true,
           action: "type",
