@@ -1524,7 +1524,7 @@ async function main(): Promise<void> {
       const p = document.createElement("p");
       p.className = "say";
       p.textContent = e.text;
-      t.body.insertBefore(p, t.controls);
+      t.body.insertBefore(p, t.stepsList.parentElement);
       return;
     }
     if (e.status === "ok" || e.status === "failed") {
@@ -1534,7 +1534,7 @@ async function main(): Promise<void> {
         row.insertAdjacentHTML("afterbegin", PAGE_ICON);
         const label = document.createElement("span");
         row.appendChild(label);
-        t.body.insertBefore(row, t.controls);
+        t.body.insertBefore(row, t.stepsList.parentElement);
         t.group = { row, label, count: 0 };
       }
       t.group.count++;
@@ -1550,7 +1550,7 @@ async function main(): Promise<void> {
       const label = document.createElement("span");
       label.textContent = e.text;
       row.appendChild(label);
-      t.body.insertBefore(row, t.controls);
+      t.body.insertBefore(row, t.stepsList.parentElement);
     }
     // Other notes ("Started: …") stay in the Steps list only.
   }
@@ -1571,12 +1571,14 @@ async function main(): Promise<void> {
     const head = document.createElement("button");
     head.type = "button";
     head.className = "trace-head";
-    head.setAttribute("aria-expanded", "true");
+    // Folded by default (owner, 2026-10-17): the chevron opens the trace.
+    head.setAttribute("aria-expanded", "false");
     const headText = document.createElement("span");
     head.append(headText);
     head.insertAdjacentHTML("beforeend", CHEVRON);
     const body = document.createElement("div");
     body.className = "trace-body";
+    body.hidden = true;
     head.addEventListener("click", () => {
       const open = body.hidden;
       body.hidden = !open;
@@ -1602,8 +1604,9 @@ async function main(): Promise<void> {
     stopBtn.textContent = "Stop";
     if (opts.takeControl !== false) controls.append(take);
     controls.append(stopBtn);
-    body.append(controls, steps);
-    node.append(head, body);
+    body.append(steps);
+    // Controls sit outside the folded part, so they are always reachable.
+    node.append(head, body, controls);
     log.appendChild(node);
     const t = { entries: [] as Entry[], startedAt, node, head, headText, body, stepsList, stepsSummary, controls, take, stopBtn, group: null, state, timer: null } as Omit<TaskUi, "id" | "goal" | "source" | "promptId" | "resolve" | "finished">;
     for (const e of entries) {
@@ -1866,7 +1869,7 @@ async function main(): Promise<void> {
   function attemptRow(
     a: { code: string; total: number | null; saving: number | null; accepted: boolean | null; note: string; origin: Parameters<typeof originLabel>[0]["origin"]; sourceUrl?: string },
     currency: string | undefined,
-    t: { body: HTMLElement; controls: HTMLElement },
+    t: { body: HTMLElement },
   ): void {
     const row = document.createElement("div");
     const good = a.saving !== null && a.saving > 0 && a.accepted !== false;
@@ -1890,7 +1893,7 @@ async function main(): Promise<void> {
       link.textContent = label;
       row.appendChild(link);
     } else row.append(label);
-    t.body.insertBefore(row, t.controls);
+    t.body.appendChild(row);
     scrollToEnd();
   }
 
@@ -1916,7 +1919,7 @@ async function main(): Promise<void> {
       noBtn.textContent = "Stop here";
       row.append(yesBtn, noBtn);
       box.append(p, row);
-      t.body.insertBefore(box, t.controls);
+      t.controls.insertAdjacentElement("beforebegin", box);
       status.textContent = "Waiting for you: try more codes?";
       scrollToEnd();
       yesBtn.focus();
@@ -1960,7 +1963,7 @@ async function main(): Promise<void> {
       const p = document.createElement("p");
       p.className = "say";
       p.textContent = text;
-      t.body.insertBefore(p, t.controls);
+      t.body.appendChild(p);
       scrollToEnd();
     };
     const timer = setInterval(() => (t.headText.textContent = "Working " + elapsedText(Date.now() - t.startedAt)), 1000);

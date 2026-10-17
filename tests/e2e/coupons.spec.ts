@@ -130,6 +130,8 @@ test("coupon run tests a batch of 25, applies the best without asking, never cli
   );
   await expect(answer).toContainText("It's applied to your cart, and I didn't go to checkout.");
   await expect(page.locator("#coupons-more")).toBeHidden();
+  // The trace is folded by default: open it to read the code lines.
+  await page.locator("#task .trace-head").click();
   const rows = page.locator("#task .attempt");
   await expect(rows).toHaveCount(25);
   // Codes found online come first and link to their page; guesses are labeled.
@@ -168,6 +170,8 @@ test("no winning code: asks to find 25 more, searches again without repeating co
   expect(asks).toHaveLength(2);
   expect(asks[1]).toContain("Already tried, do not list these again");
   expect(asks[1]).toContain("WELCOME5, SAVE10, FREESHIP, SAVE20, BOGUS99");
+  // The trace is folded by default: open it to read the code lines.
+  await page.locator("#task .trace-head").click();
   const rows = page.locator("#task .attempt");
   await expect(rows).toHaveCount(50);
   const codes = await rows.locator(".code").allTextContents();

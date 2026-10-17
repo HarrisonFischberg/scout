@@ -187,6 +187,10 @@ test("a task runs a batch, logs each step in plain language, shows the overlay a
   await openPopup(page, [toolTurn("act", { actions: [{ type: "fill_field", target: { ref: "e1" }, value: "Ada" }, { type: "click", target: { ref: "e3" } }] }, "Found the name field, filling it and applying."), finish("Applied the code.\n- Filled the name")]);
   await startTask(page, "Apply my code");
   await expect(traceHead(page)).toContainText("Working");
+  // Folded by default; the chevron opens it.
+  await expect(page.locator("#task .trace-body")).toBeHidden();
+  await traceHead(page).click();
+  await expect(page.locator("#task .trace-body")).toBeVisible();
   await expect(page.locator("#task .say")).toHaveText("Found the name field, filling it and applying.");
   const log = page.getByRole("log", { name: "Conversation" });
   await expect(log.locator(".msg.user")).toContainText("Apply my code");
@@ -201,6 +205,8 @@ test("a task runs a batch, logs each step in plain language, shows the overlay a
   await expect(taskLog(page)).toContainText("Did: click “Apply”");
   await traceHead(page).click();
   await expect(page.locator("#task .trace-body")).toBeHidden();
+  // Controls were outside the fold while it ran, and are gone now.
+  await expect(page.locator("#task .controls")).toHaveCount(0);
   expect(await acts(page)).toEqual(["fill_field", "click"]);
   const f = await fake(page);
   const overlay = f.rec.filter((r) => r.what.startsWith("overlay:")).map((r) => r.what);
