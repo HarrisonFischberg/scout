@@ -124,14 +124,18 @@ Checkout button and no coupon box says where the field is (0a2fd0f); on a
 store with no remove control, the page path keeps testing when the store
 swaps the kept code for the next working one and stops only when it stacks
 them, saying so (after the sweep; Brumate had tested 1 code of 24); an
-applied code shown as a "× CODE" pill is a remove control (Brumate's
-drawer); the request lists the eight pages that printed working codes most
-often, ordered by how often, tells the model to open every one before its
-first search, and a short follow-up (75 s, no searching) opens the listed
-pages the search skipped, because Tackform's STREETDEALX sat in plain text
-on a listed CouponBind page the model never opened in three runs (the
-provider's fetch requests now travel on the stream, so the engine knows
-which listed pages were asked for, loaded or not).
+applied code shown as a "× CODE" pill, or an × icon whose SVG title says
+"Remove discount", is a remove control (Brumate's drawer); the eight pages
+that printed working codes most often, ordered by how often, are read in a
+short pass of their own (100 s, no search tool) before the search starts,
+and the search is told which were read and which were not, because
+Tackform's STREETDEALX sat in plain text on a listed CouponBind page the
+model never opened in three runs, and a model told to open every listed
+page before searching read 140 000 characters and wrote nothing in four
+minutes (Brumate run h); every page fetch's outcome (text length or the
+provider's error code) and the reply lines the parser could not read are
+traced per run; the search-only retry now runs when no code line was
+written, not only when nothing at all was.
 
 Still open: OLIPOP's 48 codes were all refused; four stores ended with
 masked codes only (IQBAR, Mid-Day Squares, True Classic, WORN), two more on
