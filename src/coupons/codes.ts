@@ -348,6 +348,13 @@ export interface SearchOptions {
   /** False: the listed pages are not read in a pass of their own first. */
   readPages?: boolean;
   readTimeoutMs?: number;
+  /**
+   * Called while the search runs with codes not reported before, best first,
+   * so they can be tested before the search ends (owner, 2026-10-17). Only
+   * finished lines count, and each code passes the same evidence check as
+   * the final list.
+   */
+  onFound?: (fresh: CouponCandidate[]) => void;
 }
 
 export async function suggestCodes(
@@ -410,6 +417,22 @@ export async function suggestCodes(
       ? "\nAlready tried, do not list these again; look for different codes: " + opts.exclude.slice(0, MAX_EXCLUDE_LISTED).join(", ")
       : "");
 
+  const known = new Set((opts.exclude ?? []).map((c) => c.toUpperCase()));
+  /** Everything found so far, best-supported first; `whole`: the reply's last line is finished too. */
+  const collect = (whole: boolean): { findings: Findings; codes: CouponCandidate[] } => {
+    // Mid-stream, the last line may still be growing ("SAVE1" of "SAVE10").
+    const findings = parseFindings(whole ? text : text.slice(0, text.lastIndexOf("\n") + 1), retrieved);
+    const codes = rankCandidates(mergeCandidates(findings.found, cited, read), merchant).filter((c) => !known.has(c.code));
+    return { findings, codes };
+  };
+  const reported = new Set<string>();
+  const report = (whole: boolean): void => {
+    if (!opts.onFound) return;
+    const fresh = collect(whole).codes.filter((c) => !reported.has(c.code));
+    for (const c of fresh) reported.add(c.code);
+    if (fresh.length) opts.onFound(fresh);
+  };
+
   /** One streamed request; what it finds lands in `text`, `retrieved` and `cited`. Returns why it ended early, if it did. */
   const pass = async (p: { search: boolean; fetch: boolean; timeoutMs: number; searches?: number; fetches?: number; note?: string }): Promise<SearchError | undefined> => {
     const ac = new AbortController();
@@ -439,8 +462,10 @@ export async function suggestCodes(
     if (text && !text.endsWith("\n")) text += "\n";
     try {
       for await (const ev of provider.stream(req)) {
-        if (ev.type === "text") text += ev.delta;
-        else if (ev.type === "fetch") {
+        if (ev.type === "text") {
+          text += ev.delta;
+          if (ev.delta.includes("\n")) report(false);
+        } else if (ev.type === "fetch") {
           opened.add(urlKey(ev.url));
           pages.push({ url: ev.url, ok: ev.ok, ...(ev.chars !== undefined ? { chars: ev.chars } : {}), ...(ev.error ? { error: ev.error } : {}) });
         }
@@ -450,6 +475,7 @@ export async function suggestCodes(
           if (ev.text) {
             for (const c of codesWithContext(ev.text)) cited.push({ code: c.code, origin: "verified", sourceUrl: ev.url, context: c.context });
           }
+          if (ev.page || ev.text) report(false);
         } else if (ev.type === "usage") {
           inputTokens += ev.usage.inputTokens;
           outputTokens += ev.usage.outputTokens;
@@ -460,6 +486,7 @@ export async function suggestCodes(
     } catch (err) {
       return searchError(err, timedOut, signal?.aborted === true);
     } finally {
+      report(true);
       clearTimeout(timer);
       signal?.removeEventListener("abort", onAbort);
     }
@@ -496,9 +523,7 @@ export async function suggestCodes(
       }
     }
   }
-  const findings = parseFindings(text, retrieved);
-  const known = new Set((opts.exclude ?? []).map((c) => c.toUpperCase()));
-  const codes = rankCandidates(mergeCandidates(findings.found, cited, read), merchant).filter((c) => !known.has(c.code));
+  const { findings, codes } = collect(true);
   const verified = codes.filter((c) => c.origin === "verified").length;
   return {
     codes,

@@ -21,15 +21,17 @@ import { formatMoney } from "./coupons/money";
 import { codesWithContext, MAX_STORE_CODES, type StoreCode } from "./coupons/store";
 import { mergeCandidates, originLabel, rankCandidates, type CouponCandidate } from "./coupons/candidates";
 import {
+  CodeQueue,
   couponStatusText,
   couponSummary,
   discoveryLine,
   openCouponTester,
+  percentOff,
+  plural,
   runCouponSearch,
   type BatchState,
   type CartApi,
   type CartState,
-  type CouponOutcome,
   type DiscoveryInfo,
 } from "./coupons/finder";
 import { formatCostLine } from "./cost";
@@ -1859,13 +1861,17 @@ async function main(): Promise<void> {
     }
   }
 
-  // ---------- Coupons (S07, T031): find many codes, test them in batches of 25. ----------
-  // Owner, 2026-10-16: a batch that finds a saving applies the best code and
-  // ends; a batch with none asks whether to find and test 25 more.
+  // ---------- Coupons (S07, T031): find codes online and test them on the cart. ----------
+  // Owner, 2026-10-16: a run that finds a saving applies the best code and
+  // ends; one with none asks whether to search the web again.
   // Owner, 2026-10-17: no results card. The run shows inline like Scout mode
-  // (a Working line, one line per code as it is tested, the question for more
-  // codes inline, then the summary), and the page glows with the same overlay
-  // while it runs; its toast's Stop reaches this panel through the worker.
+  // (a folded Working card with one line per code as it is tested, then the
+  // summary), and the page glows with the same overlay while it runs; its
+  // toast's Stop reaches this panel through the worker.
+  // Owner, 2026-10-17 (later): codes are tested as the search finds them, all
+  // of them rather than the first 25; milestones (searching, found N, a code
+  // that saves, the search done) post in the chat outside the card, the newest
+  // with a moving indicator; the summary is a few sentences.
   interface CouponRun {
     id: string;
     stop(): void;
@@ -1934,8 +1940,8 @@ async function main(): Promise<void> {
     scrollToEnd();
   }
 
-  /** The question after a batch with no saving; the composer's Stop (or the overlay's) answers it "no". */
-  function askMoreCodes(state: BatchState, t: { node: HTMLElement }, stopped: AbortSignal): Promise<boolean> {
+  /** The question after a search whose codes saved nothing; the composer's Stop (or the overlay's) answers it "no". */
+  function askMoreCodes(state: BatchState, stopped: AbortSignal): Promise<boolean> {
     return new Promise((resolve) => {
       const box = document.createElement("div");
       box.className = "more";
@@ -1946,26 +1952,24 @@ async function main(): Promise<void> {
       p.id = "coupons-more-text";
       p.textContent =
         "We've tried " + state.tried + " code" + (state.tried === 1 ? "" : "s") + " and none lowered your total. " +
-        (state.remaining > 0
-          ? "Test the " + state.remaining + " still untested?"
-          : "Would you like Scout for Safari to search the web again, in other places, for more codes to test?");
+        "Would you like Scout for Safari to search the web again, in other places, for more codes to test?";
       const row = document.createElement("div");
       row.className = "row";
       const yesBtn = document.createElement("button");
       yesBtn.type = "button";
       yesBtn.className = "btn primary";
-      yesBtn.textContent = state.remaining > 0 ? "Keep testing" : "Search again";
+      yesBtn.textContent = "Search again";
       const noBtn = document.createElement("button");
       noBtn.type = "button";
       noBtn.className = "btn";
       noBtn.textContent = "Stop here";
       row.append(yesBtn, noBtn);
       box.append(p, row);
-      t.node.appendChild(box);
-      status.textContent = "Waiting for you: try more codes?";
+      // In the chat, not the folded card, so it is seen.
+      log.appendChild(box);
       scrollToEnd();
       yesBtn.focus();
-      trace("coupons:ask-more tried=" + state.tried + " remaining=" + state.remaining + " next=" + state.next);
+      trace("coupons:ask-more tried=" + state.tried);
       const done = (ok: boolean): void => {
         box.remove();
         stopped.removeEventListener("abort", no);
@@ -1980,6 +1984,43 @@ async function main(): Promise<void> {
       noBtn.addEventListener("click", no);
       stopped.addEventListener("abort", no, { once: true });
     });
+  }
+
+  /** A find this soon after the last "Found" line adds to it instead of posting another. */
+  const FOUND_EVERY_MS = 8000;
+  const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></span>';
+  const DONE_MARK = '<svg class="done-mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>';
+
+  /** Find coupons' milestone lines in the chat, outside the Working card; the newest one shows the moving indicator. */
+  function couponSteps(): { post(text: string): HTMLElement; edit(line: HTMLElement, text: string): void; latest(): HTMLElement | null; end(): void } {
+    let last: HTMLElement | null = null;
+    const settle = (): void => {
+      if (!last) return;
+      last.classList.remove("busy");
+      last.querySelector(".pulse")?.insertAdjacentHTML("afterend", DONE_MARK);
+      last.querySelector(".pulse")?.remove();
+    };
+    return {
+      post(text) {
+        settle();
+        const line = document.createElement("p");
+        line.className = "coupon-step busy";
+        line.innerHTML = PULSE;
+        const words = document.createElement("span");
+        words.textContent = text;
+        line.appendChild(words);
+        log.appendChild(line);
+        last = line;
+        scrollToEnd();
+        return line;
+      },
+      edit(line, text) {
+        const words = line.querySelector("span:last-child");
+        if (words) words.textContent = text;
+      },
+      latest: () => last,
+      end: settle,
+    };
   }
 
   async function runCoupons(): Promise<void> {
@@ -2009,13 +2050,17 @@ async function main(): Promise<void> {
       t.body.appendChild(p);
       scrollToEnd();
     };
+    const steps = couponSteps();
     const timer = setInterval(() => (t.headText.textContent = "Working " + elapsedText(Date.now() - t.startedAt)), 1000);
     t.headText.textContent = "Working 0s";
+    // The card's head moves too while the run works (owner, 2026-10-17).
+    t.head.insertAdjacentHTML("afterbegin", PULSE);
     syncComposer();
     plus.disabled = modelPill.disabled = true;
     for (const i of modeInputs) i.disabled = true;
     closeModelMenu();
-    status.textContent = "Finding coupons. The web search can take a couple of minutes.";
+    // Progress shows in the chat (milestones), not on the status line.
+    status.textContent = "";
     updateEmpty();
     scrollToEnd();
     stop.focus();
@@ -2071,31 +2116,83 @@ async function main(): Promise<void> {
       } else {
         trace("coupons:method " + tester.method);
         say((tester.method === "page" ? "Found the coupon box." : "Reached the store's cart.") + " Searching the web for " + merchant.brand + " codes…");
+        steps.post("Searching for coupons for " + merchant.brand + "…");
         // 2. Codes the store advertises itself (banner, announcement bar): this
-        //    page and its home page, read on the device. Then the web search.
+        //    page and its home page, read on the device. Then the web search,
+        //    whose codes are tested as it finds them.
         const storeUrl = new URL("/", snap.url).toString();
         const asStore = (c: StoreCode, sourceUrl: string): CouponCandidate => ({ code: c.code, origin: "store", sourceUrl, context: c.context });
-        const onSite = mergeCandidates(
-          codesWithContext(snap.text).map((c) => asStore(c, snap.url)),
-          (await page.storeCodes().catch((): StoreCode[] => [])).map((c) => asStore(c, storeUrl)),
-        ).slice(0, MAX_STORE_CODES);
+        const onSite = rankCandidates(
+          mergeCandidates(
+            codesWithContext(snap.text).map((c) => asStore(c, snap.url)),
+            (await page.storeCodes().catch((): StoreCode[] => [])).map((c) => asStore(c, storeUrl)),
+          ).slice(0, MAX_STORE_CODES),
+          merchant,
+        );
         trace("coupons:store-codes " + onSite.length);
+        // Milestones for one search: "Found 5 coupons…", then "Found 10 more…"
+        // at most every few seconds (a quicker find adds to the last line).
+        let tried = 0;
+        let over = false;
+        const progress = (again: boolean) => {
+          let count = 0;
+          let line: HTMLElement | null = null;
+          let lineCount = 0;
+          let lineAt = 0;
+          let lineFirst = false;
+          return {
+            found(n: number): void {
+              if (n <= 0) return;
+              const firstFind = count === 0;
+              count += n;
+              if (line && steps.latest() === line && Date.now() - lineAt < FOUND_EVERY_MS) lineCount += n;
+              else {
+                line = null;
+                lineCount = n;
+                lineAt = Date.now();
+                lineFirst = firstFind;
+              }
+              const text = lineFirst
+                ? "Found " + plural(lineCount, again ? "new coupon" : "coupon") + ". Applying them to your cart while I keep searching."
+                : "Found " + lineCount + " more, continuing to search.";
+              if (line) steps.edit(line, text);
+              else line = steps.post(text);
+            },
+            done(): void {
+              if (count === 0 || over || run.isStopped) return;
+              const left = count - (tried - (again ? triedBefore : 0));
+              steps.post("Found all relevant coupons, " + count + " in all." + (left > 0 ? " Applying the rest now." : ""));
+            },
+            get count(): number {
+              return count;
+            },
+          };
+        };
+        let triedBefore = 0;
+        const first = progress(false);
+        if (onSite.length) first.found(onSite.length);
+        const queue = new CodeQueue();
+        const storeFound = new Set(onSite.map((c) => c.code));
         trace("coupons:search");
-        const sug = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal, s.effort ? { effort: s.effort } : {});
-        addUsage(sug);
-        if (sug.error) trace("coupons:search-error " + sug.error.code);
+        const searching = suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
+          onFound: (fresh) => {
+            queue.push(fresh);
+            first.found(fresh.filter((c) => !storeFound.has(c.code)).length);
+          },
+          ...(s.effort ? { effort: s.effort } : {}),
+        });
         const discovery: DiscoveryInfo = {
           brand: merchant.brand,
-          searched: sug.searched,
-          ...(sug.error ? { error: sug.error } : {}),
+          searched: true,
           store: onSite.length,
-          verified: sug.verified,
-          reported: sug.reported,
-          masked: sug.masked,
-          dropped: sug.dropped,
-          offers: sug.offers,
+          verified: 0,
+          reported: 0,
+          masked: 0,
+          dropped: 0,
+          offers: [],
         };
         const tally = (more: SuggestedCodes): void => {
+          discovery.searched = discovery.searched && more.searched;
           discovery.verified += more.verified;
           discovery.reported += more.reported;
           discovery.masked += more.masked;
@@ -2103,7 +2200,6 @@ async function main(): Promise<void> {
           discovery.offers = [...(discovery.offers ?? []), ...more.offers];
           if (more.error && !discovery.error) discovery.error = more.error;
         };
-        const codes = rankCandidates(mergeCandidates(onSite, sug.codes), merchant);
         // Host and path only, for the run trace (no query strings).
         const pageLabel = (url: string): string => {
           try {
@@ -2113,67 +2209,97 @@ async function main(): Promise<void> {
             return "?";
           }
         };
-        trace("coupons:pages listed=" + sug.pagesListed + " opened=" + sug.pagesOpened + (sug.pagesRead ? " read-first" : ""));
-        for (const p of sug.pages) trace("coupons:page " + pageLabel(p.url) + " " + (p.ok ? "ok" : p.error ?? "error") + " " + (p.chars ?? 0));
-        trace("coupons:candidates store=" + onSite.length + " verified=" + sug.verified + " reported=" + sug.reported + " dropped=" + sug.dropped + " masked=" + sug.masked + " ignored=" + sug.ignored + " read=" + sug.readFromPages);
-        say(discoveryLine(discovery));
-        if (codes.length === 0) {
+        const searched = searching.then((sug) => {
+          addUsage(sug);
+          tally(sug);
+          if (sug.error) trace("coupons:search-error " + sug.error.code);
+          trace("coupons:pages listed=" + sug.pagesListed + " opened=" + sug.pagesOpened + (sug.pagesRead ? " read-first" : ""));
+          for (const p of sug.pages) trace("coupons:page " + pageLabel(p.url) + " " + (p.ok ? "ok" : p.error ?? "error") + " " + (p.chars ?? 0));
+          trace("coupons:candidates store=" + onSite.length + " verified=" + sug.verified + " reported=" + sug.reported + " dropped=" + sug.dropped + " masked=" + sug.masked + " ignored=" + sug.ignored + " read=" + sug.readFromPages);
+          say(discoveryLine(discovery));
+          if (sug.offers.length) say("Code-free offers the pages mention (not tested): " + sug.offers.slice(0, 3).join("; ") + ".");
+          first.done();
+          return sug;
+        }).finally(() => queue.close());
+        let best: number | null = null;
+        const outcome = await runCouponSearch({
+          page: couponPage,
+          tester,
+          codes: onSite,
+          incoming: queue,
+          control: run,
+          delayMs: 250,
+          askMore: async (state) => {
+            void overlay.state("waiting");
+            steps.end();
+            const more = await askMoreCodes(state, run.signal);
+            void overlay.state("running");
+            return more;
+          },
+          findMore: (known) => {
+            trace("coupons:find-more known=" + known.length);
+            say("Searching the web again for " + merchant.brand + " codes, in other places…");
+            steps.post("Searching the web again for " + merchant.brand + " coupons, in other places…");
+            triedBefore = tried;
+            const again = progress(true);
+            const more = new CodeQueue();
+            void suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
+              exclude: known,
+              more: true,
+              onFound: (fresh) => {
+                more.push(fresh);
+                again.found(fresh.length);
+              },
+              ...(s.effort ? { effort: s.effort } : {}),
+            })
+              .then((found) => {
+                addUsage(found);
+                tally(found);
+                if (found.error) trace("coupons:search-error " + found.error.code);
+                trace("coupons:candidates verified=" + found.verified + " reported=" + found.reported + " dropped=" + found.dropped + " masked=" + found.masked);
+                say(found.codes.length > 0 ? "Found " + plural(found.codes.length, "more code") + " to try." : "No more codes found.");
+                again.done();
+              })
+              .catch(() => undefined)
+              .finally(() => more.close());
+            return more;
+          },
+          onTry: () => {
+            tried++;
+          },
+          onAttempt: (a, index, _total, currency) => {
+            trace("coupons:attempt " + index + (a.combo ? " combo" : "") + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none"));
+            attemptRow(a, currency, t);
+            // A new best: say so in the chat.
+            if (a.accepted !== false && a.saving !== null && a.saving > 0 && a.total !== null && (best === null || a.saving > best)) {
+              best = a.saving;
+              const off = formatMoney(a.saving, currency) + " (" + percentOff(tester.baseline, a.total) + ")";
+              steps.post(
+                a.combo
+                  ? a.combo.join(" + ") + " together save " + off + "."
+                  : "Found code " + a.code + ", saves " + off + ". Continuing to apply for better savings.",
+              );
+            }
+          },
+        });
+        // A run that ended early (CAPTCHA, the store asked to slow down) needs no more codes.
+        over = true;
+        ac.abort();
+        await searched.catch(() => undefined);
+        steps.end();
+        trace("coupons:status " + outcome.status + (outcome.best ? " best" : " none") + (outcome.applied ? " applied" : ""));
+        if (outcome.status === "no_codes") {
           // Nothing to test: say so plainly; the cart stays as it was.
-          await tester.finish(null).catch(() => undefined);
-          const failed = !!sug.error && sug.error.code !== "stopped";
-          const outcome: CouponOutcome = {
-            status: sug.error?.code === "stopped" ? "stopped" : failed ? "search_failed" : "no_codes",
-            method: tester.method,
-            baseline: tester.baseline,
-            ...(tester.currency ? { currency: tester.currency } : {}),
-            attempts: [],
-            applied: false,
-            untested: 0,
-            message: "Nothing was tested, and your cart is unchanged.",
-          };
-          trace("coupons:status " + outcome.status);
-          statusOf = outcome.status === "stopped" ? "stopped" : failed ? "error" : "done";
+          const stopped = discovery.error?.code === "stopped" || run.isStopped;
+          const failed = !stopped && !!discovery.error;
+          outcome.status = stopped ? "stopped" : failed ? "search_failed" : "no_codes";
+          outcome.message = "Nothing was tested, and your cart is unchanged.";
+          statusOf = stopped ? "stopped" : failed ? "error" : "done";
           summary = couponSummary(outcome, discovery);
           status.textContent = formatCostLine(s.settings.model, used);
           current.finish(outcome.status, outcome.message, used);
           addMessage(failed ? "error" : "assistant", summary);
         } else {
-          say("Testing " + codes.length + " code" + (codes.length === 1 ? "" : "s") + " on your cart, one at a time…");
-          const outcome = await runCouponSearch({
-            page: couponPage,
-            tester,
-            codes,
-            control: run,
-            delayMs: 250,
-            askMore: async (state) => {
-              void overlay.state("waiting");
-              const more = await askMoreCodes(state, t, run.signal);
-              void overlay.state("running");
-              return more;
-            },
-            findMore: async (known) => {
-              trace("coupons:find-more known=" + known.length);
-              say("Searching the web again for " + merchant.brand + " codes, in other places…");
-              status.textContent = "Finding more coupons. The web search can take a couple of minutes.";
-              const more = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
-                exclude: known,
-                more: true,
-                ...(s.effort ? { effort: s.effort } : {}),
-              });
-              addUsage(more);
-              tally(more);
-              if (more.error) trace("coupons:search-error " + more.error.code);
-              trace("coupons:candidates verified=" + more.verified + " reported=" + more.reported + " dropped=" + more.dropped + " masked=" + more.masked);
-              say(more.codes.length > 0 ? "Found " + more.codes.length + " more code" + (more.codes.length === 1 ? "" : "s") + " to try. Testing them on your cart…" : "No more codes found.");
-              return more.codes;
-            },
-            onAttempt: (a, index, total, currency) => {
-              trace("coupons:attempt " + index + (a.combo ? " combo" : "") + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none"));
-              status.textContent = a.combo ? "Testing two codes together…" : "Testing code " + index + " of " + total + "…";
-              attemptRow(a, currency, t);
-            },
-          });
-          trace("coupons:status " + outcome.status + (outcome.best ? " best" : " none") + (outcome.applied ? " applied" : ""));
           statusOf = outcome.status === "stopped" ? "stopped" : outcome.status === "done" ? "done" : "error";
           summary = couponSummary(outcome, discovery);
           status.textContent = formatCostLine(s.settings.model, used);
@@ -2190,6 +2316,8 @@ async function main(): Promise<void> {
       current.finish("error", summary, used);
     }
     clearInterval(timer);
+    steps.end();
+    t.head.querySelector(".pulse")?.remove();
     t.headText.textContent = (statusOf === "done" ? "Finished " : statusOf === "stopped" ? "Stopped " : "Ended ") + elapsedText(Date.now() - t.startedAt);
     void overlay.hide();
     await saveEntry("coupons", ask, summary);
