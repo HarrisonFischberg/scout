@@ -16,7 +16,7 @@ import {
 describe("page access defaults", () => {
   it("reads the current page, keeps history search off, and blocks nothing", () => {
     expect(parsePageAccess(undefined)).toEqual(DEFAULT_PAGE_ACCESS);
-    expect(DEFAULT_PAGE_ACCESS).toEqual({ readCurrent: true, searchTabs: false, screenshots: {}, blocked: [], scoutMode: "ask", alwaysAllow: {} });
+    expect(DEFAULT_PAGE_ACCESS).toEqual({ readCurrent: true, searchTabs: false, screenshots: {}, blocked: [], scoutMode: "on", alwaysAllow: {} });
   });
 
   it("treats malformed stored values as defaults and drops bad rules", () => {
@@ -84,10 +84,12 @@ describe("parsePolicy", () => {
 
 // Part 3 (spec 10): Scout mode per task, "Always allow" sites, revocation.
 describe("Scout mode gate", () => {
-  it("asks per task by default, is off when turned off, and never acts on a blocked site", () => {
+  it("starts at once by default, asks when set to ask, is off when turned off, and never acts on a blocked site", () => {
     const a = parsePageAccess({ blocked: ["bank.test"] });
-    expect(a.scoutMode).toBe("ask");
-    expect(taskDecision("https://shop.test/cart", a, [])).toBe("ask");
+    expect(a.scoutMode).toBe("on");
+    expect(taskDecision("https://shop.test/cart", a, [])).toBe("allow");
+    expect(taskDecision("https://shop.test/cart", parsePageAccess({ scoutMode: "ask" }), [])).toBe("ask");
+    expect(parsePageAccess({ scoutMode: "maybe" }).scoutMode).toBe("on");
     expect(taskDecision("https://bank.test/", a, [])).toBe("blocked-user");
     expect(taskDecision("https://hr.corp.test/", a, ["corp.test"])).toBe("blocked-admin");
     expect(taskDecision("https://shop.test/", parsePageAccess({ scoutMode: "off" }), [])).toBe("off");

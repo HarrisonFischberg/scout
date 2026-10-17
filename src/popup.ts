@@ -1614,8 +1614,13 @@ async function main(): Promise<void> {
     "After each step it sends the page's structure" + (screenshots ? " and a screenshot of this site" : "") + " to " + PROVIDER_NAME[provider] + " (" + prettyModel(model) + "). " +
     "It asks you before anything sensitive, such as buying, sending, signing in, or deleting. You can take control or stop at any time.";
 
-  /** Spec 10 "Scout mode: Ask per task": asked before every task, whoever requested it. */
+  /**
+   * The per-task question. Always for a task the model requested mid-answer
+   * (run_task); for the user's own Scout mode only when Settings says
+   * "Ask before each task" (owner decision 2026-10-17: sending a task starts it).
+   */
   async function askStartTask(goal: string, source: "panel" | "chat"): Promise<boolean> {
+    if (source === "panel" && (await loadPageAccess(storage)).scoutMode !== "ask") return true;
     const site = hostOf(tab.url ?? "") ?? "this page";
     const s = activeSettings();
     const shots = screenshotDecision(tab.url ?? "", await loadPageAccess(storage), []) !== "deny";
@@ -2309,8 +2314,8 @@ async function main(): Promise<void> {
     void updateAccess((a) => ({ ...a, searchTabs: on }), on ? "Scout for Safari may search your open tabs." : "Tab and history search is off.");
   });
   accessScout.addEventListener("change", () => {
-    const choice = accessScout.value === "off" ? "off" : "ask";
-    void updateAccess((a) => ({ ...a, scoutMode: choice }), choice === "off" ? "Scout mode is off." : "Scout for Safari will ask before each task.");
+    const choice = accessScout.value === "off" ? "off" : accessScout.value === "ask" ? "ask" : "on";
+    void updateAccess((a) => ({ ...a, scoutMode: choice }), choice === "off" ? "Scout mode is off." : choice === "ask" ? "Scout for Safari will ask before each task." : "Scout mode starts as soon as you send a task.");
     trace("access:scout " + choice);
   });
 
