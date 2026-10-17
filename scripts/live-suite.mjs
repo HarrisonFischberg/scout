@@ -10,7 +10,8 @@
 //   (the Anthropic key under its own name: the Claude CLI refuses Remote
 //   Control when ANTHROPIC_API_KEY is set in the shell; that name still works
 //   as a fallback outside Remote Control)
-//     --browser webkit|chromium   (default webkit, like Safari)
+//     --browser chromium|webkit   (default chromium: it reaches more carts than WebKit in this harness;
+//                                 the e2e specs stay on WebKit for Safari parity)
 //     --headed                    show the browser
 //     --only "Chomps,Rumpl"       run some merchants only (name substrings)
 //     --limit N                   first N merchants
@@ -55,7 +56,7 @@ const flag = (name, dflt) => {
   return i >= 0 ? args[i + 1] : dflt;
 };
 const has = (name) => args.includes("--" + name);
-const browserName = flag("browser", "webkit");
+const browserName = flag("browser", "chromium");
 const headed = has("headed");
 const only = (flag("only", "") || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 const limit = Number(flag("limit", "0")) || 0;
@@ -228,18 +229,27 @@ async function productLinks(shop, max = 6) {
 /** Opens the checkout's first step from the cart and checks it is the information page. Never fills or submits anything. */
 async function openCheckoutStep(shop, context) {
   await dismissOverlays(shop);
-  const exclude = /without|coverage|protection|continue shopping|express|shop ?pay|paypal|apple pay|g ?pay|amazon pay/i;
+  const exclude = /continue shopping|express|shop ?pay|paypal|apple pay|g ?pay|amazon pay|klarna|afterpay|affirm/i;
   const groups = [
-    shop.locator('a[href*="/checkout"]'),
-    shop.locator('button, a, [role="button"], input[type="submit"]').filter({ hasText: /check ?out/i }),
+    shop.locator('a[href*="/checkout"], [name="checkout"], button[class*="checkout" i], a[class*="checkout" i], [id*="checkout" i]'),
+    shop.locator('button, a, [role="button"], input[type="submit"], [class*="button" i]').filter({ hasText: /check ?out/i }),
     shop.locator('button, a, [role="button"]').filter({ hasText: /proceed to|continue (to|with) (checkout|one[- ]time|purchase)|go to checkout/i }),
   ];
-  let btn = null;
+  // Visible candidates, the plain checkout before "with protection" add-ons (BYLT: "Checkout without
+  // coverage" is the plain one, "CHECKOUT WITH PROTECTION" adds a paid extra).
+  const found = [];
   for (const g of groups) {
     const l = g.filter({ hasNotText: exclude });
-    for (let i = 0, n = Math.min(await l.count().catch(() => 0), 6); i < n && !btn; i++) if (await l.nth(i).isVisible().catch(() => false)) btn = l.nth(i);
-    if (btn) break;
+    for (let i = 0, n = Math.min(await l.count().catch(() => 0), 8); i < n; i++) {
+      const c = l.nth(i);
+      if (!(await c.isVisible().catch(() => false))) continue;
+      const text = ((await c.textContent().catch(() => "")) || "").trim();
+      found.push({ c, rank: /without|no (coverage|protection)/i.test(text) ? 0 : /protection|coverage|insurance/i.test(text) ? 2 : 1, text });
+    }
+    if (found.length) break;
   }
+  found.sort((a, b) => a.rank - b.rank);
+  const btn = found[0]?.c ?? null;
   if (!btn) return { ok: false, reason: "no Checkout button on the cart" };
   await btn.scrollIntoViewIfNeeded().catch(() => null);
   // Some stores open checkout in a new tab; some need a second, forced click under a banner.
@@ -277,6 +287,9 @@ async function openCheckoutStep(shop, context) {
 /** A size or other option to pick before Add to cart appears (BYLT "Select a size", Cuts "Select Size"). */
 async function pickFirstOption(shop) {
   await dismissOverlays(shop);
+  // A page that defaults to a subscription (Pura): the one-time purchase choice first.
+  const oneTime = shop.locator('label, [role="radio"], button, input[type="radio"] + *').filter({ hasText: /^\s*one[- ]time( purchase)?\s*$/i }).first();
+  if (await oneTime.isVisible().catch(() => false)) await oneTime.click({ timeout: 3_000 }).catch(() => null);
   const picker = shop.getByRole("button", { name: /select (a |your )?(size|option)/i }).first();
   if (await picker.count()) await picker.click({ timeout: 5_000 }).catch(() => null);
   const option = shop
@@ -328,7 +341,8 @@ async function addByClicking(shop, origin) {
       .getByRole("button", { name: /add to (cart|bag|basket)/i })
       .or(shop.locator('button[name="add"], form[action*="/cart/add"] [type="submit"]'))
       .first();
-    if (!(await addBtn.count())) await pickFirstOption(shop);
+    // Options first either way: a size or a one-time choice is often required before the add counts (Chubbies).
+    await pickFirstOption(shop);
     if (!(await addBtn.count())) continue; // a discontinued product or a non-product page: the next link
     await addBtn.scrollIntoViewIfNeeded().catch(() => null);
     await addBtn.click({ timeout: 10_000 }).catch(() => null);
@@ -337,6 +351,10 @@ async function addByClicking(shop, origin) {
       const r = await shop.goto(shopOrigin + path, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
       if (!(r && r.ok())) continue;
       await wait(1500);
+      if (!/cart|basket|bag|checkout/i.test(shop.url())) {
+        reason = "the Add to cart click did not put the item in the cart";
+        break;
+      }
       const text = (await evalWithin(shop, () => document.body.innerText).catch(() => "")) || "";
       if (/cart is (currently )?empty|no items in your (cart|bag)|nothing in your (cart|bag)|bag is empty/i.test(text)) {
         reason = "the Add to cart click did not put the item in the cart";
