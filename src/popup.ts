@@ -918,10 +918,11 @@ async function main(): Promise<void> {
     };
     noKey.hidden = true;
     composer.hidden = false;
-    const pill = prettyModel(session.settings.model) + (effort ? " · " + EFFORT_LABEL[effort] : "");
+    // Owner, 2026-10-17: the pill shows the short model name only; the effort is in the Models sheet.
+    const pill = prettyModel(session.settings.model);
     modelPillText.textContent = pill;
     // Accessible name starts with the visible text (WCAG 2.5.3 Label in Name).
-    modelPill.setAttribute("aria-label", pill + ", change model or effort");
+    modelPill.setAttribute("aria-label", pill + (effort ? ", " + EFFORT_LABEL[effort] + " effort" : "") + ", change model or effort");
     // Nothing shown when ready; the line under the conversation is for each run's cost.
     status.textContent = "";
     current.finish(
