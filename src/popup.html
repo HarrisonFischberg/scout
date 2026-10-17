@@ -19,6 +19,8 @@
         --accent: #0071e3;
         --accent-on: #ffffff;
         --accent-text: #0066cc;
+        --voice: #3f8f99;
+        --voice-on: #ffffff;
         --selected: #e8e8ed;
         --bubble-user: #e8e8ed;
         --bubble-user-text: #1d1d1f;
@@ -39,6 +41,8 @@
           --accent: #0073e6;
           --accent-on: #ffffff;
           --accent-text: #2997ff;
+          --voice: #4f9ea8;
+          --voice-on: #ffffff;
           --selected: #48484a;
           --bubble-user: #3a3a3c;
           --bubble-user-text: #f5f5f7;
@@ -237,7 +241,21 @@
       #model-pill-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       #model-pill:hover, #model-pill[aria-expanded="true"] { color: var(--text-primary); }
       #model-pill:disabled { cursor: default; color: var(--text-muted); }
-      .composer-foot > #stop, .composer-foot > #send { margin-left: auto; }
+      /* Owner design 2026-10-17: mic and voice sit at the far right. With text in the box the
+         voice button becomes Send; while Scout works it becomes Stop (syncComposer in popup.ts). */
+      .composer-foot > #model-pill { margin-right: auto; }
+      .round.mic { border: 0; background: var(--bg-subtle); }
+      .round.mic:hover { color: var(--text-primary); }
+      .round.mic[aria-pressed="true"] { background: var(--accent); color: var(--accent-on); }
+      .round.voice { border: 0; background: var(--voice); color: var(--voice-on); }
+      .round.voice svg.i { stroke-width: 2.2; }
+      .round.mic:disabled { opacity: 0.45; cursor: default; }
+      @media (prefers-reduced-motion: no-preference) {
+        .round.mic[aria-pressed="true"], .round.voice[data-state="listening"] { animation: scout-listen 1.4s ease-in-out infinite; }
+        .round.voice[data-state="speaking"] svg.i path { animation: scout-pulse 1s ease-in-out infinite; }
+        .round.voice[data-state="speaking"] svg.i path:nth-child(2n) { animation-delay: 0.25s; }
+      }
+      @keyframes scout-listen { 0%, 100% { box-shadow: 0 0 0 0 var(--focus-ring); } 50% { box-shadow: 0 0 0 4px transparent; } }
       /* Models sheet: covers the panel, a list of rows with a check on the one in use. */
       #model-menu {
         position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column;
@@ -539,11 +557,17 @@
             <button id="model-pill" type="button" aria-label="Change model" aria-haspopup="dialog" aria-expanded="false" aria-controls="model-menu">
               <span id="model-pill-text"></span>
             </button>
+            <button id="mic" class="round mic" type="button" aria-label="Dictate" aria-pressed="false" title="Dictate">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg>
+            </button>
             <button id="stop" class="round send" type="button" aria-label="Stop" hidden>
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="8" rx="1.5"/></svg>
             </button>
             <button id="send" class="round send" type="submit" aria-label="Send">
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+            <button id="voice" class="round voice" type="button" aria-label="Start voice chat" aria-pressed="false" title="Voice chat" hidden>
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10v4"/><path d="M9 7v10"/><path d="M12 4v16"/><path d="M15 7v10"/><path d="M18 10v4"/></svg>
             </button>
           </div>
         </div>
