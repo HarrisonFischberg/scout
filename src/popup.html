@@ -209,8 +209,9 @@
       .round.send svg.i { stroke-width: 2.2; }
       /* Send turns into Stop while Scout works: the same blue button, a filled square. */
       #stop svg.i rect { fill: currentColor; }
+      /* Positioned, so the hidden legend stays inside it: an absolute legend placed against the page made the panel scroll on past the end of Settings (owner report 2026-10-17). */
       fieldset.segmented {
-        align-self: flex-start; display: inline-flex; min-width: max-content; margin: 0; padding: 2px; border: 1px solid var(--hairline); border-radius: 999px; gap: 2px;
+        position: relative; align-self: flex-start; display: inline-flex; min-width: max-content; margin: 0; padding: 2px; border: 1px solid var(--hairline); border-radius: 999px; gap: 2px;
       }
       fieldset.segmented legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
       .segmented label {
@@ -272,7 +273,7 @@
       #plus-menu button:hover { background: var(--bg-subtle); }
 
       /* Settings view */
-      #settings-view .body { flex: 1; overflow-y: auto; padding: 8px 14px 16px; }
+      #settings-view .body { position: relative; flex: 1; overflow-y: auto; padding: 8px 14px 16px; }
       #settings-view section { padding: 12px 0; border-bottom: 1px solid var(--hairline); display: flex; flex-direction: column; gap: 8px; }
       #settings-view section:last-child { border-bottom: 0; }
       #settings-view h3 { margin: 0; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.02em; }
@@ -364,7 +365,6 @@
       #settings-view h4 { margin: 6px 0 0; font-size: 14px; font-weight: 600; }
       #settings-view .list { margin: 0; padding-left: 18px; overflow-wrap: anywhere; font-size: 14px; }
       #settings-view .list li { margin: 4px 0; }
-      #activity-list { font-size: 13px; }
       /* Scout mode trace, inline in the thread (owner reference 2026-10-17): a
          "Working 11s" line, the model's narration, muted step rows, then
          "Finished 1m 43s" with a chevron that folds the trace. */
@@ -459,15 +459,6 @@
             Scout for Safari shows an estimated cost after each answer or task.
           </p>
           <button id="no-key-open" class="btn primary" type="button">Add API key</button>
-        </section>
-
-        <section id="private" class="center" aria-labelledby="private-title" hidden>
-          <img src="icons/icon-128.png" alt="" />
-          <h2 id="private-title">Off in Private Browsing</h2>
-          <p class="hint">
-            Scout for Safari does not run in private windows, so nothing you browse privately is sent to an AI provider or saved.
-            Open the page in a regular window to use it.
-          </p>
         </section>
 
         <!-- Owner design 2026-10-17: only the outline binoculars, with the starters as
@@ -701,7 +692,7 @@
             <ul id="admin-list" class="list" aria-label="Blocked by your organization"></ul>
           </div>
           <h4>Private browsing</h4>
-          <p class="hint">Disabled. Scout for Safari does not run in Private Browsing: no reading, no screenshots, no Scout mode.</p>
+          <p class="hint">Scout for Safari works in Private Browsing like in any other tab. Chats in a private tab are deleted from this device when you close the tab, and private tabs never show up in tab search.</p>
           <h4>Shared in conversations</h4>
           <p id="shared-help" class="hint">What each conversation shared with your AI provider: tabs, screenshots, and tools, by title and site. Clearing removes that record from this device; your provider keeps its own under your account.</p>
           <ul id="shared-list" class="list" aria-label="Shared in conversations"></ul>
@@ -709,19 +700,13 @@
           <p id="shared-status" class="hint" role="status"></p>
         </section>
 
-        <section aria-labelledby="activity-title">
-          <h3 id="activity-title">Activity</h3>
-          <p class="hint">Tools Scout for Safari used for your answers: the tool, the site, how long it took, and the result. No page text. Kept as long as chat history.</p>
-          <ul id="activity-list" class="list" aria-labelledby="activity-title"></ul>
-        </section>
-
-        <section aria-labelledby="pagebutton-title">
+        <section id="pagebutton-section" aria-labelledby="pagebutton-title">
           <h3 id="pagebutton-title">Button on webpages</h3>
           <label class="check"><input id="pagebutton-on" type="checkbox" aria-describedby="pagebutton-help" />Show a Scout button on the edge of webpages</label>
           <p id="pagebutton-help" class="hint">
             Handy on iPhone and iPad, where Safari keeps Scout for Safari in the page menu. It stays tucked against the edge; tap it
             once to bring it out and again to open Scout for Safari. Drag it up, down, or to the other side. It shows only on sites Scout for Safari
-            can access, never in Private Browsing, and reads nothing from the page.
+            can access and reads nothing from the page.
           </p>
           <fieldset class="segmented" id="pagebutton-side">
             <legend>Side of the screen</legend>
@@ -736,8 +721,8 @@
           <p class="hint">
             Shortcut: Control-Shift-S on Mac opens and closes Scout for Safari. Safari does not let extensions hide their own button
             or change the shortcut. To hide the button on Mac, choose View &gt; Customize Toolbar in Safari and drag the binoculars out.
-            On iPhone and iPad, Scout for Safari lives in the page menu (the button in the address bar); turn on Button on webpages
-            above to also get a button on the page.
+            <span id="toolbar-pagebutton">On iPhone and iPad, Scout for Safari lives in the page menu (the button in the address bar); turn on Button on webpages
+            above to also get a button on the page.</span>
           </p>
         </section>
 

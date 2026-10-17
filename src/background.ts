@@ -7,7 +7,7 @@
 // runs there, and a closed tab ends its task.
 import { PANEL_EVENTS, PANEL_PORT, checkSchema, classifySender, createRouter, envelope, parseEnvelope, type MessageSender, type Self } from "./bridge/messages";
 import { createScoutWorker } from "./server/worker";
-import { edgeMatches, EDGE_SCRIPT_ID, PAGE_BUTTON_KEY, parsePageButton, sameMatches } from "./panel/edge";
+import { edgeMatches, EDGE_SCRIPT_ID, PAGE_BUTTON_KEY, pageButtonOffered, parsePageButton, platformOs, sameMatches } from "./panel/edge";
 import { BLUR_LAYER_ID, removePageBlur } from "./panel/blur";
 import { clearTabStates, forgetTab, loadTabStates, setPanelOpen, tabKey } from "./panel/state";
 import { openPanel, toolbarIcon, TITLE_CLOSE, TITLE_OPEN } from "./panel/toolbar";
@@ -114,14 +114,14 @@ browser.runtime.onStartup?.addListener(() => {
 
 // ---------- Page button: the edge script runs only where Scout has site access ----------
 // Registered for the granted web origins while the setting is on, and
-// unregistered when it is off or no site is granted. Updated when the setting
+// unregistered when it is off, no site is granted, or Safari is on a Mac. Updated when the setting
 // or the grants change. Pages already open drop the button themselves when the
 // setting goes off (src/edge.ts).
 async function syncPageButton(): Promise<void> {
   const scripting = browser.scripting;
   if (!storage || !scripting.registerContentScripts || !scripting.unregisterContentScripts) return;
   const pref = parsePageButton((await storage.get(PAGE_BUTTON_KEY))[PAGE_BUTTON_KEY]);
-  const matches = pref.on ? edgeMatches((await browser.permissions.getAll()).origins ?? []) : [];
+  const matches = pref.on && pageButtonOffered(await platformOs()) ? edgeMatches((await browser.permissions.getAll()).origins ?? []) : [];
   const existing = (await scripting.getRegisteredContentScripts?.({ ids: [EDGE_SCRIPT_ID] }).catch(() => [])) ?? [];
   const current = existing.find((s) => s.id === EDGE_SCRIPT_ID);
   if (current ? sameMatches(current.matches ?? [], matches) : matches.length === 0) return;
