@@ -439,12 +439,25 @@ describe("Shopify cart path", () => {
   });
 
   // Live sweep 2026-10-17: Lineage Provisions' cart answered a total of 0 and 50 codes were "tested" against it.
-  it("refuses to test against a cart whose total is 0", async () => {
+  it("refuses to test against a cart whose total is 0 when the page has no coupon box either", async () => {
     const cart: CartApi = { info: async () => ({ total: 0, currency: "USD", codes: [] }), update: async () => null, reload: async () => undefined };
-    const out = await runCouponSearch({ page: page(cart), codes: cands });
+    const empty = shop({ noForm: true });
+    const out = await runCouponSearch({ page: { cart, snapshot: empty.snapshot, act: empty.act }, codes: cands, settleMs: 0 });
     expect(out.status).toBe("error");
     expect(out.message).toBe("The cart total is $0.00, so no code could lower it. Add an item to the cart first.");
     expect(out.attempts).toHaveLength(0);
+  });
+
+  // Live sweep 2026-10-17 (Nomad): a headless storefront's checkout page has a coupon box
+  // and a total, but the host's cart API answers an empty cart. The page path still counts.
+  it("falls back to the page's coupon box when the cart API answers an empty cart", async () => {
+    const cart: CartApi = { info: async () => ({ total: 0, currency: "USD", codes: [] }), update: async () => null, reload: async () => undefined };
+    const p = shop();
+    const out = await runCouponSearch({ page: { cart, snapshot: p.snapshot, act: p.act }, codes: [{ code: "SAVE20", origin: "verified", sourceUrl: "https://deals.test/a" }], settleMs: 0 });
+    expect(out.method).toBe("page");
+    expect(out.baseline).toBe(100);
+    expect(out.best?.code).toBe("SAVE20");
+    expect(p.ordered).toBe(0);
   });
 
   it("puts the cart's original code back when nothing beats it", async () => {

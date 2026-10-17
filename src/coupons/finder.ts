@@ -414,9 +414,15 @@ export interface TesterOptions {
  */
 export async function openCouponTester(page: CouponPage, opts: TesterOptions = {}): Promise<CouponTester | TesterError> {
   const viaCart = page.cart ? await cartTester(page.cart).catch(() => null) : null;
-  if (viaCart) return viaCart;
+  if (viaCart && !("error" in viaCart)) return viaCart;
   const quietMs = opts.settleMs ?? 2500;
-  return pageTester(page, { quietMs, maxMs: Math.max(opts.maxSettleMs ?? 8000, quietMs) }, opts.locate);
+  const viaPage = await pageTester(page, { quietMs, maxMs: Math.max(opts.maxSettleMs ?? 8000, quietMs) }, opts.locate);
+  // A cart API that answers an empty cart on a page that shows an order (a
+  // headless storefront's checkout, whose cart lives elsewhere) is not the
+  // last word: the page's own coupon box and total still count. Only when
+  // the page has neither does the empty cart explain the stop.
+  if (viaCart && "error" in viaCart && "error" in viaPage && viaPage.error === "no_form") return viaCart;
+  return viaPage;
 }
 
 export interface BatchState {
