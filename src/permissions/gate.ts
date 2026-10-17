@@ -13,12 +13,12 @@ export const PAGE_ACCESS_KEY = "pageAccess";
 export type ScreenshotChoice = "always" | "never";
 
 /**
- * Scout mode: "on" starts a task as soon as the user sends one (default; owner
- * decision 2026-10-17, instead of the spec's ask per task), "ask" asks before
- * each task, "off" disables it. A task the model requests mid-answer
- * (run_task) is always asked about, whatever this says.
+ * Scout mode: "on" starts a task as soon as it is sent (default; owner
+ * decision 2026-10-17: never a per-task question, instead of the spec's ask
+ * per task), "off" disables it. The sensitive-action confirmation is separate
+ * and always on.
  */
-export type ScoutModeChoice = "on" | "ask" | "off";
+export type ScoutModeChoice = "on" | "off";
 
 export interface PageAccess {
   /** Include the current page with each question. Default on. */
@@ -29,7 +29,7 @@ export interface PageAccess {
   screenshots: Record<string, ScreenshotChoice>;
   /** Sites the user blocked: never read, screenshotted, or acted on. */
   blocked: string[];
-  /** Part 3: Scout mode starts at once (default), asks per task, or is off. */
+  /** Part 3: Scout mode on (default) or off. */
   scoutMode: ScoutModeChoice;
   /**
    * Part 3 "Always allow on this site": per host, the kinds of sensitive
@@ -89,13 +89,13 @@ export function screenshotDecision(url: string, access: PageAccess, admin: reado
   return choice === "always" ? "allow" : choice === "never" ? "deny" : "ask";
 }
 
-/** Scout mode on this site: starts at once, asks first, or is refused and why. */
-export function taskDecision(url: string, access: PageAccess, admin: readonly string[]): "allow" | "ask" | "blocked-user" | "blocked-admin" | "off" {
+/** Scout mode on this site: allowed, or refused and why. */
+export function taskDecision(url: string, access: PageAccess, admin: readonly string[]): "allow" | "blocked-user" | "blocked-admin" | "off" {
   if (access.scoutMode === "off") return "off";
   const by = blockedBy(url, access, admin);
   if (by === "admin") return "blocked-admin";
   if (by === "user") return "blocked-user";
-  return access.scoutMode === "ask" ? "ask" : "allow";
+  return "allow";
 }
 
 /** The user chose "Always allow on this site" for this kind of sensitive action on this host. */
@@ -147,7 +147,8 @@ export function parsePageAccess(raw: unknown): PageAccess {
     searchTabs: r.searchTabs === true,
     screenshots,
     blocked,
-    scoutMode: r.scoutMode === "off" || r.scoutMode === "ask" ? r.scoutMode : "on",
+    // A stored "ask" from an earlier build counts as on.
+    scoutMode: r.scoutMode === "off" ? "off" : "on",
     alwaysAllow,
   };
 }
