@@ -95,9 +95,12 @@ function fake(provider: ProviderClient, opts: { tabs?: TabRef[]; access?: Partia
 const settle = (ms = 30): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 describe("task host", () => {
-  it("refuses Private Browsing, Scout mode off, blocked sites, non-web pages, and empty goals before touching the page", async () => {
+  it("runs in Private Browsing like in any other tab", async () => {
     const priv = fake(scripted([[finish("x")]]), { tabs: [{ id: 1, url: "https://shop.test/", title: "Shop", incognito: true }] });
-    await expect(priv.host.start({ tab_id: 1, goal: "go" })).rejects.toThrow("Private Browsing");
+    await expect(priv.host.start({ tab_id: 1, goal: "go" })).resolves.toHaveProperty("task_id");
+  });
+
+  it("refuses Scout mode off, blocked sites, non-web pages, and empty goals before touching the page", async () => {
     const off = fake(scripted([[finish("x")]]), { access: { scoutMode: "off" } });
     await expect(off.host.start({ tab_id: 1, goal: "go" })).rejects.toThrow("turned off");
     const blocked = fake(scripted([[finish("x")]]), { access: { blocked: ["shop.test"] } });
@@ -106,7 +109,7 @@ describe("task host", () => {
     await expect(local.host.start({ tab_id: 1, goal: "go" })).rejects.toThrow("web pages only");
     const empty = fake(scripted([[finish("x")]]));
     await expect(empty.host.start({ tab_id: 1, goal: "  " })).rejects.toBeInstanceOf(BridgeError);
-    for (const f of [priv, off, blocked, local, empty]) expect(f.content).toHaveLength(0);
+    for (const f of [off, blocked, local, empty]) expect(f.content).toHaveLength(0);
   });
 
   it("runs a task, streams its events to a watching port, switches the icon, and saves the outcome", async () => {

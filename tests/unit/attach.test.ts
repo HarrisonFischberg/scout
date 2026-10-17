@@ -1,6 +1,6 @@
-// Part 2 panel helpers: @ tab suggestions, the Shared line, Activity rows.
+// Part 2 panel helpers: @ tab suggestions, the Shared line.
 import { describe, expect, it } from "vitest";
-import { activityLine, dropMention, mentionAt, sharedLabel, suggestTabs } from "../../src/panel/attach";
+import { dropMention, mentionAt, sharedLabel, suggestTabs } from "../../src/panel/attach";
 
 const TABS = [
   { id: 1, title: "Test shop", url: "https://shop.test/a", active: true },
@@ -39,13 +39,5 @@ describe("shared line", () => {
     expect(sharedLabel({ title: "Bank", host: "bank.test", status: "blocked" })).toBe("Bank (bank.test), blocked");
     expect(sharedLabel({ title: "Slow", host: "slow.test", status: "timeout" })).toBe("Slow (slow.test), timed out");
     expect(sharedLabel({ title: "Long", host: "long.test", status: "partial" })).toBe("Long (long.test), partly read");
-  });
-});
-
-describe("activity rows", () => {
-  it("show tool, site, status and duration, never input", () => {
-    const line = activityLine({ at: Date.UTC(2026, 9, 16, 12), tool: "read_page", site: "shop.test", ms: 120, status: "ok" }, "en-US");
-    expect(line).toContain("Read page · shop.test · ok · 120 ms");
-    expect(activityLine({ at: 0, tool: "unknown:delete_all", site: "", ms: 1, status: "schema-error" }, "en-US")).toContain("Unknown tool (delete_all) · no site · schema-error");
   });
 });

@@ -195,7 +195,7 @@ export const REQUESTS = {
       optional: ["current_tab", "decision"],
     },
   },
-  /** Recent tool calls for Settings > Activity. */
+  /** Recent tool calls (the tool log; not shown in Settings since 2026-10-17). */
   "tools.log": { senders: ["panel"], payload: { object: {} } },
   // ---------- Part 3: Scout mode ----------
   /** Starts a task on a tab (src/agent/task.ts in the worker). Events follow on the port after task.watch. */

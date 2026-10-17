@@ -124,8 +124,11 @@ test("an unknown tool is rejected with schema-error and logged", async ({ page }
   await openPopup(page);
   await ask(page, "Clean up [mock:tool=delete_history]");
   await expect(lastAnswer(page)).toContainText("The delete_history tool answered with status schema-error.");
-  await page.getByRole("button", { name: "Settings" }).click();
-  await expect(page.getByRole("list", { name: "Activity" })).toContainText("Unknown tool (delete_history) · no site · schema-error");
+  const logged = await page.evaluate(async () => {
+    const r = (await (globalThis as unknown as { browser: { runtime: { sendMessage(m: unknown): Promise<unknown> } } }).browser.runtime.sendMessage({ type: "tools.log", request_id: "r-log", payload: {} })) as { payload: { entries?: Array<{ tool: string; site: string; status: string }> } };
+    return (r.payload.entries ?? []).map((e) => [e.tool, e.site, e.status].join(" · "));
+  });
+  expect(logged).toContain("unknown:delete_history ·  · schema-error");
 });
 
 test("a question about the current page uses only that tab; read_page of another tab is refused", async ({ page }) => {
