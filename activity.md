@@ -1371,3 +1371,9 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Evidence: e2e overlay 7/7 (Chromium) with the mask assertion added.
 - Owner after rebuilding: "too splotchy, but amazing"; wants a blue hue like Apple/Safari blue. Changed the sweep to Apple system blues close in tone (#0A84FF, #3F9BFF, #5AC8FA, #2E8BFF, #1F6FE8, #3A7BFF), eight mask stops for a smooth fade, blur 18px (36px visual), ripple and Stop button in the same blue. Spec 9's colors are superseded by the owner's choice (PRD T043).
 - Owner reference screenshot (a map site with a cyan bloom hugging every edge): wants a consistent swirl with a little more color in the middle and at the edges. Palette moved to cyan-blues (#0A84FF … #33CCF0), ten close hues; center 28%, midway 36%, edges 78%, corners 95%; nine mask stops; blur 26px (52px visual); ripple and Stop in cyan.
+
+## 2026-10-17 — Scout mode starts on send (owner decision)
+
+- Owner: after typing a request in Scout mode and sending it, the task should run with no further clicking or accepting. Spec 10's default was "Ask per task".
+- Change: `scoutMode` is now `on` (default: a task the user sends starts at once), `ask` (the per-task question), or `off`. A task the model requests mid-answer (`run_task`) is always asked about. The sensitive-action confirmation is unchanged and still has no switch. Settings > Permissions offers the three choices.
+- Checks: unit 338/338; e2e scout, consent, redesign 26/26 (Chromium; the WebKit-only Option+Tab test excluded). PRD T044, data inventory, compliance checklist row 7, README updated.
