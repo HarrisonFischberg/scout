@@ -153,10 +153,13 @@ describe("suggestCodes request and evidence", () => {
     const olipop: { req?: ChatRequest } = {};
     await suggestCodes(provider([], undefined, olipop), "m", "www.drinkolipop.com");
     expect(String(olipop.req?.messages[0]?.content)).toContain("Store: drinkolipop\nStore website: drinkolipop.com\nAlso written as: olipop");
-    expect(seen.req).toMatchObject({ webSearch: true, webSearchMaxUses: 10, webFetch: true, webFetchMaxUses: 8 });
+    expect(seen.req).toMatchObject({ webSearch: true, webSearchMaxUses: 10, webFetch: true, webFetchMaxUses: 10 });
     expect(seen.req?.system).toContain("as soon as you see it");
     // Live sweep 2026-10-17: Melin's search stopped at 6 masked codes; pages that print codes are named.
-    expect(String(seen.req?.messages[0]?.content)).toContain("https://www.wethrift.com/tackform https://dealhack.com/coupons/tackform https://www.dealdrop.com/tackform https://www.wethrift.com/codes/tackform.test");
+    expect(String(seen.req?.messages[0]?.content)).toContain(
+      "https://www.wethrift.com/tackform https://www.wethrift.com/codes/tackform.test https://us.hotdeals.com/store/tackform-coupon https://tackform.tenereteam.com/coupons https://www.dealdrop.com/tackform",
+    );
+    expect(String(seen.req?.messages[0]?.content)).toContain("https://usa.coupert.com/coupons/tackform-test-discount-code");
     expect(seen.req?.system).toContain("hide codes behind a 'Get code' button");
     expect(seen.req?.system).toContain("Never invent, complete, or vary a code");
     expect(seen.req?.system).not.toMatch(/guess/i);
@@ -224,8 +227,10 @@ describe("likelyCodePages", () => {
     expect(pages).toContain("https://www.wethrift.com/heartandsoil");
     expect(pages).toContain("https://www.wethrift.com/heart-and-soil");
     expect(pages).toContain("https://www.dealdrop.com/heart-and-soil");
+    expect(pages).toContain("https://heartandsoil.tenereteam.com/coupons");
+    expect(pages).toContain("https://www.dontpayfull.com/at/heartandsoil.co");
     expect(new Set(pages).size).toBe(pages.length);
-    expect(pages.length).toBeLessThanOrEqual(8);
+    expect(pages.length).toBeLessThanOrEqual(12);
     expect(likelyCodePages(identifyMerchant("http://127.0.0.1:4317/cart"))).toEqual([]);
   });
 });

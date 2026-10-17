@@ -22,7 +22,7 @@ export const MAX_FOUND = 40;
 export const SEARCH_TIME_MS = 240_000;
 /** Web searches and page fetches the model may run per search. */
 export const SEARCH_USES = 10;
-export const FETCH_USES = 8;
+export const FETCH_USES = 10;
 
 // Sources worth naming: coupon sites that show full codes for small direct-to-consumer
 // stores, and the public places creators and brands post codes. The model decides
@@ -56,13 +56,22 @@ export function likelyCodePages(m: Merchant): string[] {
   if (/^(?:\d{1,3}\.){3}\d{1,3}$|^localhost$/.test(m.domain)) return [];
   const label = (m.domain.split(".")[0] ?? "").toLowerCase().replace(/[^a-z0-9-]/g, "");
   const slug = m.brand.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  const names = [...new Set([label, slug].filter((n) => n.length >= 3 && n !== "this-store"))];
-  const out: string[] = [];
-  for (const n of names) {
-    out.push("https://www.wethrift.com/" + n, "https://dealhack.com/coupons/" + n, "https://www.dealdrop.com/" + n);
-  }
-  out.push("https://www.wethrift.com/codes/" + m.domain);
-  return out.slice(0, 8);
+  if (label.length < 3) return [];
+  const dashed = m.domain.replace(/\./g, "-");
+  // Ordered by how often each printed a working code in the 2026-10-17 live sweeps.
+  const out = [
+    "https://www.wethrift.com/" + label,
+    "https://www.wethrift.com/codes/" + m.domain,
+    "https://us.hotdeals.com/store/" + label + "-coupon",
+    "https://" + label + ".tenereteam.com/coupons",
+    "https://www.dealdrop.com/" + label,
+    "https://dealhack.com/coupons/" + label,
+    "https://www.dontpayfull.com/at/" + m.domain,
+    "https://www.couponbind.com/coupons/" + m.domain,
+    "https://usa.coupert.com/coupons/" + dashed + "-discount-code",
+  ];
+  if (slug.length >= 3 && slug !== label && slug !== "this-store") out.push("https://www.wethrift.com/" + slug, "https://www.dealdrop.com/" + slug);
+  return [...new Set(out)].slice(0, 12);
 }
 
 /** The second search, after the first found nothing that worked: other kinds of sources. */
