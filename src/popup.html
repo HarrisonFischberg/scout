@@ -309,6 +309,13 @@
       .trace .steps ol { margin: 4px 0 0; padding-left: 20px; }
       .trace .steps li[data-status="rejected"], .trace .steps li[data-status="denied"], .trace .steps li[data-status="failed"] { color: var(--danger); }
       .trace .controls { display: flex; gap: 8px; margin-top: 4px; }
+      /* Find coupons: one line per code as it is tested. */
+      .trace .attempt { display: flex; align-items: baseline; gap: 6px; font-size: 14px; color: var(--text-secondary); }
+      .trace .attempt .code { font: 600 13px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-primary); }
+      .trace .attempt.good { color: var(--text-primary); }
+      .trace .attempt.good .code { color: var(--accent-text); }
+      .trace .more { display: flex; flex-direction: column; gap: 8px; }
+      .trace .more p { margin: 0; }
 
       @media (prefers-reduced-motion: no-preference) {
         .icon-btn, .chip, .segmented label, #plus-menu button, #model-menu button { transition: background-color 150ms, color 150ms, border-color 150ms; }
@@ -387,26 +394,7 @@
           <div id="tool-ask-buttons" class="row"></div>
         </section>
 
-        <section id="coupons" class="card" aria-labelledby="coupons-title" hidden>
-          <h2 id="coupons-title">Coupon results</h2>
-          <p id="coupons-summary" class="hint" role="status"></p>
-          <div class="coupons-scroll">
-            <table id="coupons-table">
-              <caption class="hint">Codes tried one at a time on your cart, with the total the store reported after each.</caption>
-              <thead><tr><th scope="col">Code</th><th scope="col">Total</th><th scope="col">Result</th><th scope="col">Source</th></tr></thead>
-              <tbody id="coupons-rows"></tbody>
-            </table>
-          </div>
-          <div id="coupons-more" class="more" role="group" aria-labelledby="coupons-more-text" hidden>
-            <p id="coupons-more-text"></p>
-            <div class="row">
-              <button id="coupons-more-yes" class="btn primary" type="button">Try 25 more</button>
-              <button id="coupons-more-no" class="btn" type="button">Stop here</button>
-            </div>
-          </div>
-          <p class="hint">Codes come from your provider's web search plus common guesses, labeled in the Source column. The store decides which ones work. Scout for Safari never places the order.</p>
-          <button id="coupons-stop" class="btn" type="button">Stop</button>
-        </section>
+        <!-- Find coupons renders inline in the conversation (#task), like Scout mode. -->
       </div>
 
       <p id="status" class="hint" role="status">Loading…</p>

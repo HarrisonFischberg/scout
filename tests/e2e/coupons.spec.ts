@@ -130,7 +130,7 @@ test("coupon run tests a batch of 25, applies the best without asking, never cli
   );
   await expect(answer).toContainText("It's applied to your cart, and I didn't go to checkout.");
   await expect(page.locator("#coupons-more")).toBeHidden();
-  const rows = page.locator("#coupons-rows tr");
+  const rows = page.locator("#task .attempt");
   await expect(rows).toHaveCount(25);
   // Codes found online come first and link to their page; guesses are labeled.
   await expect(rows.nth(0)).toContainText("WELCOME5");
@@ -168,9 +168,9 @@ test("no winning code: asks to find 25 more, searches again without repeating co
   expect(asks).toHaveLength(2);
   expect(asks[1]).toContain("Already tried, do not list these again");
   expect(asks[1]).toContain("WELCOME5, SAVE10, FREESHIP, SAVE20, BOGUS99");
-  const rows = page.locator("#coupons-rows tr");
+  const rows = page.locator("#task .attempt");
   await expect(rows).toHaveCount(50);
-  const codes = await rows.locator("td:first-child").allTextContents();
+  const codes = await rows.locator(".code").allTextContents();
   expect(new Set(codes).size).toBe(50);
   await page.getByRole("button", { name: "Stop here" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
@@ -189,5 +189,5 @@ test("a failed web search still tests guesses and says why the search failed", a
     BATCH_WAIT,
   );
   await expect(answer).toContainText("SAVE20 is the best: your total drops from $100.00 to $80.00");
-  await expect(page.locator("#coupons-rows tr").first()).toContainText("Guess (common pattern)");
+  await expect(page.locator("#task .attempt").first()).toContainText("Guess (common pattern)");
 });

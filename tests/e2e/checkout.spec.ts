@@ -96,7 +96,7 @@ test("checkout page without a cart API: types codes only into the discount box, 
   await expect(answer).toContainText("It's applied to your cart, and I didn't go to checkout.");
   // A batch with a saving ends the search: no prompt for more.
   await expect(page.locator("#coupons-more")).toBeHidden();
-  const rows = page.locator("#coupons-rows tr");
+  const rows = page.locator("#task .attempt");
   await expect(rows).toHaveCount(25);
   // The code the store's home page advertises (fixture banner: KETO10) is tried first.
   await expect(rows.nth(0)).toContainText("KETO10");
@@ -152,7 +152,7 @@ test("a checkout with a hidden promo box, a slow total in euros, errors, and rem
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   await expect(answer).toContainText("RABATT25 is the best: your total drops from €200.00 to €150.00 (you save €50.00, 25% off).", { timeout: 120_000 });
   await expect(answer).toContainText("It's applied to your cart");
-  const rows = page.locator("#coupons-rows tr");
+  const rows = page.locator("#task .attempt");
   // First the code the fixture site's home page advertises (KETO10), refused here in German.
   await expect(rows.nth(0)).toContainText("KETO10");
   await expect(rows.nth(0)).toContainText("Not accepted by the store.");

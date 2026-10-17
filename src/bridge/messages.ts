@@ -268,7 +268,8 @@ export const WORKER_EVENTS = {
       task_id: "string",
       tab_id: "number",
       seq: "number",
-      kind: { enum: ["started", "state", "log", "confirm", "done"] },
+      /** "stop": the overlay toast's Stop for a run the panel drives itself (Find coupons). */
+      kind: { enum: ["started", "state", "log", "confirm", "done", "stop"] },
       goal: "string",
       state: { enum: ["running", "paused", "waiting"] },
       text: "string",
