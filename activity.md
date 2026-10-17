@@ -1542,6 +1542,14 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Not built: the claude.ai trust note ("Trusted", "Rate this source"): Scout has no source of trust ratings and will not invent one. No "…" overflow menu.
 - Checks: lint and types clean; unit 347/348 (the known Take control timing case fails on `main` too). e2e (Chromium; this container's Chromium cannot reach the local mock server, so Part 2 was run with the mock requests relayed through Playwright, which buffers streams): new cases for chips, the card, Copy, Share fallback, ratings, the sources list and Branch pass, axe passes light and dark; the three streaming cases (drop, resume, Stop) need a real stream and were not verifiable here.
 
+## 2026-10-17 — Private Browsing, Settings cleanup, Mac page button, Settings scroll (owner items 8-11)
+
+- Item 8, allow Private Browsing: the panel, page reading, screenshots, Scout mode and the page button no longer refuse private tabs (`src/popup.ts`, `src/context/gather.ts`, `src/tools/host.ts`, `src/server/task-host.ts`, `src/edge.ts`). Default picked: a private tab's chats are kept while the tab is open (so the panel can reopen them) and deleted from history when it closes or Safari restarts (`privateConversations` in `src/panel/state.ts`); tab search still never lists private tabs. Settings text updated. Launch blocker 34 (counsel saw the old "extension is off" text).
+- Item 9: Settings > Activity removed. The tool log is still recorded (spec 7) but no longer shown.
+- Item 10: on Mac, Button on webpages and its setting are gone; the worker unregisters the page script when `runtime.getPlatformInfo().os` is "mac" (`pageButtonOffered` in `src/panel/edge.ts`). iPhone and iPad unchanged.
+- Item 11: Settings scrolled on into empty space. Cause: the visually hidden `<legend>` of the segmented controls is `position: absolute` with no positioned ancestor, so it sat against the page at its place deep in the Settings list (y ≈ 2900 in a 600 px popover) and made the whole page scrollable. Fix: `fieldset.segmented` and the Settings scroller are positioned.
+- Evidence: new e2e test "Settings ends at Delete all data" failed before the fix (page height 2901 vs 600) and passes after; e2e for Mac/iOS page button, no Activity heading, the panel in a private tab; unit tests for private chat deletion, `pageButtonOffered`, Scout mode on a private tab. Unit 405/406 (known Take control failure). Full Chromium e2e: the same failures as `main` (WebKit not installed in the cloud), plus 4 new passing tests. Typecheck, lint, `check:release` clean. Not seen in real Safari yet.
+
 ## 2026-10-17 — Stop just stops (owner item 7)
 
 - Actual: pressing Stop while an answer or a Scout mode task ran showed a red "Stopped." error card with Copy diagnostics, plus "Stopped." in the status line.

@@ -1,7 +1,7 @@
 // Popup (S04, redesigned T021–T026): chat-first panel with a Chat / Scout
 // mode switch, saved conversation, and an in-popup Settings view.
 // Part 1: the Scout panel ("scout-panel"). One conversation per tab, a port to
-// the background worker while open, and no use in Private Browsing.
+// the background worker while open; Private Browsing chats go when the tab closes.
 // Part 3: Scout mode runs in the worker (src/server/task-host.ts); the panel
 // shows its action log, Take control, and the sensitive-action confirmation
 // (Stop is the composer's button), and the Permissions screen in Settings.
@@ -41,15 +41,14 @@ import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { BridgeError, envelope, newRequestId, request, type Envelope } from "./bridge/messages";
 import { connectPanelPort, type PanelPort } from "./bridge/port";
 import type { ReadStatus, SharedTab } from "./context/gather";
-import { activityLine, dropMention, mentionAt, sharedLabel, suggestTabs, toolLabel } from "./panel/attach";
+import { dropMention, mentionAt, sharedLabel, suggestTabs, toolLabel } from "./panel/attach";
 import { hostOf, loadPageAccess, normalizeSite, parsePolicy, savePageAccess, screenshotDecision, withoutAlwaysAllow, type PageAccess } from "./permissions/gate";
 import { KIND_LABEL, type SensitiveKind } from "./safety/classifier";
 import type { TaskView } from "./server/task-host";
 import { DEV_MOCK_KEY, DEV_MOCK_URL, mockServerUrl } from "./server/dev";
 import { fromWire } from "./server/protocol";
 import type { ToolDecision, ToolResult } from "./tools/host";
-import type { ToolLogEntry } from "./tools/log";
-import { ALL_SITES, PAGE_BUTTON_KEY, parsePageButton, reachText, type PageButton } from "./panel/edge";
+import { ALL_SITES, PAGE_BUTTON_KEY, pageButtonOffered, parsePageButton, platformOs, reachText, type PageButton } from "./panel/edge";
 import { conversationForTab, startNewConversation } from "./panel/state";
 import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/consent";
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
@@ -397,22 +396,16 @@ async function main(): Promise<void> {
     }
   });
 
-  // ---------- Private Browsing: the panel is off ----------
+  // Private Browsing works like a regular tab (owner request 2026-10-17); its
+  // chats are deleted from history when the tab closes (src/panel/state.ts).
   const tab = await activeTab();
-  if (tab.incognito) {
-    el("private").hidden = false;
-    el("new-chat").hidden = true;
-    el("settings-open").hidden = true;
-    status.textContent = "Scout for Safari is off in Private Browsing.";
-    return;
-  }
 
   // ---------- Per-tab conversation and the worker port ----------
   // Answers stream from the Scout server in the worker over this port (Part 2).
   // After a reconnect, every unfinished answer is resubscribed from the last
   // event the panel has, so nothing is shown twice.
   const store = new ConversationStore();
-  let conv = storage ? await conversationForTab(storage, tab.id, Date.now()).catch(() => "") : "";
+  let conv = storage ? await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "") : "";
   let port: PanelPort | null = null;
   if (browser.runtime.connect && tab.id !== undefined) {
     const tabId = tab.id;
@@ -685,7 +678,7 @@ async function main(): Promise<void> {
     }
     clearThread();
     if (storage) {
-      conv = await startNewConversation(storage, tab.id, Date.now()).catch(() => conv);
+      conv = await startNewConversation(storage, tab.id, Date.now(), tab.incognito).catch(() => conv);
       for (const e of entries) {
         await appendHistory(storage, settings.retention, {
           ...e,
@@ -817,7 +810,7 @@ async function main(): Promise<void> {
     turns.push({ entry: { at: Date.now(), question: q, answer, kind } });
     if (!storage) return;
     // Created on first use: after Delete all data, nothing is stored until the next answer.
-    if (!conv) conv = await conversationForTab(storage, tab.id, Date.now()).catch(() => "");
+    if (!conv) conv = await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "");
     await appendHistory(storage, settings.retention, { at: Date.now(), question: q, answer, kind, ...(conv ? { conv } : {}) }).catch(() => undefined);
   }
 
@@ -1704,7 +1697,7 @@ async function main(): Promise<void> {
     status.textContent = cont ? "Finishing the answer." : "Reading the page and waiting for the answer.";
     setBusy(true);
     if (!storage) conv = conv || "";
-    else if (!conv) conv = await conversationForTab(storage, tab.id, Date.now()).catch(() => "");
+    else if (!conv) conv = await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "");
 
     let pages: PageContext[] = [];
     if (cont) {
@@ -2083,7 +2076,7 @@ async function main(): Promise<void> {
       return null;
     }
     if (!storage) conv = conv || "";
-    else if (!conv) conv = await conversationForTab(storage, tab.id, Date.now()).catch(() => "");
+    else if (!conv) conv = await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "");
     // Watch this tab's events on the port now, in case the watch sent when the
     // port opened reached the worker before it was listening.
     watchTab();
@@ -2727,7 +2720,7 @@ async function main(): Promise<void> {
     if (activeChat || control || task) return;
     clearThread();
     if (storage) {
-      void startNewConversation(storage, tab.id, Date.now())
+      void startNewConversation(storage, tab.id, Date.now(), tab.incognito)
         .then((next) => (conv = next))
         .catch(() => undefined);
     }
@@ -2917,11 +2910,10 @@ async function main(): Promise<void> {
     }
     await renderPageButton(origins);
     await renderAccess();
-    await renderActivity();
     await renderShared();
   }
 
-  // ---------- Page access (Part 2, spec 10a) and Activity ----------
+  // ---------- Page access (Part 2, spec 10a) ----------
   const accessRead = el<HTMLInputElement>("access-read");
   const accessSearch = el<HTMLInputElement>("access-search");
   const accessScout = el<HTMLSelectElement>("access-scout");
@@ -2934,7 +2926,6 @@ async function main(): Promise<void> {
   const blockCurrent = el<HTMLButtonElement>("block-current");
   const blockList = el("block-list");
   const blockStatus = el("block-status");
-  const activityList = el("activity-list");
   const currentHost = hostOf(tab.url ?? "");
 
   function listRow(text: string, button?: { label: string; aria: string; onClick: () => void }): HTMLLIElement {
@@ -3089,18 +3080,16 @@ async function main(): Promise<void> {
     if (currentHost) blockSite(currentHost);
   });
 
-  async function renderActivity(): Promise<void> {
-    const got = await request<{ entries: ToolLogEntry[] }>(toWorker, "tools.log", {}, { timeoutMs: 3_000 }).catch(() => null);
-    const entries = got?.entries ?? [];
-    activityList.replaceChildren(...(entries.length ? entries.slice(0, 20).map((e) => listRow(activityLine(e))) : [listRow("No tool calls yet.")]));
-  }
-
   // ---------- Button on webpages (src/edge.ts) ----------
   // On from a fresh install; it shows on sites Scout can access. Turning it on here asks Safari for site access; the
   // user may grant every site or fewer, and the button shows where granted.
   const pageOn = el<HTMLInputElement>("pagebutton-on");
   const pageSides = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="pagebutton-side"]'));
   const pageStatus = el("pagebutton-status");
+  // Not offered on Mac, where Scout is in the toolbar.
+  const pageOffered = pageButtonOffered(await platformOs());
+  el("pagebutton-section").hidden = !pageOffered;
+  el("toolbar-pagebutton").hidden = !pageOffered;
 
   async function loadPageButton(): Promise<PageButton> {
     const got = storage ? await storage.get(PAGE_BUTTON_KEY).catch(() => ({}) as Record<string, unknown>) : {};
@@ -3111,6 +3100,7 @@ async function main(): Promise<void> {
     await storage.set({ [PAGE_BUTTON_KEY]: next });
   }
   async function renderPageButton(origins?: string[]): Promise<void> {
+    if (!pageOffered) return;
     const pb = await loadPageButton();
     pageOn.checked = pb.on;
     for (const i of pageSides) i.checked = i.value === pb.side;
