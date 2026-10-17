@@ -337,7 +337,7 @@ async function start(): Promise<void> {
   });
 }
 
-if (!g[FLAG] && window.top === window && browser.extension?.inIncognitoContext !== true) {
+if (!g[FLAG] && window.top === window) {
   g[FLAG] = true;
   void start();
 }
