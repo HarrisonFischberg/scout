@@ -382,6 +382,26 @@ describe("listed pages are read first", () => {
     ]);
   });
 
+  it("keeps a reply that ends without a newline apart from the next pass's first line", async () => {
+    // The read pass replies "...BOGUS99 | url | quote | -" with no newline;
+    // the search pass starts "WELCOME5 | ...". Joined, BOGUS99 would carry
+    // "-WELCOME5" as its conditions and WELCOME5's own line would be lost.
+    const page = "Use code BOGUS99 at checkout. Use code WELCOME5 at checkout.";
+    const p: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        yield { type: "source", url: "https://deals.test/x", page };
+        yield { type: "text", delta: isRead(req) ? 'BOGUS99 | https://deals.test/x | "Use code BOGUS99" | -' : 'WELCOME5 | https://deals.test/x | "Use code WELCOME5" | first order\nBOGUS99 | https://deals.test/x | "Use code BOGUS99" | -' };
+      },
+    };
+    const r = await suggestCodes(p, "m", "www.tackform.test");
+    expect(r.codes.map((c) => [c.code, c.conditions])).toEqual([
+      ["BOGUS99", undefined],
+      ["WELCOME5", "first order"],
+    ]);
+    expect(r.ignored).toBe(0);
+  });
+
   it("skips the read on a provider without a page fetch tool, and on a second search", async () => {
     const reqs: ChatRequest[] = [];
     const openai: ProviderClient = {

@@ -180,12 +180,14 @@ test("no winning code: offers to search again, searches without repeating codes,
   await page.getByRole("button", { name: "Search again" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   await expect(answer).toContainText("I tested 5 codes and none lowered your total of $100.00, so your cart is unchanged. I couldn't find any more codes to try.", BATCH_WAIT);
-  // The second web search names the codes already tried and looks in other places.
-  expect(asks).toHaveLength(2);
-  expect(asks[1]).toContain("Already tried, do not list these again");
+  // Three requests: the listed coupon pages read first, the search, then the
+  // second search, which names the codes already tried and looks in other places.
+  expect(asks).toHaveLength(3);
+  expect(asks[0]).toContain("First job, no searching");
+  expect(asks[2]).toContain("Already tried, do not list these again");
   // In the order they were tested (WELCOME5 ranks last as a first-order code).
-  expect(asks[1]).toContain("SAVE10, FREESHIP, SAVE20, BOGUS99, WELCOME5");
-  expect(asks[1]).toContain("second search");
+  expect(asks[2]).toContain("SAVE10, FREESHIP, SAVE20, BOGUS99, WELCOME5");
+  expect(asks[2]).toContain("second search");
   // The trace is folded by default: open it to read the code lines.
   await page.locator("#task .trace-head").click();
   const rows = page.locator("#task .attempt");
