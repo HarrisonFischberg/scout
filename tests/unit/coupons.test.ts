@@ -423,6 +423,15 @@ describe("Shopify cart path", () => {
     expect(cart.codes).toEqual(["BEEFY15"]);
   });
 
+  // Live sweep 2026-10-17: Lineage Provisions' cart answered a total of 0 and 50 codes were "tested" against it.
+  it("refuses to test against a cart whose total is 0", async () => {
+    const cart: CartApi = { info: async () => ({ total: 0, currency: "USD", codes: [] }), update: async () => null, reload: async () => undefined };
+    const out = await runCouponSearch({ page: page(cart), codes: cands });
+    expect(out.status).toBe("error");
+    expect(out.message).toBe("The cart total is $0.00, so no code could lower it. Add an item to the cart first.");
+    expect(out.attempts).toHaveLength(0);
+  });
+
   it("puts the cart's original code back when nothing beats it", async () => {
     const cart = shopify({ start: ["OLDCODE"] });
     const out = await runCouponSearch({ page: page(cart), codes: [{ code: "NOPE10", origin: "reported", sourceUrl: "https://deals.test/beefy" }] });

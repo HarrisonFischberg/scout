@@ -33,7 +33,8 @@ const UTILITY_LABELS = new Set([
 const TWO_LEVEL_TLDS = new Set(["co.uk", "org.uk", "ac.uk", "com.au", "net.au", "co.nz", "co.jp", "com.br", "com.mx", "co.za", "com.sg", "com.hk", "co.in", "co.kr", "com.tr"]);
 // Hosted checkouts whose domain is the platform, not the store.
 const PLATFORM_HOSTS = /(?:^|\.)(?:myshopify\.com|shopifycdn\.com|shop\.app|bigcommerce\.com|mybigcommerce\.com|squarespace\.com|wixsite\.com|myshoplaza\.com)$/i;
-const TITLE_NOISE = /^(?:cart|your\s+cart|shopping\s+cart|bag|your\s+bag|checkout|check\s+out|order|review|payment|shipping|information|home|welcome|secure\s+checkout)$/i;
+const TITLE_NOISE =
+  /^(?:(?:your\s+)?(?:shopping\s+)?(?:cart|bag|basket)(?:\s+page)?|checkout|check\s+out|order|review|payment|shipping|information|home|welcome|secure\s+checkout|my\s+cart|view\s+cart)$/i;
 const NAME_NOISE = /\s*[-–|:]\s*(?:official\s+(?:site|store|website)|online\s+store|shop(?:ping)?|home)\s*$|[®™©]/gi;
 
 function registrable(host: string): string {
@@ -56,14 +57,24 @@ export function storeDomain(host: string): string {
 function cleanName(raw: string | undefined): string {
   if (!raw) return "";
   const name = raw.replace(NAME_NOISE, "").replace(/\s+/g, " ").trim();
-  return name.length >= 2 && name.length <= 60 ? name : "";
+  // A theme that puts the page name in og:site_name ("Your Shopping Cart") names no store.
+  return name.length >= 2 && name.length <= 60 && !TITLE_NOISE.test(name) ? name : "";
 }
 
-/** The brand from a page title such as "Cart – Melin" or "Melin | Checkout". */
-function brandFromTitle(title: string | undefined): string {
+const squash = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/**
+ * The brand from a page title such as "Cart – Melin", "Your Shopping Cart – Magic Spoon"
+ * or "Melin | Checkout": the part that matches the domain label when one does,
+ * else the only part left once page words are dropped, else the last part.
+ */
+function brandFromTitle(title: string | undefined, label: string): string {
   if (!title) return "";
-  const parts = title.split(/\s+[-–—|·:]\s+/).map((p) => cleanName(p)).filter((p) => p && !TITLE_NOISE.test(p));
-  return parts.length === 1 ? (parts[0] ?? "") : "";
+  const parts = title.split(/\s+[-–—|·:]\s+/).map((p) => cleanName(p)).filter((p) => p);
+  if (!parts.length) return "";
+  const flat = squash(label);
+  const match = flat.length >= 3 ? parts.find((p) => squash(p) === flat || squash(p).includes(flat) || (squash(p).length >= 4 && flat.includes(squash(p)))) : undefined;
+  return match ?? (parts.length === 1 ? (parts[0] ?? "") : (parts[parts.length - 1] ?? ""));
 }
 
 const token = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -100,7 +111,7 @@ export function identifyMerchant(url: string, meta: MerchantMeta = {}): Merchant
   // An IP address or "localhost" names no store (local fixtures): the page's own name or "this store".
   const bare = /^(?:\d{1,3}\.){3}\d{1,3}$|^localhost$|^\[/.test(domain);
   const label = bare ? "" : PLATFORM_HOSTS.test(domain) ? (host.split(".")[0] ?? "").replace(/-/g, " ") : (domain.split(".")[0] ?? "");
-  const brand = cleanName(meta.siteName) || brandFromTitle(meta.title) || label || "this store";
+  const brand = cleanName(meta.siteName) || brandFromTitle(meta.title, label) || label || "this store";
   const names = new Set<string>();
   const named = brand !== "this store";
   for (const n of [...(named ? [brand, brand.replace(/\s+/g, "")] : []), label, ...(bare ? [] : [domain]), coreLabel(label)]) {

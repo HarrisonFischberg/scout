@@ -72,3 +72,15 @@ describe("candidate order", () => {
     expect(first).toBeGreaterThan(stale);
   });
 });
+
+// Live sweep 2026-10-17: Magic Spoon's cart page named itself "Your Shopping Cart"
+// and the search asked for "Your Shopping Cart codes".
+describe("merchant names from cart-page titles", () => {
+  it("never takes a page word for the brand and prefers the title part that matches the domain", () => {
+    expect(identifyMerchant("https://magicspoon.com/cart", { siteName: "Your Shopping Cart", title: "Your Shopping Cart – Magic Spoon" }).brand).toBe("Magic Spoon");
+    expect(identifyMerchant("https://magicspoon.com/cart", { title: "Magic Spoon – Your Shopping Cart" }).brand).toBe("Magic Spoon");
+    expect(identifyMerchant("https://melin.com/cart", { title: "Cart – Melin | Hats" }).brand).toBe("Melin");
+    expect(identifyMerchant("https://melin.com/cart", { title: "Shopping Bag" }).brand).toBe("melin");
+    expect(identifyMerchant("https://drinkolipop.com/cart", { title: "Cart – OLIPOP – Prebiotic Soda" }).brand).toBe("OLIPOP");
+  });
+});

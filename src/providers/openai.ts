@@ -1,4 +1,4 @@
-import { ProviderError, errorFromStatus } from "./errors";
+import { ProviderError, errorDetail, errorFromStatus } from "./errors";
 import { readSse } from "./sse";
 import type { ChatMessage, ChatRequest, ProviderClient, ProviderConfig, StreamEvent } from "./types";
 
@@ -64,7 +64,7 @@ export function createOpenAI(cfg: ProviderConfig): ProviderClient {
         if (err instanceof ProviderError) throw err;
         throw new ProviderError("openai", "network");
       }
-      if (!res.ok) throw errorFromStatus("openai", res);
+      if (!res.ok) throw errorFromStatus("openai", res, await errorDetail(res));
       if (!res.body) throw new ProviderError("openai", "stream_error");
 
       const calls = new Map<string, Call>();
