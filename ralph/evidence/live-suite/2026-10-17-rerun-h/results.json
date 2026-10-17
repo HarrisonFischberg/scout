@@ -1,0 +1,141 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T17-39-44",
+  "results": [
+    {
+      "name": "Brumate",
+      "url": "https://brumate.com",
+      "group": "extra",
+      "outcome": "discovery failed",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method page",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:search-error timeout",
+        "coupons:pages listed=8 opened=8",
+        "coupons:page dontpayfull.com/at/brumate.com ok 51878",
+        "coupons:page wethrift.com/codes/brumate.com ok 15334",
+        "coupons:page us.hotdeals.com/store/brumate-coupon url_not_accessible 0",
+        "coupons:page brumate.tenereteam.com/coupons ok 21510",
+        "coupons:page usa.coupert.com/coupons/brumate-com-discount-code url_not_accessible 0",
+        "coupons:page dealhack.com/coupons/brumate url_not_accessible 0",
+        "coupons:page couponbind.com/coupons/brumate.com url_not_accessible 0",
+        "coupons:page wethrift.com/brumate url_not_accessible 0",
+        "coupons:page dealdrop.com/brmate ok 14831",
+        "coupons:page retailcoupons.com/brumate-discount-codes ok 35931",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=0 ignored=1",
+        "coupons:status search_failed",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 16.5,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 16.6,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 16.6,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 20.6,
+          "stage": "coupons:method page"
+        },
+        {
+          "t": 21.6,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 21.6,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 261.6,
+          "stage": "coupons:search-error timeout"
+        },
+        {
+          "t": 261.6,
+          "stage": "coupons:pages listed=8 opened=8"
+        },
+        {
+          "t": 261.6,
+          "stage": "coupons:page dontpayfull.com/at/brumate.com ok 51878"
+        },
+        {
+          "t": 261.6,
+          "stage": "coupons:page wethrift.com/codes/brumate.com ok 15334"
+        },
+        {
+          "t": 261.6,
+          "stage": "coupons:page us.hotdeals.com/store/brumate-coupon url_not_accessible 0"
+        },
+        {
+          "t": 261.6,
+          "stage": "coupons:page brumate.tenereteam.com/coupons ok 21510"
+        },
+        {
+          "t": 261.6,
+          "stage": "coupons:page usa.coupert.com/coupons/brumate-com-discount-code url_not_accessible 0"
+        },
+        {
+          "t": 261.6,
+          "stage": "coupons:page dealhack.com/coupons/brumate url_not_accessible 0"
+        },
+        {
+          "t": 261.6,
+          "stage": "coupons:page couponbind.com/coupons/brumate.com url_not_accessible 0"
+        },
+        {
+          "t": 261.6,
+          "stage": "coupons:page wethrift.com/brumate url_not_accessible 0"
+        },
+        {
+          "t": 261.6,
+          "stage": "coupons:page dealdrop.com/brmate ok 14831"
+        },
+        {
+          "t": 261.6,
+          "stage": "coupons:page retailcoupons.com/brumate-discount-codes ok 35931"
+        },
+        {
+          "t": 261.6,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=0 ignored=1"
+        },
+        {
+          "t": 261.7,
+          "stage": "coupons:status search_failed"
+        },
+        {
+          "t": 261.7,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "4cee251bd2",
+      "startedAt": "2026-10-17T17:39:45.090Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.brumate.com/"
+      },
+      "apiErrors": [],
+      "summary": "The web search ended early (The web search took too long). No code posted for BruMate could be found. Nothing was tested, and your cart is unchanged.\nCopy diagnostics",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Found the coupon box. Searching the web for BruMate codes…",
+        "The web search ended early (The web search took too long). No code posted for BruMate could be found."
+      ],
+      "attempts": [],
+      "seconds": 266
+    }
+  ]
+}
