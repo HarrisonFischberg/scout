@@ -89,9 +89,27 @@ export function parseSettings(raw: unknown): Settings {
   return { provider, model, effort, retention };
 }
 
+/**
+ * One-time switch (owner decision 2026-10-17): installs that already picked an
+ * Anthropic model move to the default (Haiku 5.5 at High) once. The flag is
+ * written either way, so any model chosen afterwards sticks.
+ */
+export const MODEL_MIGRATION_KEY = "modelMigration";
+const MODEL_MIGRATION = "haiku-5-5-high";
+
 export async function loadSettings(storage: StorageArea): Promise<Settings> {
-  const got = await storage.get(SETTINGS_KEY);
-  return parseSettings(got[SETTINGS_KEY]);
+  const got = await storage.get([SETTINGS_KEY, MODEL_MIGRATION_KEY]);
+  const settings = parseSettings(got[SETTINGS_KEY]);
+  if (got[MODEL_MIGRATION_KEY] === MODEL_MIGRATION) return settings;
+  const migrated: Settings =
+    got[SETTINGS_KEY] !== undefined && settings.provider === "anthropic"
+      ? { ...settings, model: DEFAULT_MODEL.anthropic, effort: DEFAULT_EFFORT.anthropic }
+      : settings;
+  await storage.set({
+    ...(migrated !== settings ? { [SETTINGS_KEY]: migrated } : {}),
+    [MODEL_MIGRATION_KEY]: MODEL_MIGRATION,
+  });
+  return migrated;
 }
 
 export async function saveSettings(storage: StorageArea, settings: Settings): Promise<void> {

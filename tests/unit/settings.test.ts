@@ -10,6 +10,7 @@ import {
   deleteReportText,
   loadHistory,
   loadSettings,
+  MODEL_MIGRATION_KEY,
   parseSettings,
   pruneHistory,
   saveSettings,
@@ -63,6 +64,35 @@ describe("settings", () => {
     const s = fakeStorage();
     await saveSettings(s, { provider: "openai", model: "gpt-5", effort: "high", retention: "30" });
     expect(await loadSettings(s)).toEqual({ provider: "openai", model: "gpt-5", effort: "high", retention: "30" });
+  });
+});
+
+describe("one-time switch to Haiku 5.5 High", () => {
+  it("moves an existing Anthropic choice to Haiku 5.5 High once, keeping retention", async () => {
+    const s = fakeStorage({ settings: { provider: "anthropic", model: "claude-sonnet-5-5", effort: "low", retention: "30" } });
+    const want = { provider: "anthropic", model: "claude-haiku-5-5", effort: "high", retention: "30" };
+    expect(await loadSettings(s)).toEqual(want);
+    expect(s.data.settings).toEqual(want);
+  });
+
+  it("keeps a model chosen after the switch", async () => {
+    const s = fakeStorage({ settings: { provider: "anthropic", model: "claude-opus-5-5", effort: "low", retention: "7" } });
+    await loadSettings(s);
+    await saveSettings(s, { provider: "anthropic", model: "claude-sonnet-5-5", effort: "medium", retention: "7" });
+    expect(await loadSettings(s)).toMatchObject({ model: "claude-sonnet-5-5", effort: "medium" });
+  });
+
+  it("leaves OpenAI users on their own model", async () => {
+    const s = fakeStorage({ settings: { provider: "openai", model: "gpt-5", effort: "high", retention: "7" } });
+    expect(await loadSettings(s)).toMatchObject({ provider: "openai", model: "gpt-5" });
+    expect(s.data[MODEL_MIGRATION_KEY]).toBeDefined();
+  });
+
+  it("marks a fresh install as done, so its first saved choice sticks", async () => {
+    const s = fakeStorage();
+    await loadSettings(s);
+    await saveSettings(s, { provider: "anthropic", model: "claude-opus-5-5", effort: "low", retention: "7" });
+    expect(await loadSettings(s)).toMatchObject({ model: "claude-opus-5-5", effort: "low" });
   });
 });
 
