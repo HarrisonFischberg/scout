@@ -10,6 +10,7 @@ import type { Action, ActionResult } from "./actions/executor";
 import type { Snapshot } from "./snapshot/snapshot";
 import { CONTENT_HANDLER, OVERLAY_HANDLER, type ContentRequest, type OverlayRequest } from "./content-api";
 import { callInjected } from "./content-call";
+import { addPageBlur, BLUR_LAYER_ID, wantsPageBlur } from "./panel/blur";
 import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { chipSources, renderMarkdown } from "./chat/markdown";
 import { answerText, fillSourceCard, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
@@ -119,6 +120,21 @@ async function findKey(
     }
   }
   return null;
+}
+
+/** Providers with a key in the Keychain; the Models sheet lists only their models. */
+async function savedProviders(): Promise<Set<Provider>> {
+  const keychain = createKeychain(nativeSend);
+  const found = await Promise.all(
+    (["anthropic", "openai"] as const).map(async (p) => {
+      try {
+        return (await keychain.getKey(p)) ? p : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return new Set(found.filter((p): p is Provider => p !== null));
 }
 
 const PROVIDER_NAME: Record<Provider, string> = { anthropic: "Anthropic", openai: "OpenAI" };
@@ -364,11 +380,7 @@ async function main(): Promise<void> {
   const stop = el<HTMLButtonElement>("stop");
   const plus = el<HTMLButtonElement>("plus");
   const plusMenu = el("plus-menu");
-  const summarize = el<HTMLButtonElement>("summarize");
   const couponsRun = el<HTMLButtonElement>("coupons-run");
-  const tabsToggle = el<HTMLButtonElement>("tabs-toggle");
-  const tabsBox = el("tabs");
-  const tabList = el("tab-list");
   const modeChip = el("mode-chip");
   const modelPill = el<HTMLButtonElement>("model-pill");
   const modelPillText = el("model-pill-text");
@@ -408,12 +420,20 @@ async function main(): Promise<void> {
   const store = new ConversationStore();
   let conv = storage ? await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "") : "";
   let port: PanelPort | null = null;
+  // iPhone: frost the page above the sheet (src/panel/blur.ts). Best effort:
+  // pages Scout cannot script stay as they are.
+  let blurred = false;
+  if (tab.id !== undefined && wantsPageBlur(matchMedia("(pointer: coarse)").matches, screen.width)) {
+    blurred = await browser.scripting
+      .executeScript({ target: { tabId: tab.id }, func: addPageBlur, args: [BLUR_LAYER_ID] })
+      .then(() => true, () => false);
+  }
   if (browser.runtime.connect && tab.id !== undefined) {
     const tabId = tab.id;
     try {
       port = connectPanelPort({
         connect: (info) => browser.runtime.connect!(info),
-        hello: () => envelope("panel.hello", { tabId, ...(tab.windowId !== undefined ? { windowId: tab.windowId } : {}) }),
+        hello: () => envelope("panel.hello", { tabId, ...(tab.windowId !== undefined ? { windowId: tab.windowId } : {}), ...(blurred ? { blur: true } : {}) }),
         onOpen: (post) => {
           for (const m of store.open()) post("chat.subscribe", { message_id: m.id, after_seq: m.lastSeq });
           // Part 3: this tab's task events (action log, state, confirmations).
@@ -864,6 +884,7 @@ async function main(): Promise<void> {
     if (record) startRun("startup", { provider: settings.provider, model: settings.model });
     else current = disabledRun;
     const found = await findKey(settings);
+    keyed = await savedProviders();
     fallbackNotice?.remove();
     fallbackNotice = null;
     if (!found) {
@@ -891,10 +912,11 @@ async function main(): Promise<void> {
     };
     noKey.hidden = true;
     composer.hidden = false;
-    const pill = prettyModel(session.settings.model) + (effort ? " · " + EFFORT_LABEL[effort] : "");
+    // Owner, 2026-10-17: the pill shows the short model name only; the effort is in the Models sheet.
+    const pill = prettyModel(session.settings.model);
     modelPillText.textContent = pill;
     // Accessible name starts with the visible text (WCAG 2.5.3 Label in Name).
-    modelPill.setAttribute("aria-label", pill + ", change model or effort");
+    modelPill.setAttribute("aria-label", pill + (effort ? ", " + EFFORT_LABEL[effort] + " effort" : "") + ", change model or effort");
     // Nothing shown when ready; the line under the conversation is for each run's cost.
     status.textContent = "";
     current.finish(
@@ -954,29 +976,35 @@ async function main(): Promise<void> {
   document.addEventListener("click", (e) => {
     const t = e.target as Node;
     if (!plusMenu.hidden && !plusMenu.contains(t) && !plus.contains(t)) closePlus();
-    if (!modelMenu.hidden && !modelMenu.contains(t) && !modelPill.contains(t)) closeModelMenu();
   });
 
-  // ---------- Model menu: pick the model and effort in place ----------
-  // A menu of radio items above the pill. Choosing one saves it and closes the
-  // menu; Settings keeps the full controls (custom model ID, refresh).
-  const CHECK_ICON = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
-  const menuItems = (): HTMLButtonElement[] => Array.from(modelMenu.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'));
+  // ---------- Models sheet: pick the model and effort in place ----------
+  // Owner design 2026-10-17: a "Models" sheet over the panel listing every
+  // model of each provider with a saved key, then the effort levels. Choosing
+  // one saves it and closes the sheet; Settings keeps the full controls
+  // (custom model ID, refresh).
+  const CHECK_ICON = '<svg class="i check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
+  // Monochrome provider marks, drawn here (no vendor artwork is bundled).
+  const PROVIDER_GLYPH: Record<Provider, string> = {
+    anthropic:
+      '<svg class="i glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4M8.5 3.6l7 16.8M15.5 3.6l-7 16.8M3.6 8.5l16.8 7M3.6 15.5l16.8-7"/></svg>',
+    openai:
+      '<svg class="i glyph" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="4"/><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(120 12 12)"/></svg>',
+  };
+  const menuItems = (): HTMLButtonElement[] => Array.from(modelMenu.querySelectorAll<HTMLButtonElement>('[role="radio"]'));
+  /** Providers with a key in the Keychain, read on each connect. */
+  let keyed = new Set<Provider>();
 
-  function menuGroup(group: HTMLElement, heading: string, items: Array<{ key: string; label: string; checked: boolean; pick: () => void }>): void {
-    const head = document.createElement("div");
-    head.className = "menu-head";
-    head.setAttribute("aria-hidden", "true");
-    head.textContent = heading;
+  function menuGroup(group: HTMLElement, items: Array<{ key: string; label: string; glyph?: string; checked: boolean; pick: () => void }>): void {
     group.replaceChildren(
-      head,
       ...items.map((item) => {
         const b = document.createElement("button");
         b.type = "button";
-        b.tabIndex = -1;
+        b.tabIndex = item.checked ? 0 : -1;
         b.dataset.key = item.key;
-        b.setAttribute("role", "menuitemradio");
+        b.setAttribute("role", "radio");
         b.setAttribute("aria-checked", String(item.checked));
+        if (item.glyph) b.insertAdjacentHTML("beforeend", item.glyph);
         const text = document.createElement("span");
         text.textContent = item.label;
         b.append(text);
@@ -989,17 +1017,30 @@ async function main(): Promise<void> {
 
   // The session's provider and model: after a fallback, those of the key in use.
   const activeSettings = (): Settings => session?.settings ?? settings;
+  /** Providers the sheet lists: those with a saved key, and always the one in use. */
+  const menuProviders = (): Provider[] => (["anthropic", "openai"] as const).filter((p) => keyed.has(p) || p === activeSettings().provider);
 
   function renderModelMenu(): void {
     const cur = activeSettings();
+    const providers = menuProviders();
     const list = withModel(knownModels[cur.provider], cur.provider, cur.model);
     const levels = list.find((m) => m.id === cur.model)?.efforts ?? [];
     const effort = levels.includes(cur.effort as Effort) ? cur.effort : "default";
     const focused = modelMenu.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset.key : undefined;
-    menuGroup(el("model-menu-models"), "Model", list.map((m) => ({ key: "model:" + m.id, label: m.name, checked: m.id === cur.model, pick: () => void pickModel(m.id) })));
+    menuGroup(
+      el("model-menu-models"),
+      providers.flatMap((p) =>
+        (p === cur.provider ? list : knownModels[p]).map((m) => ({
+          key: "model:" + p + ":" + m.id,
+          label: m.name,
+          glyph: PROVIDER_GLYPH[p],
+          checked: p === cur.provider && m.id === cur.model,
+          pick: () => void pickModel(p, m.id),
+        })),
+      ),
+    );
     menuGroup(
       el("model-menu-efforts"),
-      "Effort",
       (["default", ...levels] as EffortSetting[]).map((v) => ({
         key: "effort:" + v,
         label: EFFORT_LABEL[v] + (v === "default" ? " (model decides)" : ""),
@@ -1007,31 +1048,34 @@ async function main(): Promise<void> {
         pick: () => void pickEffort(v),
       })),
     );
-    el("model-menu-sep").hidden = el("model-menu-efforts").hidden = levels.length === 0;
+    el("model-menu-effort-title").hidden = el("model-menu-efforts").hidden = levels.length === 0;
+    el("model-menu-note").textContent =
+      "Showing models for your " + providers.map((p) => PROVIDER_NAME[p]).join(" and ") + " API key" + (providers.length > 1 ? "s" : "") + ". Add keys in Settings.";
     if (focused) menuItems().find((b) => b.dataset.key === focused)?.focus();
   }
 
   // Cached list, else the provider's list (no tokens billed), as in Settings.
   // Only after the user allowed sharing with that provider.
   async function refreshMenuModels(): Promise<void> {
-    const p = activeSettings().provider;
-    let key: string | null = null;
-    try {
-      key = consent.has(p) ? await keychain.getKey(p) : null;
-    } catch {
-      key = null;
-    }
-    const list = await loadModelList(storage, p, key, providerFetch, Date.now());
-    const changed = JSON.stringify(list.models) !== JSON.stringify(knownModels[p]);
-    rememberModels(p, list.models);
-    if (changed && !modelMenu.hidden && activeSettings().provider === p) renderModelMenu();
+    await Promise.all(
+      menuProviders().map(async (p) => {
+        let key: string | null = null;
+        try {
+          key = consent.has(p) ? await keychain.getKey(p) : null;
+        } catch {
+          key = null;
+        }
+        const list = await loadModelList(storage, p, key, providerFetch, Date.now());
+        const changed = JSON.stringify(list.models) !== JSON.stringify(knownModels[p]);
+        rememberModels(p, list.models);
+        if (changed && !modelMenu.hidden) renderModelMenu();
+      }),
+    );
   }
 
   function openModelMenu(focus: "checked" | "last" = "checked"): void {
     closePlus();
     renderModelMenu();
-    // Fits the space above the composer, which grows with the text and chips.
-    modelMenu.style.maxHeight = Math.max(160, composer.getBoundingClientRect().top - 12) + "px";
     modelMenu.hidden = false;
     modelPill.setAttribute("aria-expanded", "true");
     const items = menuItems();
@@ -1044,12 +1088,12 @@ async function main(): Promise<void> {
     if (focusPill) modelPill.focus();
   }
 
-  /** Saves a model from the menu; an effort the new model does not support goes back to Default. */
-  async function pickModel(id: string): Promise<void> {
+  /** Saves a model from the sheet; an effort the new model does not support goes back to Default. */
+  async function pickModel(provider: Provider, id: string): Promise<void> {
     const cur = activeSettings();
-    const levels = withModel(knownModels[cur.provider], cur.provider, id).find((m) => m.id === id)?.efforts ?? [];
+    const levels = withModel(knownModels[provider], provider, id).find((m) => m.id === id)?.efforts ?? [];
     closeModelMenu(true);
-    await persist({ ...settings, provider: cur.provider, model: id, effort: levels.includes(cur.effort as Effort) ? cur.effort : "default" });
+    await persist({ ...settings, provider, model: id, effort: levels.includes(cur.effort as Effort) ? cur.effort : "default" });
   }
   async function pickEffort(effort: EffortSetting): Promise<void> {
     const cur = activeSettings();
@@ -1064,6 +1108,7 @@ async function main(): Promise<void> {
       openModelMenu(e.key === "ArrowUp" ? "last" : "checked");
     }
   });
+  el("model-menu-close").addEventListener("click", () => closeModelMenu(true));
   modelMenu.addEventListener("keydown", (e) => {
     const items = menuItems();
     const at = items.indexOf(document.activeElement as HTMLButtonElement);
@@ -1078,9 +1123,13 @@ async function main(): Promise<void> {
     else if (e.key === "Escape") {
       e.preventDefault();
       closeModelMenu(true);
+    } else if (e.key === "Tab") {
+      // Modal: focus moves between the close button and the checked rows.
+      const stops = [el<HTMLButtonElement>("model-menu-close"), ...items.filter((b) => b.tabIndex === 0)];
+      const i = stops.indexOf(document.activeElement as HTMLButtonElement);
+      e.preventDefault();
+      stops[(i + (e.shiftKey ? stops.length - 1 : 1)) % stops.length]?.focus();
     }
-    // Tab leaves the menu from the pill, so focus moves on to the next control.
-    else if (e.key === "Tab") closeModelMenu(true);
   });
 
   // Owner, 2026-10-17: one button next to the model picker starts and stops
@@ -1106,7 +1155,7 @@ async function main(): Promise<void> {
   }
 
   // ---------- Attached tabs (Part 2, spec 6): only tabs the user picks ----------
-  // Picked in the + menu's list or by typing @, shown as chips above the field,
+  // Picked by typing @, shown as chips above the field,
   // and sent with every question until removed. Nothing else is read.
   const attachedBox = el("attached");
   const mentionList = el<HTMLUListElement>("mention-list");
@@ -1131,7 +1180,6 @@ async function main(): Promise<void> {
       }),
     );
     attachedBox.hidden = attached.size === 0;
-    for (const box of tabList.querySelectorAll<HTMLInputElement>("input[data-tab]")) box.checked = attached.has(Number(box.dataset.tab));
   }
   function attachTab(t: TabInfo): void {
     if (!attached.has(t.id) && attached.size >= MAX_EXTRA_TABS) {
@@ -1150,18 +1198,6 @@ async function main(): Promise<void> {
   async function loadTabs(): Promise<void> {
     others = (await listTabs()).filter((t) => !t.active);
     for (const id of [...attached.keys()]) if (!others.some((t) => t.id === id)) attached.delete(id);
-    tabList.replaceChildren();
-    for (const t of others) {
-      const label = document.createElement("label");
-      const box = document.createElement("input");
-      box.type = "checkbox";
-      box.dataset.tab = String(t.id);
-      box.checked = attached.has(t.id);
-      box.addEventListener("change", () => (box.checked ? attachTab(t) : detachTab(t.id)));
-      label.append(box, document.createTextNode(t.title));
-      tabList.appendChild(label);
-    }
-    tabsToggle.disabled = others.length === 0;
     renderAttached();
   }
 
@@ -1242,13 +1278,6 @@ async function main(): Promise<void> {
   }
   question.addEventListener("input", updateMentions);
   question.addEventListener("blur", () => setTimeout(closeMentions, 0));
-  tabsToggle.addEventListener("click", () => {
-    tabsBox.hidden = !tabsBox.hidden;
-    tabsToggle.setAttribute("aria-expanded", String(!tabsBox.hidden));
-    closePlus();
-    if (!tabsBox.hidden) tabList.querySelector<HTMLInputElement>("input")?.focus();
-    else question.focus();
-  });
 
   // ---------- Consent: asked once per provider before anything is sent ----------
   // App Store Review Guideline 5.1.2(i). A modal dialog: focus starts on its
@@ -2648,10 +2677,6 @@ async function main(): Promise<void> {
       composer.requestSubmit();
     }
   });
-  summarize.addEventListener("click", () => {
-    closePlus();
-    void ask(SUMMARIZE_QUESTION);
-  });
   couponsRun.addEventListener("click", () => {
     closePlus();
     void runCoupons();
@@ -2689,7 +2714,7 @@ async function main(): Promise<void> {
       siteSuggestions.appendChild(li);
     }
     siteSuggestions.setAttribute("aria-label", "Suggestions for " + shop.site.name);
-    empty.querySelector<HTMLElement>(".chips")!.hidden = true;
+    el("starters").hidden = true;
     updateEmpty();
   }
   for (const chip of empty.querySelectorAll<HTMLButtonElement>("button[data-prompt]")) {

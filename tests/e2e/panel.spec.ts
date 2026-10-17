@@ -93,7 +93,7 @@ test("each tab keeps its own conversation, restored when the panel reopens on it
   await expect(log.getByText("Answer for this tab.")).toBeVisible();
 
   await switchTab(page, { id: 2 });
-  await expect(page.getByRole("heading", { name: "How can I help?" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Suggestions" })).toBeVisible();
   await expect(log.getByText("What moved the market today?")).toHaveCount(0);
 
   await switchTab(page, { id: 1 });
@@ -124,7 +124,7 @@ test("an off-page question goes out as a normal chat message, with the page only
 
 test("the panel works in Private Browsing like in any other tab, and marks the chat as private", async ({ page }) => {
   await openPanel(page, { id: 3, incognito: true });
-  await expect(page.getByRole("heading", { name: "How can I help?" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Suggestions" })).toBeVisible();
   await expect(page.locator("#composer")).toBeVisible();
   await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
   const hellos = await portHellos(page);

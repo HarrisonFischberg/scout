@@ -115,7 +115,8 @@ test("model and effort dropdowns list the key's models and save the effort", asy
   await effort.selectOption("max");
   await expect.poll(() => savedSettings(page)).toEqual({ provider: "anthropic", model: "claude-opus-5-5", effort: "max", retention: "7" });
   await page.getByRole("button", { name: "Back to chat" }).click();
-  await expect(page.locator("#model-pill")).toHaveText("Opus 5.5 · Max");
+  await expect(page.locator("#model-pill")).toHaveText("Opus 5.5");
+  await expect(page.locator("#model-pill")).toHaveAttribute("aria-label", "Opus 5.5, Max effort, change model or effort");
   // A model without effort control resets the effort to Default.
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByLabel("Model", { exact: true }).selectOption("claude-old-4");
