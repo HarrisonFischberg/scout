@@ -2,13 +2,28 @@
 // it only on sites the user let Scout access, and only while Settings > Button
 // on webpages is on; it never runs in frames or Private Browsing, and it reads
 // nothing from the page. It draws a tab on the edge of the viewport in a closed
-// shadow root. The tab tucks in when idle and can be dragged up and down or to
-// the other side. Tapping it asks the worker to open Scout's toolbar panel
+// shadow root. The tab opens itself once, on the first page after install, and
+// otherwise stays tucked until the user reaches for it; on touch the first tap
+// brings it out and the next one opens Scout (owner requests 2026-10-17). It
+// can be dragged up and down or to the other side. Opening it asks the worker to open Scout's toolbar panel
 // (Safari's sheet over the page on iPhone). It never puts an extension page in
 // the website: Safari runs such a frame in the page's process and kills that
 // process when the frame uses extension APIs (owner bug report 2026-10-16).
 import { request } from "./bridge/messages";
-import { clampY, isDrag, KEY_STEP, PAGE_BUTTON_KEY, parsePageButton, snapSide, TUCK_AFTER_MS, type PageButton, type Side } from "./panel/edge";
+import {
+  clampY,
+  isDrag,
+  KEY_STEP,
+  PAGE_BUTTON_INTRO_KEY,
+  PAGE_BUTTON_KEY,
+  parsePageButton,
+  snapSide,
+  tabScale,
+  tapOnlyWakes,
+  TUCK_AFTER_MS,
+  type PageButton,
+  type Side,
+} from "./panel/edge";
 
 const FLAG = "__safariScoutEdge";
 const g = globalThis as unknown as Record<string, unknown>;
@@ -28,15 +43,16 @@ const GLYPH =
 // Dark glass in both themes, like Safari's own controls: it stands out on
 // light pages, and the light border keeps it visible on dark ones. Awake: a
 // 56 x 60 pill in a 60 x 64 target. Tucked: a 16 px sliver in a 32 px target.
+// --k scales it back to that size on pages Safari zooms out (tabScale).
 const CSS = `
 :host { all: initial; }
 .tab {
   position: fixed; z-index: 1; top: 45%; right: 0; left: auto; width: 60px; height: 64px; margin: 0; padding: 0;
   border: 0; background: transparent; display: flex; align-items: center; justify-content: flex-end;
-  transform: translateY(-50%); cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none;
+  transform: translateY(-50%) scale(var(--k, 1)); transform-origin: right center; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; outline: none;
 }
-.tab[data-side="left"] { right: auto; left: 0; justify-content: flex-start; }
+.tab[data-side="left"] { right: auto; left: 0; justify-content: flex-start; transform-origin: left center; }
 .tab.tucked { width: 32px; }
 .pill {
   box-sizing: border-box; display: flex; align-items: center; justify-content: center; width: 56px; height: 60px;
@@ -51,7 +67,7 @@ const CSS = `
 .pill .lens { fill: rgb(44 44 46); }
 .tab.tucked svg { opacity: 0; }
 .tab:focus-visible .pill { outline: 2px solid #2997ff; outline-offset: 2px; }
-.tab.dragging { left: 0; right: auto; width: 64px; justify-content: center; transform: translate(-50%, -50%); }
+.tab.dragging { left: 0; right: auto; width: 64px; justify-content: center; transform: translate(-50%, -50%) scale(var(--k, 1)); transform-origin: center; }
 .tab.dragging .pill { width: 60px; border-radius: 30px; border: 1px solid rgb(255 255 255 / 22%); }
 @media (prefers-reduced-motion: no-preference) {
   .tab:not(.dragging) .pill { transition: width 180ms ease; }
@@ -96,7 +112,21 @@ interface EdgeUi {
   destroy(): void;
 }
 
-function mount(initial: PageButton, save: (side: Side, y: number) => void): EdgeUi {
+/** Inputs for tabScale, read from this page now. */
+function viewportInfo(): Parameters<typeof tabScale>[0] {
+  const landscape = matchMedia("(orientation: landscape)").matches;
+  const sw = screen.width;
+  const sh = screen.height;
+  const zoom = Number.parseFloat((getComputedStyle(document.documentElement) as CSSStyleDeclaration & { zoom?: string }).zoom ?? "1");
+  return {
+    coarse: matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches,
+    idealWidth: landscape ? Math.max(sw, sh) : Math.min(sw, sh),
+    visualWidth: window.visualViewport?.width ?? innerWidth,
+    pageZoom: Number.isFinite(zoom) ? zoom : 1,
+  };
+}
+
+function mount(initial: PageButton, save: (side: Side, y: number) => void, introduce: boolean): EdgeUi {
   const host = document.createElement("div");
   host.setAttribute("style", HOST_STYLE);
   const root = host.attachShadow({ mode: "closed" });
@@ -116,24 +146,40 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void): Edge
   };
   placeTab();
 
+  // ---------- Same size on screen when Safari zooms the page out ----------
+  const rescale = (): void => {
+    tab.style.setProperty("--k", String(tabScale(viewportInfo())));
+  };
+  rescale();
+  window.visualViewport?.addEventListener("resize", rescale);
+  window.addEventListener("resize", rescale);
+
   // ---------- Small when not in use ----------
+  // Starts tucked except the very first time; only the user brings it out.
   let tuckTimer = 0;
-  let pointer: { x: number; y: number; id: number } | null = null;
+  let pointer: { x: number; y: number; id: number; type: string; wasTucked: boolean } | null = null;
   let dragging = false;
   let suppressClick = false;
-  const wake = (): void => {
-    tab.classList.remove("tucked");
+  // The tap that brought a tucked tab out (touch): its click does not open Scout.
+  let wakeTap = false;
+  if (!introduce) tab.classList.add("tucked");
+  const scheduleTuck = (): void => {
     window.clearTimeout(tuckTimer);
     tuckTimer = window.setTimeout(() => {
       if (root.activeElement !== tab && !pointer) tab.classList.add("tucked");
     }, TUCK_AFTER_MS);
   };
+  const wake = (): void => {
+    tab.classList.remove("tucked");
+    scheduleTuck();
+  };
 
   // ---------- Move: drag, or arrow keys when focused ----------
   tab.addEventListener("pointerdown", (e) => {
     if (!e.isTrusted || e.button !== 0) return;
-    pointer = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    pointer = { x: e.clientX, y: e.clientY, id: e.pointerId, type: e.pointerType, wasTucked: tab.classList.contains("tucked") };
     dragging = false;
+    wakeTap = false;
     wake();
     try {
       tab.setPointerCapture(e.pointerId);
@@ -151,7 +197,9 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void): Edge
   });
   const endPointer = (e: PointerEvent, cancelled: boolean): void => {
     if (!pointer || e.pointerId !== pointer.id) return;
+    const ended = pointer;
     pointer = null;
+    if (!dragging && !cancelled && tapOnlyWakes(ended.type, ended.wasTucked)) wakeTap = true;
     if (dragging) {
       dragging = false;
       suppressClick = true;
@@ -168,9 +216,13 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void): Edge
   };
   tab.addEventListener("pointerup", (e) => endPointer(e, false));
   tab.addEventListener("pointercancel", (e) => endPointer(e, true));
-  tab.addEventListener("pointerenter", wake);
+  // Hover wakes it for a mouse only: on touch, pointerenter comes with every tap.
+  tab.addEventListener("pointerenter", (e) => {
+    if (e.pointerType === "mouse") wake();
+  });
   tab.addEventListener("focus", wake);
-  tab.addEventListener("blur", wake);
+  // Losing focus (the panel opening, the user moving on) only lets it tuck again.
+  tab.addEventListener("blur", scheduleTuck);
   tab.addEventListener("keydown", (e) => {
     if (!e.isTrusted) return;
     if (e.key === "ArrowUp") y = clampY(y - KEY_STEP);
@@ -199,6 +251,10 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void): Edge
       suppressClick = false;
       return;
     }
+    if (wakeTap) {
+      wakeTap = false;
+      return;
+    }
     // Only a real tap or key press opens Scout; page scripts cannot.
     if (!e.isTrusted || opening) return;
     opening = true;
@@ -225,7 +281,7 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void): Edge
       // Stays a fixed element with the top z-index.
     }
   }
-  wake();
+  if (introduce) wake();
 
   return {
     place(p) {
@@ -237,6 +293,8 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void): Edge
     destroy() {
       window.clearTimeout(tuckTimer);
       window.clearTimeout(toastTimer);
+      window.visualViewport?.removeEventListener("resize", rescale);
+      window.removeEventListener("resize", rescale);
       host.remove();
     },
   };
@@ -254,14 +312,27 @@ async function start(): Promise<void> {
       .then((latest) => storage.set({ [PAGE_BUTTON_KEY]: { ...latest, side, y } }))
       .catch(() => undefined);
   };
-  let ui: EdgeUi | null = pref.on ? mount(pref, save) : null;
+  // Open on its own only once, ever: the first page after install shows the full
+  // tab, then it waits tucked until the user reaches for it.
+  const introduce = async (): Promise<boolean> => {
+    const got = await storage.get(PAGE_BUTTON_INTRO_KEY).catch(() => ({}) as Record<string, unknown>);
+    if (got[PAGE_BUTTON_INTRO_KEY] === true) return false;
+    await storage.set({ [PAGE_BUTTON_INTRO_KEY]: true }).catch(() => undefined);
+    return true;
+  };
+  let ui: EdgeUi | null = pref.on ? mount(pref, save, await introduce()) : null;
   browser.storage?.onChanged?.addListener((changes, area) => {
     if (area !== "local" || !(PAGE_BUTTON_KEY in changes)) return;
     pref = parsePageButton(changes[PAGE_BUTTON_KEY]?.newValue);
     if (!pref.on) {
       ui?.destroy();
       ui = null;
-    } else if (!ui) ui = mount(pref, save);
+    } else if (!ui) {
+      // Turned on from Settings while this page is open.
+      void introduce().then((intro) => {
+        if (pref.on && !ui) ui = mount(pref, save, intro);
+      });
+    }
     else ui.place(pref);
   });
 }

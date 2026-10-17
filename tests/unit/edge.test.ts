@@ -1,13 +1,38 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { clampY, coversAllSites, edgeMatches, isDrag, parsePageButton, reachText, sameMatches, snapSide, Y_MAX, Y_MIN } from "../../src/panel/edge";
+import { clampY, coversAllSites, edgeMatches, isDrag, MAX_TAB_SCALE, parsePageButton, reachText, sameMatches, snapSide, tabScale, tapOnlyWakes, Y_MAX, Y_MIN } from "../../src/panel/edge";
 import { openPanel } from "../../src/panel/toolbar";
 
 describe("page button settings", () => {
-  it("is off by default and drops malformed stored values", () => {
-    expect(parsePageButton(undefined)).toEqual({ on: false, side: "right", y: 0.45 });
-    expect(parsePageButton({ on: "yes", side: "top", y: "middle" })).toEqual({ on: false, side: "right", y: 0.45 });
+  it("is on from a fresh install, keeps a stored choice, and drops malformed stored values", () => {
+    // Owner request 2026-10-17: a fresh install starts with the floating icon.
+    expect(parsePageButton(undefined)).toEqual({ on: true, side: "right", y: 0.45 });
+    expect(parsePageButton({ side: "left" })).toEqual({ on: true, side: "left", y: 0.45 });
+    expect(parsePageButton({ on: false })).toEqual({ on: false, side: "right", y: 0.45 });
+    expect(parsePageButton({ on: "yes", side: "top", y: "middle" })).toEqual({ on: true, side: "right", y: 0.45 });
     expect(parsePageButton({ on: true, side: "left", y: 0.3 })).toEqual({ on: true, side: "left", y: 0.3 });
+  });
+
+  it("on touch, a tap on a tucked tab only brings it out; mouse and awake taps open Scout", () => {
+    expect(tapOnlyWakes("touch", true)).toBe(true);
+    expect(tapOnlyWakes("pen", true)).toBe(true);
+    expect(tapOnlyWakes("touch", false)).toBe(false);
+    expect(tapOnlyWakes("mouse", true)).toBe(false);
+  });
+
+  it("keeps the tab its own size when Safari zooms a wide page out", () => {
+    const base = { coarse: true, idealWidth: 390, visualWidth: 390, pageZoom: 1 };
+    expect(tabScale(base)).toBe(1);
+    // iPhone fits a 1000 px wide page into 390 pt: scaled back up.
+    expect(tabScale({ ...base, visualWidth: 1000 })).toBeCloseTo(1000 / 390, 2);
+    // Pinch-zoomed in: left alone.
+    expect(tabScale({ ...base, visualWidth: 200 })).toBe(1);
+    // Mac: the window is narrower than the screen, which is not a zoom-out.
+    expect(tabScale({ coarse: false, idealWidth: 1512, visualWidth: 800, pageZoom: 1 })).toBe(1);
+    // A root CSS zoom shrinks it anywhere.
+    expect(tabScale({ coarse: false, idealWidth: 1512, visualWidth: 800, pageZoom: 0.5 })).toBe(2);
+    expect(tabScale({ ...base, visualWidth: 100_000 })).toBe(MAX_TAB_SCALE);
+    expect(tabScale({ ...base, pageZoom: Number.NaN, idealWidth: 0 })).toBe(1);
   });
 
   it("keeps the tab clear of the page header and Safari's bottom bar", () => {

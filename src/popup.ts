@@ -2615,7 +2615,7 @@ async function main(): Promise<void> {
   }
 
   // ---------- Button on webpages (src/edge.ts) ----------
-  // Off until turned on here. Turning it on asks Safari for site access; the
+  // On from a fresh install; it shows on sites Scout can access. Turning it on here asks Safari for site access; the
   // user may grant every site or fewer, and the button shows where granted.
   const pageOn = el<HTMLInputElement>("pagebutton-on");
   const pageSides = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="pagebutton-side"]'));
