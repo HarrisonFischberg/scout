@@ -724,6 +724,7 @@ export async function suggestCodes(
     readFromPages: read.length,
     browserPages,
     browserCodes: codes.filter((c) => fromBrowser.has(c.code) || browserKeys.has(urlKey(c.sourceUrl))).length,
-    ...(notOpened && (declined || !opts.browser) ? { browserSkipped: { count: notOpened, why: declined ? ("declined" as const) : ("unavailable" as const) } } : {}),
+    // A search the provider refused says why on its own; skipped pages are not news then.
+    ...(notOpened && (declined || !opts.browser) && (!error || error.code === "timeout") ? { browserSkipped: { count: notOpened, why: declined ? ("declined" as const) : ("unavailable" as const) } } : {}),
   };
 }

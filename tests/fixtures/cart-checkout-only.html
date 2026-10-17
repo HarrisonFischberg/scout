@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Your cart (synthetic)</title></head>
+<body>
+<!-- A cart with no coupon box: this synthetic store takes codes only on its
+     checkout page (as Chubbies, Nomad and Pura did in the 2026-10-17 live runs). -->
+<main>
+  <h1>Your cart</h1>
+  <p>Synthetic hoodie × 1 — $170.00</p>
+  <p>Subtotal $170.00. Taxes, shipping and discount codes calculated at checkout.</p>
+  <button type="button" id="shoppay" onclick="document.getElementById('status').textContent='wallet opened'">Shop Pay</button>
+  <a id="checkout" href="shopify-checkout.html">Check out</a>
+  <p id="status"></p>
+</main>
+</body></html>

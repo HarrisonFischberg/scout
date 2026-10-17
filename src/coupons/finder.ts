@@ -17,7 +17,7 @@
 import type { Action, ActionResult } from "../actions/executor";
 import type { AgentControl } from "../agent/control";
 import { detectCaptcha } from "../safety/classifier";
-import type { Snapshot } from "../snapshot/snapshot";
+import type { SnapElement, Snapshot } from "../snapshot/snapshot";
 import { CODE_RE, type CandidateOrigin, type CouponCandidate } from "./candidates";
 import { findForm, newLines, removeTarget, revealTargets, showsCode, storeReply, type FormHints, type StoreReply } from "./form";
 import { formatMoney, readTotal } from "./money";
@@ -256,6 +256,57 @@ export function noBoxMessage(snap: Snapshot): string {
   }
   return "No coupon box found on this page. Open the cart or checkout page first.";
 }
+// Express wallets open a payment sheet, not the checkout page: never pressed.
+const EXPRESS_PAY = /\b(?:express|shop\s*pay|paypal|apple\s*pay|google\s*pay|g\s*pay|amazon|venmo|klarna|afterpay|affirm|sezzle|zip|meta\s*pay|link)\b/i;
+
+/**
+ * The store's own Checkout control on a cart with no coupon box (owner's
+ * choice 2026-10-17: Scout goes to checkout itself when the box is only
+ * there), or null. Only a plain "Checkout" / "Check out" / "Continue to
+ * checkout" control; never an express wallet, a payment or order button.
+ */
+export function checkoutTarget(snap: Snapshot): SnapElement | null {
+  const ok = (e: SnapElement): boolean =>
+    (e.tag === "button" || e.role === "button" || e.role === "link" || e.tag === "a") &&
+    !e.disabled &&
+    e.name.length <= 40 &&
+    CHECKOUT_CONTROL.test(e.name) &&
+    !EXPRESS_PAY.test(e.name + " " + (e.href ?? "")) &&
+    !/\b(?:pay|place|order|buy|purchase|confirm|complete)\b/i.test(e.name);
+  const all = snap.elements.filter(ok);
+  // "Checkout" itself first, then longer wordings ("Continue to checkout").
+  return all.find((e) => /^\W*check\s*out\W*$/i.test(e.name.trim())) ?? all[0] ?? null;
+}
+
+export type CheckoutStep = { ok: true; url: string } | { ok: false; why: "no_control" | "refused" | "no_page" | "sign_in" | "captcha"; message: string };
+
+/**
+ * Presses the cart's Checkout control and waits for the checkout page (up to
+ * `timeoutMs`). Nothing is typed. A checkout that asks for a password or a
+ * CAPTCHA first is left for the user.
+ */
+export async function goToCheckout(page: Pick<CouponPage, "snapshot" | "act">, from: Snapshot, opts: { timeoutMs?: number; pollMs?: number } = {}): Promise<CheckoutStep> {
+  const target = checkoutTarget(from);
+  if (!target) return { ok: false, why: "no_control", message: noBoxMessage(from) };
+  // A press that navigates can lose its reply as the page unloads: the page itself says whether it worked.
+  const pressed = await page.act({ type: "click", ref: target.ref }).catch(() => null);
+  const poll = opts.pollMs ?? 500;
+  const end = Date.now() + (opts.timeoutMs ?? 15_000);
+  while (Date.now() < end) {
+    await page.act({ type: "wait", ms: poll }).catch(() => null);
+    const snap = await page.snapshot().catch(() => null);
+    // A new address with something on it: still loading pages show neither text nor controls.
+    if (!snap || snap.url === from.url || (snap.text.trim().length < 80 && snap.elements.length < 3)) continue;
+    if (detectCaptcha(snap)) return { ok: false, why: "captcha", message: "The checkout page asked for a CAPTCHA. Complete it yourself, then run Find coupons again." };
+    if (snap.elements.some((e) => e.tag === "input" && e.type === "password")) {
+      return { ok: false, why: "sign_in", message: "The checkout page asks you to sign in first. Sign in, then run Find coupons again on the checkout page." };
+    }
+    return { ok: true, url: snap.url };
+  }
+  if (pressed && !pressed.ok) return { ok: false, why: "refused", message: "The store's Checkout button did not respond. Open Checkout yourself and run Find coupons again." };
+  return { ok: false, why: "no_page", message: "Checkout did not open. Open Checkout yourself and run Find coupons again." };
+}
+
 const EPS = 0.004;
 // Why the page path stopped with a code still on the order: each says which
 // step failed, so a live run's summary tells the two apart.
@@ -755,6 +806,8 @@ export interface DiscoveryInfo {
   /** Pages opened in a background Safari tab because the web reader could not load them, and codes found there. */
   browserOpened?: number;
   browserCodes?: number;
+  /** Scout pressed the cart's Checkout button itself because the coupon box is only there. */
+  atCheckout?: boolean;
   /** Pages that needed the browser and were not opened: Scout has no access to those sites in Safari. */
   browserDeclined?: number;
 }
@@ -813,7 +866,13 @@ export function couponSummary(o: CouponOutcome, discovery?: DiscoveryInfo): stri
       shown + " is the best: your total drops from **" + money(o.baseline) + "** to **" + money(o.best.total) + "** (you save " +
         money(o.baseline - o.best.total) + ", " + percentOff(o.baseline, o.best.total) + ").",
     );
-    out.push(o.applied ? "It's applied to your cart, and I didn't go to checkout." : "I couldn't re-apply it, so enter it yourself in the coupon box.");
+    out.push(
+      o.applied
+        ? discovery?.atCheckout
+          ? "It's applied on the checkout page. Nothing was bought, and none of your details were filled in."
+          : "It's applied to your cart, and I didn't go to checkout."
+        : "I couldn't re-apply it, so enter it yourself in the coupon box.",
+    );
     if (o.best.conditions) out.push("Conditions seen with it: " + o.best.conditions + ".");
   } else if (o.status === "done" || o.status === "stopped") {
     out.push(

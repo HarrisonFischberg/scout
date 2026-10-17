@@ -30,6 +30,8 @@ import {
   couponSummary,
   discoveryLine,
   openCouponTester,
+  checkoutTarget,
+  goToCheckout,
   percentOff,
   plural,
   runCouponSearch,
@@ -2582,7 +2584,24 @@ async function main(): Promise<void> {
       // 1. A way to test codes, before any search: the store's cart API or its
       //    coupon box. A page with neither stops here, in seconds.
       say("Looking for the coupon box on this page…");
-      const tester = await openCouponTester(couponPage, { locate });
+      let tester = await openCouponTester(couponPage, { locate });
+      // No box on the cart: many stores take codes only at checkout. Scout presses the store's own
+      // Checkout button and works on the checkout page (owner's choice 2026-10-17); nothing is typed.
+      let atCheckout = false;
+      if ("error" in tester && tester.error === "no_form" && !run.isStopped) {
+        const here = await couponPage.snapshot().catch(() => null);
+        if (here && checkoutTarget(here)) {
+          say("This store takes codes at checkout. Opening checkout (nothing is bought, and none of your details are filled in)…");
+          trace("coupons:checkout press");
+          const step = await goToCheckout(couponPage, here);
+          trace("coupons:checkout " + (step.ok ? "opened" : step.why));
+          if (step.ok) {
+            atCheckout = true;
+            current.page(step.url);
+            tester = await openCouponTester(couponPage, { locate });
+          } else tester = { error: step.why === "captcha" ? "captcha" : "no_form", message: step.message };
+        }
+      }
       if ("error" in tester) {
         trace("coupons:method none status " + tester.error);
         statusOf = tester.error === "stopped" ? "stopped" : "error";
@@ -2681,6 +2700,7 @@ async function main(): Promise<void> {
           masked: 0,
           dropped: 0,
           offers: [],
+          ...(atCheckout ? { atCheckout: true } : {}),
         };
         const tally = (more: SuggestedCodes): void => {
           discovery.searched = discovery.searched && more.searched;
