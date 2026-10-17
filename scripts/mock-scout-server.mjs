@@ -274,7 +274,8 @@ function taskPlan(body) {
   const first = textOf(messages[0]?.content);
   const last = textOf(messages[messages.length - 1]?.content);
   const goal = /<user_goal>([\s\S]*?)<\/user_goal>/.exec(first)?.[1] ?? "";
-  if (/^Action results/.test(last)) {
+  // The results of the previous batch arrive in the same turn as the new observation.
+  if (/Action results/.test(last)) {
     const ok = (last.match(/"ok":true/g) ?? []).length;
     const failed = (last.match(/"ok":false/g) ?? []).length;
     return { text: "", tool: { name: "finish", input: { summary: "Mock task finished: " + ok + " action(s) done, " + failed + " not done." } } };
