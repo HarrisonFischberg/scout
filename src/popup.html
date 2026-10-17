@@ -190,6 +190,9 @@
       .segmented label:has(input:focus-visible) { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
       .composer-foot .segmented { gap: 1px; }
       .composer-foot .segmented label { padding: 0 8px; }
+      /* Mode switch is icon-only: monochrome line glyphs (search for Chat, binoculars for Scout) in the label's
+         own text color; the mode name stays as sr-only text and a title tooltip. */
+      .segmented label svg.i { width: 17px; height: 17px; }
       /* The one item that gives way when the row is narrow: its text ends in "…". */
       .composer-foot > #model-pill { flex: 0 1 auto; }
       #model-pill {
@@ -438,7 +441,7 @@
         <ul id="mention-list" role="listbox" aria-label="Tabs to attach" hidden></ul>
         <div class="composer-box">
           <div id="mode-chip" hidden>
-            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 7 16 2-7 7-2Z"/></svg>
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="16.5" r="4"/><circle cx="18" cy="16.5" r="4"/><path d="M3.5 13.4V8.5A1.5 1.5 0 0 1 5 7h2a1.5 1.5 0 0 1 1.5 1.5v4.9M15.5 13.4V8.5A1.5 1.5 0 0 1 17 7h2a1.5 1.5 0 0 1 1.5 1.5v4.9M8.5 11h7M4.5 7V4.5h3V7M16.5 7V4.5h3V7"/></svg>
             <span>Scout mode</span>
             <button id="mode-clear" class="icon-btn" type="button" aria-label="Back to Chat mode">
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
@@ -458,8 +461,8 @@
             </button>
             <fieldset class="segmented">
               <legend>Mode</legend>
-              <label><input type="radio" name="mode" value="chat" checked />Chat</label>
-              <label><input type="radio" name="mode" value="scout" />Scout</label>
+              <label title="Chat"><input type="radio" name="mode" value="chat" checked /><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><span class="sr-only">Chat</span></label>
+              <label title="Scout"><input type="radio" name="mode" value="scout" /><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="16.5" r="4"/><circle cx="18" cy="16.5" r="4"/><path d="M3.5 13.4V8.5A1.5 1.5 0 0 1 5 7h2a1.5 1.5 0 0 1 1.5 1.5v4.9M15.5 13.4V8.5A1.5 1.5 0 0 1 17 7h2a1.5 1.5 0 0 1 1.5 1.5v4.9M8.5 11h7M4.5 7V4.5h3V7M16.5 7V4.5h3V7"/></svg><span class="sr-only">Scout</span></label>
             </fieldset>
             <button id="model-pill" type="button" aria-label="Change model" aria-haspopup="menu" aria-expanded="false" aria-controls="model-menu">
               <span id="model-pill-text"></span>
