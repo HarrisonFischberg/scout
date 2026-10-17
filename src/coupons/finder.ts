@@ -163,7 +163,33 @@ export interface TesterError {
   message: string;
 }
 
-async function cartTester(cart: CartApi): Promise<CouponTester | TesterError | null> {
+// Owner choice 2026-10-17: codes are still tested through the cart API (fast
+// and exact), but the winner goes in through the page's own coupon box, typed
+// and pressed where the user can watch. Confirmed through the cart API; null
+// when the page has no usable box or the store did not take the code, and the
+// caller then applies it through the API as before.
+const PAGE_APPLY_MS = 6000;
+async function applyOnPage(page: CouponPage, cart: CartApi, code: string, original: string): Promise<number | null> {
+  // Take the last tested code off first, so the page's Apply is what puts the winner on.
+  const reset = await cart.update(original);
+  if (!reset || "rateLimited" in reset) return null;
+  const snap = await page.snapshot();
+  const form = findForm(snap);
+  if (!form) return null;
+  if (!(await page.act({ type: "type", ref: form.input.ref, text: code, clear: true })).ok) return null;
+  // Some stores enable Apply only once a code is typed.
+  const ready = findForm(await page.snapshot());
+  if (!ready || ready.apply.disabled) return null;
+  if (!(await page.act({ type: "click", ref: ready.apply.ref })).ok) return null;
+  for (let waited = 0; waited < PAGE_APPLY_MS; waited += POLL_MS) {
+    await page.act({ type: "wait", ms: POLL_MS }).catch(() => null);
+    const now = await cart.info().catch(() => null);
+    if (now && typeof now.total === "number" && now.codes.some((c) => c.applicable && c.code.toUpperCase() === code.toUpperCase())) return now.total;
+  }
+  return null;
+}
+
+async function cartTester(cart: CartApi, page?: CouponPage): Promise<CouponTester | TesterError | null> {
   const start = await cart.info();
   // Only a real cart (numeric total) counts; anything else falls back to the page path.
   if (!start || typeof start.total !== "number" || !Array.isArray(start.codes)) return null;
@@ -189,6 +215,11 @@ async function cartTester(cart: CartApi): Promise<CouponTester | TesterError | n
       return outcome(await cart.update(codes.join(",")), codes);
     },
     async apply(code) {
+      // A pair ("A,B") has no single box entry: it goes through the API.
+      if (page && !code.includes(",")) {
+        const total = await applyOnPage(page, cart, code, original).catch(() => null);
+        if (total !== null) return total;
+      }
       const r = await cart.update(code);
       return r && !("rateLimited" in r) ? r.total : null;
     },
@@ -433,7 +464,7 @@ export interface TesterOptions {
  * search, so a page with no coupon box fails fast.
  */
 export async function openCouponTester(page: CouponPage, opts: TesterOptions = {}): Promise<CouponTester | TesterError> {
-  const viaCart = page.cart ? await cartTester(page.cart).catch(() => null) : null;
+  const viaCart = page.cart ? await cartTester(page.cart, page).catch(() => null) : null;
   if (viaCart && !("error" in viaCart)) return viaCart;
   const quietMs = opts.settleMs ?? 2500;
   const viaPage = await pageTester(page, { quietMs, maxMs: Math.max(opts.maxSettleMs ?? 8000, quietMs) }, opts.locate);

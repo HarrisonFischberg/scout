@@ -545,6 +545,67 @@ describe("Shopify cart path", () => {
     expect(text).not.toContain("|");
   });
 
+  // Owner choice 2026-10-17: tested through the API, but the winner is typed
+  // into the page's own box and Apply pressed, so the user can watch it go in.
+  it("types the winning code into the page's coupon box and presses Apply when the page has one", async () => {
+    const cart = shopify();
+    const acts: Action[] = [];
+    let typed = "";
+    const withBox: CouponPage = {
+      cart,
+      snapshot: async () => ({
+        url: "https://shop.test/cart",
+        title: "Cart",
+        text: "Total: $151.80",
+        elements: [
+          { ref: "e1", tag: "input", role: "textbox", name: "Discount code", type: "text" },
+          { ref: "e2", tag: "button", role: "button", name: "Apply" },
+        ],
+        truncated: false,
+      }),
+      act: async (a: Action) => {
+        acts.push(a);
+        if (a.type === "type") typed = a.text;
+        // The store's own Apply posts the box's code to its cart.
+        if (a.type === "click" && a.ref === "e2") await cart.update(typed);
+        return { ok: true, action: a.type, message: "ok" };
+      },
+    };
+    const out = await runCouponSearch({ page: withBox, codes: cands });
+    expect(out.best?.code).toBe("BEEFY15");
+    expect(out.applied).toBe(true);
+    expect(cart.codes).toEqual(["BEEFY15"]);
+    expect(acts.filter((a) => a.type !== "wait")).toEqual([
+      { type: "type", ref: "e1", text: "BEEFY15", clear: true },
+      { type: "click", ref: "e2" },
+    ]);
+    // The last tested code came off through the API first; the page's Apply put the winner on.
+    expect(cart.calls[cart.calls.length - 2]).toBe("");
+    expect(cart.calls[cart.calls.length - 1]).toBe("BEEFY15");
+    expect(cart.reloads).toBe(1);
+  });
+
+  it("applies the winner through the API when the page's Apply does not take it", async () => {
+    const cart = shopify();
+    const deadBox: CouponPage = {
+      cart,
+      snapshot: async () => ({
+        url: "https://shop.test/cart",
+        title: "Cart",
+        text: "Total: $151.80",
+        elements: [
+          { ref: "e1", tag: "input", role: "textbox", name: "Discount code", type: "text" },
+          { ref: "e2", tag: "button", role: "button", name: "Apply" },
+        ],
+        truncated: false,
+      }),
+      act: async (a: Action) => ({ ok: true, action: a.type, message: "ok" }),
+    };
+    const out = await runCouponSearch({ page: deadBox, codes: cands });
+    expect(out.applied).toBe(true);
+    expect(cart.codes).toEqual(["BEEFY15"]);
+  });
+
   // Stores whose cart API takes two codes: the best code is tried together
   // with the next best, and the pair wins only when the total drops further.
   it("tries the best code together with the next best and keeps the pair when the store stacks them", async () => {
