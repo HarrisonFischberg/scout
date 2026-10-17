@@ -12,7 +12,7 @@ import { buildSnapshot, fromElement, type SnapNode, type Snapshot } from "./snap
 
 import { CONTENT_HANDLER as HANDLER, type ContentRequest } from "./content-api";
 import { storeCartInfo, storeCartUpdate } from "./coupons/carts";
-import { codesInText, storeHomeText } from "./coupons/store";
+import { codesWithContext, storeHomeText } from "./coupons/store";
 
 const FLAG = "__safariScoutContent";
 const g = globalThis as unknown as Record<string, unknown>;
@@ -45,6 +45,18 @@ if (!g[FLAG]) {
   // Called from the popup through scripting.executeScript, not runtime
   // messaging: on iOS Safari a tabs.sendMessage to this script went
   // unanswered (T018), while executeScript results arrive reliably.
+  // Meta tags that name the store, as plain strings (untrusted page data).
+  const meta = (sel: string): string | undefined => {
+    const v = document.querySelector<HTMLMetaElement | HTMLLinkElement>(sel);
+    const raw = v instanceof HTMLLinkElement ? v.href : v?.content;
+    return typeof raw === "string" && raw.trim() ? raw.trim().slice(0, 200) : undefined;
+  };
+  const pageMeta = (): { title: string; siteName?: string; canonical?: string } => ({
+    title: document.title.slice(0, 200),
+    ...(meta('meta[property="og:site_name"]') ?? meta('meta[name="application-name"]') ? { siteName: meta('meta[property="og:site_name"]') ?? meta('meta[name="application-name"]') } : {}),
+    ...(meta('link[rel="canonical"]') ? { canonical: meta('link[rel="canonical"]') } : {}),
+  });
+
   g[HANDLER] = (req: ContentRequest): Promise<unknown> | Snapshot | object | null => {
     if (req.type === "scout:snapshot") return snapshot({ maxElements: req.maxElements, maxTextChars: req.maxTextChars });
     if (req.type === "scout:act") return executeAction(domPage(refs, window), req.action) as Promise<ActionResult>;
@@ -52,7 +64,8 @@ if (!g[FLAG]) {
     if (req.type === "scout:task-act") return performTaskAction(taskDomPage(refs, window), req.action);
     if (req.type === "scout:cart-info") return storeCartInfo();
     if (req.type === "scout:cart-update") return storeCartUpdate(String(req.discount ?? ""));
-    if (req.type === "scout:store-codes") return storeHomeText().then((t) => (t ? codesInText(t) : []));
+    if (req.type === "scout:store-codes") return storeHomeText().then((t) => (t ? codesWithContext(t) : []));
+    if (req.type === "scout:page-meta") return pageMeta();
     if (req.type === "scout:reload") {
       // Let the reply reach the popup first, then refresh the cart view.
       setTimeout(() => location.reload(), 50);

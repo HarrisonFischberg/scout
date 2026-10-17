@@ -20,6 +20,13 @@ const NOT_TOTAL = "(?!\\s*(?:savings?|saved|discounts?|off|items?|quantity|qty)\
 const GAP = "[^\\d" + SYMBOLS + "]{0,30}?(?:\\d+\\s+items?\\b[^\\d" + SYMBOLS + "]{0,12}?)?";
 
 const TOTAL_RE = new RegExp("(?:^|[^\\p{L}])" + LABEL + "\\b" + NOT_TOTAL + GAP + "(?:" + MONEY + ")", "giu");
+// A cart drawer with no labelled total often prints it on its button:
+// "Checkout - $10", "CHECKOUT+ · $25.69", "Pay now $12.00". Lowest priority,
+// because such a button amount can include extras (order protection) that a
+// labelled Subtotal leaves out.
+const BUTTON_RE = new RegExp("\\b(?:check\\s*out|pay(?:\\s+now)?|place\\s+order)\\b[^\\p{L}\\d" + SYMBOLS + "]{0,12}(?:" + MONEY + ")", "giu");
+// A lone Subtotal is still never a total: a code shown as a separate discount
+// line would read as "no saving", which would wrongly condemn working codes.
 
 export interface Money {
   amount: number;
@@ -56,10 +63,14 @@ function fromMatch(m: RegExpMatchArray, first: number): Money | null {
 export function readTotal(text: string, label?: string): Money | null {
   let last: Money | null = null;
   for (const m of text.matchAll(TOTAL_RE)) last = fromMatch(m, 1) ?? last;
-  if (last || !label?.trim()) return last;
-  const escaped = label.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
-  const re = new RegExp(escaped + GAP + "(?:" + MONEY + ")", "giu");
-  for (const m of text.matchAll(re)) last = fromMatch(m, 1) ?? last;
+  if (last) return last;
+  if (label?.trim()) {
+    const escaped = label.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+    const re = new RegExp(escaped + GAP + "(?:" + MONEY + ")", "giu");
+    for (const m of text.matchAll(re)) last = fromMatch(m, 1) ?? last;
+    if (last) return last;
+  }
+  for (const m of text.matchAll(BUTTON_RE)) last = fromMatch(m, 1) ?? last;
   return last;
 }
 

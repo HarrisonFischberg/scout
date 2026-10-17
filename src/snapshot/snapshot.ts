@@ -115,9 +115,17 @@ function isHidden(node: SnapNode): boolean {
   return /display\s*:\s*none|visibility\s*:\s*hidden/i.test(a.style ?? "");
 }
 
+/** An icon's <title> names the control that holds it ("Remove discount" on an × button); the rest of an SVG is drawing. */
+function svgTitle(svg: SnapNode): string {
+  const title = svg.children.find((c) => c.tag === "title" && !isHidden(c));
+  return title ? title.children.map((c) => (c.tag === "#text" ? (c.text ?? "") : "")).join(" ") : "";
+}
+
 function collectText(node: SnapNode): string {
   if (node.tag === "#text") return node.text ?? "";
-  if (SKIP_TAGS.has(node.tag) || isHidden(node)) return "";
+  if (isHidden(node)) return "";
+  if (node.tag === "svg") return svgTitle(node);
+  if (SKIP_TAGS.has(node.tag)) return "";
   // Never let a sensitive field's content leak into a name.
   if (isSensitiveField(node)) return "";
   const text = node.children.map(collectText).join(" ");

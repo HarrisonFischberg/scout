@@ -1,0 +1,777 @@
+{
+  "browser": "webkit",
+  "model": "default",
+  "effort": "default",
+  "startedAt": "2026-10-17T07-25-24",
+  "results": [
+    {
+      "name": "Chomps",
+      "url": "https://chomps.com",
+      "group": "food",
+      "outcome": "applied",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant store-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=24 reported=15 dropped=1 masked=2",
+        "coupons:attempt 1 saving",
+        "coupons:attempt 2 saving",
+        "coupons:attempt 3 saving",
+        "coupons:attempt 4 saving",
+        "coupons:attempt 5 saving",
+        "coupons:attempt 6 saving",
+        "coupons:attempt 7 saving",
+        "coupons:attempt 8 saving",
+        "coupons:attempt 9 saving",
+        "coupons:attempt 10 rejected",
+        "coupons:attempt 11 rejected",
+        "coupons:attempt 12 rejected",
+        "coupons:attempt 13 saving",
+        "coupons:attempt 14 saving",
+        "coupons:attempt 15 saving",
+        "coupons:attempt 16 saving",
+        "coupons:attempt 17 saving",
+        "coupons:attempt 18 saving",
+        "coupons:attempt 19 rejected",
+        "coupons:attempt 20 saving",
+        "coupons:attempt 21 saving",
+        "coupons:attempt 22 rejected",
+        "coupons:attempt 23 rejected",
+        "coupons:attempt 24 rejected",
+        "coupons:attempt 25 saving",
+        "coupons:attempt 26 combo rejected",
+        "coupons:attempt 27 combo rejected",
+        "coupons:status done best applied",
+        "coupons:overlay-failed"
+      ],
+      "startedAt": "2026-10-17T07:25:24.965Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://chomps.com/cart?_su_rec=fpYjR7a33WOS_LpkUjLxU39JEwXHJAR6linvUDQbbKY_shdalGuvQFv9_nsLVcE8-jQmUTLFwSBM0oOmxnIkUeFJxNlpQb4esOmTiFX4MTDB67a06ObiFxLDG70Tp-4ZbIa1wLuQBfLuJyRm46k7VeIZ9hXW-SFeccxN7fenb34jRNBf3DHMapMa-JNxohfWvayCzB44dvlEaU3iBq6WDxt58vwZyANZ4SCejLVtlp5EII_1PqkIHM8h81d60SilrdjeMT5rsyP7QqpCxvKqAycHoLOhbMifR6NNa_bGdqx4Ymf14TccwNjMsHkpVxQ&_su_rec_id=28ee4b69-4492-4215-b041-84a770d5aca4-1792221928"
+      },
+      "cartBefore": {
+        "total": 30,
+        "codes": []
+      },
+      "summary": "I searched the web for Chomps codes. Found 39 codes: 24 codes read on the pages that post them and 15 codes the search reported from pages it returned. 2 codes shown masked or behind a button could not be read, so they were not tested. 1 code the search mentioned without a page it had opened was left out. I tested 25 codes. TOPFAN25 is the best: your total drops from $30.00 to $22.50 (you save $7.50, 25% off). It's applied to your cart, and I didn't go to checkout. Conditions seen with it: 25% off; tested Aug 2026.\n\nCode\tResult\tWhere it was found\nTOPFAN25\tsaves $7.50, total $22.50\tseen on dontpayfull.com\nSHELBYFREE20\tsaves $6.00, total $24.00\tseen on hotdeals.com\nYUMCHOMPS20\tsaves $6.00, total $24.00\tseen on dontpayfull.com\nCHOMPS21\tsaves $6.00, total $24.00\tseen on dontpayfull.com\nJESSICA15\tsaves $4.50, total $25.50\tseen on hotdeals.com\nQUINONESMOM\tsaves $4.50, total $25.50\tseen on hotdeals.com\nVEE15\tsaves $4.50, total $25.50\tseen on hotdeals.com\nJESSIE15\tsaves $4.50, total $25.50\tseen on hotdeals.com\nGLUTENFREEATHOME\tsaves $4.50, total $25.50\tseen on hotdeals.com\nANNIE15\tsaves $4.50, total $25.50\tseen on hotdeals.com\nPAMPOINTSTHROUGHLIFE\tsaves $4.50, total $25.50\tseen on hotdeals.com\nFROZENBANANAS\tsaves $4.50, total $25.50\tseen on hotdeals.com\nRESTOCK21\tsaves $4.50, total $25.50\tseen on dontpayfull.com\nSTICKAROUND\tsaves $4.50, total $25.50\tseen on dontpayfull.com\nYUMCHOMPS15\tsaves $4.50, total $25.50\tseen on hotdeals.com\nWELCOME2023\tsaves $3.00, total $27.00\tseen on hotdeals.com\nRICKI10\tsaves $3.00, total $27.00\tchomps.tenereteam.com (reported by the search)\nYUM10\tsaves $3.00, total $27.00\tseen on help.chomps.com\n\nDidn't work: TARYN, CHOMP, BD83602D, TEACHER300, GLEEMAN20, CHICKS20, FOODY25.\n\nCode-free offers the pages mention (not tested): you can get 10% off and free shipping on EVERY subscription order!\" no code; Subscribe & Save; LIMITED TIME: 15% OFF SUBSCRIPTION ORDERS\" announcement bar on the official site, no code; Refer a friend to Chomps and give them $5 off their first order.\" referral, no code.\n\nCheckout can still change the final price, for example tax, shipping, or whether the code applies to later orders.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Chomps codes…",
+        "I searched the web for Chomps codes. Found 39 codes: 24 codes read on the pages that post them and 15 codes the search reported from pages it returned. 2 codes shown masked or behind a button could not be read, so they were not tested. 1 code the search mentioned without a page it had opened was left out.",
+        "Testing 39 codes on your cart, one at a time…"
+      ],
+      "attempts": [
+        {
+          "code": "SHELBYFREE20",
+          "text": "SHELBYFREE20 · $24.00 · saves $6.00 · Saves $6.00. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "Shop and Save up to 20% on Your Order\" SHELBYFREE20 (page expiry Oct 26, 2026)",
+          "good": true
+        },
+        {
+          "code": "JESSICA15",
+          "text": "JESSICA15 · $25.50 · saves $4.50 · Saves $4.50. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "Enjoy 15% off for This Sale at Chomps\" JESSICA15",
+          "good": true
+        },
+        {
+          "code": "QUINONESMOM",
+          "text": "QUINONESMOM · $25.50 · saves $4.50 · Saves $4.50. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "15% Discount on Product Purchase\" QUINONESMOM (also listed on chomps.valuecom.com)",
+          "good": true
+        },
+        {
+          "code": "VEE15",
+          "text": "VEE15 · $25.50 · saves $4.50 · Saves $4.50. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "chomps.com Sale Features a 15% Discount\" VEE15",
+          "good": true
+        },
+        {
+          "code": "JESSIE15",
+          "text": "JESSIE15 · $25.50 · saves $4.50 · Saves $4.50. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "Grab up to 15% off on Your Purchase\" JESSIE15 (also listed on Coupert)",
+          "good": true
+        },
+        {
+          "code": "GLUTENFREEATHOME",
+          "text": "GLUTENFREEATHOME · $25.50 · saves $4.50 · Saves $4.50. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "Shop and Save up to 15% on Your Order\" GLUTENFREEATHOME (also on chomps.orangeoffer.com)",
+          "good": true
+        },
+        {
+          "code": "ANNIE15",
+          "text": "ANNIE15 · $25.50 · saves $4.50 · Saves $4.50. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "Chomps Promo Code: Enjoy 15% off In-store\" ANNIE15",
+          "good": true
+        },
+        {
+          "code": "PAMPOINTSTHROUGHLIFE",
+          "text": "PAMPOINTSTHROUGHLIFE · $25.50 · saves $4.50 · Saves $4.50. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "15% off Waiting at chomps.com\" PAMPOINTSTHROUGHLIFE (also on Coupert)",
+          "good": true
+        },
+        {
+          "code": "FROZENBANANAS",
+          "text": "FROZENBANANAS · $25.50 · saves $4.50 · Saves $4.50. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "15% off Waiting at chomps.com\" FROZENBANANAS",
+          "good": true
+        },
+        {
+          "code": "TARYN",
+          "text": "TARYN · $30.00 · Not accepted by the store. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "Get 15% Discount on Your Order at Chomps\" TARYN",
+          "good": false
+        },
+        {
+          "code": "CHOMP",
+          "text": "CHOMP · $30.00 · Not accepted by the store. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "15% off Entire Collection with Chomps Coupon Code\" CHOMP",
+          "good": false
+        },
+        {
+          "code": "BD83602D",
+          "text": "BD83602D · $30.00 · Not accepted by the store. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "Book and Get up to 15% Discount\" BD83602D",
+          "good": false
+        },
+        {
+          "code": "YUMCHOMPS20",
+          "text": "YUMCHOMPS20 · $24.00 · saves $6.00 · Saves $6.00. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/chomps.com",
+          "evidence": "tested the code \"YUMCHOMPS20\" at checkout on chomps.com. The code was successfully applied. (20% off storewide; tested Aug 2026)",
+          "good": true
+        },
+        {
+          "code": "TOPFAN25",
+          "text": "TOPFAN25 · $22.50 · saves $7.50 · Saves $7.50. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/chomps.com",
+          "evidence": "tested the code \"TOPFAN25\" at checkout on chomps.com. The code was successfully applied (25% off; tested Aug 2026)",
+          "good": true
+        },
+        {
+          "code": "CHOMPS21",
+          "text": "CHOMPS21 · $24.00 · saves $6.00 · Saves $6.00. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/chomps.com",
+          "evidence": "tested the code \"CHOMPS21\" at checkout on chomps.com. The code was successfully applied. (20% off; last tested Sep 2026)",
+          "good": true
+        },
+        {
+          "code": "RESTOCK21",
+          "text": "RESTOCK21 · $25.50 · saves $4.50 · Saves $4.50. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/chomps.com",
+          "evidence": "New code available for Chomps: RESTOCK21 · 15% off (added Jun 2026)",
+          "good": true
+        },
+        {
+          "code": "STICKAROUND",
+          "text": "STICKAROUND · $25.50 · saves $4.50 · Saves $4.50. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/chomps.com",
+          "evidence": "tested the code \"STICKAROUND\" at checkout on chomps.com. The code was successfully applied - $19.2 off. (15% off; tested Jul 2026)",
+          "good": true
+        },
+        {
+          "code": "YUMCHOMPS15",
+          "text": "YUMCHOMPS15 · $25.50 · saves $4.50 · Saves $4.50. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "Chomps Discount Code: 15% off Your First Purchase\" with code YUMCHOMPS15 (first order; page listed expiry Oct 23, 2026)",
+          "good": true
+        },
+        {
+          "code": "TEACHER300",
+          "text": "TEACHER300 · $30.00 · Not accepted by the store. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "Chomps Coupon Code: Apply 15% off to Checkout\" TEACHER300",
+          "good": false
+        },
+        {
+          "code": "WELCOME2023",
+          "text": "WELCOME2023 · $27.00 · saves $3.00 · Saves $3.00. · seen on hotdeals.com",
+          "source": "https://www.hotdeals.com/coupons/chomps-promo-codes",
+          "evidence": "Chomps Promo Code: Enjoy 10% off Your Order\" WELCOME2023 (first order; likely old)",
+          "good": true
+        },
+        {
+          "code": "RICKI10",
+          "text": "RICKI10 · $27.00 · saves $3.00 · Saves $3.00. · chomps.tenereteam.com (reported by the search)",
+          "source": "https://chomps.tenereteam.com/coupons",
+          "evidence": "reveal your promo code: RICKI10 (also on HotDeals)",
+          "good": true
+        },
+        {
+          "code": "GLEEMAN20",
+          "text": "GLEEMAN20 · $30.00 · Not accepted by the store. · chomps.tenereteam.com (reported by the search)",
+          "source": "https://chomps.tenereteam.com/coupons",
+          "evidence": "reveal your promo code: GLEEMAN20 (up to 20% off)",
+          "good": false
+        },
+        {
+          "code": "CHICKS20",
+          "text": "CHICKS20 · $30.00 · Not accepted by the store. · chomps.tenereteam.com (reported by the search)",
+          "source": "https://chomps.tenereteam.com/coupons",
+          "evidence": "reveal your promo code: CHICKS20 (up to 20% off)",
+          "good": false
+        },
+        {
+          "code": "FOODY25",
+          "text": "FOODY25 · $30.00 · Not accepted by the store. · reecoupons.com (reported by the search)",
+          "source": "https://www.reecoupons.com/view/chomps-snack-sticks",
+          "evidence": "25% Off SiteWide\" FOODY25",
+          "good": false
+        },
+        {
+          "code": "YUM10",
+          "text": "YUM10 · $27.00 · saves $3.00 · Saves $3.00. · seen on help.chomps.com",
+          "source": "https://help.chomps.com/en-US/articles/marketing-promotions-and-discounts-5189",
+          "evidence": "Please use the code YUM10 at checkout to receive 10% off your first purchase. (new customers, official Chomps help center; code does not stack)",
+          "good": true
+        },
+        {
+          "code": "TOPFAN25 + SHELBYFREE20",
+          "text": "TOPFAN25 + SHELBYFREE20 · $22.50 · The store does not combine these codes. · seen on its page",
+          "source": "",
+          "evidence": "",
+          "good": false
+        },
+        {
+          "code": "TOPFAN25 + YUMCHOMPS20",
+          "text": "TOPFAN25 + YUMCHOMPS20 · $22.50 · The store does not combine these codes. · seen on its page",
+          "source": "",
+          "evidence": "",
+          "good": false
+        }
+      ],
+      "cartAfter": {
+        "total": 22.5,
+        "codes": [
+          {
+            "code": "TOPFAN25",
+            "applicable": true
+          }
+        ]
+      },
+      "verify": {
+        "before": 30,
+        "after": 22.5,
+        "codes": [
+          {
+            "code": "TOPFAN25",
+            "applicable": true
+          }
+        ],
+        "claimed": "$22.50",
+        "confirmed": true
+      },
+      "seconds": 152
+    },
+    {
+      "name": "Tackform",
+      "url": "https://www.tackform.com",
+      "group": "gear",
+      "outcome": "no codes found",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=7",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "startedAt": "2026-10-17T07:28:00.257Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://www.tackform.com/cart?_su_rec=zHM0RKkgtXfmVddxP5rqBid5Ck8mPvEPictCb686_kCFdctqwPAmjBxicrqeDu00GEiJss20UqUR0yJeZt5xdnJzNh_Bn64455YYfEOhOjo3yLoLsZ1MhmktLndbjNJ2oC6ciXEupgzDiaETtuOlkZVO-oQkeMhR52KZ4ZJn2FUJEPVjyaz3ha4u2V_mIP3Snav6LDXJos1mVzd51_vrQujzku_h_g8H6eoM1qUIxSbID7U4DXToZPw4rf2g2IypSiRX8gmXA7Zs2QiRNZMcw9Pvf7yVaqz-zi17yCWFvw4yXznSPW01Fb9jDhuq94JzgpLZHw&_su_rec_id=8d32782e-8a1e-483a-af8b-c0c82c029a2b-1792222085"
+      },
+      "cartBefore": {
+        "total": 60,
+        "codes": []
+      },
+      "summary": "I searched the web for Tackform codes. No code posted for Tackform could be found. 7 codes shown masked or behind a button could not be read, so they were not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Tackform codes…",
+        "I searched the web for Tackform codes. No code posted for Tackform could be found. 7 codes shown masked or behind a button could not be read, so they were not tested."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 60,
+        "codes": []
+      },
+      "seconds": 95
+    },
+    {
+      "name": "Rumpl",
+      "url": "https://www.rumpl.com",
+      "group": "gear",
+      "outcome": "no working code",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=4 reported=35 dropped=0 masked=3",
+        "coupons:attempt 1 rejected",
+        "coupons:attempt 2 rejected",
+        "coupons:attempt 3 rejected",
+        "coupons:attempt 4 rejected",
+        "coupons:attempt 5 rejected",
+        "coupons:attempt 6 rejected",
+        "coupons:attempt 7 rejected",
+        "coupons:attempt 8 rejected",
+        "coupons:attempt 9 rejected",
+        "coupons:attempt 10 rejected",
+        "coupons:attempt 11 rejected",
+        "coupons:attempt 12 rejected",
+        "coupons:attempt 13 rejected",
+        "coupons:attempt 14 rejected",
+        "coupons:attempt 15 rejected",
+        "coupons:attempt 16 rejected",
+        "coupons:attempt 17 rejected",
+        "coupons:attempt 18 rejected",
+        "coupons:attempt 19 rejected",
+        "coupons:attempt 20 rejected",
+        "coupons:attempt 21 rejected",
+        "coupons:attempt 22 rejected",
+        "coupons:attempt 23 rejected",
+        "coupons:attempt 24 rejected",
+        "coupons:attempt 25 rejected",
+        "coupons:ask-more tried=25 remaining=14 next=25",
+        "coupons:overlay-failed",
+        "coupons:more yes",
+        "coupons:find-more known=39",
+        "coupons:overlay-failed",
+        "coupons:candidates verified=1 reported=12 dropped=0 masked=3",
+        "coupons:attempt 26 rejected",
+        "coupons:attempt 27 rejected",
+        "coupons:attempt 28 rejected",
+        "coupons:attempt 29 rejected",
+        "coupons:attempt 30 rejected",
+        "coupons:attempt 31 rejected",
+        "coupons:attempt 32 rejected",
+        "coupons:attempt 33 rejected",
+        "coupons:attempt 34 rejected",
+        "coupons:attempt 35 rejected",
+        "coupons:attempt 36 rejected",
+        "coupons:attempt 37 rejected",
+        "coupons:attempt 38 rejected",
+        "coupons:attempt 39 rejected",
+        "coupons:attempt 40 rejected",
+        "coupons:attempt 41 rejected",
+        "coupons:attempt 42 rejected",
+        "coupons:attempt 43 rejected",
+        "coupons:attempt 44 rejected",
+        "coupons:attempt 45 rejected",
+        "coupons:attempt 46 rejected",
+        "coupons:attempt 47 rejected",
+        "coupons:attempt 48 rejected",
+        "coupons:attempt 49 rejected",
+        "coupons:attempt 50 rejected",
+        "coupons:ask-more tried=50 remaining=2 next=25",
+        "coupons:overlay-failed",
+        "coupons:more no",
+        "coupons:overlay-failed",
+        "coupons:status done none",
+        "coupons:overlay-failed"
+      ],
+      "startedAt": "2026-10-17T07:29:38.536Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://www.rumpl.com/cart?_su_rec=pLVSCJ4-QMsrDsoqgODVmJK8H8Yq93GyPyCMIon63s7zaB5eKlgSwege-q6xRiMTGEwQl0lWpaOXDNDRFPBCitqq6xrTPJ0uV7TWMvKe9TeC_nsJJtBAqYpLA1lXUBvuA9clgQ21GWJQnPJiNnEveqfaQprF1ErPlJc78DfwEUmZ0iOzOhkI8ZBHD6Miyku3Qy9SJ9GJ4vuo1HLSvP9Z4ILK073Aleb1Rq9M7GmiQnrvYKwx1sBqE1E_yMrvexThmi7evj3ZDvNbbqhjFezX8MnEsHtSehf9aZmPSRUU2oa2TWfG3QHaOL7pQMbCqS5jr80&_su_rec_id=b7d02265-1b0a-4ff2-9c85-4de3223e0a9a-1792222183"
+      },
+      "cartBefore": {
+        "total": 89.95,
+        "codes": []
+      },
+      "summary": "I searched the web for Rumpl codes. Found 52 codes: 5 codes read on the pages that post them and 47 codes the search reported from pages it returned. 6 codes shown masked or behind a button could not be read, so they were not tested. I tested 50 codes and none lowered your total of $89.95, so your cart is unchanged. 2 more codes were left untested.\n\nDidn't work: PRODEAL, MOLOVE10, RERUMPL, RUMPL-10KD75XBMXR, DAY1RUMPL, SRIKEL15, TEAGAN10, DIRTBAG15, HOLIDAYGIFT, BUILTWITHPURPOSE and 40 more.\n\nCode-free offers the pages mention (not tested): Rumpl offers a 15% Off discount when you sign up for their newsletter.\" Newsletter signup offer; no code; Save up to 40% Off on Rumpl clearance items\" Clearance section, automatic; last confirmed April 2024; Rumpl offers a verified military and first responder discount program through GovX\" Needs GovX verification.",
+      "secondPass": true,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Rumpl codes…",
+        "I searched the web for Rumpl codes. Found 39 codes: 4 codes read on the pages that post them and 35 codes the search reported from pages it returned. 3 codes shown masked or behind a button could not be read, so they were not tested.",
+        "Testing 39 codes on your cart, one at a time…",
+        "Searching the web again for Rumpl codes, in other places…",
+        "Found 13 more codes to try. Testing them on your cart…"
+      ],
+      "attempts": [
+        {
+          "code": "PRODEAL",
+          "text": "PRODEAL · $89.95 · Not accepted by the store. · seen on rumpl.tenereteam.com",
+          "source": "https://rumpl.tenereteam.com/coupons",
+          "evidence": "discount code PRODEAL was working (About 10% off; the page's verification was 6 months old)",
+          "good": false
+        },
+        {
+          "code": "MOLOVE10",
+          "text": "MOLOVE10 · $89.95 · Not accepted by the store. · seen on rumpl.tenereteam.com",
+          "source": "https://rumpl.tenereteam.com/coupons",
+          "evidence": "the promo code MOLOVE10 was working (About 10% off; Wethrift also shows a similar masked \"MOLOVE…\" 10% code)",
+          "good": false
+        },
+        {
+          "code": "RERUMPL",
+          "text": "RERUMPL · $89.95 · Not accepted by the store. · seen on rumpl.tenereteam.com",
+          "source": "https://rumpl.tenereteam.com/coupons",
+          "evidence": "the promo code RERUMPL was working (Discount amount not stated)",
+          "good": false
+        },
+        {
+          "code": "RUMPL-10KD75XBMXR",
+          "text": "RUMPL-10KD75XBMXR · $89.95 · Not accepted by the store. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "$10 off your first purchase: with code RUMPL-10KD75XBMXR (Last reported working about 1 year ago; possibly a single-use or personal code)",
+          "good": false
+        },
+        {
+          "code": "DAY1RUMPL",
+          "text": "DAY1RUMPL · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "FREE blanket that matches your tent: with code DAY1RUMPL (Dec 2025; Valuecom lists it with an Oct 7, 2026 expiry)",
+          "good": false
+        },
+        {
+          "code": "SRIKEL15",
+          "text": "SRIKEL15 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "15% off: with code SRIKEL15 (Added about a year earlier via social media)",
+          "good": false
+        },
+        {
+          "code": "TEAGAN10",
+          "text": "TEAGAN10 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "10% off @gorumpl: with code TEAGAN10 (Last reported working about 1 year ago)",
+          "good": false
+        },
+        {
+          "code": "DIRTBAG15",
+          "text": "DIRTBAG15 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "15% off: with code DIRTBAG15 (Last reported working about 1 year ago)",
+          "good": false
+        },
+        {
+          "code": "HOLIDAYGIFT",
+          "text": "HOLIDAYGIFT · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "Free beer blanket with purchase: with code HOLIDAYGIFT (Holiday offer, about 1 year old)",
+          "good": false
+        },
+        {
+          "code": "BUILTWITHPURPOSE",
+          "text": "BUILTWITHPURPOSE · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "15% off: with code BUILTWITHPURPOSE (Wethrift says 15%; Valuecom lists it as 30% off select gear, expiring Oct 7, 2026)",
+          "good": false
+        },
+        {
+          "code": "WILD20",
+          "text": "WILD20 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "20% off sale items: with code WILD20 (Added about 2 years ago)",
+          "good": false
+        },
+        {
+          "code": "THEBIGTHING",
+          "text": "THEBIGTHING · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "10% off your order today: with code THEBIGTHING (Added about 2 years ago via social media)",
+          "good": false
+        },
+        {
+          "code": "GWPBB6",
+          "text": "GWPBB6 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "25% off: with code GWPBB6 (Last reported working about 2 years ago)",
+          "good": false
+        },
+        {
+          "code": "VIPDAY",
+          "text": "VIPDAY · $89.95 · Not accepted by the store. · rumpl.couponory.com (reported by the search)",
+          "source": "https://rumpl.couponory.com/",
+          "evidence": "user_4s3pu2p used VIPDAY successfully. (Live activity feed; discount not stated)",
+          "good": false
+        },
+        {
+          "code": "RUMPL30",
+          "text": "RUMPL30 · $89.95 · Not accepted by the store. · rumpl.couponory.com (reported by the search)",
+          "source": "https://rumpl.couponory.com/",
+          "evidence": "user_9sz466ntn used RUMPL30 successfully. (Live activity feed; discount not stated)",
+          "good": false
+        },
+        {
+          "code": "P25",
+          "text": "P25 · $89.95 · Not accepted by the store. · rumpl.couponory.com (reported by the search)",
+          "source": "https://rumpl.couponory.com/",
+          "evidence": "user_opfo2k used P25 successfully. (Live activity feed; discount not stated)",
+          "good": false
+        },
+        {
+          "code": "OUTDOORBLANKET",
+          "text": "OUTDOORBLANKET · $89.95 · Not accepted by the store. · rumpl.couponory.com (reported by the search)",
+          "source": "https://rumpl.couponory.com/",
+          "evidence": "wiley.Cutshall confirmed OUTDOORBLANKET still works. (Couponory activity feed)",
+          "good": false
+        },
+        {
+          "code": "RUMPL25",
+          "text": "RUMPL25 · $89.95 · Not accepted by the store. · rumpl.couponory.com (reported by the search)",
+          "source": "https://rumpl.couponory.com/",
+          "evidence": "samatha.Kraft confirmed RUMPL25 still works. (Couponory activity feed)",
+          "good": false
+        },
+        {
+          "code": "EXLUSIVE-12",
+          "text": "EXLUSIVE-12 · $89.95 · Not accepted by the store. · rumpl.couponory.com (reported by the search)",
+          "source": "https://rumpl.couponory.com/",
+          "evidence": "user_yx5ho771p2 used EXLUSIVE-12 successfully. (Couponory activity feed; spelled exactly as shown on the page)",
+          "good": false
+        },
+        {
+          "code": "DEC25",
+          "text": "DEC25 · $89.95 · Not accepted by the store. · anycodes.com (reported by the search)",
+          "source": "https://www.anycodes.com/promo-codes/rumpl.com",
+          "evidence": "Get 25% Off Any Rumpl Purchase … DEC25 (Page shows 10/09/26; code may be seasonal)",
+          "good": false
+        },
+        {
+          "code": "DEEP15",
+          "text": "DEEP15 · $89.95 · Not accepted by the store. · anycodes.com (reported by the search)",
+          "source": "https://www.anycodes.com/promo-codes/rumpl.com",
+          "evidence": "Save 15% on Any Rumpl Order … DEEP15 (Page shows 10/09/26)",
+          "good": false
+        },
+        {
+          "code": "SHE15",
+          "text": "SHE15 · $89.95 · Not accepted by the store. · anycodes.com (reported by the search)",
+          "source": "https://www.anycodes.com/promo-codes/rumpl.com",
+          "evidence": "Take 15% Off Any Rumpl Purchase … she15 (Page shows 10/09/26)",
+          "good": false
+        },
+        {
+          "code": "LD25",
+          "text": "LD25 · $89.95 · Not accepted by the store. · anycodes.com (reported by the search)",
+          "source": "https://www.anycodes.com/promo-codes/rumpl.com",
+          "evidence": "Get 25% Off All Rumpl Orders … LD25 (The page shows only the last letters of the code, so it may be longer than \"LD25)",
+          "good": false
+        },
+        {
+          "code": "GE2H56TT",
+          "text": "GE2H56TT · $89.95 · Not accepted by the store. · rumpl.valuecom.com (reported by the search)",
+          "source": "https://rumpl.valuecom.com/",
+          "evidence": "Promo code GE2H56TT successfully applied on Rumpl checkout page (Appears in an activity log; may be a single-use code)",
+          "good": false
+        },
+        {
+          "code": "PERKSPOT-83C36U",
+          "text": "PERKSPOT-83C36U · $89.95 · Not accepted by the store. · rumpl.tenereteam.com (reported by the search)",
+          "source": "https://rumpl.tenereteam.com/coupons",
+          "evidence": "The Working code PERKSPOT-83C36U was verified by users at Rumpl (Possibly a perk-program or single-use code)",
+          "good": false
+        },
+        {
+          "code": "TOPITOFF",
+          "text": "TOPITOFF · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "Free hat or beanie with orders over $99: with code TOPITOFF (Minimum $99 order; Dec 2025; Coupert also lists it with a $99 minimum)",
+          "good": false
+        },
+        {
+          "code": "RETAILPRODEAL",
+          "text": "RETAILPRODEAL · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "50% Off for Your Order with Rumpl Coupon … RETAILPRODEAL (Coupert's page is dated July 2026; Valuecom shows 50% off select items, expiring Oct 9, 2026)",
+          "good": false
+        },
+        {
+          "code": "SAVE10",
+          "text": "SAVE10 · $89.95 · Not accepted by the store. · rumpl.worthepenny.com (reported by the search)",
+          "source": "https://rumpl.worthepenny.com/coupon/",
+          "evidence": "this regular Rumpl coupon code SAVE10 still allows students to receive 10% off (10% off)",
+          "good": false
+        },
+        {
+          "code": "GIVING25",
+          "text": "GIVING25 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "25% off sitewide: The best Rumpl discount code is GIVING25 (Added Dec 2025 via Instagram; DontPayFull notes it expired Dec 4, 2025)",
+          "good": false
+        },
+        {
+          "code": "BOGORUMPL",
+          "text": "BOGORUMPL · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "The latest discount code from Rumpl was 'BOGORUMPL'. This gave customers 50% off. (Buy-one-get-one offer; likely expired)",
+          "good": false
+        },
+        {
+          "code": "RAIDERS58",
+          "text": "RAIDERS58 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "The best Rumpl promo code available is 'RAIDERS58'. This code gives customers 50% off. (Raiders blanket promo; likely expired)",
+          "good": false
+        },
+        {
+          "code": "RUMPLDE8C1E48",
+          "text": "RUMPLDE8C1E48 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "10% off: with code RUMPLDE8C1E48 (Added about 7 years ago; probably single-use or expired)",
+          "good": false
+        },
+        {
+          "code": "HEYNADINE20",
+          "text": "HEYNADINE20 · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Rumpl Coupon for 20% Off … heynadine20 (Online only; creator-style code)",
+          "good": false
+        },
+        {
+          "code": "FINDINGMASTERY",
+          "text": "FINDINGMASTERY · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Rumpl Promo Code: 15% Off … FINDINGMASTERY (15% off cozy blankets; Valuecom shows expiry Oct 9, 2026)",
+          "good": false
+        },
+        {
+          "code": "MANDUKA15",
+          "text": "MANDUKA15 · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "15% Off First Time Customers … MANDUKA15 (First order only; excludes RAD, National Park, Collabs and marked-down items)",
+          "good": false
+        },
+        {
+          "code": "NUGGET",
+          "text": "NUGGET · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "10% Off Your First Order … NUGGET (Online only; new customers and first order only)",
+          "good": false
+        },
+        {
+          "code": "FRIENDS2024",
+          "text": "FRIENDS2024 · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Rumpl Coupon: 25% Off Orders … FRIENDS2024 (Full-price items only; likely expired)",
+          "good": false
+        },
+        {
+          "code": "RMPL10301910",
+          "text": "RMPL10301910 · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Rumpl Coupon for 10% Off … RMPL10301910 (Online only; may be a newsletter or personal code)",
+          "good": false
+        },
+        {
+          "code": "WCHOLIDAY72",
+          "text": "WCHOLIDAY72 · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Extra Savings on Cold-Weather Gear … WCHOLIDAY72 (Holiday code; likely expired)",
+          "good": false
+        },
+        {
+          "code": "DUCK15",
+          "text": "DUCK15 · $89.95 · Not accepted by the store. · seen on rumpl.com",
+          "source": "https://www.rumpl.com/pages/duckcallroom",
+          "evidence": "Duck Call Room Podcast X Rumpl Coupon Code DUCK15 … Use the discount code below for 15% off your order (Podcast page on rumpl.com; 15% off order)",
+          "good": false
+        },
+        {
+          "code": "GWPBB",
+          "text": "GWPBB · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "Free Shipping: with code GWPBB Added 3 years ago by Nick via social media (Old code)",
+          "good": false
+        },
+        {
+          "code": "CNNDADS",
+          "text": "CNNDADS · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Free Beer Blanket 6-Pack with orders $150 … CNNDADS (Free Beer Blanket 6-Pack with orders of $150; expiry not stated)",
+          "good": false
+        },
+        {
+          "code": "FREE150",
+          "text": "FREE150 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "15% off: with code FREE150 Added 3 years ago by Nick via social media (Old code)",
+          "good": false
+        },
+        {
+          "code": "RUMPLEXTRA10",
+          "text": "RUMPLEXTRA10 · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "10% off end of season sale: with code RUMPLEXTRA10. Added 2 years ago by Nick via social media (Old code)",
+          "good": false
+        },
+        {
+          "code": "RUMPL1C7EF7F1",
+          "text": "RUMPL1C7EF7F1 · $89.95 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/rumpl-promo-code",
+          "evidence": "Take 10% Off Your Order with This Rumpl Promo Code RUMPL1C7EF7F1 (10% off select items)",
+          "good": false
+        },
+        {
+          "code": "FALLBREAK",
+          "text": "FALLBREAK · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "Free Shipping: with code FALLBREAK Last reported working 2 years ago by shoppers (Free shipping; old code)",
+          "good": false
+        },
+        {
+          "code": "SUNSALE",
+          "text": "SUNSALE · $89.95 · Not accepted by the store. · coupons.mobilemall.co (reported by the search)",
+          "source": "https://coupons.mobilemall.co/rumpl-com",
+          "evidence": "Take 25% Off Blanket (Promotional Voucher) … SUNSALE (25% off blanket; date not stated)",
+          "good": false
+        },
+        {
+          "code": "FIRSTDIBS",
+          "text": "FIRSTDIBS · $89.95 · Not accepted by the store. · coupons.mobilemall.co (reported by the search)",
+          "source": "https://coupons.mobilemall.co/rumpl-com",
+          "evidence": "Earn 25% off chosen items When you use FIRSTDIBS at Rumpl Checkout (25% off chosen items; date not stated)",
+          "good": false
+        },
+        {
+          "code": "GODEEP",
+          "text": "GODEEP · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "10% off: with code GODEEP Last reported working 2 years ago by shoppers (Old code)",
+          "good": false
+        },
+        {
+          "code": "RUMPL3F68466D",
+          "text": "RUMPL3F68466D · $89.95 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/rumpl",
+          "evidence": "10% off: with code RUMPL3F68466D Last reported working 2 years ago by shoppers (Old code)",
+          "good": false
+        }
+      ],
+      "cartAfter": {
+        "total": 89.95,
+        "codes": []
+      },
+      "seconds": 306
+    }
+  ]
+}

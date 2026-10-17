@@ -12,7 +12,11 @@ Keychain. There is no Scout for Safari server.
   you, step by step, under a glowing page with Take control and Stop. Sending
   a task starts it at once; before anything sensitive (buying, sending, signing in,
   deleting, submitting, downloading) it asks, every time.
-- **Find coupons** on supported store carts.
+- **Find coupons** on a cart or checkout page: searches the live web for codes
+  posted for that store (coupon sites, creators, the store's own pages), keeps
+  each code's page as evidence, tests every code in your cart one at a time,
+  and leaves the best verified discount applied. It never guesses codes and
+  never checks out.
 - **Settings**: pick the model and effort level from dropdowns.
 
 Each tab keeps its own conversation. Scout for Safari is off in Private Browsing.

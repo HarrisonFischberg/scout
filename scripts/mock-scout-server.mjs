@@ -31,8 +31,12 @@
 // Find coupons (a request with the web search tool) gets a coupon search that
 // pauses once, as the real server loop does ("pause_turn"); the resumed turn
 // must send the paused one back intact (thinking signature, tool input) or it
-// gets HTTP 400. Codes come from MOCK_COUPONS (a file of "CODE | url" lines)
-// or default to the synthetic codes of the local fake Shopify store.
+// gets HTTP 400. Codes come from MOCK_COUPONS (a file of
+// "CODE | url | quote | conditions" lines; quote and conditions optional) or
+// default to the synthetic codes of the local fake Shopify store. The first
+// page is also "fetched" (a web_fetch_tool_result with text naming every
+// code), so the finder can verify the codes against page text as it does
+// with the real fetch tool.
 import { appendFileSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
 
@@ -158,10 +162,15 @@ async function stream(res, p) {
 }
 
 const DEFAULT_COUPONS = [
-  "NOPE10 | http://127.0.0.1:4317/deals.html",
+  'NOPE10 | http://127.0.0.1:4317/deals.html | "NOPE10 10% off" | expired',
   "**KETO10** | [deals](http://127.0.0.1:4317/deals.html)",
-  "BEEFY15 | http://127.0.0.1:4317/deals.html",
+  'BEEFY15 | http://127.0.0.1:4317/deals.html | "Use code BEEFY15 for 15% off" | -',
 ];
+
+/** Text of the first coupon page, as the fetch tool would return it: every code written out. */
+function fetchedPageText(lines) {
+  return "Mock coupon page\n" + lines.map((l) => (l.split("|")[0] ?? "").replace(/[*`\s]/g, "")).filter(Boolean).map((c) => "Use code " + c + " at checkout").join("\n");
+}
 
 function couponLines() {
   if (!process.env.MOCK_COUPONS) return DEFAULT_COUPONS;
@@ -216,12 +225,30 @@ async function couponStream(res, body) {
     },
   });
   sse(res, { type: "content_block_stop", index: 2 });
-  sse(res, { type: "content_block_start", index: 3, content_block: { type: "text", text: "" } });
+  sse(res, { type: "content_block_start", index: 3, content_block: { type: "server_tool_use", id: "srvtoolu_mock_2", name: "web_fetch", input: {} } });
+  sse(res, { type: "content_block_delta", index: 3, delta: { type: "input_json_delta", partial_json: JSON.stringify({ url: urls[0] ?? "http://127.0.0.1:4317/deals.html" }) } });
+  sse(res, { type: "content_block_stop", index: 3 });
+  sse(res, {
+    type: "content_block_start",
+    index: 4,
+    content_block: {
+      type: "web_fetch_tool_result",
+      tool_use_id: "srvtoolu_mock_2",
+      content: {
+        type: "web_fetch_result",
+        url: urls[0] ?? "http://127.0.0.1:4317/deals.html",
+        content: { type: "document", source: { type: "text", media_type: "text/plain", data: fetchedPageText(lines) }, title: "Mock coupon page" },
+        retrieved_at: new Date().toISOString(),
+      },
+    },
+  });
+  sse(res, { type: "content_block_stop", index: 4 });
+  sse(res, { type: "content_block_start", index: 5, content_block: { type: "text", text: "" } });
   for (const l of lines.slice(0, half)) {
-    sse(res, { type: "content_block_delta", index: 3, delta: { type: "text_delta", text: l + "\n" } });
+    sse(res, { type: "content_block_delta", index: 5, delta: { type: "text_delta", text: l + "\n" } });
     await wait(30);
   }
-  sse(res, { type: "content_block_stop", index: 3 });
+  sse(res, { type: "content_block_stop", index: 5 });
   sse(res, { type: "message_delta", delta: { stop_reason: "pause_turn" }, usage: { output_tokens: 80, server_tool_use: { web_search_requests: 1 } } });
   sse(res, { type: "message_stop" });
   res.end();
