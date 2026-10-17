@@ -68,6 +68,24 @@ test("ask about the page streams a Markdown answer", async ({ page }) => {
   expect(bodies[0]).toContain("Widget costs $10.");
 });
 
+test("an answer shows the moving indicator until its first words", async ({ page }) => {
+  await openPopup(page, { key: "sk-test-synthetic" });
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((r) => (release = r));
+  await page.route("https://api.anthropic.com/**", async (r) => {
+    await gate;
+    await r.fulfill({ status: 200, contentType: "text/event-stream", body: ANSWER });
+  });
+  await page.getByLabel("Ask about this page").fill("How much is the widget?");
+  await page.getByRole("button", { name: "Send" }).click();
+  const log = page.getByRole("log", { name: "Conversation" });
+  await expect(log.locator(".msg.assistant .thinking .pulse")).toHaveCount(1);
+  await expect(log.locator(".msg.assistant .thinking")).toHaveText("Thinking…");
+  release();
+  await expect(log.getByText("with free shipping.")).toBeVisible();
+  await expect(log.locator(".pulse")).toHaveCount(0);
+});
+
 test("summarize button works", async ({ page }) => {
   await openPopup(page, { key: "sk-test-synthetic" });
   await page.getByRole("button", { name: "Summarize this page" }).click();
