@@ -1564,6 +1564,13 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - No new vendor or data flow: the blur layer reads nothing from the page.
 - Evidence: unit 404/405 (the known Take control timing case), new `tests/unit/blur.test.ts`; e2e on cloud Chromium shows the same 20 failures as `main` and nothing new, with new or rewritten cases for the Models sheet (one and two providers, keyboard), the + menu, starters and @-attach; typecheck, strict lint and `check:release` clean. Not yet seen in real Safari: the iPhone blur, the sheet on iPhone, the binoculars mark.
 
+## 2026-10-17 — Processing icon everywhere, gray Scout mode chip (owner items 14 and 11, follow-up)
+
+- Actual: the moving "processing" icon (PR #7) showed only on coupon-run lines; a chat answer showed plain "Thinking…" and a Scout mode task's "Working" head did not move. The "Scout mode" chip above the composer and its binoculars were blue.
+- Expected (owner): the same animated icon while Scout researches, until text or the result appears; mode icons with no color.
+- Change: an answer waiting for its first words shows the pulse beside "Thinking…"; the Scout mode trace head shows the pulse until it reads Finished/Stopped/Ended (`showTrace`/`finishTrace` in `src/popup.ts`). `PULSE` moved to module scope. `#mode-chip` uses the plain text color, like the selected mode switch icon.
+- Evidence: three e2e assertions (chat indicator until first words, Scout trace pulse while working and gone after, chip color equals body text color) fail on `main` and pass here. Unit 414/415 (known Take control case), typecheck, lint, `check:release` clean; cloud Chromium e2e shows the same 20 failures as `main`. Not seen in real Safari yet.
+
 ## 2026-10-17 — Mic and voice buttons (owner's iPhone design)
 
 - Owner: add the mic and the round teal voice-wave button from the iPhone design, at the right of the composer next to Model (left out of the panel redesign).
