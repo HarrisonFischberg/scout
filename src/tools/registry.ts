@@ -90,7 +90,7 @@ export const TOOLS: Record<ToolName, ToolDef> = {
   run_task: {
     description:
       "Start Scout mode: an agent that carries out a task on the current page for the user (clicking, typing, scrolling), step by step, with the user watching. " +
-      "Use it only when the user asks you to do something on the page, not to read it. The user is asked before it starts and before any sensitive action (buying, sending, signing in, deleting). " +
+      "Use it only when the user asks you to do something on the page, not to read it. It starts at once; the user is asked before any sensitive action (buying, sending, signing in, deleting). " +
       "Returns a summary of what was done.",
     parameters: { type: "object", properties: { goal: { type: "string", description: "What to do on the page, in the user's words." } }, required: ["goal"], additionalProperties: false },
     input: { object: { goal: "string" } },

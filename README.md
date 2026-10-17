@@ -10,7 +10,7 @@ Keychain. There is no Scout for Safari server.
 - **Summarize** a page, or ask across other open tabs.
 - **Scout mode**: a supervised agent that carries out a task on the page for
   you, step by step, under a glowing page with Take control and Stop. Sending
-  a task starts it; before anything sensitive (buying, sending, signing in,
+  a task starts it at once; before anything sensitive (buying, sending, signing in,
   deleting, submitting, downloading) it asks, every time.
 - **Find coupons** on supported store carts.
 - **Settings**: pick the model and effort level from dropdowns.

@@ -562,12 +562,11 @@
           <label class="field">
             <span>Scout mode (acting on pages for you)</span>
             <select id="access-scout" aria-describedby="access-scout-help">
-              <option value="on">On: start when I send a task</option>
-              <option value="ask">Ask before each task</option>
+              <option value="on">On</option>
               <option value="off">Off</option>
             </select>
           </label>
-          <p id="access-scout-help" class="hint">On: sending a task in Scout mode starts it at once. Ask: Scout for Safari asks you to start each task. A task the model asks for mid-answer is always asked about. While it works, the page glows and shows Take control and Stop. Off also hides the run_task tool from the model.</p>
+          <p id="access-scout-help" class="hint">On: sending a task in Scout mode starts it at once, and the model may start one when you ask it to do something on the page. While it works, the page glows and shows Take control and Stop; it still asks before anything sensitive. Off also hides the run_task tool from the model.</p>
           <h4>Sensitive-action confirmation</h4>
           <label class="check"><input id="access-sensitive" type="checkbox" checked disabled aria-describedby="access-sensitive-help" />Ask before submitting, buying, sending, deleting, signing in, changing account settings, or downloading</label>
           <p id="access-sensitive-help" class="hint">Always on. It cannot be turned off. The check runs on this device from the action and its target, even when the model marks an action as approved.</p>

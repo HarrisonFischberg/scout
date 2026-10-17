@@ -168,12 +168,12 @@ async function openPopup(page: Page, script: string[], opts: { data?: Record<str
 const fake = (page: Page): Promise<Fake> => page.evaluate(() => (globalThis as unknown as { __fake: Fake }).__fake);
 const acts = async (page: Page): Promise<string[]> => (await fake(page)).rec.filter((r) => r.what === "act").map((r) => (r.detail as { type: string }).type);
 
-/** Sending a task in Scout mode starts it at once (owner decision; "Ask before each task" is a setting). */
+/** Sending a task in Scout mode starts it at once: no per-task question (owner decision). */
 async function startTask(page: Page, goal: string): Promise<void> {
   await page.getByLabel("Ask about this page").fill(goal);
   await page.getByRole("radio", { name: "Scout" }).check();
   await page.getByRole("button", { name: "Start task" }).click();
-  await expect(page.getByRole("alertdialog", { name: "Start a Scout task on shop.test?" })).toBeHidden();
+  await expect(page.getByRole("alertdialog", { name: /Start a Scout task/ })).toHaveCount(0);
 }
 
 /** The action log: on the task card while it runs, then kept under the outcome message. */
@@ -294,14 +294,12 @@ test("Take control stops actions within 250 ms, Resume continues, and Stop remov
   await expect(page.getByRole("button", { name: "Start task" })).toBeVisible();
 });
 
-test("the Scout server can ask for a task mid-answer (run_task): the user is asked, the task runs, and the answer continues", async ({ page }) => {
+test("the Scout server can ask for a task mid-answer (run_task): the task runs and the answer continues", async ({ page }) => {
   await openPopup(page, [toolTurn("run_task", { goal: "Apply the code" }, "I will do that. "), act([{ type: "click", target: { ref: "e3" } }]), finish("Code applied."), textTurn("Done: the code is applied.")]);
   await page.getByLabel("Ask about this page").fill("Apply my code for me");
   await page.getByRole("button", { name: "Send" }).click();
-  const ask = page.getByRole("alertdialog", { name: "Let Scout for Safari do this on shop.test?" });
-  await expect(ask).toBeVisible();
-  await expect(ask).toContainText("Task: Apply the code");
-  await ask.getByRole("button", { name: "Start" }).click();
+  // No per-task question: the task card appears as soon as the model asks for it.
+  await expect(page.getByRole("heading", { name: "Scouting this page" })).toBeVisible();
   await expect(taskLog(page)).toContainText("Did: click “Apply”");
   await expect(page.getByRole("log", { name: "Conversation" }).locator(".msg.assistant").last()).toContainText("Done: the code is applied.");
   expect(await acts(page)).toEqual(["click"]);
@@ -329,25 +327,12 @@ test("Scout mode is off in Private Browsing and when turned off in Settings, and
   await expect(page.getByRole("list", { name: "Blocked sites" })).toContainText("No sites blocked.");
   await expect(page.getByText("Disabled. Scout for Safari does not run in Private Browsing")).toBeVisible();
   await expect(page.getByRole("list", { name: "Shared in conversations" })).toBeVisible();
-  // "Ask before each task" brings the per-task question back; Cancel starts nothing.
-  await page.getByRole("combobox", { name: "Scout mode (acting on pages for you)" }).selectOption("ask");
-  await expect(page.getByText("Scout for Safari will ask before each task.")).toBeVisible();
-  await page.getByRole("button", { name: "Back to chat" }).click();
-  await page.getByLabel("Ask about this page").fill("Buy it");
-  await page.getByRole("radio", { name: "Scout" }).check();
-  await page.getByRole("button", { name: "Start task" }).click();
-  const ask = page.getByRole("alertdialog", { name: "Start a Scout task on shop.test?" });
-  await expect(ask).toBeVisible();
-  await expect(ask).toContainText("sends the page's structure and a screenshot of this site to Anthropic");
-  await ask.getByRole("button", { name: "Cancel" }).click();
-  await expect(page.locator("#task")).toBeHidden();
-  expect((await fake(page)).rec.filter((r) => r.what === "inject")).toHaveLength(0);
   // Off refuses the task before touching the page.
-  await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("combobox", { name: "Scout mode (acting on pages for you)" }).selectOption("off");
   await expect(page.getByText("Scout mode is off.")).toBeVisible();
   await page.getByRole("button", { name: "Back to chat" }).click();
   await page.getByLabel("Ask about this page").fill("Buy it");
+  await page.getByRole("radio", { name: "Scout" }).check();
   await page.getByRole("button", { name: "Start task" }).click();
   await expect(page.getByRole("log", { name: "Conversation" }).getByText("Scout mode is turned off in Settings > Permissions.")).toBeVisible();
   expect((await fake(page)).rec.filter((r) => r.what === "inject")).toHaveLength(0);

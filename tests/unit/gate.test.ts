@@ -84,11 +84,11 @@ describe("parsePolicy", () => {
 
 // Part 3 (spec 10): Scout mode per task, "Always allow" sites, revocation.
 describe("Scout mode gate", () => {
-  it("starts at once by default, asks when set to ask, is off when turned off, and never acts on a blocked site", () => {
+  it("starts at once by default (a stored ask counts as on), is off when turned off, and never acts on a blocked site", () => {
     const a = parsePageAccess({ blocked: ["bank.test"] });
     expect(a.scoutMode).toBe("on");
     expect(taskDecision("https://shop.test/cart", a, [])).toBe("allow");
-    expect(taskDecision("https://shop.test/cart", parsePageAccess({ scoutMode: "ask" }), [])).toBe("ask");
+    expect(parsePageAccess({ scoutMode: "ask" }).scoutMode).toBe("on");
     expect(parsePageAccess({ scoutMode: "maybe" }).scoutMode).toBe("on");
     expect(taskDecision("https://bank.test/", a, [])).toBe("blocked-user");
     expect(taskDecision("https://hr.corp.test/", a, ["corp.test"])).toBe("blocked-admin");

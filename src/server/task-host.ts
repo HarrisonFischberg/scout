@@ -138,7 +138,6 @@ export class TaskHost {
     if (decision === "off") throw new BridgeError("blocked-by-user", "Scout mode is turned off in Settings > Permissions.");
     if (decision === "blocked-admin") throw new BridgeError("blocked-by-user", "Your organization blocks " + hostOf(tab.url) + ".");
     if (decision === "blocked-user") throw new BridgeError("blocked-by-user", hostOf(tab.url) + " is blocked in Settings, so Scout cannot act on it.");
-    // "allow" and "ask" both proceed here: the panel asked when the setting says so.
     const settings = await this.deps.settings();
     // Fails here (no consent, no key) before anything is shown on the page.
     const provider = await this.deps.provider(settings.provider, settings.model);

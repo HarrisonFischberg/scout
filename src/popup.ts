@@ -1609,33 +1609,6 @@ async function main(): Promise<void> {
     }
   }
 
-  const SCOUT_WHAT = (site: string, provider: Provider, model: string, screenshots: boolean): string =>
-    "Scout for Safari will act on " + site + " for you: click, type, scroll, and fill fields, step by step, with a glowing border on the page while it works. " +
-    "After each step it sends the page's structure" + (screenshots ? " and a screenshot of this site" : "") + " to " + PROVIDER_NAME[provider] + " (" + prettyModel(model) + "). " +
-    "It asks you before anything sensitive, such as buying, sending, signing in, or deleting. You can take control or stop at any time.";
-
-  /**
-   * The per-task question. Always for a task the model requested mid-answer
-   * (run_task); for the user's own Scout mode only when Settings says
-   * "Ask before each task" (owner decision 2026-10-17: sending a task starts it).
-   */
-  async function askStartTask(goal: string, source: "panel" | "chat"): Promise<boolean> {
-    if (source === "panel" && (await loadPageAccess(storage)).scoutMode !== "ask") return true;
-    const site = hostOf(tab.url ?? "") ?? "this page";
-    const s = activeSettings();
-    const shots = screenshotDecision(tab.url ?? "", await loadPageAccess(storage), []) !== "deny";
-    const d = await askTool({
-      title: source === "chat" ? "Let Scout for Safari do this on " + site + "?" : "Start a Scout task on " + site + "?",
-      what: SCOUT_WHAT(site, s.provider, s.model, shots),
-      items: ["Task: " + goal.replace(/\s+/g, " ").slice(0, 300)],
-      choices: [
-        { label: "Start", value: "confirmed", primary: true },
-        { label: "Cancel", value: "declined", safe: true },
-      ],
-    });
-    return d === "confirmed";
-  }
-
   /** Starts a task on this tab and resolves with its outcome. Null when it did not start (the reason was shown). */
   async function startTask(goal: string, source: "panel" | "chat"): Promise<{ status: string; summary: string; usage: Usage; entries: Array<{ text: string; status: string }> } | null> {
     if (task || tab.id === undefined) return null;
@@ -1675,10 +1648,7 @@ async function main(): Promise<void> {
     if (!trimmed || activeChat || control || task || !session) return;
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
-    if (!(await askStartTask(trimmed, "panel"))) {
-      trace("task:cancelled");
-      return;
-    }
+    // No per-task question (owner decision 2026-10-17): sending the task starts it.
     startRun("agent", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model, question: trimmed });
     addMessage("user", trimmed, { mode: "Scout mode" });
     question.value = "";
@@ -1691,11 +1661,10 @@ async function main(): Promise<void> {
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
   }
 
-  /** The chat's run_task tool: ask, run, and answer the Scout server with the outcome. */
+  /** The chat's run_task tool: run the task and answer the Scout server with the outcome. */
   async function runTaskForChat(goal: string): Promise<ToolResult> {
     const site = hostOf(tab.url ?? "") ?? "";
     if (task) return { status: "error", text: "A task is already running on this tab.", site };
-    if (!(await askStartTask(goal, "chat"))) return { status: "declined", text: "The user did not start the task.", site };
     const out = await startTask(goal, "chat");
     if (!out) return { status: "error", text: "The task could not start.", site };
     if (out.status === "done") {
@@ -2314,8 +2283,8 @@ async function main(): Promise<void> {
     void updateAccess((a) => ({ ...a, searchTabs: on }), on ? "Scout for Safari may search your open tabs." : "Tab and history search is off.");
   });
   accessScout.addEventListener("change", () => {
-    const choice = accessScout.value === "off" ? "off" : accessScout.value === "ask" ? "ask" : "on";
-    void updateAccess((a) => ({ ...a, scoutMode: choice }), choice === "off" ? "Scout mode is off." : choice === "ask" ? "Scout for Safari will ask before each task." : "Scout mode starts as soon as you send a task.");
+    const choice = accessScout.value === "off" ? "off" : "on";
+    void updateAccess((a) => ({ ...a, scoutMode: choice }), choice === "off" ? "Scout mode is off." : "Scout mode starts as soon as you send a task.");
     trace("access:scout " + choice);
   });
 
