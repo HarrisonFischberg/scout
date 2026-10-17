@@ -11,7 +11,7 @@ and so on.
 | Date | Where | What ran | Result |
 | --- | --- | --- | --- |
 | 2026-10-17 | cloud build session | discovery research only (web search from the session's own tools; the container's network policy denied every merchant and coupon site, the npm registry, and page fetches) | 14 merchants searched; see table below. **No cart was opened and no code was applied anywhere: 0 of 50 checkout-validated.** |
-| 2026-10-17 | owner's Mac: WebKit smoke run and sweep 1 in the owner's Terminal, then re-sweeps A–C, E in the Claude Code sandbox (Chromium, single-process, through the sandbox proxy), real Anthropic key, each merchant in a fresh browser context | 118 merchant runs over 7 run folders (`ralph/evidence/live-suite/`), latest real result per merchant kept | **34 of 56 carts had a code found online applied (61%): 72% of the 47 carts where a code could be tested, 74% of the 43 whose web search completed**, every one confirmed by the store's cart API. Tackform applied on build 26c73db (every listed coupon page opened before the search); Brumate, applied from its drawer in two earlier runs, found no codes in its last two runs on 23a09b3 (discovery variance; see below), and the latest run counts. The owner's checkout-step pass (Chromium, their Terminal) added Cuts, Caraway and Bombas to the tested carts without a new application. See "Results, 2026-10-17" below. |
+| 2026-10-17 | owner's Mac: WebKit smoke run and sweep 1 in the owner's Terminal, then re-sweeps A–C, E in the Claude Code sandbox (Chromium, single-process, through the sandbox proxy), real Anthropic key, each merchant in a fresh browser context | 118 merchant runs over 7 run folders (`ralph/evidence/live-suite/`), latest real result per merchant kept | **34 of 56 carts had a code found online applied (61%): 72% of the 47 carts where a code could be tested, 76% of the 42 whose web search completed**, every one confirmed by the store's cart API. Tackform applied on build 26c73db (every listed coupon page opened before the search); Brumate, applied from its drawer in two earlier runs, found no code in its last three runs (two masked-only, then a search timeout with five pages read and nothing written: see below), and the latest run counts. The owner's checkout-step pass (Chromium, their Terminal) added Cuts, Caraway and Bombas to the tested carts without a new application. See "Results, 2026-10-17" below. |
 
 Checkout validation of this suite needs a Safari build on the owner's Mac or
 iPhone with a real key (launch blocker 33): open each store, add an item,
@@ -73,21 +73,22 @@ was tested in a cart. "Checkout outcome" stays empty until a live run.
 
 Target: a code found live online applied on 80% of carts. **Reached 72% of
 the carts where a code could be entered (34 of 47), 74% of the carts whose
-web search completed (34 of 43), and 61% of all 56 carts.** Neither the 80%
+web search completed (34 of 42), and 61% of all 56 carts.** Neither the 80%
 target nor the 75% fallback was met; the next step down, 70%, was, on the
 carts where testing was possible. (The checkout-step pass added three
 tested carts, Cuts, Caraway and Bombas, with no application; the last engine
 build, which opens every listed coupon page before searching, turned
 Tackform from masked-only into applied; Brumate went the other way: applied
-in two runs, then no readable code in two runs on the newest build with the
-same eight pages opened, and the latest run counts.)
+in two runs, then no readable code in three runs on the newer builds with
+the same eight pages opened, and the latest run counts.)
 
 | Category | Count | Merchants |
 | --- | --- | --- |
 | applied, confirmed by the store's cart API | 34 | Ancestral Supplements, Breezy Golf, BUBS Naturals, Carnivore Aurelius, Carnivore Bar, Carnivore Crisps, Carnivore Snax, Catalina Crunch, Chomps, Clevr Blends, Duke Cannon, Ekster, Equip Foods, Fly By Jing, Four Sigmatic, Fresh Clean Threads, Good Good Golf, Groove Life, Heart & Soil, Huron, Just Ingredients (after-state only; the before-read failed), Kettle & Fire, Kion, Lineage Provisions, Magic Spoon, MASA, Melin, MUD\WTR, Perfect Keto, Quad Lock, Santa Cruz Paleo, Tackform (YG8KW-A37JM $60 → $54, on build 44d043d3f4 after the direct-page change; STREETDEALX, the code the owner's other assistant knew, gives the same 10%), Trayvax, Viori |
-| applied, read from the page (no cart API) | 0 | Brumate applied LL10-XEEG0MNF ($149.99 → $139.99) from its drawer in two runs, testing 1 of 16–24 codes each time because the drawer hides the input while a code is on and its remove control is an icon button named only by an SVG title (fixed in 23a09b3); its two runs on that build found no readable code at all (0 verified, 5 and 3 masked, all 8 pages opened), so the fix is unverified and Brumate counts as masked-only |
+| applied, read from the page (no cart API) | 0 | Brumate applied LL10-XEEG0MNF ($149.99 → $139.99) from its drawer in two runs, testing 1 of 16–24 codes each time because the drawer hides the input while a code is on and its remove control is an icon button named only by an SVG title (fixed in 23a09b3); its two runs on that build found no readable code at all (0 verified, 5 and 3 masked, all 8 pages opened) and a third, on 9f9a254 with the per-page trace, timed out at 240 s having read five pages (about 140 000 characters) and written nothing, so the fix is unverified and Brumate counts as discovery failed |
 | no working code (codes found, the store refused all) | 6 | Cuts (40 codes, tested on its checkout page), Grip6 (40), Luno (32), Matador (37), OLIPOP (48, three runs), Rumpl (50) |
-| no codes found (only masked codes on the pages reached) | 7 | Bombas and Caraway (on their checkout pages), Brumate (last two runs), IQBAR, Mid-Day Squares, True Classic, WORN |
+| no codes found (only masked codes on the pages reached) | 6 | Bombas and Caraway (on their checkout pages), IQBAR, Mid-Day Squares, True Classic, WORN |
+| discovery failed (search timed out with nothing written) | 1 | Brumate (latest run; see the variance note) |
 | discount field only at checkout, not yet tested there | 7 | BYLT Basics, Chubbies, Javvy Coffee, Nomad, Paleovalley, Peak Design, Pura (the owner allowed the checkout's information step on 2026-10-17; the runner's `--checkout-step` reached it for Cuts, Caraway and Bombas, which moved to the rows above) |
 | blocked by the harness or the site | 2 | Dr. Squatch (the runner cannot add its product), Ridge (bot wall) |
 
@@ -96,7 +97,7 @@ the runner itself never replaces an earlier real result. Every "applied" row
 names the code, the cart total before and after, and the page the code was
 read from (`results.json`, `attempts[].source`); the cart API confirmation
 is `verify.confirmed`. Builds: popup `472377364d` = engine c6e04ee,
-`86113aba63` = ca11f85, `f3c5f1c539` = 1c2b867, `44d043d3f4` = 26c73db, `d48645c2fd` = 23a09b3; sweep 1 ran before the
+`86113aba63` = ca11f85, `f3c5f1c539` = 1c2b867, `44d043d3f4` = 26c73db, `d48645c2fd` = 23a09b3, `4cee251bd2` = 9f9a254; sweep 1 ran before the
 hash existed (engine 389193f).
 
 Timing (latest results): applied: median 154 s over 34; no codes found: median 129 s over 5; no working code: median 257 s over 5; checkout-only: median 21 s over 10; blocked: median 23 s over 2. Web search, from the request to the
@@ -137,10 +138,14 @@ masked codes only (IQBAR, Mid-Day Squares, True Classic, WORN), two more on
 their checkout pages (Bombas, Caraway); the page path's fix for a store that hides the
 coupon input while a code is on (Brumate; the icon-only "Remove discount"
 button is named by its SVG title since 23a09b3) is unverified, because both
-runs on that build found no readable code; discovery itself varies run to
-run on the same pages (Brumate: 24, 16, 0, 0 codes across four runs with
-the same eight pages opened), which the traces cannot yet explain because
-the per-page fetch result is not recorded; the seven remaining checkout-only stores await the
+runs on that build found no readable code; discovery itself varies run to run on the same pages (Brumate: 24, 16, 0,
+0, 0 codes across five runs with the same eight pages opened); the per-page
+trace added in 9f9a254 showed, on the fifth run, five pages answering with
+text (dontpayfull 51 878 characters, retailcoupons 35 931, tenereteam
+21 510, wethrift/codes 15 334, dealdrop 14 831), five answering
+url_not_accessible (hotdeals, coupert, dealhack, couponbind, wethrift/brand),
+and the model writing no code line in 240 s (one prose line ignored), so the
+loss there is time at the model after slow fetches, not missing pages; the seven remaining checkout-only stores await the
 owner-run checkout-step pass (`--checkout-step`; the sandbox's policy
 forbids opening checkout from the agent's side); the runner cannot add
 Dr. Squatch's, Paleovalley's, Pura's or Chubbies' products (gift-card-first
@@ -218,7 +223,7 @@ Personal care and home: Viori, Dr. Squatch, Duke Cannon, Huron, Pura.
 | 2026-10-17 | Ancestral Supplements | ancestralsupplements.com/cart | shopify | store=0 verified=4 reported=16 masked=4 | HOMEGROWN, $44.00 → $37.40 (cart API confirmed) | applied (build f3c5f1c539, run-rerun-e) |
 | 2026-10-17 | Bombas | shop.bombas.com/checkouts/cn/hWNI50W9oUdOylxzqgV4BFwn/en-us (checkout information step) | page | store=0 verified=0 reported=0 masked=3 |  | no codes found (build f3c5f1c539, run-rerun-d2) |
 | 2026-10-17 | Breezy Golf | breezygolf.com/cart | shopify | store=1 verified=0 reported=0 masked=5 | FAIRWAY10, $36.00 → $32.40 (cart API confirmed) | applied (build 472377364d, run-rerun-a) |
-| 2026-10-17 | Brumate | www.brumate.com/ | page | store=0 verified=0 reported=0 masked=3 |  | no codes found (build d48645c2fd, run-rerun-g2) |
+| 2026-10-17 | Brumate | www.brumate.com/ | page | store=0 verified=0 reported=0 masked=0 ignored=1 |  | discovery failed (build 4cee251bd2, run-rerun-h) |
 | 2026-10-17 | BUBS Naturals | www.bubsnaturals.com/cart | shopify | store=0 verified=0 reported=40 masked=0 | AIM725, $35.00 → $26.25 (cart API confirmed) | applied (build pre-hash, runT07-36-10) |
 | 2026-10-17 | BYLT Basics | byltbasics.com/cart | none | - |  | no coupon box (discount field only at checkout) (build 472377364d, run-rerun-a) |
 | 2026-10-17 | Caraway | shop.carawayhome.com/checkouts/cn/hWNI50HVFcqrYFpwORqzz1qz/en-us/information (checkout information step) | shopify | store=0 verified=0 reported=0 masked=6 |  | no codes found (build f3c5f1c539, run-rerun-d2) |
