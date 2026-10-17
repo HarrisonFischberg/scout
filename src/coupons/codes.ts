@@ -23,6 +23,14 @@ export const SEARCH_TIME_MS = 240_000;
 /** Web searches and page fetches the model may run per search. */
 export const SEARCH_USES = 10;
 export const FETCH_USES = 10;
+/**
+ * A search that fetches pages can spend its whole budget on slow pages and
+ * write nothing (MASA, Ancestral Supplements in the 2026-10-17 sweeps). It is
+ * then retried once without page reads, from search results only, briefly.
+ */
+export const RETRY_TIME_MS = 90_000;
+const RETRY_SEARCH_USES = 6;
+const RETRY_NOTE = "This is a quick search without page reads: list every code you can read in the search results themselves, as reported by those pages.";
 
 // Sources worth naming: coupon sites that show full codes for small direct-to-consumer
 // stores, and the public places creators and brands post codes. The model decides
@@ -105,6 +113,8 @@ export interface SuggestedCodes {
   webSearches: number;
   /** Set when the search did not finish. */
   error?: SearchError;
+  /** True when the fetching search timed out empty and a search-only pass ran instead. */
+  retried?: boolean;
 }
 
 /** Page text and addresses the search actually retrieved: the evidence codes are checked against. */
@@ -270,6 +280,10 @@ export interface SearchOptions {
   timeoutMs?: number;
   /** A second search looks at other kinds of sources. */
   more?: boolean;
+  /** Time for the search-only retry after a fetching search timed out with nothing written. */
+  retryTimeoutMs?: number;
+  /** False: no search-only retry. */
+  retry?: boolean;
 }
 
 export async function suggestCodes(
@@ -289,43 +303,42 @@ export async function suggestCodes(
   // Codes quoted in the provider's citations: page text, not the model's words.
   const cited: CouponCandidate[] = [];
   const searched = opts.webSearch !== false;
-  if (searched) {
+  let retried = false;
+  // Other spellings worth searching with (the brand inside the domain label), not the domain itself.
+  const plain = (v: string): string => v.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const aka = merchant.names.filter((n) => n !== plain(merchant.brand) && n !== plain(merchant.domain) && n !== plain(merchant.brand).replace(/\s+/g, ""));
+  const content =
+    "Store: " + merchant.brand + "\nStore website: " + merchant.domain +
+    (merchant.host.replace(/^www\./, "") !== merchant.domain ? "\nCheckout host: " + merchant.host : "") +
+    (aka.length ? "\nAlso written as: " + aka.join(", ") : "") +
+    (likelyCodePages(merchant).length ? "\nPages that may print this store's codes in full; open the ones that exist: " + likelyCodePages(merchant).join(" ") : "") +
+    (opts.more ? "\n" + MORE_FOCUS : "") +
+    (opts.exclude?.length
+      ? "\nAlready tried, do not list these again; look for different codes: " + opts.exclude.slice(0, MAX_EXCLUDE_LISTED).join(", ")
+      : "");
+
+  /** One streamed search; what it finds lands in `text`, `retrieved` and `cited`. Returns why it ended early, if it did. */
+  const pass = async (p: { fetch: boolean; timeoutMs: number; searches: number }): Promise<SearchError | undefined> => {
     const ac = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
       ac.abort();
-    }, opts.timeoutMs ?? SEARCH_TIME_MS);
+    }, p.timeoutMs);
     const onAbort = (): void => ac.abort();
     if (signal?.aborted) ac.abort();
     else signal?.addEventListener("abort", onAbort, { once: true });
-    // Other spellings worth searching with (the brand inside the domain label), not the domain itself.
-    const plain = (v: string): string => v.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-    const aka = merchant.names.filter((n) => n !== plain(merchant.brand) && n !== plain(merchant.domain) && n !== plain(merchant.brand).replace(/\s+/g, ""));
     const req = {
       model,
       system: CODES_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user" as const,
-          content:
-            "Store: " + merchant.brand + "\nStore website: " + merchant.domain +
-            (merchant.host.replace(/^www\./, "") !== merchant.domain ? "\nCheckout host: " + merchant.host : "") +
-            (aka.length ? "\nAlso written as: " + aka.join(", ") : "") +
-            (likelyCodePages(merchant).length ? "\nPages that may print this store's codes in full; open the ones that exist: " + likelyCodePages(merchant).join(" ") : "") +
-            (opts.more ? "\n" + MORE_FOCUS : "") +
-            (opts.exclude?.length
-              ? "\nAlready tried, do not list these again; look for different codes: " + opts.exclude.slice(0, MAX_EXCLUDE_LISTED).join(", ")
-              : ""),
-        },
-      ],
+      messages: [{ role: "user" as const, content: p.fetch ? content : content + "\n" + RETRY_NOTE }],
       // Room for thinking between searches at higher effort.
       maxTokens: 8000,
       ...(opts.effort ? { effort: opts.effort } : {}),
       webSearch: true,
-      webSearchMaxUses: SEARCH_USES,
-      webFetch: true,
-      webFetchMaxUses: FETCH_USES,
+      webSearchMaxUses: p.searches,
+      webFetch: p.fetch,
+      ...(p.fetch ? { webFetchMaxUses: FETCH_USES } : {}),
       signal: ac.signal,
     };
     try {
@@ -342,11 +355,21 @@ export async function suggestCodes(
           webSearches += ev.usage.webSearches ?? 0;
         }
       }
+      return undefined;
     } catch (err) {
-      error = searchError(err, timedOut, signal?.aborted === true);
+      return searchError(err, timedOut, signal?.aborted === true);
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener("abort", onAbort);
+    }
+  };
+
+  if (searched) {
+    error = await pass({ fetch: true, timeoutMs: opts.timeoutMs ?? SEARCH_TIME_MS, searches: SEARCH_USES });
+    // Nothing written before the time ran out: one quick pass from search results alone.
+    if (error?.code === "timeout" && !text.trim() && cited.length === 0 && opts.retry !== false && signal?.aborted !== true) {
+      retried = true;
+      error = await pass({ fetch: false, timeoutMs: opts.retryTimeoutMs ?? RETRY_TIME_MS, searches: RETRY_SEARCH_USES });
     }
   }
   const findings = parseFindings(text, retrieved);
@@ -366,5 +389,6 @@ export async function suggestCodes(
     outputTokens,
     webSearches,
     ...(error ? { error } : {}),
+    ...(retried ? { retried: true } : {}),
   };
 }

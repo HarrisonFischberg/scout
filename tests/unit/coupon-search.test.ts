@@ -122,6 +122,59 @@ describe("suggestCodes when the search does not finish", () => {
     expect(r.codes[0]?.code).toBe("SAVE10");
   });
 
+  // Live sweeps 2026-10-17: MASA and Ancestral Supplements spent four minutes fetching slow
+  // pages and wrote nothing, twice each. A search-only pass then runs, briefly.
+  it("retries once without page reads when the fetching search times out with nothing written", async () => {
+    const reqs: ChatRequest[] = [];
+    const twoPass: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        reqs.push(req);
+        if (req.webFetch) {
+          await new Promise((_res, rej) => req.signal?.addEventListener("abort", () => rej(new ProviderError("anthropic", "network"))));
+          return;
+        }
+        yield { type: "source", url: "https://deals.test/quick" };
+        yield { type: "text", delta: "QUICK10 | https://deals.test/quick\n" };
+      },
+    };
+    const r = await suggestCodes(twoPass, "m", "www.masa.test", undefined, { timeoutMs: 20, retryTimeoutMs: 500 });
+    expect(reqs).toHaveLength(2);
+    expect(reqs[0]).toMatchObject({ webFetch: true, webSearchMaxUses: 10 });
+    expect(reqs[1]).toMatchObject({ webFetch: false, webSearchMaxUses: 6 });
+    expect(String(reqs[1]?.messages[0]?.content)).toContain("quick search without page reads");
+    expect(r.retried).toBe(true);
+    expect(r.error).toBeUndefined();
+    expect(r.codes.map((c) => [c.code, c.origin])).toEqual([["QUICK10", "reported"]]);
+  });
+
+  it("does not retry when the timed-out search had already written codes, or when retry is off", async () => {
+    let calls = 0;
+    const slow: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        calls++;
+        yield { type: "source", url: "https://deals.test/a" };
+        yield { type: "text", delta: "SAVE10 | https://deals.test/a\n" };
+        await new Promise((_res, rej) => req.signal?.addEventListener("abort", () => rej(new ProviderError("anthropic", "network"))));
+      },
+    };
+    const r = await suggestCodes(slow, "m", "www.shop.test", undefined, { timeoutMs: 20, retryTimeoutMs: 20 });
+    expect(calls).toBe(1);
+    expect(r.retried).toBeUndefined();
+    expect(r.error?.code).toBe("timeout");
+    const empty: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        calls++;
+        await new Promise((_res, rej) => req.signal?.addEventListener("abort", () => rej(new ProviderError("anthropic", "network"))));
+      },
+    };
+    calls = 0;
+    await suggestCodes(empty, "m", "www.shop.test", undefined, { timeoutMs: 20, retry: false });
+    expect(calls).toBe(1);
+  });
+
   it("names the stop as a stop, not a failure", async () => {
     const ac = new AbortController();
     const stopped: ProviderClient = {
