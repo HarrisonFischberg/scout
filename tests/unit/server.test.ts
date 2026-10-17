@@ -280,4 +280,17 @@ describe("ConversationStore", () => {
     st.apply("m", 2, { kind: "tool_done", request_id: "r1", status: "declined" });
     expect(st.pendingTools("m")).toEqual([]);
   });
+
+  it("a Stop the worker never answered ends the answer as stopped, not as an error", () => {
+    const st = new ConversationStore();
+    st.create("m");
+    st.apply("m", 1, { kind: "start" });
+    st.apply("m", 2, { kind: "text", delta: "One two" });
+    st.stopLocally("m");
+    const m = st.get("m")!;
+    expect(m.status).toBe("complete");
+    expect(m.stopped).toBe(true);
+    expect(m.error).toBeUndefined();
+    expect(m.text).toBe("One two");
+  });
 });
