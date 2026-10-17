@@ -1,16 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  forSpeech,
-  joinDictation,
-  Listener,
-  micBlocked,
-  micErrorText,
-  recognitionCtor,
-  VoiceChat,
-  type RecognitionLike,
-  type RecognitionEventLike,
-  type VoiceState,
-} from "../../src/panel/voice";
+import { joinDictation, Listener, micErrorText, recognitionCtor, type RecognitionEventLike, type RecognitionLike } from "../../src/panel/voice";
 
 /** A recognizer the test drives by hand. */
 class FakeRecognition implements RecognitionLike {
@@ -44,9 +33,7 @@ class FakeRecognition implements RecognitionLike {
   }
 }
 
-const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
-
-describe("mic and voice buttons (owner design 2026-10-17)", () => {
+describe("mic button: speech to text (owner, 2026-10-17)", () => {
   it("finds WebKit's prefixed recognizer", () => {
     expect(recognitionCtor({ webkitSpeechRecognition: FakeRecognition })).toBe(FakeRecognition);
     expect(recognitionCtor({})).toBeNull();
@@ -60,17 +47,11 @@ describe("mic and voice buttons (owner design 2026-10-17)", () => {
   });
 
   it("a refused microphone points to the keyboard's own dictation", () => {
-    expect(micBlocked("not-allowed")).toBe(true);
-    expect(micBlocked("no-speech")).toBe(false);
     expect(micErrorText("not-allowed", true)).toMatch(/mic on your keyboard/);
     expect(micErrorText("service-not-allowed", false)).toMatch(/Fn twice/);
     expect(micErrorText("no-speech", true)).toMatch(/Didn't hear anything/);
   });
 
-  it("answers are read aloud without Markdown, links, code or citation marks", () => {
-    const md = "## Summary\n\n- **Free shipping** over $50 [1]\n- See [the policy](https://x.com/p)\n\n```js\nx()\n```\nUse `SAVE10` at https://shop.com/cart.";
-    expect(forSpeech(md)).toBe("Summary\nFree shipping over $50\nSee the policy\nUse SAVE10 at");
-  });
 
   it("the listener reports interim and final text, then ends", () => {
     const l = new Listener(FakeRecognition, "en-US");
@@ -99,75 +80,4 @@ describe("mic and voice buttons (owner design 2026-10-17)", () => {
     expect(ended).toBe("unsupported");
   });
 
-  function voice(answer: string | null) {
-    const states: VoiceState[] = [];
-    const sent: string[] = [];
-    const spoken: string[] = [];
-    const errors: string[] = [];
-    let finishSpeech = (): void => undefined;
-    const chat = new VoiceChat({
-      listener: new Listener(FakeRecognition, "en-US"),
-      speak: (text, done) => {
-        spoken.push(text);
-        finishSpeech = done;
-        return () => undefined;
-      },
-      send: async (text) => {
-        sent.push(text);
-        return answer;
-      },
-      onState: (s) => states.push(s),
-      onHeard: () => undefined,
-      onError: (e) => errors.push(e),
-    });
-    return { chat, states, sent, spoken, errors, endSpeech: () => finishSpeech() };
-  }
-
-  it("voice chat: listens, sends, reads the answer aloud, then listens again", async () => {
-    const v = voice("**Yes**, it ships free.");
-    v.chat.start();
-    FakeRecognition.last!.say([["does it ship free", true]]);
-    FakeRecognition.last!.stop();
-    await tick();
-    expect(v.sent).toEqual(["does it ship free"]);
-    expect(v.spoken).toEqual(["Yes, it ships free."]);
-    expect(v.chat.state).toBe("speaking");
-    v.endSpeech();
-    expect(v.chat.state).toBe("listening");
-    expect(v.states).toEqual(["listening", "thinking", "speaking", "listening"]);
-    // Silence after an answer ends the conversation quietly.
-    FakeRecognition.last!.fail("no-speech");
-    expect(v.chat.state).toBe("off");
-    expect(v.errors).toEqual([]);
-  });
-
-  it("voice chat: silence at the start says nothing was heard; a refused mic says so", () => {
-    const v = voice("hi");
-    v.chat.start();
-    FakeRecognition.last!.fail("no-speech");
-    expect(v.errors).toEqual(["no-speech"]);
-    v.chat.start();
-    FakeRecognition.last!.fail("not-allowed");
-    expect(v.errors).toEqual(["no-speech", "not-allowed"]);
-    expect(v.sent).toEqual([]);
-  });
-
-  it("voice chat: no answer (stopped or failed) ends it without speaking", async () => {
-    const v = voice(null);
-    v.chat.start();
-    FakeRecognition.last!.say([["hello", true]]);
-    FakeRecognition.last!.stop();
-    await tick();
-    expect(v.spoken).toEqual([]);
-    expect(v.chat.state).toBe("off");
-  });
-
-  it("voice chat: ending it while listening sends nothing", () => {
-    const v = voice("hi");
-    v.chat.start();
-    FakeRecognition.last!.say([["half a sen", false]]);
-    v.chat.stop();
-    expect(v.chat.state).toBe("off");
-    expect(v.sent).toEqual([]);
-  });
 });

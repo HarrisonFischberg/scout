@@ -319,9 +319,8 @@ test("Take control stops actions within 250 ms, Resume continues, and Stop remov
   expect(stopClick).toBeDefined();
   expect(f.rec.filter((r) => r.what === "act")).toHaveLength(2);
   await expect(traceHead(page)).toContainText("Stopped");
-  // The composer is back, still in Scout mode (an empty box shows the voice button
-  // where Safari can listen, Start task otherwise).
-  await expect(page.locator(".composer-foot").getByRole("button", { name: /^(Start task|Start voice chat)$/ })).toBeVisible();
+  // The composer is back, still in Scout mode.
+  await expect(page.getByRole("button", { name: "Start task" })).toBeVisible();
 });
 
 test("the Scout server can ask for a task mid-answer (run_task): the task runs and the answer continues", async ({ page }) => {
