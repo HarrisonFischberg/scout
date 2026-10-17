@@ -12,7 +12,9 @@ if (!dirs.length) {
   console.error("usage: node scripts/live-suite-tally.mjs <run dir> [...]");
   process.exit(2);
 }
-const RUNNER_ERROR = /^error: \(intermediate value\)|^error: browserContext|^error: page\.|^error: evaluate timed out/;
+// Outcomes of the runner itself (a crash, a cart it could not fill, a checkout it could not open, a
+// cart-only dry run): they never replace a result the engine produced on an earlier run.
+const RUNNER_ERROR = /^error: \(intermediate value\)|^error: browserContext|^error: page\.|^error: evaluate timed out|^blocked: (could not add to cart|no Checkout button|Checkout button did not|the store removed|site unreachable)|^cart ok/;
 const latest = new Map();
 for (const dir of dirs) {
   const file = join(dir, "results.json");
@@ -27,6 +29,7 @@ for (const dir of dirs) {
 }
 function category(r) {
   const o = r.outcome;
+  if (/did not confirm/.test(o)) return "claimed a saving the cart API did not confirm";
   if (o.startsWith("applied")) return "applied";
   if (o === "no working code") return "no working code";
   if (o === "no codes found") return "no codes found (masked only)";
@@ -35,6 +38,7 @@ function category(r) {
   if (/zero|total is \$0\.00/.test(o)) return "blocked: cart read $0";
   if (/unreadable total/.test(o)) return "blocked: unreadable total";
   if (/^blocked/.test(o)) return "blocked: " + (/(bot check|captcha)/i.test(o) ? "bot wall" : "harness");
+  if (/^cart ok/.test(o)) return "blocked: harness (cart only)";
   return "error";
 }
 const rows = [...latest.values()].sort((a, b) => a.name.localeCompare(b.name));
