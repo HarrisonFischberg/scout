@@ -123,7 +123,7 @@ private struct ConsentSheet: View {
         [
             "Now, to test your key: only the key, so \(name) can check it.",
             "Later, in Safari: your messages and the tasks you type.",
-            "When a request uses the page (questions, Summarize, Control Browser, Find coupons): the page's address, title, and text, and for Control Browser and Find coupons its links, buttons, and form fields. Password and card fields are hidden first.",
+            "When a request uses the page (questions, Summarize, Scout mode, Find coupons): the page's address, title, and text, and for Scout mode and Find coupons its links, buttons, and form fields. Password and card fields are hidden first. Scout mode sends them again after each step it takes.",
             "Text of other tabs only when you choose them.",
             "Your API key goes only to \(name), to sign in. Scout for Safari never sends it anywhere else.",
         ]
