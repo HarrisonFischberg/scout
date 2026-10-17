@@ -6,7 +6,10 @@
 // live stores: a fake `browser` API in the popup page forwards content-script
 // calls into the merchant tab.
 //
-//   ANTHROPIC_API_KEY=... node scripts/live-suite.mjs [options]
+//   SCOUT_LIVE_KEY=... node scripts/live-suite.mjs [options]
+//   (the Anthropic key under its own name: the Claude CLI refuses Remote
+//   Control when ANTHROPIC_API_KEY is set in the shell; that name still works
+//   as a fallback outside Remote Control)
 //     --browser webkit|chromium   (default webkit, like Safari)
 //     --headed                    show the browser
 //     --only "Chomps,Rumpl"       run some merchants only (name substrings)
@@ -51,9 +54,9 @@ const secondPass = !has("no-second-pass");
 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 const out = resolve(flag("out", join("ralph", "evidence", "live-suite", stamp)));
 
-const key = process.env.ANTHROPIC_API_KEY ?? "";
+const key = process.env.SCOUT_LIVE_KEY || process.env.ANTHROPIC_API_KEY || "";
 if (!key) {
-  console.error("ANTHROPIC_API_KEY is not set in this shell. Nothing was run.");
+  console.error("SCOUT_LIVE_KEY is not set in this shell (the Anthropic API key). Nothing was run.");
   process.exit(2);
 }
 for (const f of ["popup.html", "popup.js", "content.js", "overlay.js"]) {
