@@ -177,21 +177,30 @@ async function startTask(page: Page, goal: string): Promise<void> {
 }
 
 /** The action log: on the task card while it runs, then kept under the outcome message. */
-const taskLog = (page: Page) => page.getByRole("list", { name: /Action log|Steps taken/ }).last();
+/** The plain-language action log, kept under the trace's collapsed "Steps" row. */
+// A CSS locator: the list sits inside a closed <details>, which role queries treat as hidden.
+const taskLog = (page: Page) => page.locator('#task ol[aria-label="Action log"]');
+const traceHead = (page: Page) => page.locator("#task .trace-head");
 const confirmCard = (page: Page) => page.getByRole("alertdialog", { name: "Scout for Safari wants to:" });
 
 test("a task runs a batch, logs each step in plain language, shows the overlay and the active toolbar icon, and ends with a summary", async ({ page }) => {
-  await openPopup(page, [act([{ type: "fill_field", target: { ref: "e1" }, value: "Ada" }, { type: "click", target: { ref: "e3" } }]), finish("Applied the code.\n- Filled the name")]);
+  await openPopup(page, [toolTurn("act", { actions: [{ type: "fill_field", target: { ref: "e1" }, value: "Ada" }, { type: "click", target: { ref: "e3" } }] }, "Found the name field, filling it and applying."), finish("Applied the code.\n- Filled the name")]);
   await startTask(page, "Apply my code");
+  await expect(traceHead(page)).toContainText("Working");
+  await expect(page.locator("#task .say")).toHaveText("Found the name field, filling it and applying.");
   const log = page.getByRole("log", { name: "Conversation" });
-  await expect(log.getByText("Apply my code")).toBeVisible();
+  await expect(log.locator(".msg.user")).toContainText("Apply my code");
   await expect(log.locator(".msg.user .mode")).toHaveText("Scout mode");
   await expect(log.getByText("Applied the code.")).toBeVisible();
-  await expect(page.locator("#task")).toBeHidden();
-  // The steps stay with the outcome.
-  await log.getByText("2 steps").click();
+  // The trace stays inline, folded under "Finished", with the steps under its Steps row.
+  await expect(traceHead(page)).toContainText("Finished");
+  await expect(page.locator("#task .controls")).toHaveCount(0);
+  await expect(page.locator("#task .step")).toHaveText(["Browsed · 2 actions"]);
+  await expect(page.locator("#task .steps summary")).toHaveText("Steps (4)");
   await expect(taskLog(page)).toContainText("Did: fill “Name” with 3 characters");
   await expect(taskLog(page)).toContainText("Did: click “Apply”");
+  await traceHead(page).click();
+  await expect(page.locator("#task .trace-body")).toBeHidden();
   expect(await acts(page)).toEqual(["fill_field", "click"]);
   const f = await fake(page);
   const overlay = f.rec.filter((r) => r.what.startsWith("overlay:")).map((r) => r.what);
@@ -218,7 +227,8 @@ test("unknown actions are rejected and logged, and never performed", async ({ pa
   await openPopup(page, [act([{ type: "hack", target: { ref: "e3" } }, { type: "click", target: { ref: "e3" } }]), finish("I could not do that.")]);
   await startTask(page, "Hack the page");
   await expect(page.getByRole("log", { name: "Conversation" }).getByText("I could not do that.")).toBeVisible();
-  await page.getByRole("log", { name: "Conversation" }).getByText("1 step").click();
+  // Rejections are shown in the trace itself, in red.
+  await expect(page.locator("#task .step.bad")).toHaveText("Rejected unknown action “hack”");
   await expect(taskLog(page)).toContainText("Rejected unknown action “hack”");
   expect(await acts(page)).toEqual([]);
   await page.getByRole("button", { name: "Settings" }).click();
@@ -239,7 +249,7 @@ test("every sensitive action asks first, even when the server marks it pre-appro
   expect(f.rec.some((r) => r.what === "overlay:state" && (r.detail as { state: string }).state === "waiting")).toBe(true);
   await card.getByRole("button", { name: "Deny" }).click();
   await expect(page.getByRole("log", { name: "Conversation" }).getByText("Gave up.")).toBeVisible();
-  await page.getByRole("log", { name: "Conversation" }).getByText("1 step").click();
+  await expect(page.locator("#task .step.bad")).toHaveText("Denied: click “Place order”");
   await expect(taskLog(page)).toContainText("Denied: click “Place order”");
   expect(await acts(page)).toEqual([]);
 });
@@ -269,6 +279,7 @@ test("Take control stops actions within 250 ms, Resume continues, and Stop remov
   const clickedAt = await page.evaluate(() => performance.now());
   await page.getByRole("button", { name: "Take control" }).click();
   await expect(page.getByRole("button", { name: "Resume" })).toBeVisible();
+  await expect(traceHead(page)).toContainText("Paused");
   await page.waitForTimeout(400);
   let f = await fake(page);
   expect(f.rec.filter((r) => r.what === "act")).toHaveLength(1);
@@ -289,7 +300,7 @@ test("Take control stops actions within 250 ms, Resume continues, and Stop remov
   const stopClick = f.rec.find((r) => r.what === "overlay:hide")!;
   expect(stopClick).toBeDefined();
   expect(f.rec.filter((r) => r.what === "act")).toHaveLength(2);
-  await expect(page.locator("#task")).toBeHidden();
+  await expect(traceHead(page)).toContainText("Stopped");
   // The composer is back, still in Scout mode.
   await expect(page.getByRole("button", { name: "Start task" })).toBeVisible();
 });
@@ -299,7 +310,7 @@ test("the Scout server can ask for a task mid-answer (run_task): the task runs a
   await page.getByLabel("Ask about this page").fill("Apply my code for me");
   await page.getByRole("button", { name: "Send" }).click();
   // No per-task question: the task card appears as soon as the model asks for it.
-  await expect(page.getByRole("heading", { name: "Scouting this page" })).toBeVisible();
+  await expect(traceHead(page)).toContainText("Working");
   await expect(taskLog(page)).toContainText("Did: click “Apply”");
   await expect(page.getByRole("log", { name: "Conversation" }).locator(".msg.assistant").last()).toContainText("Done: the code is applied.");
   expect(await acts(page)).toEqual(["click"]);

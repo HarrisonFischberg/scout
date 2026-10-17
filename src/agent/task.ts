@@ -72,7 +72,8 @@ export type ConfirmDecision = "once" | "always" | "deny";
 
 export type TaskStatus = "done" | "stopped" | "captcha" | "blocked" | "step_budget" | "token_budget" | "error";
 
-export type TaskLogStatus = "ok" | "failed" | "rejected" | "denied" | "note";
+/** "say": the model's own short narration before a batch, shown inline in the chat. */
+export type TaskLogStatus = "ok" | "failed" | "rejected" | "denied" | "note" | "say";
 
 export type TaskEvent =
   | { kind: "state"; state: OverlayState }
@@ -178,6 +179,7 @@ export const TASK_SYSTEM_PROMPT = [
   "You are Scout for Safari, a browser agent working for the user on the page they have open.",
   "Each turn you see the page's structure (text and interactive elements with refs like e12), and usually a screenshot.",
   "Propose the next short batch of actions with the act tool (1 to 5 actions), then read the results and the fresh view before the next batch.",
+  "Before each act call, write one short plain sentence for the user about what you found or are doing next (for example: Found the coupon field, trying code SAVE10.). No Markdown, no lists, nothing else.",
   "Prefer element refs as targets. Use x and y coordinates only when no element ref fits; they are in pixels of the latest screenshot.",
   "Some actions (buying, sending, signing in, deleting, submitting forms, downloading) make Scout ask the user first. If the user denies one, do not retry it; find another way or finish.",
   "Call finish with a summary when the goal is met or cannot be met. Write the summary as clean Markdown: one sentence on the result, then short bullets for what you did or found. No title line.",
@@ -381,6 +383,7 @@ export async function runTask(deps: TaskDeps): Promise<TaskOutcome> {
     if (halted()) return end("stopped", "Stopped.");
     note = note.trim();
     if (!call) return end("done", note || "Finished.");
+    if (note && call.name === "act") logLine(note.replace(/\s+/g, " ").slice(0, 400), "say");
     history.push({ role: "assistant", content: (note + "\n[tool " + call.name + " " + JSON.stringify(call.input ?? {}) + "]").trim() });
     if (call.name === "finish") {
       const summary = (call.input as { summary?: unknown } | null)?.summary;

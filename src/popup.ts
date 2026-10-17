@@ -339,12 +339,6 @@ async function main(): Promise<void> {
   const modelPillText = el("model-pill-text");
   const modelMenu = el("model-menu");
   const modeInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="mode"]'));
-  const taskBox = el("task");
-  const taskGoal = el("task-goal");
-  const taskLog = el<HTMLOListElement>("task-log");
-  const taskState = el("task-state");
-  const taskTake = el<HTMLButtonElement>("task-take");
-  const taskStop = el<HTMLButtonElement>("task-stop");
   const confirmBox = el("confirm");
   const confirmWhat = el("confirm-what");
   const confirmReason = el("confirm-reason");
@@ -505,7 +499,7 @@ async function main(): Promise<void> {
   }
 
   function updateEmpty(): void {
-    const busyCards = !taskBox.hidden || !confirmBox.hidden || !couponsBox.hidden;
+    const busyCards = !!task || !confirmBox.hidden || !couponsBox.hidden;
     empty.hidden = !session || log.childElementCount > 0 || busyCards;
   }
 
@@ -539,9 +533,8 @@ async function main(): Promise<void> {
     store.clear();
     views.clear();
     log.replaceChildren();
-    taskLog.replaceChildren();
     couponsRows.replaceChildren();
-    taskBox.hidden = confirmBox.hidden = couponsBox.hidden = true;
+    confirmBox.hidden = couponsBox.hidden = true;
     history.length = 0;
     updateEmpty();
   }
@@ -1464,23 +1457,58 @@ async function main(): Promise<void> {
   }
 
   // ---------- Scout mode (Part 3, spec 8): the task runs in the worker; this is its window ----------
-  // The panel shows the plain-language action log, Take control / Resume and
-  // Stop, and the sensitive-action confirmation. Events arrive on the port
-  // (task.event) for this tab; a reopened panel catches up with task.status.
+  // The trace sits inline in the thread under the user's message (owner
+  // reference 2026-10-17): a "Working 11s" line, the model's own short
+  // narration, muted "Browsed" rows for each batch of actions, rejected or
+  // denied actions in red, and Take control / Stop while it runs. When the
+  // task ends the line becomes "Finished 1m 43s" with a chevron that folds
+  // the trace, and the outcome follows as a normal message. The plain-language
+  // action log (spec 8.5) is kept under a collapsed "Steps" row. Events arrive
+  // on the port (task.event) for this tab; a reopened panel catches up with
+  // task.status.
+  type Entry = { text: string; status: string };
   interface TaskUi {
     id: string;
     goal: string;
     source: "panel" | "chat";
-    /** The action log so far, kept for the outcome message. */
-    entries: Array<{ text: string; status: string }>;
+    /** The action log so far, as the worker keeps it. */
+    entries: Entry[];
     promptId: string | null;
+    startedAt: number;
+    node: HTMLElement;
+    head: HTMLButtonElement;
+    headText: HTMLElement;
+    body: HTMLElement;
+    stepsList: HTMLOListElement;
+    stepsSummary: HTMLElement;
+    controls: HTMLElement;
+    take: HTMLButtonElement;
+    stopBtn: HTMLButtonElement;
+    /** The current "Browsed" row, while consecutive actions are grouped into it. */
+    group: { row: HTMLElement; label: HTMLElement; count: number } | null;
+    state: string;
+    timer: ReturnType<typeof setInterval> | null;
     resolve: (out: { status: string; summary: string; usage: Usage }) => void;
     finished: Promise<{ status: string; summary: string; usage: Usage }>;
   }
   let task: TaskUi | null = null;
 
-  function taskStateText(state: string): string {
-    return state === "paused" ? "Paused: you have control of the page. Resume when ready." : state === "waiting" ? "Waiting for your answer." : "Scouting… Take control to use the page yourself.";
+  const CHEVRON = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+  const PAGE_ICON = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 9h16"/></svg>';
+  const WARN_ICON = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>';
+
+  function elapsedText(ms: number): string {
+    const s = Math.max(0, Math.round(ms / 1000));
+    return s < 60 ? s + "s" : Math.floor(s / 60) + "m " + (s % 60) + "s";
+  }
+
+  function stateLabel(state: string): string {
+    return state === "paused" ? "Paused" : state === "waiting" ? "Waiting for you" : "Working";
+  }
+
+  function refreshHead(): void {
+    if (!task) return;
+    task.headText.textContent = stateLabel(task.state) + " " + elapsedText(Date.now() - task.startedAt);
   }
 
   function logItem(text: string, statusOf: string): HTMLLIElement {
@@ -1490,36 +1518,110 @@ async function main(): Promise<void> {
     return li;
   }
 
+  /** Adds one entry to the trace: narration as text, actions grouped into a "Browsed" row, problems in red. */
+  function renderEntry(t: TaskUi, e: Entry): void {
+    t.stepsList.appendChild(logItem(e.text, e.status));
+    const n = t.stepsList.childElementCount;
+    t.stepsSummary.textContent = "Steps (" + n + ")";
+    if (e.status === "say") {
+      t.group = null;
+      const p = document.createElement("p");
+      p.className = "say";
+      p.textContent = e.text;
+      t.body.insertBefore(p, t.controls);
+      return;
+    }
+    if (e.status === "ok" || e.status === "failed") {
+      if (!t.group) {
+        const row = document.createElement("div");
+        row.className = "step";
+        row.insertAdjacentHTML("afterbegin", PAGE_ICON);
+        const label = document.createElement("span");
+        row.appendChild(label);
+        t.body.insertBefore(row, t.controls);
+        t.group = { row, label, count: 0 };
+      }
+      t.group.count++;
+      t.group.label.textContent = "Browsed" + (t.group.count > 1 ? " · " + t.group.count + " actions" : "");
+      t.group.row.title = t.entries.filter((x) => x.status === "ok" || x.status === "failed").slice(-t.group.count).map((x) => x.text).join("\n");
+      return;
+    }
+    if (e.status === "rejected" || e.status === "denied" || (e.status === "note" && e.text.startsWith("Overlay could not be shown"))) {
+      t.group = null;
+      const row = document.createElement("div");
+      row.className = "step bad";
+      row.insertAdjacentHTML("afterbegin", WARN_ICON);
+      const label = document.createElement("span");
+      label.textContent = e.text;
+      row.appendChild(label);
+      t.body.insertBefore(row, t.controls);
+    }
+    // Other notes ("Started: …") stay in the Steps list only.
+  }
+
   function appendTaskLog(text: string, statusOf: string): void {
-    task?.entries.push({ text, status: statusOf });
-    taskLog.appendChild(logItem(text, statusOf));
-    taskLog.scrollTop = taskLog.scrollHeight;
+    if (!task) return;
+    const e = { text, status: statusOf };
+    task.entries.push(e);
+    renderEntry(task, e);
     scrollToEnd();
   }
 
-  /** The outcome in the thread, with the action log kept under it. */
-  function addTaskOutcome(out: { status: string; summary: string }, entries: Array<{ text: string; status: string }>): void {
-    const node = addMessage(out.status === "done" ? "assistant" : "error", out.summary);
-    const steps = entries.filter((e) => e.status !== "note");
-    if (!steps.length) return;
-    const details = document.createElement("details");
-    details.className = "task-steps";
-    const summary = document.createElement("summary");
-    summary.textContent = steps.length + (steps.length === 1 ? " step" : " steps");
-    const ol = document.createElement("ol");
-    ol.setAttribute("aria-label", "Steps taken");
-    for (const e of steps) ol.appendChild(logItem(e.text, e.status));
-    details.append(summary, ol);
-    node.appendChild(details);
+  /** Builds the inline trace under the user's message and returns it. */
+  function buildTrace(entries: Entry[], state: string, startedAt: number): Omit<TaskUi, "id" | "goal" | "source" | "promptId" | "resolve" | "finished"> {
+    const node = document.createElement("div");
+    node.className = "trace";
+    node.id = "task";
+    const head = document.createElement("button");
+    head.type = "button";
+    head.className = "trace-head";
+    head.setAttribute("aria-expanded", "true");
+    const headText = document.createElement("span");
+    head.append(headText);
+    head.insertAdjacentHTML("beforeend", CHEVRON);
+    const body = document.createElement("div");
+    body.className = "trace-body";
+    head.addEventListener("click", () => {
+      const open = body.hidden;
+      body.hidden = !open;
+      head.setAttribute("aria-expanded", String(open));
+    });
+    const steps = document.createElement("details");
+    steps.className = "steps";
+    const stepsSummary = document.createElement("summary");
+    stepsSummary.textContent = "Steps (0)";
+    const stepsList = document.createElement("ol");
+    stepsList.setAttribute("aria-label", "Action log");
+    steps.append(stepsSummary, stepsList);
+    const controls = document.createElement("div");
+    controls.className = "controls";
+    const take = document.createElement("button");
+    take.type = "button";
+    take.className = "btn";
+    take.textContent = state === "paused" ? "Resume" : "Take control";
+    const stopBtn = document.createElement("button");
+    stopBtn.type = "button";
+    stopBtn.className = "btn";
+    stopBtn.textContent = "Stop";
+    controls.append(take, stopBtn);
+    body.append(controls, steps);
+    node.append(head, body);
+    log.appendChild(node);
+    const t = { entries: [] as Entry[], startedAt, node, head, headText, body, stepsList, stepsSummary, controls, take, stopBtn, group: null, state, timer: null } as Omit<TaskUi, "id" | "goal" | "source" | "promptId" | "resolve" | "finished">;
+    for (const e of entries) {
+      t.entries.push(e);
+      renderEntry(t as TaskUi, e);
+    }
+    return t;
   }
 
-  function showTaskCard(goal: string, entries: Array<{ text: string; status: string }>, state: string): void {
-    taskGoal.textContent = goal;
-    taskLog.replaceChildren(...entries.map((e) => logItem(e.text, e.status)));
-    taskTake.textContent = state === "paused" ? "Resume" : "Take control";
-    taskState.textContent = taskStateText(state);
+  function showTrace(t: TaskUi): void {
+    task = t;
+    refreshHead();
+    t.timer = setInterval(refreshHead, 1000);
+    t.take.addEventListener("click", onTakeControl);
+    t.stopBtn.addEventListener("click", onStopTask);
     couponsBox.hidden = true;
-    taskBox.hidden = false;
     send.hidden = true;
     plus.disabled = modelPill.disabled = true;
     for (const i of modeInputs) i.disabled = true;
@@ -1529,8 +1631,13 @@ async function main(): Promise<void> {
     scrollToEnd();
   }
 
-  function hideTaskCard(): void {
-    taskBox.hidden = true;
+  /** The task ended: "Finished 1m 43s", controls gone, trace left in place (foldable). */
+  function finishTrace(t: TaskUi, statusOf: string): void {
+    if (t.timer) clearInterval(t.timer);
+    t.timer = null;
+    const word = statusOf === "done" ? "Finished" : statusOf === "stopped" ? "Stopped" : "Ended";
+    t.headText.textContent = word + " " + elapsedText(Date.now() - t.startedAt);
+    t.controls.remove();
     hideConfirm();
     // A task asked for mid-answer (run_task) ends while the answer still streams: the composer stays busy then.
     const busy = !!activeChat;
@@ -1540,13 +1647,20 @@ async function main(): Promise<void> {
     updateEmpty();
   }
 
+  function setTaskState(state: string): void {
+    if (!task) return;
+    task.state = state;
+    task.take.textContent = state === "paused" ? "Resume" : "Take control";
+    refreshHead();
+  }
+
   function showConfirm(p: { prompt_id: string; what: string; site: string; reason: string; preapproved: boolean }): void {
     if (!task) return;
     task.promptId = p.prompt_id;
     confirmWhat.textContent = p.what + (p.site ? " on " + p.site : "");
     confirmReason.textContent = (p.reason ? p.reason + " " : "") + (p.preapproved ? "The model marked this as approved; Scout for Safari asks you anyway." : "");
     confirmBox.hidden = false;
-    taskState.textContent = taskStateText("waiting");
+    setTaskState("waiting");
     status.textContent = "Waiting for your answer.";
     scrollToEnd();
     confirmDeny.focus();
@@ -1563,10 +1677,10 @@ async function main(): Promise<void> {
     const promptId = task.promptId;
     hideConfirm();
     trace("confirm:" + decision);
-    taskState.textContent = taskStateText("running");
+    setTaskState("running");
     status.textContent = "Scout mode is running.";
     void request(toWorker, "task.decide", { task_id: task.id, prompt_id: promptId, decision }).catch(() => undefined);
-    taskStop.focus();
+    task.stopBtn.focus();
   }
   confirmOnce.addEventListener("click", () => decide("once"));
   confirmAlways.addEventListener("click", () => decide("always"));
@@ -1591,8 +1705,7 @@ async function main(): Promise<void> {
       }
       case "state": {
         const state = String(p.state);
-        taskTake.textContent = state === "paused" ? "Resume" : "Take control";
-        taskState.textContent = taskStateText(state);
+        setTaskState(state);
         trace("task:" + state);
         break;
       }
@@ -1609,8 +1722,21 @@ async function main(): Promise<void> {
     }
   }
 
+  function onTakeControl(): void {
+    if (!task) return;
+    const pausing = task.state !== "paused";
+    trace("ui:" + (pausing ? "take-control" : "resume"));
+    setTaskState(pausing ? "paused" : "running");
+    void request(toWorker, "task.control", { task_id: task.id, command: pausing ? "pause" : "resume" }).catch(() => undefined);
+  }
+  function onStopTask(): void {
+    if (!task) return;
+    trace("ui:stop-click task");
+    void request(toWorker, "task.control", { task_id: task.id, command: "stop" }).catch(() => undefined);
+  }
+
   /** Starts a task on this tab and resolves with its outcome. Null when it did not start (the reason was shown). */
-  async function startTask(goal: string, source: "panel" | "chat"): Promise<{ status: string; summary: string; usage: Usage; entries: Array<{ text: string; status: string }> } | null> {
+  async function startTask(goal: string, source: "panel" | "chat"): Promise<{ status: string; summary: string; usage: Usage } | null> {
     if (task || tab.id === undefined) return null;
     if (!port) {
       addMessage("error", "Scout for Safari's background worker is not running. Close Scout for Safari and open it again.");
@@ -1632,14 +1758,13 @@ async function main(): Promise<void> {
     }
     let resolve: TaskUi["resolve"] = () => undefined;
     const finished = new Promise<{ status: string; summary: string; usage: Usage }>((r) => (resolve = r));
-    task = { id: started.task_id, goal, source, entries: [], promptId: null, resolve, finished };
-    showTaskCard(goal, [], "running");
-    taskStop.focus();
+    const t: TaskUi = { ...buildTrace([], "running", Date.now()), id: started.task_id, goal, source, promptId: null, resolve, finished };
+    showTrace(t);
+    t.stopBtn.focus();
     const out = await finished;
-    const entries = task.entries;
     task = null;
-    hideTaskCard();
-    return { ...out, entries };
+    finishTrace(t, out.status);
+    return out;
   }
 
   // The composer's Scout mode: a user message, the task, then its outcome in the thread.
@@ -1655,7 +1780,7 @@ async function main(): Promise<void> {
     autosize();
     const out = await startTask(trimmed, "panel");
     if (!out) return;
-    addTaskOutcome(out, out.entries);
+    addMessage(out.status === "done" ? "assistant" : "error", out.summary);
     current.finish(out.status, out.summary, out.usage);
     status.textContent = formatCostLine(s.settings.model, out.usage);
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
@@ -1673,20 +1798,6 @@ async function main(): Promise<void> {
     return { status: out.status === "stopped" ? "declined" : "error", text: "The task ended early (" + out.status + "): " + out.summary, site };
   }
 
-  taskTake.addEventListener("click", () => {
-    if (!task) return;
-    const pausing = taskTake.textContent !== "Resume";
-    trace("ui:" + (pausing ? "take-control" : "resume"));
-    taskTake.textContent = pausing ? "Resume" : "Take control";
-    taskState.textContent = taskStateText(pausing ? "paused" : "running");
-    void request(toWorker, "task.control", { task_id: task.id, command: pausing ? "pause" : "resume" }).catch(() => undefined);
-  });
-  taskStop.addEventListener("click", () => {
-    if (!task) return;
-    trace("ui:stop-click task");
-    void request(toWorker, "task.control", { task_id: task.id, command: "stop" }).catch(() => undefined);
-  });
-
   function watchTab(): void {
     if (tab.id === undefined) return;
     try {
@@ -1701,21 +1812,20 @@ async function main(): Promise<void> {
     if (tab.id === undefined || !port || task) return;
     watchTab();
     const got = await request<{ task?: TaskView }>(toWorker, "task.status", { tab_id: tab.id }, { timeoutMs: 3_000 }).catch(() => null);
-    const t = got?.task;
-    if (!t || t.done) return;
-    addMessage("user", t.goal, { mode: "Scout mode" });
+    const t0 = got?.task;
+    if (!t0 || t0.done) return;
+    addMessage("user", t0.goal, { mode: "Scout mode" });
     let resolve: TaskUi["resolve"] = () => undefined;
     const finished = new Promise<{ status: string; summary: string; usage: Usage }>((r) => (resolve = r));
-    task = { id: t.task_id, goal: t.goal, source: t.source, entries: [...t.log], promptId: null, resolve, finished };
-    showTaskCard(t.goal, t.log, t.state);
-    if (t.prompt) showConfirm(t.prompt);
+    const t: TaskUi = { ...buildTrace(t0.log, t0.state, Date.now()), id: t0.task_id, goal: t0.goal, source: t0.source, promptId: null, resolve, finished };
+    showTrace(t);
+    if (t0.prompt) showConfirm(t0.prompt);
     trace("task:resumed");
     const out = await finished;
-    const entries = task.entries;
     task = null;
-    hideTaskCard();
-    if (t.source === "panel") {
-      addTaskOutcome(out, entries);
+    finishTrace(t, out.status);
+    if (t0.source === "panel") {
+      addMessage(out.status === "done" ? "assistant" : "error", out.summary);
       status.textContent = formatCostLine(activeSettings().model, out.usage);
     }
   }
