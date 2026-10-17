@@ -19,6 +19,9 @@
 //     --no-second-pass            answer "Stop here" instead of "Search again"
 //     --out ralph/evidence/live-suite/<stamp>
 //     --summarize <dir>           rewrite <dir>/summary.md from its results.json (a partial run) and exit
+//     --single-process            Chromium in one process (the only browser that starts inside the
+//                                 Claude Code sandbox on macOS; WebKit cannot)
+//   When HTTPS_PROXY is set in the shell, the browser's traffic goes through it (the sandbox's proxy).
 //
 // Safety: cart pages only. The suite never opens checkout, never clicks buy,
 // pay or place order (the engine's classifier refuses those controls too),
@@ -52,6 +55,7 @@ const limit = Number(flag("limit", "0")) || 0;
 const model = flag("model", "");
 const effort = flag("effort", "");
 const secondPass = !has("no-second-pass");
+const singleProcess = has("single-process");
 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 const out = resolve(flag("out", join("ralph", "evidence", "live-suite", stamp)));
 
@@ -301,6 +305,12 @@ async function runMerchant(browser, m) {
     await shop.screenshot({ path: join(dir, "cart-before.png"), fullPage: false }).catch(() => null);
 
     const popup = await openPopup(context, shop, shop.url(), stageSink);
+    // What the provider answered when a search failed (status and error body; never the key).
+    result.apiErrors = [];
+    popup.on("response", (res) => {
+      if (!res.url().startsWith("https://api.anthropic.com/") || res.status() < 400) return;
+      res.text().then((t) => result.apiErrors.push({ status: res.status(), body: t.slice(0, 300) })).catch(() => null);
+    });
     const button = popup.locator('button.chip[data-prompt="coupons"]');
     if (await button.isVisible().catch(() => false)) await button.click();
     else await popup.locator("#coupons-run").click({ force: true });
@@ -375,7 +385,15 @@ async function runMerchant(browser, m) {
 }
 
 const engine = browserName === "chromium" ? chromium : webkit;
-const browser = await engine.launch({ headless: !headed });
+const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || "";
+let proxy;
+if (proxyUrl) {
+  const u = new URL(proxyUrl);
+  proxy = { server: u.protocol + "//" + u.hostname + ":" + u.port, ...(u.username ? { username: decodeURIComponent(u.username), password: decodeURIComponent(u.password) } : {}) };
+  console.log("Browser traffic goes through the shell's HTTPS_PROXY (" + proxy.server + ").");
+}
+const launchArgs = singleProcess && browserName === "chromium" ? ["--no-sandbox", "--single-process", "--no-zygote", "--disable-gpu"] : [];
+const browser = await engine.launch({ headless: !headed, ...(proxy ? { proxy } : {}), ...(launchArgs.length ? { args: launchArgs } : {}) });
 const results = [];
 console.log("Live coupon suite: " + merchants.length + " merchants, " + browserName + (headed ? " (headed)" : "") + ", results in " + out);
 for (const m of merchants) {
