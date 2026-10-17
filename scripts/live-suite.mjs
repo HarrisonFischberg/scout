@@ -230,6 +230,11 @@ async function pickFirstOption(shop) {
 async function addToCart(shop, origin) {
   const viaApi = await addViaShopify(shop, origin);
   if (viaApi) return viaApi;
+  return addByClicking(shop, origin);
+}
+
+/** The shopper's way: a product page, the store's own Add to cart button, then the cart page. */
+async function addByClicking(shop, origin) {
   // Other stores: open a product page (a product link, or a "Shop now" / collection link and then
   // a product link on that page), press Add to cart, open the cart.
   let productLink = await firstProductLink(shop);
@@ -282,7 +287,10 @@ const readShopifyCart = (shop) =>
       const r = await fetch("/cart.js", { credentials: "same-origin", headers: { accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
       if (!r.ok) return null;
       const j = JSON.parse(await r.text());
-      return typeof j.total_price === "number" ? { total: j.total_price / 100, codes: (j.discount_codes ?? []).map((d) => ({ code: d.code, applicable: d.applicable })) } : null;
+      if (typeof j.total_price !== "number") return null;
+      // The other price fields too: Lineage Provisions answered total_price 0 for a $25 cart (2026-10-17).
+      const fields = { items: j.item_count, subtotal: j.items_subtotal_price, original: j.original_total_price, discount: j.total_discount, currency: j.currency };
+      return { total: j.total_price / 100, codes: (j.discount_codes ?? []).map((d) => ({ code: d.code, applicable: d.applicable })), fields };
     }).catch(() => null);
 
 /** The popup page wired to `shop` as the active tab, like tests/e2e/checkout.spec.ts. */
@@ -437,7 +445,36 @@ async function runMerchant(browser, m) {
       if (tries === 5) result.notes.push("the cart page showed little or no text after 15 s");
     }
     await wait(1500);
-    const before = await readShopifyCart(shop);
+    let before = await readShopifyCart(shop);
+    // On some stores an app empties the cart while the cart page loads (Lineage Provisions, WORN: a
+    // POST /cart/update.js from the Veeper SDK; the page still shows the item it rendered before).
+    // Add the item again from the cart page, without reloading, so the cart API has it when the popup runs.
+    if (before && before.fields && before.fields.items === 0 && added.product && typeof added.product === "number") {
+      result.notes.push("the cart page's /cart.js was empty after adding (an app's /cart/update.js); item added again from the cart page");
+      await evalWithin(shop, async (id) => {
+        const r = await fetch("/cart/add.js", { method: "POST", credentials: "same-origin", signal: AbortSignal.timeout(20_000), headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ items: [{ id, quantity: 1 }] }) });
+        return r.ok;
+      }, added.product).catch(() => false);
+      await wait(1500);
+      before = await readShopifyCart(shop);
+      if (before && before.fields && before.fields.items === 0) {
+        // The store's own scripts remove API-added lines (Lineage Provisions: POST /cart/change.js
+        // quantity 0): add through its Add to cart button instead, as a shopper would.
+        result.notes.push("the store removed the API-added item again; adding through its own Add to cart button");
+        await shop.goto(origin, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
+        await wait(1500);
+        const clicked = await addByClicking(shop, origin);
+        if (clicked.ok) {
+          result.cart = { how: clicked.how, url: shop.url() };
+          await wait(3000);
+          before = await readShopifyCart(shop);
+        }
+        if (!before || !before.fields || before.fields.items === 0) {
+          result.outcome = "blocked: the store removed the test item from the cart";
+          return result;
+        }
+      }
+    }
     if (before) result.cartBefore = before;
     await shop.screenshot({ path: join(dir, "cart-before.png"), fullPage: false }).catch(() => null);
     if (checkoutStep) {
