@@ -115,6 +115,21 @@ describe("runCouponSearch", () => {
   it("stops with no_form when there is no coupon box", async () => {
     const out = await runCouponSearch({ page: shop({ noForm: true }), codes: five, settleMs: 0 });
     expect(out.status).toBe("no_form");
+    expect(out.message).toBe("No coupon box found on this page. Open the cart or checkout page first.");
+  });
+
+  // Live sweep 2026-10-17: Nomad, Javvy Coffee, Peak Design, Pura and Chubbies
+  // take codes only at checkout; their cart drawers have a Checkout button and no box.
+  it("points at the checkout page when a cart has a Checkout button and no coupon box", async () => {
+    const p = shop({ noForm: true });
+    const page: CouponPage = {
+      snapshot: async () => ({ ...(await p.snapshot()), url: "https://shop.test/?openCart=true", title: "Your Cart", elements: [{ ref: "e9", tag: "button", role: "button", name: "Secure Checkout" }] }),
+      act: p.act,
+    };
+    const out = await runCouponSearch({ page, codes: five, settleMs: 0 });
+    expect(out.status).toBe("no_form");
+    expect(out.message).toBe("No coupon box on this cart. This store takes codes on its checkout page: open Checkout (nothing is bought until you confirm there) and run Find coupons again.");
+    expect(p.ordered).toBe(0);
   });
 
   it("refuses an order-like button as the apply target", async () => {
