@@ -1,10 +1,13 @@
 // Content script (T009). Injected on demand with `scripting.executeScript`;
 // never declared for all URLs. Exposes one handler: snapshot the page, perform
-// one action by ref from the last snapshot, (T031) read or set the store's
-// cart discount (Shopify, WooCommerce, BigCommerce), and list codes the store's home page advertises.
+// one action by ref from the last snapshot, (Part 3) probe and perform Scout
+// mode actions, (T031) read or set the store's cart discount (Shopify,
+// WooCommerce, BigCommerce), and list codes the store's home page advertises.
 // Page content is untrusted data and only leaves via the return value.
 import { domPage } from "./actions/dom";
 import { executeAction, type ActionResult } from "./actions/executor";
+import { performTaskAction } from "./actions/task";
+import { taskDomPage } from "./actions/task-dom";
 import { buildSnapshot, fromElement, type SnapNode, type Snapshot } from "./snapshot/snapshot";
 
 import { CONTENT_HANDLER as HANDLER, type ContentRequest } from "./content-api";
@@ -34,15 +37,19 @@ if (!g[FLAG]) {
       },
     });
     refs = next;
+    // Part 3: coordinates from the server are scaled to this (spec 8.3).
+    snap.viewport = { width: window.innerWidth, height: window.innerHeight };
     return snap;
   };
 
   // Called from the popup through scripting.executeScript, not runtime
   // messaging: on iOS Safari a tabs.sendMessage to this script went
   // unanswered (T018), while executeScript results arrive reliably.
-  g[HANDLER] = (req: ContentRequest): Promise<unknown> | Snapshot | null => {
+  g[HANDLER] = (req: ContentRequest): Promise<unknown> | Snapshot | object | null => {
     if (req.type === "scout:snapshot") return snapshot({ maxElements: req.maxElements, maxTextChars: req.maxTextChars });
     if (req.type === "scout:act") return executeAction(domPage(refs, window), req.action) as Promise<ActionResult>;
+    if (req.type === "scout:task-probe") return taskDomPage(refs, window).probe(req.target);
+    if (req.type === "scout:task-act") return performTaskAction(taskDomPage(refs, window), req.action);
     if (req.type === "scout:cart-info") return storeCartInfo();
     if (req.type === "scout:cart-update") return storeCartUpdate(String(req.discount ?? ""));
     if (req.type === "scout:store-codes") return storeHomeText().then((t) => (t ? codesInText(t) : []));

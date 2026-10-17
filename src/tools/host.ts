@@ -201,8 +201,10 @@ async function run(req: ToolRequest, deps: ToolHostDeps): Promise<ToolResult> {
     }
 
     case "run_task":
-      // Stub until the agent runner (Part 3).
-      return result("unsupported", "Agent tasks are not available here yet. The user can switch to Control Browser mode.");
+      // Part 3: the panel starts Scout mode itself (task.start) and answers
+      // the request with the task's outcome; it never reaches the host.
+      // Anything that does arrive here was sent without the panel's part.
+      return result("error", "Scout mode must be started from the panel; the request was not routed through it.");
   }
 }
 

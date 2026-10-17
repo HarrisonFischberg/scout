@@ -75,6 +75,8 @@ interface Run {
 }
 
 const ANSWER_FAILED = "Something went wrong. Try again.";
+/** Part 3: a Scout mode task (run_task) can take many minutes; other tools get toolTimeoutMs. */
+export const TASK_TOOL_TIMEOUT_MS = 20 * 60_000;
 export const INTERRUPTED = "The connection dropped before the answer finished.";
 
 /** The tool results turn: text for every call (fenced), then any screenshots. */
@@ -171,7 +173,10 @@ export class ScoutServer {
         resolve(reply);
       };
       run.waits.set(request_id, done);
-      const timer = this.set(() => done({ status: "timeout", text: "The panel did not run this tool in time." }), this.deps.toolTimeoutMs ?? 120_000);
+      const timer = this.set(
+        () => done({ status: "timeout", text: "The panel did not run this tool in time." }),
+        call.name === "run_task" ? Math.max(this.deps.toolTimeoutMs ?? 0, TASK_TOOL_TIMEOUT_MS) : (this.deps.toolTimeoutMs ?? 120_000),
+      );
       this.emit(run, { kind: "tool_request", request_id, name: call.name, input: call.input });
     });
   }

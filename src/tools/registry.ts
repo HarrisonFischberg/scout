@@ -88,8 +88,11 @@ export const TOOLS: Record<ToolName, ToolDef> = {
     changes: "low",
   },
   run_task: {
-    description: "Start the browser agent on a task. Not available yet.",
-    parameters: { type: "object", properties: { goal: { type: "string" } }, required: ["goal"], additionalProperties: false },
+    description:
+      "Start Scout mode: an agent that carries out a task on the current page for the user (clicking, typing, scrolling), step by step, with the user watching. " +
+      "Use it only when the user asks you to do something on the page, not to read it. The user is asked before it starts and before any sensitive action (buying, sending, signing in, deleting). " +
+      "Returns a summary of what was done.",
+    parameters: { type: "object", properties: { goal: { type: "string", description: "What to do on the page, in the user's words." } }, required: ["goal"], additionalProperties: false },
     input: { object: { goal: "string" } },
     changes: "yes",
   },
@@ -104,17 +107,20 @@ export interface ToolCaps {
   searchTabs: boolean;
   /** The browser has a tab-group API (Safari does not). */
   tabGroups: boolean;
+  /** Part 3: Settings > Permissions > Scout mode is not off (and the tab is not private). */
+  scoutMode: boolean;
 }
 
 /**
  * Tools offered to the model. search_tabs only when the user turned it on,
- * tab groups only where the browser supports them, and run_task never until
- * the agent exists (Part 3). The host still enforces all of this.
+ * tab groups only where the browser supports them, and run_task only while
+ * Scout mode is allowed (Part 3). The host still enforces all of this.
  */
 export function offeredTools(caps: ToolCaps): ToolSpec[] {
   return TOOL_NAMES.filter((n) => {
     if (n === "search_tabs") return caps.searchTabs;
     if (n === "group_tabs" || n === "ungroup_tabs") return caps.tabGroups;
-    return n !== "run_task";
+    if (n === "run_task") return caps.scoutMode;
+    return true;
   }).map((name) => ({ name, description: TOOLS[name].description, parameters: TOOLS[name].parameters }));
 }

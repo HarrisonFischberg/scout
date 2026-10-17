@@ -19,6 +19,15 @@
 //   [mock:error]                  answer HTTP 500.
 // Without a marker it streams a sample answer with Markdown, a table, code, and math.
 //
+// Scout mode (Part 3): a request that offers the `act` tool is a task turn.
+// Markers in the goal pick the batch, e.g.
+//   [mock:actions=click e3|fill e1 Ada|click e2 approved|hack]
+// (click/double_click/right_click/scroll_to REF, fill REF VALUE, type TEXT,
+// key KEY, scroll DIR, wait MS, screenshot; "approved" marks the action as
+// pre-approved by the server; anything else is sent as an unknown action).
+// Without a marker: scroll down, then finish. The turn after a batch finishes
+// with a summary of the results it got back.
+//
 // Find coupons (a request with the web search tool) gets a coupon search that
 // pauses once, as the real server loop does ("pause_turn"); the resumed turn
 // must send the paused one back intact (thinking signature, tool input) or it
@@ -218,6 +227,63 @@ async function couponStream(res, body) {
   res.end();
 }
 
+const TASK_DEFAULT = [{ type: "scroll", direction: "down" }];
+
+function taskAction(spec) {
+  const [verb, ...rest] = spec.trim().split(/\s+/);
+  const approved = rest[rest.length - 1] === "approved";
+  if (approved) rest.pop();
+  const target = (s) => (/^e\d+$/.test(s ?? "") ? { ref: s } : s && s.includes(",") ? { x: Number(s.split(",")[0]), y: Number(s.split(",")[1]) } : undefined);
+  let a;
+  switch (verb) {
+    case "click":
+    case "double_click":
+    case "right_click":
+      a = { type: verb, target: target(rest[0]) };
+      break;
+    case "scroll_to":
+      a = { type: "scroll_to_element", target: target(rest[0]) };
+      break;
+    case "fill":
+      a = { type: "fill_field", target: target(rest[0]), value: rest.slice(1).join(" ") };
+      break;
+    case "type":
+      a = { type: "type", text: rest.join(" ") };
+      break;
+    case "key":
+      a = { type: "key", key: rest[0] ?? "Enter", modifiers: [] };
+      break;
+    case "scroll":
+      a = { type: "scroll", direction: rest[0] ?? "down" };
+      break;
+    case "wait":
+      a = { type: "wait", ms: Number(rest[0] ?? 500) };
+      break;
+    case "screenshot":
+      a = { type: "screenshot" };
+      break;
+    default:
+      a = { type: verb || "unknown" };
+  }
+  return approved ? { ...a, approved: true } : a;
+}
+
+/** A Scout mode turn: the first observation gets a batch, the next the finish. */
+function taskPlan(body) {
+  const messages = Array.isArray(body?.messages) ? body.messages : [];
+  const first = textOf(messages[0]?.content);
+  const last = textOf(messages[messages.length - 1]?.content);
+  const goal = /<user_goal>([\s\S]*?)<\/user_goal>/.exec(first)?.[1] ?? "";
+  if (/^Action results/.test(last)) {
+    const ok = (last.match(/"ok":true/g) ?? []).length;
+    const failed = (last.match(/"ok":false/g) ?? []).length;
+    return { text: "", tool: { name: "finish", input: { summary: "Mock task finished: " + ok + " action(s) done, " + failed + " not done." } } };
+  }
+  const marker = /\[mock:actions=([^\]]+)\]/.exec(goal);
+  const actions = marker ? marker[1].split("|").map(taskAction) : TASK_DEFAULT;
+  return { text: "Working on it. ", tool: { name: "act", input: { actions } } };
+}
+
 createServer(async (req, res) => {
   const path = new URL(req.url ?? "/", "http://localhost").pathname;
   if (req.method === "OPTIONS") return res.writeHead(204, CORS).end();
@@ -233,7 +299,7 @@ createServer(async (req, res) => {
   }
   if (process.env.MOCK_LOG) appendFileSync(process.env.MOCK_LOG, JSON.stringify({ at: new Date().toISOString(), body }) + "\n");
   if (Array.isArray(body.tools) && body.tools.some((t) => String(t?.type).startsWith("web_search"))) return couponStream(res, body);
-  const p = plan(body);
+  const p = Array.isArray(body.tools) && body.tools.some((t) => t?.name === "act") ? taskPlan(body) : plan(body);
   if (p.status) return res.writeHead(p.status, { ...CORS, "content-type": "application/json" }).end("{}");
   await stream(res, p);
 }).listen(port, "127.0.0.1", () => console.log("mock Scout server on http://127.0.0.1:" + port + "/v1/messages"));

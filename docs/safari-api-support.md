@@ -100,6 +100,32 @@ The code checks every optional API at runtime before using it.
 | MathML Core rendering in the popup | 16 | 16 (recalled) | math in answers (`src/chat/math.ts`) | iOS Simulator 2026-10-16: yes |
 | `UserDefaults.objectIsForced(forKey:)` in the extension (Swift) | macOS 10.10+ (recalled) | iOS (recalled) | organization blocklist (`ManagedPolicy.swift`) | XCTest only; no real profile (blocker 26) |
 
+## Part 3: Scout mode and overlay (2026-10-17)
+
+Spec 11 platform note, applied to Safari: both preferred options are absent,
+so both fallbacks are built. Not runtime-verified in Safari yet (launch blocker
+30); the e2e suite ran on Chromium in the build session because WebKit could
+not be installed there.
+
+| Capability | Preferred (spec) | Safari | Built | Runtime-verified |
+| --- | --- | --- | --- | --- |
+| Actions | browser-level input automation (`debugger` / CDP-style input) | no extension API for synthesized input in Safari (not in MDN BCD for `safari`) | DOM events from a content script (`src/actions/task-dom.ts`): pointer, mouse, keyboard, drag events plus `HTMLElement.click()` for activation behavior; values set through the prototype setter with `input` / `change` events | no |
+| Overlay | browser-level overlay view | none for extensions | page-layer overlay from a content script (`src/overlay.ts`): fixed host in the top layer (`popover`), open shadow root, `pointer-events: none` except the pill | no |
+| `scripting.executeScript` from the worker with `files` and `func` (inject `content.js` / `overlay.js` on demand, call their handlers) | — | 15.4 | the worker reaches the tab this way (as the Part 2 context read does) | Part 2 context read: iOS Simulator 2026-10-16; task calls: no |
+| `tabs.captureVisibleTab` from the worker, per batch | — | 14 / 15 | screenshot per batch where allowed for the site | Part 2 screenshot tool: iOS Simulator 2026-10-16; per batch: no |
+| `action.setIcon` with `tabId` | — | 15.4 | filled-lens icon on the task's tab | no (tab-scoped icon not checked; the Part 1 global swap works) |
+| CSS `@property` / `CSS.registerProperty` | — | 16.4 | the conic-gradient sweep angle; registered on the document because @property rules are ignored inside shadow trees | no. Safari 16.0–16.3: static border (allowed by spec 9) |
+| `mask-composite` / `-webkit-mask-composite` for the border ring | — | 15.4 (`-webkit-` form) | both forms set | no |
+| `prefers-reduced-motion`, `visibilitychange` | — | yes | static border; sweep paused while hidden | no |
+| `HTMLFormElement.requestSubmit` | — | 16 | Enter in a form field submits it (after confirmation) | no |
+
+Known limits of the fallback column: DOM events cannot type into
+cross-origin iframes or into native controls that only react to trusted
+events (file pickers, some date pickers); a page's `isTrusted` checks can
+ignore synthetic clicks; coordinate clicks go through `elementFromPoint`, so an
+element covered by another is not reachable. The spec asks for the fallback on
+Safari, and these limits are reported to the model as failed actions.
+
 ## Still to verify (T002 acceptance, runtime part)
 
 1. Extension loads in Safari on macOS (enable under Safari Settings >

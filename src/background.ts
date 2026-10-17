@@ -2,7 +2,9 @@
 // tracks the panel port (per-tab open state, toolbar title), keeps the toolbar
 // icon matched to the light/dark theme, and drops state for closed tabs.
 // Part 2 adds the Scout server, page context, tool host, and permission gate
-// (src/server/worker.ts). Part 3 adds the agent runner and overlay.
+// (src/server/worker.ts). Part 3 adds the Scout mode host and the overlay:
+// the toolbar icon switches to the filled-lens variant on a tab while a task
+// runs there, and a closed tab ends its task.
 import { PANEL_EVENTS, PANEL_PORT, checkSchema, classifySender, createRouter, envelope, parseEnvelope, type MessageSender, type Self } from "./bridge/messages";
 import { createScoutWorker } from "./server/worker";
 import { edgeMatches, EDGE_SCRIPT_ID, PAGE_BUTTON_KEY, parsePageButton, sameMatches } from "./panel/edge";
@@ -21,7 +23,12 @@ syncIcon();
 dark?.addEventListener?.("change", syncIcon);
 
 // ---------- Request/response ----------
-const scout = createScoutWorker(storage);
+const scout = createScoutWorker(storage, {
+  setIcon: async (tabId, active) => {
+    await browser.action?.setIcon?.({ path: toolbarIcon(dark?.matches === true, active), tabId })?.catch(() => undefined);
+  },
+  openPanel: async () => void (await openPanel(browser.action)),
+});
 const route = createRouter(
   {
     ...scout.handlers,
@@ -89,6 +96,7 @@ browser.tabs.onActivated?.addListener(({ tabId }) => {
 });
 
 browser.tabs.onRemoved?.addListener((tabId) => {
+  scout.taskHost.stopForTab(tabId);
   if (storage) void forgetTab(storage, tabId).catch(() => undefined);
 });
 

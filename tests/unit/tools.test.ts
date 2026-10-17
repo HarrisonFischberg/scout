@@ -72,13 +72,13 @@ describe("allow-list", () => {
     expect(h.entries[0]).toEqual({ at: expect.any(Number), tool: "read_page", site: "shop.test", ms: 5, status: "ok" });
   });
 
-  it("offers search_tabs only when turned on and never offers run_task or tab groups on Safari", () => {
-    const off = offeredTools({ searchTabs: false, tabGroups: false }).map((t) => t.name);
+  it("offers search_tabs and run_task only when turned on, and tab groups only where the browser has them", () => {
+    const off = offeredTools({ searchTabs: false, tabGroups: false, scoutMode: false }).map((t) => t.name);
     expect(off).toEqual(["read_page", "screenshot_visible", "open_tab", "close_tabs"]);
-    const on = offeredTools({ searchTabs: true, tabGroups: true }).map((t) => t.name);
+    const on = offeredTools({ searchTabs: true, tabGroups: true, scoutMode: true }).map((t) => t.name);
     expect(on).toContain("search_tabs");
     expect(on).toContain("group_tabs");
-    expect(on).not.toContain("run_task");
+    expect(on).toContain("run_task");
     expect(TOOL_NAMES).toHaveLength(8);
   });
 });
@@ -169,10 +169,10 @@ describe("tab tools", () => {
     expect(r).toMatchObject({ status: "ok", opened_tab: 9 });
   });
 
-  it("tab groups and run_task are unsupported here", async () => {
+  it("tab groups are unsupported here, and run_task never runs in the host (the panel starts Scout mode)", async () => {
     const h = host();
     expect((await h.run({ name: "group_tabs", input: { tab_ids: [1, 2] } })).status).toBe("unsupported");
-    expect((await h.run({ name: "run_task", input: { goal: "x" } })).status).toBe("unsupported");
+    expect((await h.run({ name: "run_task", input: { goal: "x" } })).status).toBe("error");
   });
 });
 

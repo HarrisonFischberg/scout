@@ -10,7 +10,7 @@
 // a code that saves money is applied and the search ends; only when none does
 // is the user asked whether to find and test 25 more.
 import type { Action, ActionResult } from "../actions/executor";
-import type { AgentControl } from "../agent/loop";
+import type { AgentControl } from "../agent/control";
 import { detectCaptcha } from "../safety/classifier";
 import type { Snapshot } from "../snapshot/snapshot";
 import { CODE_RE, originLabel, type CandidateOrigin, type CouponCandidate } from "./candidates";

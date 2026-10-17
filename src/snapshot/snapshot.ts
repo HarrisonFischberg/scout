@@ -34,6 +34,8 @@ export interface Snapshot {
   text: string;
   elements: SnapElement[];
   truncated: boolean;
+  /** Part 3: the visible area in CSS pixels, set by the content script. */
+  viewport?: { width: number; height: number };
 }
 
 export interface SnapshotOptions {

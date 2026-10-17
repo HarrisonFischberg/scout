@@ -100,12 +100,12 @@ test("no key: Add API key opens Settings at the key field; a bad key is explaine
   await expect(page.locator("#status")).toHaveText("");
 });
 
-test("Control Browser mode shows a bold chip and switches the send action", async ({ page }) => {
+test("Scout mode shows a bold chip and switches the send action", async ({ page }) => {
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
   await expect(page.locator("#mode-chip")).toBeHidden();
-  await page.getByRole("radio", { name: "Control Browser" }).check();
+  await page.getByRole("radio", { name: "Scout" }).check();
   await expect(page.locator("#mode-chip")).toBeVisible();
-  await expect(page.locator("#mode-chip span")).toHaveText("Control Browser");
+  await expect(page.locator("#mode-chip span")).toHaveText("Scout mode");
   expect(await page.locator("#mode-chip").evaluate((n) => getComputedStyle(n).fontWeight)).toBe("700");
   await expect(page.getByRole("button", { name: "Start task" })).toBeVisible();
   await expect(page.getByLabel("Ask about this page")).toHaveAttribute("placeholder", "Tell Scout for Safari what to do on this page…");
@@ -239,10 +239,10 @@ test("Settings and Back keep focus where the user expects", async ({ page }) => 
 test("only the selected mode is highlighted", async ({ page }) => {
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
   const chatLabel = page.locator("fieldset.segmented label", { hasText: "Chat" }).first();
-  const controlLabel = page.locator("fieldset.segmented label", { hasText: "Control Browser" });
+  const controlLabel = page.locator("fieldset.segmented label", { hasText: "Scout" });
   await expect(chatLabel).toHaveClass(/\bon\b/);
   await expect(controlLabel).not.toHaveClass(/\bon\b/);
-  await page.getByRole("radio", { name: "Control Browser" }).check();
+  await page.getByRole("radio", { name: "Scout" }).check();
   await expect(controlLabel).toHaveClass(/\bon\b/);
   await expect(chatLabel).not.toHaveClass(/\bon\b/);
 });
@@ -266,7 +266,7 @@ test("the newest message stays in view when the composer grows", async ({ page }
     at: now - 60000 + i, question: "Question number " + i, answer: "Answer number " + i + "\n\n- a\n- b\n- c", kind: "chat",
   }));
   await openPopup(page, { keys: { anthropic: GOOD_KEY }, data: { history } });
-  await page.getByRole("radio", { name: "Control Browser" }).check();
+  await page.getByRole("radio", { name: "Scout" }).check();
   await page.getByLabel("Ask about this page").fill("one\ntwo\nthree\nfour");
   await expect(page.getByRole("log").getByText("Answer number 5")).toBeInViewport();
   await expect(page.getByRole("log").locator("li").last()).toBeInViewport();

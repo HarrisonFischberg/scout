@@ -175,7 +175,7 @@ test("keyboard: Option+Tab stays inside the dialog and reaches the link and both
   expect([...seen]).toEqual(expect.arrayContaining(["Anthropic privacy policy", "How Anthropic handles API data", "Allow", "Not now"]));
 });
 
-test("Summarize, Control Browser, and Find coupons also ask first and read nothing before Allow", async ({ page }) => {
+test("Summarize, Scout mode, and Find coupons also ask first and read nothing before Allow", async ({ page }) => {
   const calls = await openPopup(page);
   const dialog = page.getByRole("dialog", { name: "Share with Anthropic?" });
 
@@ -187,7 +187,7 @@ test("Summarize, Control Browser, and Find coupons also ask first and read nothi
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Not now" }).click();
 
-  await page.getByRole("radio", { name: "Control Browser" }).check();
+  await page.getByRole("radio", { name: "Scout" }).check();
   await page.getByLabel("Ask about this page").fill("Fill in the form");
   await page.getByRole("button", { name: "Start task" }).click();
   await expect(dialog).toBeVisible();
