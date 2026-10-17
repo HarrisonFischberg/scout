@@ -11,7 +11,7 @@ import type { Effort, ProviderClient } from "../providers/types";
 import { isMasked, mergeCandidates, normalizeCode, rankCandidates, type CouponCandidate } from "./candidates";
 import { identifyMerchant, type Merchant } from "./merchant";
 import { codesWithContext } from "./store";
-import { BROWSER_MAX_PAGES, BROWSER_TIME_MS, browserRead, type BrowserPage, type BrowserReason, type BrowserTarget, type PageBrowser } from "./browser-read";
+import { BROWSER_MAX_PAGES, BROWSER_TABS, BROWSER_TIME_MS, browserRead, type BrowserPage, type BrowserReason, type BrowserTarget, type PageBrowser } from "./browser-read";
 
 export const MAX_FOUND = 40;
 /**
@@ -129,6 +129,22 @@ export function likelyCodePages(m: Merchant): string[] {
  * conditions and expiry; every code it lists must appear in that text.
  */
 const SHORT_PAGE_CHARS = 1500;
+/**
+ * Coupon sites whose pages the provider's reader refused in nearly every
+ * 2026-10-17 live run (usa.coupert.com 30 of 30, us.hotdeals.com 26 of 30).
+ * With a browser, their pages go straight to it and the reader is not asked;
+ * the popup adds the sites that refused the reader on this device (`firstHosts`).
+ */
+export const READER_BLOCKED_HOSTS = ["coupert.com", "hotdeals.com"];
+const hostOf = (url: string): string => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return "";
+  }
+};
+const onHost = (host: string, site: string): boolean => host === site || host.endsWith("." + site);
+const BLOCKED_NOTE = "Do not open pages on these sites with web_fetch (they refuse it); Scout opens them in a browser itself. Still search for them:";
 const REFUSED_RE = /40[13]|429|forbidden|refus|blocked|robots|not[_ ]?accessible|not[_ ]?allowed|denied|disallowed/i;
 export const BROWSER_NOTE_TIME_MS = 60_000;
 const MAX_BROWSER_TEXT = 12_000;
@@ -393,7 +409,15 @@ export interface SearchOptions {
    * Opens pages the reader could not load in a background browser tab. `allow`
    * asks the user the first time (their own Safari is used); false skips them.
    */
-  browser?: { tabs: PageBrowser; allow: (pages: BrowserTarget[]) => Promise<boolean>; onPage?: (page: BrowserPage) => void };
+  browser?: {
+    tabs: PageBrowser;
+    allow: (pages: BrowserTarget[]) => Promise<boolean>;
+    onPage?: (page: BrowserPage) => void;
+    /** Sites that refused the reader on this device before: their pages go to the browser first. */
+    firstHosts?: readonly string[];
+    /** Each page the reader refused or loaded, so the popup can learn which sites refuse it. */
+    onReader?: (url: string, ok: boolean) => void;
+  };
   browserTimeMs?: number;
 }
 
@@ -442,6 +466,13 @@ export async function suggestCodes(
   let retried = false;
   let pagesRead = false;
   const listed = likelyCodePages(merchant);
+  // Sites that refuse the reader: with a browser, their pages skip the reader.
+  const blockedSites = opts.browser ? [...new Set([...READER_BLOCKED_HOSTS, ...(opts.browser.firstHosts ?? [])].map((h) => h.toLowerCase()))] : [];
+  const browserFirst = (url: string): boolean => {
+    const h = hostOf(url);
+    return !!h && blockedSites.some((site) => onHost(h, site));
+  };
+  const readerListed = listed.filter((u) => !browserFirst(u));
   // Pages the model asked the fetch tool for, loaded or not.
   const opened = new Set<string>();
   const pages: FetchedPage[] = [];
@@ -453,6 +484,7 @@ export async function suggestCodes(
     (merchant.host.replace(/^www\./, "") !== merchant.domain ? "\nCheckout host: " + merchant.host : "") +
     (aka.length ? "\nAlso written as: " + aka.join(", ") : "") +
     (opts.more ? "\n" + MORE_FOCUS : "") +
+    (blockedSites.length ? "\n" + BLOCKED_NOTE + " " + blockedSites.join(", ") : "") +
     (opts.exclude?.length
       ? "\nAlready tried, do not list these again; look for different codes: " + opts.exclude.slice(0, MAX_EXCLUDE_LISTED).join(", ")
       : "");
@@ -468,7 +500,8 @@ export async function suggestCodes(
   let browserStart = 0;
   let allowed: Promise<boolean> | null = null;
   let declined = false;
-  let draining: Promise<void> | null = null;
+  const drains = new Set<Promise<void>>();
+  let pagesStarted = 0;
   // Set once the browser's turn is over: nothing more is queued after that.
   let closed = false;
   const listedKeys = new Set(listed.map(urlKey));
@@ -485,7 +518,7 @@ export async function suggestCodes(
   const drain = async (): Promise<void> => {
     const b = opts.browser;
     if (!b) return;
-    while (waiting.length && !stopped() && browserPages.length < BROWSER_MAX_PAGES) {
+    while (waiting.length && !stopped() && pagesStarted < BROWSER_MAX_PAGES) {
       waiting.sort((x, y) => x.rank - y.rank);
       allowed ??= b.allow(waiting.map(({ rank: _rank, ...t }) => t)).catch(() => false);
       if (!(await allowed)) {
@@ -496,6 +529,7 @@ export async function suggestCodes(
       const left = (opts.browserTimeMs ?? BROWSER_TIME_MS) - (Date.now() - browserStart);
       const next = waiting.shift();
       if (left <= 0 || !next || stopped()) return;
+      pagesStarted++;
       const { rank: _rank, ...target } = next;
       const r = await browserRead([target], b.tabs, { ...(signal ? { signal } : {}), timeMs: left, storeWords });
       for (const page of r.pages) {
@@ -514,8 +548,16 @@ export async function suggestCodes(
       if (r.codes.length) report(false);
     }
   };
+  // Up to BROWSER_TABS pages at a time, each in its own tab.
   const kick = (): void => {
-    if (opts.browser && !draining) draining = drain().finally(() => (draining = null));
+    if (!opts.browser) return;
+    while (drains.size < Math.min(BROWSER_TABS, waiting.length)) {
+      const d: Promise<void> = drain().finally(() => drains.delete(d));
+      drains.add(d);
+    }
+  };
+  const settle = async (): Promise<void> => {
+    while (drains.size) await Promise.all([...drains]);
   };
   // Masked lines name pages worth a press of "Show code"; read as each line is finished.
   let scanned = 0;
@@ -582,10 +624,14 @@ export async function suggestCodes(
           opened.add(urlKey(ev.url));
           pages.push({ url: ev.url, ok: ev.ok, ...(ev.chars !== undefined ? { chars: ev.chars } : {}), ...(ev.error ? { error: ev.error } : {}) });
           // The reader failed or refused the page: the browser tries it instead.
-          if (!ev.ok && !/max_uses|too_long|invalid_input|unsupported/i.test(ev.error ?? "")) toBrowser(ev.url, REFUSED_RE.test(ev.error ?? "") ? "refused" : "failed", ev.error);
+          const pageFailed = !ev.ok && !/max_uses|too_long|invalid_input|unsupported/i.test(ev.error ?? "");
+          if (pageFailed) toBrowser(ev.url, REFUSED_RE.test(ev.error ?? "") ? "refused" : "failed", ev.error);
+          if (ev.ok || (pageFailed && REFUSED_RE.test(ev.error ?? ""))) opts.browser?.onReader?.(ev.url, ev.ok);
         }
         else if (ev.type === "source") {
           addRetrieved(retrieved, ev.url, ev.page ?? ev.text, ev.title);
+          // A search result on a site that refuses the reader, about this store: straight to the browser.
+          if (ev.page === undefined && browserFirst(ev.url) && aboutStore(ev.url)) toBrowser(ev.url, "blocked");
           if (ev.page) readPage(ev.url, ev.page);
           // A fetched page that came back nearly empty with no code in it (a page built by scripts): the browser renders it.
           if (ev.page !== undefined && ev.page.length < SHORT_PAGE_CHARS && !codesWithContext(ev.page, 1).length) toBrowser(ev.url, "short");
@@ -618,18 +664,20 @@ export async function suggestCodes(
     // 1. The listed pages, read in a pass of their own with no searching. Only
     //    the Anthropic client has a page fetch tool; a second search (`more`)
     //    has had them read already.
-    if (listed.length && !opts.more && provider.id === "anthropic" && opts.readPages !== false && !stopped()) {
+    //    Listed pages on sites that refuse the reader go to the browser instead, at once.
+    if (!opts.more && opts.readPages !== false) for (const u of listed) if (browserFirst(u)) toBrowser(u, "blocked");
+    if (readerListed.length && !opts.more && provider.id === "anthropic" && opts.readPages !== false && !stopped()) {
       pagesRead = true;
       const started = Date.now();
-      const first = await pass({ search: false, fetch: true, timeoutMs: opts.readTimeoutMs ?? READ_TIME_MS, fetches: listed.length, note: READ_NOTE + " " + listed.join(" ") });
+      const first = await pass({ search: false, fetch: true, timeoutMs: opts.readTimeoutMs ?? READ_TIME_MS, fetches: readerListed.length, note: READ_NOTE + " " + readerListed.join(" ") });
       spent = Date.now() - started;
       // A refused request ends the search here; running out of time only moves on to the search.
       if (first && first.code !== "timeout") error = first;
     }
     // 2. The search, told which listed pages were read and which were not.
     if (!error && !stopped()) {
-      const read = listed.filter((u) => opened.has(urlKey(u)));
-      const missed = listed.filter((u) => !opened.has(urlKey(u)));
+      const read = readerListed.filter((u) => opened.has(urlKey(u)));
+      const missed = readerListed.filter((u) => !opened.has(urlKey(u)));
       const note = [read.length ? AFTER_READ_NOTE + " " + read.join(" ") : "", missed.length ? NOT_READ_NOTE + " " + missed.join(" ") : ""].filter(Boolean).join("\n");
       const budget = opts.timeoutMs ?? Math.max(MIN_SEARCH_TIME_MS, SEARCH_TIME_MS - spent);
       error = await pass({ search: true, fetch: true, timeoutMs: budget, searches: SEARCH_USES, fetches: FETCH_USES, ...(note ? { note } : {}) });
@@ -642,9 +690,9 @@ export async function suggestCodes(
   }
   // 3. The browser finishes the pages it was given, then the model reads what
   //    the tabs showed for each code's offer and conditions (no tools).
-  while (draining) await draining;
+  await settle();
   kick();
-  while (draining) await draining;
+  await settle();
   closed = true;
   if (browserTexts.size && !stopped()) {
     const shown = [...browserTexts].map(([url, t]) => "<<<PAGE " + url + ">>>\n" + t.slice(0, MAX_BROWSER_TEXT) + "\n<<<END PAGE>>>").join("\n");
