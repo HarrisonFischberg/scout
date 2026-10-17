@@ -64,7 +64,7 @@ for (const scheme of ["light", "dark"] as const) {
     test("popup model menu has no WCAG 2.2 AA violations", async ({ page }) => {
       await openPopup(page);
       await page.locator("#model-pill").click();
-      await expect(page.getByRole("menu", { name: "Model and effort" })).toBeVisible();
+      await expect(page.getByRole("dialog", { name: "Models" })).toBeVisible();
       expect(await axe(page)).toEqual([]);
     });
 

@@ -137,6 +137,7 @@ const BATCH_WAIT = { timeout: 45_000 };
 test("coupon run tests every code found online, applies the best, never clicks order, and names each code's page", async ({ page }) => {
   test.setTimeout(90_000);
   const { clicks } = await openPopup(page);
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   // Owner, 2026-10-17: milestones post in the chat, outside the folded card,
   // the newest with a moving indicator; no "can take a couple of minutes" line.
@@ -189,6 +190,7 @@ test("coupon run tests every code found online, applies the best, never clicks o
 test("no winning code: offers to search again, searches without repeating codes, says the cart is unchanged", async ({ page }) => {
   test.setTimeout(150_000);
   const { asks } = await openPopup(page, { pct: {} });
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   await expect(page.locator("#coupons-more-text")).toHaveText(
     "We've tried 5 codes and none lowered your total. Would you like Scout for Safari to search the web again, in other places, for more codes to test?",
@@ -222,6 +224,7 @@ test("no winning code: offers to search again, searches without repeating codes,
 test("Find coupons turns Send into Stop next to the model picker, and Stop ends the run", async ({ page }) => {
   test.setTimeout(90_000);
   await openPopup(page, { pct: {} });
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   const composerStop = page.locator(".composer-foot").getByRole("button", { name: "Stop", exact: true });
   await expect(composerStop).toBeVisible();
@@ -241,6 +244,7 @@ test("Find coupons turns Send into Stop next to the model picker, and Stop ends 
 test("a failed web search tests nothing and says why", async ({ page }) => {
   test.setTimeout(90_000);
   const { clicks } = await openPopup(page, { status: 401 });
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.error").last();
   await expect(answer).toContainText(

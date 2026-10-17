@@ -100,6 +100,7 @@ const RUN_WAIT = { timeout: 60_000 };
 test("checkout page without a cart API: types codes only into the discount box, reads the split total, applies the best", async ({ page }) => {
   test.setTimeout(120_000);
   const shop = await open(page, { shopify: false, codes: ["WELCOME5", "SAVE10", "SAVE20", "BOGUS99"] });
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   await expect(answer).toContainText(
@@ -129,6 +130,7 @@ test("checkout page on a Shopify store: tests codes through the cart API and app
   test.setTimeout(120_000);
   // The fake store answers /cart.js as text/javascript, like real Shopify stores.
   const shop = await open(page, { shopify: true, codes: ["KETO10", "BEEFY15", "NOPE1"] });
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   await expect(answer).toContainText(
@@ -153,6 +155,7 @@ test("checkout page on a Shopify store: tests codes through the cart API and app
 test("a WooCommerce store: tests codes through its Store API and applies the best", async ({ page }) => {
   test.setTimeout(120_000);
   const shop = await open(page, { shopify: false, fixture: "/woo-cart.html", codes: ["SAVE10", "SAVE20", "NOPE1"] });
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   // Codes stack in WooCommerce: each one is tested alone (the previous one removed
@@ -172,6 +175,7 @@ test("a WooCommerce store: tests codes through its Store API and applies the bes
 test("a checkout with a hidden promo box, a slow total in euros, errors, and remove buttons", async ({ page }) => {
   test.setTimeout(150_000);
   const shop = await open(page, { shopify: false, fixture: "/promo-checkout.html", codes: ["NOPE1", "RABATT10", "RABATT25"] });
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   await expect(answer).toContainText("RABATT25 is the best: your total drops from €200.00 to €150.00 (you save €50.00, 25% off).", { timeout: 120_000 });
