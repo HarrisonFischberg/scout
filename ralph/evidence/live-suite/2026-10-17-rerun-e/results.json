@@ -1,0 +1,2528 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T15-39-46",
+  "results": [
+    {
+      "name": "MASA",
+      "url": "https://www.masachips.com",
+      "group": "food",
+      "outcome": "applied",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=14 reported=26 dropped=0 masked=0",
+        "coupons:attempt 1 rejected",
+        "coupons:attempt 2 saving",
+        "coupons:attempt 3 saving",
+        "coupons:attempt 4 saving",
+        "coupons:attempt 5 saving",
+        "coupons:attempt 6 saving",
+        "coupons:attempt 7 rejected",
+        "coupons:attempt 8 saving",
+        "coupons:attempt 9 saving",
+        "coupons:attempt 10 rejected",
+        "coupons:attempt 11 rejected",
+        "coupons:attempt 12 rejected",
+        "coupons:attempt 13 saving",
+        "coupons:attempt 14 rejected",
+        "coupons:attempt 15 rejected",
+        "coupons:attempt 16 saving",
+        "coupons:attempt 17 saving",
+        "coupons:attempt 18 saving",
+        "coupons:attempt 19 saving",
+        "coupons:attempt 20 rejected",
+        "coupons:attempt 21 saving",
+        "coupons:attempt 22 rejected",
+        "coupons:attempt 23 saving",
+        "coupons:attempt 24 saving",
+        "coupons:attempt 25 saving",
+        "coupons:attempt 26 saving",
+        "coupons:attempt 27 saving",
+        "coupons:attempt 28 saving",
+        "coupons:attempt 29 saving",
+        "coupons:attempt 30 saving",
+        "coupons:attempt 31 saving",
+        "coupons:attempt 32 saving",
+        "coupons:attempt 33 rejected",
+        "coupons:attempt 34 saving",
+        "coupons:attempt 35 saving",
+        "coupons:attempt 36 saving",
+        "coupons:attempt 37 saving",
+        "coupons:attempt 38 saving",
+        "coupons:attempt 39 saving",
+        "coupons:attempt 40 saving",
+        "coupons:attempt 41 combo rejected",
+        "coupons:attempt 42 combo rejected",
+        "coupons:status done best applied",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 6.4,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 6.4,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 6.4,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 6.6,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 7.1,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 7.1,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 178.9,
+          "stage": "coupons:candidates store=0 verified=14 reported=26 dropped=0 masked=0"
+        },
+        {
+          "t": 179.8,
+          "stage": "coupons:attempt 1 rejected"
+        },
+        {
+          "t": 180.7,
+          "stage": "coupons:attempt 2 saving"
+        },
+        {
+          "t": 181.6,
+          "stage": "coupons:attempt 3 saving"
+        },
+        {
+          "t": 182.5,
+          "stage": "coupons:attempt 4 saving"
+        },
+        {
+          "t": 183.4,
+          "stage": "coupons:attempt 5 saving"
+        },
+        {
+          "t": 184.2,
+          "stage": "coupons:attempt 6 saving"
+        },
+        {
+          "t": 185.2,
+          "stage": "coupons:attempt 7 rejected"
+        },
+        {
+          "t": 186.1,
+          "stage": "coupons:attempt 8 saving"
+        },
+        {
+          "t": 187,
+          "stage": "coupons:attempt 9 saving"
+        },
+        {
+          "t": 187.8,
+          "stage": "coupons:attempt 10 rejected"
+        },
+        {
+          "t": 188.6,
+          "stage": "coupons:attempt 11 rejected"
+        },
+        {
+          "t": 189.5,
+          "stage": "coupons:attempt 12 rejected"
+        },
+        {
+          "t": 190.6,
+          "stage": "coupons:attempt 13 saving"
+        },
+        {
+          "t": 191.4,
+          "stage": "coupons:attempt 14 rejected"
+        },
+        {
+          "t": 192.2,
+          "stage": "coupons:attempt 15 rejected"
+        },
+        {
+          "t": 193.6,
+          "stage": "coupons:attempt 16 saving"
+        },
+        {
+          "t": 194.5,
+          "stage": "coupons:attempt 17 saving"
+        },
+        {
+          "t": 195.4,
+          "stage": "coupons:attempt 18 saving"
+        },
+        {
+          "t": 196.3,
+          "stage": "coupons:attempt 19 saving"
+        },
+        {
+          "t": 197.3,
+          "stage": "coupons:attempt 20 rejected"
+        },
+        {
+          "t": 198.2,
+          "stage": "coupons:attempt 21 saving"
+        },
+        {
+          "t": 199.3,
+          "stage": "coupons:attempt 22 rejected"
+        },
+        {
+          "t": 200.3,
+          "stage": "coupons:attempt 23 saving"
+        },
+        {
+          "t": 201.3,
+          "stage": "coupons:attempt 24 saving"
+        },
+        {
+          "t": 202.2,
+          "stage": "coupons:attempt 25 saving"
+        },
+        {
+          "t": 203.8,
+          "stage": "coupons:attempt 26 saving"
+        },
+        {
+          "t": 205.2,
+          "stage": "coupons:attempt 27 saving"
+        },
+        {
+          "t": 206.1,
+          "stage": "coupons:attempt 28 saving"
+        },
+        {
+          "t": 206.9,
+          "stage": "coupons:attempt 29 saving"
+        },
+        {
+          "t": 207.8,
+          "stage": "coupons:attempt 30 saving"
+        },
+        {
+          "t": 208.7,
+          "stage": "coupons:attempt 31 saving"
+        },
+        {
+          "t": 209.7,
+          "stage": "coupons:attempt 32 saving"
+        },
+        {
+          "t": 210.7,
+          "stage": "coupons:attempt 33 rejected"
+        },
+        {
+          "t": 211.5,
+          "stage": "coupons:attempt 34 saving"
+        },
+        {
+          "t": 212.4,
+          "stage": "coupons:attempt 35 saving"
+        },
+        {
+          "t": 213.3,
+          "stage": "coupons:attempt 36 saving"
+        },
+        {
+          "t": 214.1,
+          "stage": "coupons:attempt 37 saving"
+        },
+        {
+          "t": 215,
+          "stage": "coupons:attempt 38 saving"
+        },
+        {
+          "t": 216,
+          "stage": "coupons:attempt 39 saving"
+        },
+        {
+          "t": 217.1,
+          "stage": "coupons:attempt 40 saving"
+        },
+        {
+          "t": 218,
+          "stage": "coupons:attempt 41 combo rejected"
+        },
+        {
+          "t": 218.6,
+          "stage": "coupons:attempt 42 combo rejected"
+        },
+        {
+          "t": 219.3,
+          "stage": "coupons:status done best applied"
+        },
+        {
+          "t": 219.3,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "f3c5f1c539",
+      "startedAt": "2026-10-17T15:39:46.302Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://www.masachips.com/cart"
+      },
+      "cartBefore": {
+        "total": 26,
+        "codes": [],
+        "fields": {
+          "items": 1,
+          "subtotal": 2600,
+          "original": 2600,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for MASA Chips codes. Found 40 codes: 14 codes read on the pages that post them and 26 codes the search reported from pages it returned. I tested 40 codes. FAMILY35 is the best: your total drops from $26.00 to $16.90 (you save $9.10, 35% off). It's applied to your cart, and I didn't go to checkout. Conditions seen with it: 35% Off Sitewide\" (Jul and Aug 2026 rows).\n\nCode\tResult\tWhere it was found\nFAMILY35\tsaves $9.10, total $16.90\tseen on dontpayfull.com\nSAVE30\tsaves $7.80, total $18.20\tmasa-chips.tenereteam.com (reported by the search)\nCHICKS\tsaves $6.50, total $19.50\tseen on dontpayfull.com\nTUESDAYS\tsaves $6.50, total $19.50\tseen on dontpayfull.com\nLUMNAH\tsaves $6.50, total $19.50\tseen on dontpayfull.com\nWALSH\tsaves $6.50, total $19.50\thotdeals.com (reported by the search)\nREALALEXCLARK\tsaves $6.50, total $19.50\thotdeals.com (reported by the search)\nPIERS\tsaves $6.50, total $19.50\toffers.hotdeals.com (reported by the search)\nJRE\tsaves $6.50, total $19.50\thotdeals.com (reported by the search)\nDARKHORSE\tsaves $6.50, total $19.50\tmasachips.valuecom.com (reported by the search)\nJESSEMICHELS\tsaves $6.50, total $19.50\tmasachips.valuecom.com (reported by the search)\nAFTERPARTY\tsaves $6.50, total $19.50\tmasachips.valuecom.com (reported by the search)\nFIX\tsaves $6.50, total $19.50\twethrift.com (reported by the search)\nREDACTEDNEWS\tsaves $6.50, total $19.50\twethrift.com (reported by the search)\nSFHWQHXR\tsaves $5.20, total $20.80\tseen on dontpayfull.com\nSFFDQXPJ\tsaves $5.20, total $20.80\tseen on dontpayfull.com\nSF9HKQHH\tsaves $5.20, total $20.80\tseen on dontpayfull.com\nSF3PB7YD\tsaves $5.20, total $20.80\tseen on dontpayfull.com\nHOUSEWIFE\tsaves $5.20, total $20.80\tmasachips.valuecom.com (reported by the search)\nKAT20\tsaves $5.20, total $20.80\tmasachips.valuecom.com (reported by the search)\nBOBBY20\tsaves $5.20, total $20.80\twethrift.com (reported by the search)\nEK25\tsaves $5.20, total $20.80\twethrift.com (reported by the search)\nGFWITHSHELLY\tsaves $5.20, total $20.80\twethrift.com (reported by the search)\nASHLEYR\tsaves $5.20, total $20.80\tash-eats.com (reported by the search)\nRACH\tsaves $5.20, total $20.80\tribeyerach.com (reported by the search)\nJOSH\tsaves $5.20, total $20.80\tdealdrop.com (reported by the search)\nCAMRYNBYER\tsaves $5.20, total $20.80\tcamrynbyer.com (reported by the search)\nMASA20\tsaves $5.20, total $20.80\tmasa-chips.gorgias.help (reported by the search)\nREDHEADRANTING\tsaves $5.20, total $20.80\tredheadranting.com (reported by the search)\nULTIMATE20\tsaves $5.20, total $20.80\tmasa-chips.tenereteam.com (reported by the search)\n\nDidn't work: SPOOKY40, FIRSTBOX50, SFM6JPBC, SPOOKY30, SCHOOL50, LDSBLUE50, ERIC30, LUKE30, CRUNCH30, YOURHEALTH.\n\nCheckout can still change the final price, for example tax, shipping, or whether the code applies to later orders.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for MASA Chips codes…",
+        "I searched the web for MASA Chips codes. Found 40 codes: 14 codes read on the pages that post them and 26 codes the search reported from pages it returned.",
+        "Testing 40 codes on your cart, one at a time…"
+      ],
+      "attempts": [
+        {
+          "code": "SPOOKY40",
+          "text": "SPOOKY40 · $26.00 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/masachips.com",
+          "evidence": "tested the code \"SPOOKY40\" at checkout on masachips.com\" (40% off sitewide) (ends Nov 3, 2026)",
+          "good": false
+        },
+        {
+          "code": "CHICKS",
+          "text": "CHICKS · $19.50 · saves $6.50 · Saves $6.50. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/masachips.com",
+          "evidence": "tested the code \"CHICKS\" at checkout on masachips.com\" (32% off storewide)",
+          "good": true
+        },
+        {
+          "code": "TUESDAYS",
+          "text": "TUESDAYS · $19.50 · saves $6.50 · Saves $6.50. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/masachips.com",
+          "evidence": "tested the code \"TUESDAYS\" at checkout on masachips.com\" (32% off your order) (last tested Oct 9, 2026)",
+          "good": true
+        },
+        {
+          "code": "SFHWQHXR",
+          "text": "SFHWQHXR · $20.80 · saves $5.20 · Saves $5.20. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/masachips.com",
+          "evidence": "New code available for MASA Chips: SFHWQHXR · 45% off",
+          "good": true
+        },
+        {
+          "code": "SFFDQXPJ",
+          "text": "SFFDQXPJ · $20.80 · saves $5.20 · Saves $5.20. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/masachips.com",
+          "evidence": "tested the code \"SFFDQXPJ\" at checkout on masachips.com\" (35% off; \"cannot be combined with other discounts\")",
+          "good": true
+        },
+        {
+          "code": "SF9HKQHH",
+          "text": "SF9HKQHH · $20.80 · saves $5.20 · Saves $5.20. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/masachips.com",
+          "evidence": "SF9HKQHH (50% Off Orders\" (Jan 2026 row of the monthly table))",
+          "good": true
+        },
+        {
+          "code": "FIRSTBOX50",
+          "text": "FIRSTBOX50 · $26.00 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/masachips.com",
+          "evidence": "FIRSTBOX50 (50% Off Specific Categories\" (Mar 2026 row))",
+          "good": false
+        },
+        {
+          "code": "LUMNAH",
+          "text": "LUMNAH · $19.50 · saves $6.50 · Saves $6.50. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/masachips.com",
+          "evidence": "LUMNAH (25% Off Storewide\" (Apr 2026 row))",
+          "good": true
+        },
+        {
+          "code": "FAMILY35",
+          "text": "FAMILY35 · $16.90 · saves $9.10 · Saves $9.10. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/masachips.com",
+          "evidence": "FAMILY35 (35% Off Sitewide\" (Jul and Aug 2026 rows))",
+          "good": true
+        },
+        {
+          "code": "SFM6JPBC",
+          "text": "SFM6JPBC · $26.00 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/masachips.com",
+          "evidence": "tested the code \"SFM6JPBC\" at checkout on masachips.com\" (35% off) (the page lists this code as expired Jul 27, 2026 (the listing shows the code as SF3PB7YD, shown below))",
+          "good": false
+        },
+        {
+          "code": "SPOOKY30",
+          "text": "SPOOKY30 · $26.00 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/masachips.com",
+          "evidence": "received the code \"SPOOKY30\" from MASA Chips\" (30% off sitewide) (the page says it expired Oct 17, 2026)",
+          "good": false
+        },
+        {
+          "code": "SCHOOL50",
+          "text": "SCHOOL50 · $26.00 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/masachips.com",
+          "evidence": "received the code \"SCHOOL50\" from MASA Chips\" (50% off, back to school) (the page says it expired Sep 19, 2026)",
+          "good": false
+        },
+        {
+          "code": "SF3PB7YD",
+          "text": "SF3PB7YD · $20.80 · saves $5.20 · Saves $5.20. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/masachips.com",
+          "evidence": "tested the code \"SF3PB7YD\" at checkout on masachips.com\" (35% off) (the page says it expired Jul 27, 2026)",
+          "good": true
+        },
+        {
+          "code": "LDSBLUE50",
+          "text": "LDSBLUE50 · $26.00 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/masachips.com",
+          "evidence": "received the code \"LDSBLUE50\" from MASA Chips\" (50% off one-time orders, Labor Day) (no subscriptions; expired Sep 9, 2026)",
+          "good": false
+        },
+        {
+          "code": "ERIC30",
+          "text": "ERIC30 · $26.00 · Not accepted by the store. · masa-chips.tenereteam.com (reported by the search)",
+          "source": "https://masa-chips.tenereteam.com/coupons",
+          "evidence": "reveal your promo code: ERIC30 (check the offer on Tenere)",
+          "good": false
+        },
+        {
+          "code": "SAVE30",
+          "text": "SAVE30 · $18.20 · saves $7.80 · Saves $7.80. · masa-chips.tenereteam.com (reported by the search)",
+          "source": "https://masa-chips.tenereteam.com/coupons",
+          "evidence": "reveal your promo code: SAVE30 (tested Sep 9, 2026 on a MASA Blue order)",
+          "good": true
+        },
+        {
+          "code": "WALSH",
+          "text": "WALSH · $19.50 · saves $6.50 · Saves $6.50. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/masa-chips-promo-codes",
+          "evidence": "WALSH (25% OFF)",
+          "good": true
+        },
+        {
+          "code": "REALALEXCLARK",
+          "text": "REALALEXCLARK · $19.50 · saves $6.50 · Saves $6.50. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/masa-chips-promo-codes",
+          "evidence": "REALALEXCLARK (25% OFF)",
+          "good": true
+        },
+        {
+          "code": "PIERS",
+          "text": "PIERS · $19.50 · saves $6.50 · Saves $6.50. · offers.hotdeals.com (reported by the search)",
+          "source": "https://offers.hotdeals.com/store/masa-chips-promo-codes",
+          "evidence": "PIERS (25% OFF)",
+          "good": true
+        },
+        {
+          "code": "LUKE30",
+          "text": "LUKE30 · $26.00 · Not accepted by the store. · offers.hotdeals.com (reported by the search)",
+          "source": "https://offers.hotdeals.com/store/masa-chips-promo-codes",
+          "evidence": "LUKE30 (30% OFF)",
+          "good": false
+        },
+        {
+          "code": "JRE",
+          "text": "JRE · $19.50 · saves $6.50 · Saves $6.50. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/masa-chips-promo-codes",
+          "evidence": "Masa Chips Promo Codes 25% OFF with JRE, Verified Screenshot (older code)",
+          "good": true
+        },
+        {
+          "code": "CRUNCH30",
+          "text": "CRUNCH30 · $26.00 · Not accepted by the store. · masachips.valuecom.com (reported by the search)",
+          "source": "https://masachips.valuecom.com/",
+          "evidence": "verified screenshots for code CRUNCH30\" (30% off storewide) (the page says it ends 08/12/2026)",
+          "good": false
+        },
+        {
+          "code": "DARKHORSE",
+          "text": "DARKHORSE · $19.50 · saves $6.50 · Saves $6.50. · masachips.valuecom.com (reported by the search)",
+          "source": "https://masachips.valuecom.com/",
+          "evidence": "25% OFF 100.00% Highest Success Rate DarkHorse Copy Code",
+          "good": true
+        },
+        {
+          "code": "JESSEMICHELS",
+          "text": "JESSEMICHELS · $19.50 · saves $6.50 · Saves $6.50. · masachips.valuecom.com (reported by the search)",
+          "source": "https://masachips.valuecom.com/",
+          "evidence": "1 verified screenshot for code JESSEMICHELS\" (25% off)",
+          "good": true
+        },
+        {
+          "code": "AFTERPARTY",
+          "text": "AFTERPARTY · $19.50 · saves $6.50 · Saves $6.50. · masachips.valuecom.com (reported by the search)",
+          "source": "https://masachips.valuecom.com/",
+          "evidence": "1 verified screenshot for code AFTERPARTY\" (25% off your order)",
+          "good": true
+        },
+        {
+          "code": "HOUSEWIFE",
+          "text": "HOUSEWIFE · $20.80 · saves $5.20 · Saves $5.20. · masachips.valuecom.com (reported by the search)",
+          "source": "https://masachips.valuecom.com/",
+          "evidence": "1 verified screenshot for code HOUSEWIFE\" (20% off)",
+          "good": true
+        },
+        {
+          "code": "KAT20",
+          "text": "KAT20 · $20.80 · saves $5.20 · Saves $5.20. · masachips.valuecom.com (reported by the search)",
+          "source": "https://masachips.valuecom.com/",
+          "evidence": "1 verified screenshot for code KAT20\" (20% off)",
+          "good": true
+        },
+        {
+          "code": "BOBBY20",
+          "text": "BOBBY20 · $20.80 · saves $5.20 · Saves $5.20. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/masachips.com",
+          "evidence": "Apply 20% off to your order at Masa chips with code BOBBY20 (posted by @bobbyboydliving on TikTok)",
+          "good": true
+        },
+        {
+          "code": "EK25",
+          "text": "EK25 · $20.80 · saves $5.20 · Saves $5.20. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/masachips.com",
+          "evidence": "Save on your order at masachips with code EK25 (posted by @everythingkrause on Instagram)",
+          "good": true
+        },
+        {
+          "code": "GFWITHSHELLY",
+          "text": "GFWITHSHELLY · $20.80 · saves $5.20 · Saves $5.20. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/masachips.com",
+          "evidence": "Save on your order at MASA Chips with code GFWITHSHELLY (posted by @glutenfreewithshelly on TikTok)",
+          "good": true
+        },
+        {
+          "code": "ASHLEYR",
+          "text": "ASHLEYR · $20.80 · saves $5.20 · Saves $5.20. · ash-eats.com (reported by the search)",
+          "source": "http://ash-eats.com/masa-chips-coupon-code-ashleyr-for-20-off/",
+          "evidence": "Enter ASHLEYR at checkout, and 25% off will automatically be applied (blog code)",
+          "good": true
+        },
+        {
+          "code": "RACH",
+          "text": "RACH · $20.80 · saves $5.20 · Saves $5.20. · ribeyerach.com (reported by the search)",
+          "source": "https://www.ribeyerach.com/masa-chips-review-and-coupon-code",
+          "evidence": "Use the coupon code \"RACH\" for 25% off at Masa Chips (affiliate code of a creator)",
+          "good": true
+        },
+        {
+          "code": "YOURHEALTH",
+          "text": "YOURHEALTH · $26.00 · Not accepted by the store. · octopus-wedge-bzlg.squarespace.com (reported by the search)",
+          "source": "https://octopus-wedge-bzlg.squarespace.com/products/masachips",
+          "evidence": "Coupon Code: YOURHEALTH For 20% Off (creator page (YHP Coupons))",
+          "good": false
+        },
+        {
+          "code": "JOSH",
+          "text": "JOSH · $20.80 · saves $5.20 · Saves $5.20. · dealdrop.com (reported by the search)",
+          "source": "https://www.dealdrop.com/masa-chips",
+          "evidence": "The best Masa Chips coupons is JOSH, giving customers 20% off at Masa Chips (the page is dated Jan 2026)",
+          "good": true
+        },
+        {
+          "code": "CAMRYNBYER",
+          "text": "CAMRYNBYER · $20.80 · saves $5.20 · Saves $5.20. · camrynbyer.com (reported by the search)",
+          "source": "https://www.camrynbyer.com/masa-chips",
+          "evidence": "Use my MASA Chips discount code CAMRYNBYER for 20% off (creator code)",
+          "good": true
+        },
+        {
+          "code": "FIX",
+          "text": "FIX · $19.50 · saves $6.50 · Saves $6.50. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/masachips.com",
+          "evidence": "Get 25% off your first order at MASA Chips with code FIX (first order only)",
+          "good": true
+        },
+        {
+          "code": "REDACTEDNEWS",
+          "text": "REDACTEDNEWS · $19.50 · saves $6.50 · Saves $6.50. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/masachips.com",
+          "evidence": "Get 25% off your first order at MASA Chips with code REDACTEDNEWS (first order)",
+          "good": true
+        },
+        {
+          "code": "MASA20",
+          "text": "MASA20 · $20.80 · saves $5.20 · Saves $5.20. · masa-chips.gorgias.help (reported by the search)",
+          "source": "https://masa-chips.gorgias.help/en-US",
+          "evidence": "you can enjoy 20% off your order with the promo code MASA20 — one-time use only (first-time customers only; store help center)",
+          "good": true
+        },
+        {
+          "code": "REDHEADRANTING",
+          "text": "REDHEADRANTING · $20.80 · saves $5.20 · Saves $5.20. · redheadranting.com (reported by the search)",
+          "source": "https://redheadranting.com/masa-chips/",
+          "evidence": "use the Promo Code for Masa Chips – REDHEADRANTING – at check out (blog code)",
+          "good": true
+        },
+        {
+          "code": "ULTIMATE20",
+          "text": "ULTIMATE20 · $20.80 · saves $5.20 · Saves $5.20. · masa-chips.tenereteam.com (reported by the search)",
+          "source": "https://masa-chips.tenereteam.com/",
+          "evidence": "ULTIMATE20 Get Code\" under \"Today's Best Deals (unclear discount; the page only shows the code under a \"Get Code\" label)",
+          "good": true
+        },
+        {
+          "code": "FAMILY35 + SAVE30",
+          "text": "FAMILY35 + SAVE30 · $16.90 · The store does not combine these codes. · both codes, applied together",
+          "source": "",
+          "evidence": "",
+          "good": false
+        },
+        {
+          "code": "FAMILY35 + CHICKS",
+          "text": "FAMILY35 + CHICKS · $16.90 · The store does not combine these codes. · both codes, applied together",
+          "source": "",
+          "evidence": "",
+          "good": false
+        }
+      ],
+      "cartAfter": {
+        "total": 16.9,
+        "codes": [
+          {
+            "code": "FAMILY35",
+            "applicable": true
+          }
+        ],
+        "fields": {
+          "items": 1,
+          "subtotal": 2600,
+          "original": 2600,
+          "discount": 910,
+          "currency": "USD"
+        }
+      },
+      "verify": {
+        "before": 26,
+        "after": 16.9,
+        "codes": [
+          {
+            "code": "FAMILY35",
+            "applicable": true
+          }
+        ],
+        "claimed": "$16.90",
+        "confirmed": true
+      },
+      "seconds": 222
+    },
+    {
+      "name": "Lineage Provisions",
+      "url": "https://lineageprovisions.com",
+      "group": "food",
+      "outcome": "applied",
+      "notes": [
+        "the cart page's /cart.js was empty after adding (an app's /cart/update.js); item added again from the cart page",
+        "the store removed the API-added item again; adding through its own Add to cart button"
+      ],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant store-host",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=14 reported=26 dropped=0 masked=0",
+        "coupons:attempt 1 saving",
+        "coupons:attempt 2 saving",
+        "coupons:attempt 3 saving",
+        "coupons:attempt 4 saving",
+        "coupons:attempt 5 saving",
+        "coupons:attempt 6 saving",
+        "coupons:attempt 7 saving",
+        "coupons:attempt 8 saving",
+        "coupons:attempt 9 saving",
+        "coupons:attempt 10 saving",
+        "coupons:attempt 11 saving",
+        "coupons:attempt 12 saving",
+        "coupons:attempt 13 saving",
+        "coupons:attempt 14 saving",
+        "coupons:attempt 15 saving",
+        "coupons:attempt 16 saving",
+        "coupons:attempt 17 rejected",
+        "coupons:attempt 18 saving",
+        "coupons:attempt 19 saving",
+        "coupons:attempt 20 saving",
+        "coupons:attempt 21 rejected",
+        "coupons:attempt 22 rejected",
+        "coupons:attempt 23 saving",
+        "coupons:attempt 24 saving",
+        "coupons:attempt 25 saving",
+        "coupons:attempt 26 saving",
+        "coupons:attempt 27 saving",
+        "coupons:attempt 28 saving",
+        "coupons:attempt 29 saving",
+        "coupons:attempt 30 saving",
+        "coupons:attempt 31 saving",
+        "coupons:attempt 32 rejected",
+        "coupons:attempt 33 saving",
+        "coupons:attempt 34 saving",
+        "coupons:attempt 35 saving",
+        "coupons:attempt 36 saving",
+        "coupons:attempt 37 saving",
+        "coupons:attempt 38 rejected",
+        "coupons:attempt 39 saving",
+        "coupons:attempt 40 saving",
+        "coupons:attempt 41 combo rejected",
+        "coupons:attempt 42 combo rejected",
+        "coupons:status done best applied",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 19.1,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 19.2,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 19.2,
+          "stage": "coupons:merchant store-host"
+        },
+        {
+          "t": 19.3,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 19.7,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 19.7,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 145.8,
+          "stage": "coupons:candidates store=0 verified=14 reported=26 dropped=0 masked=0"
+        },
+        {
+          "t": 146.5,
+          "stage": "coupons:attempt 1 saving"
+        },
+        {
+          "t": 147.3,
+          "stage": "coupons:attempt 2 saving"
+        },
+        {
+          "t": 148.3,
+          "stage": "coupons:attempt 3 saving"
+        },
+        {
+          "t": 149.1,
+          "stage": "coupons:attempt 4 saving"
+        },
+        {
+          "t": 149.9,
+          "stage": "coupons:attempt 5 saving"
+        },
+        {
+          "t": 150.7,
+          "stage": "coupons:attempt 6 saving"
+        },
+        {
+          "t": 151.6,
+          "stage": "coupons:attempt 7 saving"
+        },
+        {
+          "t": 152.5,
+          "stage": "coupons:attempt 8 saving"
+        },
+        {
+          "t": 153.3,
+          "stage": "coupons:attempt 9 saving"
+        },
+        {
+          "t": 154.2,
+          "stage": "coupons:attempt 10 saving"
+        },
+        {
+          "t": 155.1,
+          "stage": "coupons:attempt 11 saving"
+        },
+        {
+          "t": 156,
+          "stage": "coupons:attempt 12 saving"
+        },
+        {
+          "t": 156.9,
+          "stage": "coupons:attempt 13 saving"
+        },
+        {
+          "t": 157.8,
+          "stage": "coupons:attempt 14 saving"
+        },
+        {
+          "t": 158.6,
+          "stage": "coupons:attempt 15 saving"
+        },
+        {
+          "t": 159.4,
+          "stage": "coupons:attempt 16 saving"
+        },
+        {
+          "t": 160.3,
+          "stage": "coupons:attempt 17 rejected"
+        },
+        {
+          "t": 161.1,
+          "stage": "coupons:attempt 18 saving"
+        },
+        {
+          "t": 162.9,
+          "stage": "coupons:attempt 19 saving"
+        },
+        {
+          "t": 163.9,
+          "stage": "coupons:attempt 20 saving"
+        },
+        {
+          "t": 164.7,
+          "stage": "coupons:attempt 21 rejected"
+        },
+        {
+          "t": 165.6,
+          "stage": "coupons:attempt 22 rejected"
+        },
+        {
+          "t": 166.4,
+          "stage": "coupons:attempt 23 saving"
+        },
+        {
+          "t": 167.7,
+          "stage": "coupons:attempt 24 saving"
+        },
+        {
+          "t": 168.5,
+          "stage": "coupons:attempt 25 saving"
+        },
+        {
+          "t": 169.4,
+          "stage": "coupons:attempt 26 saving"
+        },
+        {
+          "t": 170.3,
+          "stage": "coupons:attempt 27 saving"
+        },
+        {
+          "t": 171.2,
+          "stage": "coupons:attempt 28 saving"
+        },
+        {
+          "t": 172,
+          "stage": "coupons:attempt 29 saving"
+        },
+        {
+          "t": 172.8,
+          "stage": "coupons:attempt 30 saving"
+        },
+        {
+          "t": 173.6,
+          "stage": "coupons:attempt 31 saving"
+        },
+        {
+          "t": 174.5,
+          "stage": "coupons:attempt 32 rejected"
+        },
+        {
+          "t": 175.4,
+          "stage": "coupons:attempt 33 saving"
+        },
+        {
+          "t": 176.3,
+          "stage": "coupons:attempt 34 saving"
+        },
+        {
+          "t": 177.1,
+          "stage": "coupons:attempt 35 saving"
+        },
+        {
+          "t": 177.9,
+          "stage": "coupons:attempt 36 saving"
+        },
+        {
+          "t": 178.7,
+          "stage": "coupons:attempt 37 saving"
+        },
+        {
+          "t": 179.5,
+          "stage": "coupons:attempt 38 rejected"
+        },
+        {
+          "t": 180.3,
+          "stage": "coupons:attempt 39 saving"
+        },
+        {
+          "t": 181.3,
+          "stage": "coupons:attempt 40 saving"
+        },
+        {
+          "t": 182.3,
+          "stage": "coupons:attempt 41 combo rejected"
+        },
+        {
+          "t": 183,
+          "stage": "coupons:attempt 42 combo rejected"
+        },
+        {
+          "t": 183.6,
+          "stage": "coupons:status done best applied"
+        },
+        {
+          "t": 183.6,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "f3c5f1c539",
+      "startedAt": "2026-10-17T15:43:31.858Z",
+      "cart": {
+        "how": "shopify product json",
+        "url": "https://lineageprovisions.com/cart"
+      },
+      "cartBefore": {
+        "total": 49,
+        "codes": [],
+        "fields": {
+          "items": 1,
+          "subtotal": 4900,
+          "original": 4900,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Lineage Provisions codes. Found 40 codes: 14 codes read on the pages that post them and 26 codes the search reported from pages it returned. I tested 40 codes. MADS is the best: your total drops from $49.00 to $41.65 (you save $7.35, 15% off). It's applied to your cart, and I didn't go to checkout. Conditions seen with it: source: TikTok video; Wethrift lists it as best code, 38% freshness.\n\nCode\tResult\tWhere it was found\nMADS\tsaves $7.35, total $41.65\tseen on wethrift.com\nKAMIE\tsaves $7.35, total $41.65\tseen on wethrift.com\nDIANAMER\tsaves $7.35, total $41.65\tseen on wethrift.com\nGFWITHSHELLY\tsaves $7.35, total $41.65\tseen on wethrift.com\nTAYLORTWINS\tsaves $7.35, total $41.65\tseen on wethrift.com\nCARNIVOREDRE\tsaves $7.35, total $41.65\tseen on wethrift.com\nLAVAILS\tsaves $7.35, total $41.65\tseen on wethrift.com\nPAXTON\tsaves $7.35, total $41.65\tseen on wethrift.com\nSOPHIA\tsaves $7.35, total $41.65\tseen on wethrift.com\nWILDLYLIVING\tsaves $7.35, total $41.65\tseen on wethrift.com\nGLOW20\tsaves $7.35, total $41.65\tseen on theguyslist.com\nZEKE\tsaves $7.35, total $41.65\tseen on theguyslist.com\nJANIELIZMIRACH\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nCHRYSALIS\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nJEANETTE\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nNPROVINCE\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nKIANA\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\n3ROUTES\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nFRIGON10\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nPRINCILYABELLEY\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nTHEREALDISH\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nSENSEISETH\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nFOSS\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nMIRA\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nTRENTANDALLIE\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nMISSAF\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nMARGWILP\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nABBEYNYC20\tsaves $7.35, total $41.65\ttiktok.com (reported by the search)\nASHEATS\tsaves $7.35, total $41.65\tash-eats.com (reported by the search)\nASH\tsaves $7.35, total $41.65\tash-eats.com (reported by the search)\nBPFITNESS\tsaves $7.35, total $41.65\ttiktok.com (reported by the search)\nKYWELLNESS\tsaves $7.35, total $41.65\ttiktok.com (reported by the search)\nLAURENG\tsaves $7.35, total $41.65\twethrift.com (reported by the search)\nHUMAN10\tsaves $4.90, total $44.10\tseen on lineageprovisions.com\nTGL\tsaves $4.90, total $44.10\tseen on theguyslist.com\n\nDidn't work: 15OFF, BADASSMAMABABE, BFG10, LIZZIE15, DESTINY10.\n\nCode-free offers the pages mention (not tested): 10% OFF your first Lineage order + FREE shipping on orders $99+\" free shipping on orders $99+; You may have read that we give 20% off discount codes -- that is only true twice a year!\" 20% off sales only about twice.\n\nCheckout can still change the final price, for example tax, shipping, or whether the code applies to later orders.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Lineage Provisions codes…",
+        "I searched the web for Lineage Provisions codes. Found 40 codes: 14 codes read on the pages that post them and 26 codes the search reported from pages it returned.",
+        "Testing 40 codes on your cart, one at a time…"
+      ],
+      "attempts": [
+        {
+          "code": "MADS",
+          "text": "MADS · $41.65 · saves $7.35 · Saves $7.35. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "Get 15% off at Lineage Provisions with code MADS. (source: TikTok video; Wethrift lists it as best code, 38% freshness)",
+          "good": true
+        },
+        {
+          "code": "KAMIE",
+          "text": "KAMIE · $41.65 · saves $7.35 · Saves $7.35. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off your order ... KAMIE (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "DIANAMER",
+          "text": "DIANAMER · $41.65 · saves $7.35 · Saves $7.35. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "Discount code: DIANAMER (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "GFWITHSHELLY",
+          "text": "GFWITHSHELLY · $41.65 · saves $7.35 · Saves $7.35. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "Discount code: GFWITHSHELLY (source: TikTok video; also on Coupert (15% off))",
+          "good": true
+        },
+        {
+          "code": "TAYLORTWINS",
+          "text": "TAYLORTWINS · $41.65 · saves $7.35 · Saves $7.35. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "Discount code: TAYLORTWINS (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "CARNIVOREDRE",
+          "text": "CARNIVOREDRE · $41.65 · saves $7.35 · Saves $7.35. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "Discount code: CARNIVOREDRE (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "LAVAILS",
+          "text": "LAVAILS · $41.65 · saves $7.35 · Saves $7.35. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "Discount code: LAVAILS (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "PAXTON",
+          "text": "PAXTON · $41.65 · saves $7.35 · Saves $7.35. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "Discount code: PAXTON (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "SOPHIA",
+          "text": "SOPHIA · $41.65 · saves $7.35 · Saves $7.35. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "Discount code: SOPHIA (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "WILDLYLIVING",
+          "text": "WILDLYLIVING · $41.65 · saves $7.35 · Saves $7.35. · seen on wethrift.com",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "Discount code: WILDLYLIVING (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "GLOW20",
+          "text": "GLOW20 · $41.65 · saves $7.35 · Saves $7.35. · seen on theguyslist.com",
+          "source": "https://theguyslist.com/coupons/lineage-provisions-discount-code/",
+          "evidence": "Use Code: GLOW20 (The Guy's List partner page; discount amount not stated next to this code)",
+          "good": true
+        },
+        {
+          "code": "ZEKE",
+          "text": "ZEKE · $41.65 · saves $7.35 · Saves $7.35. · seen on theguyslist.com",
+          "source": "https://theguyslist.com/coupons/lineage-provisions-discount-code/",
+          "evidence": "Use Code: ZEKE (The Guy's List partner page; discount amount not stated next to this code)",
+          "good": true
+        },
+        {
+          "code": "HUMAN10",
+          "text": "HUMAN10 · $44.10 · saves $4.90 · Saves $4.90. · seen on lineageprovisions.com",
+          "source": "https://lineageprovisions.com/pages/promo-codes",
+          "evidence": "To redeem your 10% discount at checkout, use promo code: HUMAN10\" (10% off first order + free shipping on orders $99+) (new customers; official store page)",
+          "good": true
+        },
+        {
+          "code": "TGL",
+          "text": "TGL · $44.10 · saves $4.90 · Saves $4.90. · seen on theguyslist.com",
+          "source": "https://theguyslist.com/coupons/lineage-provisions-discount-code/",
+          "evidence": "If it is not, please enter the code TGL to activate it. (listed under \"Expired Codes\"; 10% off sitewide)",
+          "good": true
+        },
+        {
+          "code": "JANIELIZMIRACH",
+          "text": "JANIELIZMIRACH · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off ... JANIELIZMIRACH (source: Instagram post)",
+          "good": true
+        },
+        {
+          "code": "CHRYSALIS",
+          "text": "CHRYSALIS · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off ... CHRYSALIS (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "15OFF",
+          "text": "15OFF · $49.00 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off ... 15OFF (no source listed)",
+          "good": false
+        },
+        {
+          "code": "JEANETTE",
+          "text": "JEANETTE · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off ... JEANETTE (no source listed)",
+          "good": true
+        },
+        {
+          "code": "NPROVINCE",
+          "text": "NPROVINCE · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off any order ... NPROVINCE (source: YouTube video; also listed on HotDeals as 15% off sitewide, expiry Oct 22, 2026)",
+          "good": true
+        },
+        {
+          "code": "KIANA",
+          "text": "KIANA · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "10% off all products ... KIANA (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "BADASSMAMABABE",
+          "text": "BADASSMAMABABE · $49.00 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off ... BADASSMAMABABE (source: TikTok video)",
+          "good": false
+        },
+        {
+          "code": "BFG10",
+          "text": "BFG10 · $49.00 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "10% off ... BFG10 (source: TikTok video)",
+          "good": false
+        },
+        {
+          "code": "3ROUTES",
+          "text": "3ROUTES · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off ... 3ROUTES (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "FRIGON10",
+          "text": "FRIGON10 · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off ... FRIGON10 (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "PRINCILYABELLEY",
+          "text": "PRINCILYABELLEY · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off ... PRINCILYABELLEY (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "THEREALDISH",
+          "text": "THEREALDISH · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off ... THEREALDISH (no source listed)",
+          "good": true
+        },
+        {
+          "code": "SENSEISETH",
+          "text": "SENSEISETH · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off ... SENSEISETH (source: YouTube video)",
+          "good": true
+        },
+        {
+          "code": "FOSS",
+          "text": "FOSS · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off Protein Powder ... FOSS (source: YouTube video; protein powder)",
+          "good": true
+        },
+        {
+          "code": "MIRA",
+          "text": "MIRA · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off ... MIRA (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "TRENTANDALLIE",
+          "text": "TRENTANDALLIE · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off your purchase ... TRENTANDALLIE (source: YouTube video)",
+          "good": true
+        },
+        {
+          "code": "MISSAF",
+          "text": "MISSAF · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off site-wide ... MISSAF (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "LIZZIE15",
+          "text": "LIZZIE15 · $49.00 · Not accepted by the store. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "Save 15% on orders $99 or more at Lineage Provisions with code LIZZIE15. (orders $99 or more; source: TikTok video)",
+          "good": false
+        },
+        {
+          "code": "MARGWILP",
+          "text": "MARGWILP · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off ... MARGWILP (source: TikTok video)",
+          "good": true
+        },
+        {
+          "code": "ABBEYNYC20",
+          "text": "ABBEYNYC20 · $41.65 · saves $7.35 · Saves $7.35. · tiktok.com (reported by the search)",
+          "source": "https://www.tiktok.com/discover/lineage-provisions-beef-review",
+          "evidence": "Order with code ABBEYNYC20 for 15% off! (TikTok creator abbeynyc)",
+          "good": true
+        },
+        {
+          "code": "ASHEATS",
+          "text": "ASHEATS · $41.65 · saves $7.35 · Saves $7.35. · ash-eats.com (reported by the search)",
+          "source": "https://ash-eats.com/lineage-provisions-promo-code-ash-for-10-off-2/",
+          "evidence": "Enter \"ASHEATS\" at checkout to save 11% on your entire Lineage Provisions order. (blog post, about 220 days old)",
+          "good": true
+        },
+        {
+          "code": "ASH",
+          "text": "ASH · $41.65 · saves $7.35 · Saves $7.35. · ash-eats.com (reported by the search)",
+          "source": "http://ash-eats.com/lineage-provisions-discount-code-ash-for-10-off/",
+          "evidence": "Enter ASH at checkout and use this link, and 11% off will automatically be applied (older blog post, about 384 days old)",
+          "good": true
+        },
+        {
+          "code": "BPFITNESS",
+          "text": "BPFITNESS · $41.65 · saves $7.35 · Saves $7.35. · tiktok.com (reported by the search)",
+          "source": "https://www.tiktok.com/discover/lineage-provisions-beef-sticks-review",
+          "evidence": "Use Code \" BPFITNESS \" @lineageprovisions for 10% OFF all products (TikTok creator)",
+          "good": true
+        },
+        {
+          "code": "DESTINY10",
+          "text": "DESTINY10 · $49.00 · Not accepted by the store. · tiktok.com (reported by the search)",
+          "source": "https://www.tiktok.com/discover/lineage-provisions-beef-sticks-review",
+          "evidence": "Comment LINEAGE or use code DESTINY10 to save 10% on your order! (TikTok creator)",
+          "good": false
+        },
+        {
+          "code": "KYWELLNESS",
+          "text": "KYWELLNESS · $41.65 · saves $7.35 · Saves $7.35. · tiktok.com (reported by the search)",
+          "source": "https://www.tiktok.com/discover/lineage-provisions-beef-review",
+          "evidence": "Use code KYWELLNESS to save 10% on all Lineage Products! (TikTok creator)",
+          "good": true
+        },
+        {
+          "code": "LAURENG",
+          "text": "LAURENG · $41.65 · saves $7.35 · Saves $7.35. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/codes/lineageprovisions.com",
+          "evidence": "15% off your first order ... LAURENG (source: TikTok video; first order)",
+          "good": true
+        },
+        {
+          "code": "MADS + KAMIE",
+          "text": "MADS + KAMIE · $41.65 · The store does not combine these codes. · both codes, applied together",
+          "source": "",
+          "evidence": "",
+          "good": false
+        },
+        {
+          "code": "MADS + DIANAMER",
+          "text": "MADS + DIANAMER · $41.65 · The store does not combine these codes. · both codes, applied together",
+          "source": "",
+          "evidence": "",
+          "good": false
+        }
+      ],
+      "cartAfter": {
+        "total": 41.65,
+        "codes": [
+          {
+            "code": "MADS",
+            "applicable": true
+          }
+        ],
+        "fields": {
+          "items": 1,
+          "subtotal": 4900,
+          "original": 4900,
+          "discount": 735,
+          "currency": "USD"
+        }
+      },
+      "verify": {
+        "before": 49,
+        "after": 41.65,
+        "codes": [
+          {
+            "code": "MADS",
+            "applicable": true
+          }
+        ],
+        "claimed": "$41.65",
+        "confirmed": true
+      },
+      "seconds": 187
+    },
+    {
+      "name": "Heart & Soil",
+      "url": "https://heartandsoil.co",
+      "group": "food",
+      "outcome": "applied",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=5 reported=35 dropped=0 masked=0",
+        "coupons:attempt 1 rejected",
+        "coupons:attempt 2 rejected",
+        "coupons:attempt 3 rejected",
+        "coupons:attempt 4 saving",
+        "coupons:attempt 5 rejected",
+        "coupons:attempt 6 rejected",
+        "coupons:attempt 7 saving",
+        "coupons:attempt 8 saving",
+        "coupons:attempt 9 saving",
+        "coupons:attempt 10 rejected",
+        "coupons:attempt 11 rejected",
+        "coupons:attempt 12 saving",
+        "coupons:attempt 13 saving",
+        "coupons:attempt 14 rejected",
+        "coupons:attempt 15 saving",
+        "coupons:attempt 16 rejected",
+        "coupons:attempt 17 rejected",
+        "coupons:attempt 18 saving",
+        "coupons:attempt 19 rejected",
+        "coupons:attempt 20 saving",
+        "coupons:attempt 21 saving",
+        "coupons:attempt 22 rejected",
+        "coupons:attempt 23 saving",
+        "coupons:attempt 24 saving",
+        "coupons:attempt 25 saving",
+        "coupons:attempt 26 saving",
+        "coupons:attempt 27 rejected",
+        "coupons:attempt 28 saving",
+        "coupons:attempt 29 rejected",
+        "coupons:attempt 30 saving",
+        "coupons:attempt 31 rejected",
+        "coupons:attempt 32 saving",
+        "coupons:attempt 33 saving",
+        "coupons:attempt 34 saving",
+        "coupons:attempt 35 saving",
+        "coupons:attempt 36 rejected",
+        "coupons:attempt 37 saving",
+        "coupons:attempt 38 rejected",
+        "coupons:attempt 39 rejected",
+        "coupons:attempt 40 saving",
+        "coupons:attempt 41 combo rejected",
+        "coupons:attempt 42 combo rejected",
+        "coupons:status done best applied",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 8.9,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 9,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 9,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 9.1,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 9.3,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 9.3,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 144,
+          "stage": "coupons:candidates store=0 verified=5 reported=35 dropped=0 masked=0"
+        },
+        {
+          "t": 144.7,
+          "stage": "coupons:attempt 1 rejected"
+        },
+        {
+          "t": 145.7,
+          "stage": "coupons:attempt 2 rejected"
+        },
+        {
+          "t": 146.5,
+          "stage": "coupons:attempt 3 rejected"
+        },
+        {
+          "t": 147.3,
+          "stage": "coupons:attempt 4 saving"
+        },
+        {
+          "t": 148.2,
+          "stage": "coupons:attempt 5 rejected"
+        },
+        {
+          "t": 149,
+          "stage": "coupons:attempt 6 rejected"
+        },
+        {
+          "t": 149.8,
+          "stage": "coupons:attempt 7 saving"
+        },
+        {
+          "t": 150.6,
+          "stage": "coupons:attempt 8 saving"
+        },
+        {
+          "t": 151.3,
+          "stage": "coupons:attempt 9 saving"
+        },
+        {
+          "t": 152.1,
+          "stage": "coupons:attempt 10 rejected"
+        },
+        {
+          "t": 152.9,
+          "stage": "coupons:attempt 11 rejected"
+        },
+        {
+          "t": 153.8,
+          "stage": "coupons:attempt 12 saving"
+        },
+        {
+          "t": 154.7,
+          "stage": "coupons:attempt 13 saving"
+        },
+        {
+          "t": 155.5,
+          "stage": "coupons:attempt 14 rejected"
+        },
+        {
+          "t": 156.4,
+          "stage": "coupons:attempt 15 saving"
+        },
+        {
+          "t": 157.2,
+          "stage": "coupons:attempt 16 rejected"
+        },
+        {
+          "t": 158.2,
+          "stage": "coupons:attempt 17 rejected"
+        },
+        {
+          "t": 159,
+          "stage": "coupons:attempt 18 saving"
+        },
+        {
+          "t": 159.9,
+          "stage": "coupons:attempt 19 rejected"
+        },
+        {
+          "t": 160.8,
+          "stage": "coupons:attempt 20 saving"
+        },
+        {
+          "t": 161.7,
+          "stage": "coupons:attempt 21 saving"
+        },
+        {
+          "t": 162.4,
+          "stage": "coupons:attempt 22 rejected"
+        },
+        {
+          "t": 163.2,
+          "stage": "coupons:attempt 23 saving"
+        },
+        {
+          "t": 164.1,
+          "stage": "coupons:attempt 24 saving"
+        },
+        {
+          "t": 165.9,
+          "stage": "coupons:attempt 25 saving"
+        },
+        {
+          "t": 166.7,
+          "stage": "coupons:attempt 26 saving"
+        },
+        {
+          "t": 167.7,
+          "stage": "coupons:attempt 27 rejected"
+        },
+        {
+          "t": 168.5,
+          "stage": "coupons:attempt 28 saving"
+        },
+        {
+          "t": 169.3,
+          "stage": "coupons:attempt 29 rejected"
+        },
+        {
+          "t": 170.2,
+          "stage": "coupons:attempt 30 saving"
+        },
+        {
+          "t": 171,
+          "stage": "coupons:attempt 31 rejected"
+        },
+        {
+          "t": 171.8,
+          "stage": "coupons:attempt 32 saving"
+        },
+        {
+          "t": 172.6,
+          "stage": "coupons:attempt 33 saving"
+        },
+        {
+          "t": 173.4,
+          "stage": "coupons:attempt 34 saving"
+        },
+        {
+          "t": 174.2,
+          "stage": "coupons:attempt 35 saving"
+        },
+        {
+          "t": 175,
+          "stage": "coupons:attempt 36 rejected"
+        },
+        {
+          "t": 175.9,
+          "stage": "coupons:attempt 37 saving"
+        },
+        {
+          "t": 176.8,
+          "stage": "coupons:attempt 38 rejected"
+        },
+        {
+          "t": 177.6,
+          "stage": "coupons:attempt 39 rejected"
+        },
+        {
+          "t": 178.4,
+          "stage": "coupons:attempt 40 saving"
+        },
+        {
+          "t": 179.2,
+          "stage": "coupons:attempt 41 combo rejected"
+        },
+        {
+          "t": 179.7,
+          "stage": "coupons:attempt 42 combo rejected"
+        },
+        {
+          "t": 180.3,
+          "stage": "coupons:status done best applied"
+        },
+        {
+          "t": 180.3,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "f3c5f1c539",
+      "startedAt": "2026-10-17T15:46:41.761Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://shop.heartandsoil.co/cart"
+      },
+      "cartBefore": {
+        "total": 311,
+        "codes": [],
+        "fields": {
+          "items": 1,
+          "subtotal": 31100,
+          "original": 31100,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Heart & Soil codes. Found 40 codes: 5 codes read on the pages that post them and 35 codes the search reported from pages it returned. I tested 40 codes. GETSOME10 is the best: your total drops from $311.00 to $279.90 (you save $31.10, 10% off). It's applied to your cart, and I didn't go to checkout. Conditions seen with it: 10% off first order on supplements; tested Sep 2026.\n\nCode\tResult\tWhere it was found\nGETSOME10\tsaves $31.10, total $279.90\tseen on dontpayfull.com\nMEGMAC\tsaves $31.10, total $279.90\theart-soil.tenereteam.com (reported by the search)\nSUMMERNEWMAN10\tsaves $31.10, total $279.90\theart-soil.tenereteam.com (reported by the search)\nALO10\tsaves $31.10, total $279.90\theart-soil.tenereteam.com (reported by the search)\nPELZ10\tsaves $31.10, total $279.90\tshipthedeal.com (reported by the search)\nRADICALHEALTH10\tsaves $31.10, total $279.90\tshipthedeal.com (reported by the search)\nJOEY10\tsaves $31.10, total $279.90\tshipthedeal.com (reported by the search)\nBIRTHRIGHT10\tsaves $31.10, total $279.90\thotdeals.com (reported by the search)\nRACHLOWTOX10\tsaves $31.10, total $279.90\thotdeals.com (reported by the search)\nXPOST10\tsaves $31.10, total $279.90\thotdeals.com (reported by the search)\nHAYLEYWILSON\tsaves $31.10, total $279.90\tus.hotdeals.com (reported by the search)\nSASHA10\tsaves $31.10, total $279.90\theartandsoil.orangeoffer.com (reported by the search)\nASH10\tsaves $31.10, total $279.90\tash-eats.com (reported by the search)\nRIBEYERACH\tsaves $31.10, total $279.90\tribeyerach.com (reported by the search)\nIZZY10\tsaves $31.10, total $279.90\tcoupert.com (reported by the search)\nGETREALGF\tsaves $31.10, total $279.90\tcoupert.com (reported by the search)\nCASSIEBRUNS10\tsaves $31.10, total $279.90\tcoupert.com (reported by the search)\nMGEATSGOOD10\tsaves $31.10, total $279.90\tcoupert.com (reported by the search)\nMIKAELA10\tsaves $31.10, total $279.90\tcoupert.com (reported by the search)\nTRENTEN10\tsaves $31.10, total $279.90\tcoupert.com (reported by the search)\nAWAKEN10\tsaves $31.10, total $279.90\tcouponsvilla.com (reported by the search)\nANDREWJCASS10\tsaves $31.10, total $279.90\tandrewjcass.substack.com (reported by the search)\n\nDidn't work: RESET, CARNIVOREMD, SALADINOMD, SALADINO, AMERICA250, MEATMAFIA10, SALTYCOOKINGCO10, SORTED10, JANIQUE10, LIVERMAGIC20 and 8 more.\n\nCheckout can still change the final price, for example tax, shipping, or whether the code applies to later orders.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Heart & Soil codes…",
+        "I searched the web for Heart & Soil codes. Found 40 codes: 5 codes read on the pages that post them and 35 codes the search reported from pages it returned.",
+        "Testing 40 codes on your cart, one at a time…"
+      ],
+      "attempts": [
+        {
+          "code": "RESET",
+          "text": "RESET · $311.00 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/heartandsoil.co",
+          "evidence": "received the code \"RESET\" from Heart & Soil (listed as $21.86 off; 6 verifications Sep 2026)",
+          "good": false
+        },
+        {
+          "code": "CARNIVOREMD",
+          "text": "CARNIVOREMD · $311.00 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/heartandsoil.co",
+          "evidence": "captured the code \"CARNIVOREMD\" from Heart & Soil (listed as 10% off; DontPayFull says valid to Oct 22, 2026)",
+          "good": false
+        },
+        {
+          "code": "SALADINOMD",
+          "text": "SALADINOMD · $311.00 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/heartandsoil.co",
+          "evidence": "captured the code \"SALADINOMD\" from Heart & Soil (listed as 10% off; DontPayFull says valid to Oct 22, 2026)",
+          "good": false
+        },
+        {
+          "code": "GETSOME10",
+          "text": "GETSOME10 · $279.90 · saves $31.10 · Saves $31.10. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/heartandsoil.co",
+          "evidence": "tested the code \"GETSOME10\" at checkout on heartandsoil.co. The code was successfully applied. (10% off first order on supplements; tested Sep 2026)",
+          "good": true
+        },
+        {
+          "code": "SALADINO",
+          "text": "SALADINO · $311.00 · Not accepted by the store. · seen on dontpayfull.com",
+          "source": "https://www.dontpayfull.com/at/heartandsoil.co",
+          "evidence": "captured the code \"SALADINO\" from Heart & Soil (listed as 20% off first purchase; note: the Heart & Soil blog shows SALADINO as a Native deodorant code, so it may not w)",
+          "good": false
+        },
+        {
+          "code": "AMERICA250",
+          "text": "AMERICA250 · $311.00 · Not accepted by the store. · heartandsoil.co (reported by the search)",
+          "source": "https://heartandsoil.co/blog/ask-me-anything-1-game-changers-electrolytes-hemochromatosis-the-microbiome-and-more/",
+          "evidence": "Come and Take It Get 17.76% OFF with code AMERICA250 (SHOP NOW)",
+          "good": false
+        },
+        {
+          "code": "MEGMAC",
+          "text": "MEGMAC · $279.90 · saves $31.10 · Saves $31.10. · heart-soil.tenereteam.com (reported by the search)",
+          "source": "https://heart-soil.tenereteam.com/coupons",
+          "evidence": "Click \"Get Code\" to reveal your promo code: MEGMAC (up to 10% off)",
+          "good": true
+        },
+        {
+          "code": "SUMMERNEWMAN10",
+          "text": "SUMMERNEWMAN10 · $279.90 · saves $31.10 · Saves $31.10. · heart-soil.tenereteam.com (reported by the search)",
+          "source": "https://heart-soil.tenereteam.com/coupons",
+          "evidence": "confirmed the promo code SUMMERNEWMAN10 was working (up to 20% listed on page)",
+          "good": true
+        },
+        {
+          "code": "ALO10",
+          "text": "ALO10 · $279.90 · saves $31.10 · Saves $31.10. · heart-soil.tenereteam.com (reported by the search)",
+          "source": "https://heart-soil.tenereteam.com/coupons",
+          "evidence": "confirmed the promo code ALO10 was working (up to 10% off)",
+          "good": true
+        },
+        {
+          "code": "MEATMAFIA10",
+          "text": "MEATMAFIA10 · $311.00 · Not accepted by the store. · shipthedeal.com (reported by the search)",
+          "source": "https://shipthedeal.com/store/heart-soil-coupon",
+          "evidence": "Use this verified coupon code to get 10% OFF ... MEATMAFIA10 (10% off)",
+          "good": false
+        },
+        {
+          "code": "SALTYCOOKINGCO10",
+          "text": "SALTYCOOKINGCO10 · $311.00 · Not accepted by the store. · shipthedeal.com (reported by the search)",
+          "source": "https://shipthedeal.com/store/heart-soil-coupon",
+          "evidence": "10% Off Storewide at Heart & Soil ... SALTYCOOKINGCO10 (10% off)",
+          "good": false
+        },
+        {
+          "code": "PELZ10",
+          "text": "PELZ10 · $279.90 · saves $31.10 · Saves $31.10. · shipthedeal.com (reported by the search)",
+          "source": "https://shipthedeal.com/store/heart-soil-coupon",
+          "evidence": "heartandsoil.co ... PELZ10 (10% off; also on couponsvilla.com)",
+          "good": true
+        },
+        {
+          "code": "RADICALHEALTH10",
+          "text": "RADICALHEALTH10 · $279.90 · saves $31.10 · Saves $31.10. · shipthedeal.com (reported by the search)",
+          "source": "https://shipthedeal.com/store/heart-soil-coupon",
+          "evidence": "RADICALHEALTH10 ... 10% Off Store wide (10% off)",
+          "good": true
+        },
+        {
+          "code": "SORTED10",
+          "text": "SORTED10 · $311.00 · Not accepted by the store. · shipthedeal.com (reported by the search)",
+          "source": "https://shipthedeal.com/store/heart-soil-coupon",
+          "evidence": "SORTED10 ... 10% Off Storewide (10% off)",
+          "good": false
+        },
+        {
+          "code": "JOEY10",
+          "text": "JOEY10 · $279.90 · saves $31.10 · Saves $31.10. · shipthedeal.com (reported by the search)",
+          "source": "https://shipthedeal.com/store/heart-soil-coupon",
+          "evidence": "JOEY10 (10% off; also on couponsvilla.com (\"10% Off Everything\"))",
+          "good": true
+        },
+        {
+          "code": "JANIQUE10",
+          "text": "JANIQUE10 · $311.00 · Not accepted by the store. · shipthedeal.com (reported by the search)",
+          "source": "https://shipthedeal.com/store/heart-soil-coupon",
+          "evidence": "JANIQUE10 (10% off presumed, amount not stated on page)",
+          "good": false
+        },
+        {
+          "code": "LIVERMAGIC20",
+          "text": "LIVERMAGIC20 · $311.00 · Not accepted by the store. · simplycodes.com (reported by the search)",
+          "source": "https://simplycodes.com/store/heartandsoil.co",
+          "evidence": "Use Top Code: Get 20% off with LIVERMAGIC20 (20% off; also printed on shipthedeal.com and greenpromocode.com)",
+          "good": false
+        },
+        {
+          "code": "BIRTHRIGHT10",
+          "text": "BIRTHRIGHT10 · $279.90 · saves $31.10 · Saves $31.10. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/heartandsoil-coupon",
+          "evidence": "BIRTHRIGHT10 ... Save 10% OFF on beef liver and pork organs (10% off; HotDeals Aug 2026, also on tenereteam)",
+          "good": true
+        },
+        {
+          "code": "MAYHEM20",
+          "text": "MAYHEM20 · $311.00 · Not accepted by the store. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/heartandsoil-coupon",
+          "evidence": "Extra 20% off on All Products ... MAYHEM20 (20% off; redeemable once per HotDeals)",
+          "good": false
+        },
+        {
+          "code": "RACHLOWTOX10",
+          "text": "RACHLOWTOX10 · $279.90 · saves $31.10 · Saves $31.10. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/heartandsoil-coupon",
+          "evidence": "Receive a 10% Discount at heartandsoil.co ... RACHLOWTOX10 (10% off; also on joincheckmate)",
+          "good": true
+        },
+        {
+          "code": "XPOST10",
+          "text": "XPOST10 · $279.90 · saves $31.10 · Saves $31.10. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/heartandsoil-coupon",
+          "evidence": "Heartandsoil Discount Code: Snatch 10% off on Chosen Items ... XPOST10 (10% off; HotDeals Aug 2026)",
+          "good": true
+        },
+        {
+          "code": "MISSSAYWHATSREAL10",
+          "text": "MISSSAYWHATSREAL10 · $311.00 · Not accepted by the store. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/heartandsoil-coupon",
+          "evidence": "Take 10% off Your Order with Heartandsoil Discount Code ... MISSSAYWHATSREAL10 (10% off)",
+          "good": false
+        },
+        {
+          "code": "HAYLEYWILSON",
+          "text": "HAYLEYWILSON · $279.90 · saves $31.10 · Saves $31.10. · us.hotdeals.com (reported by the search)",
+          "source": "https://us.hotdeals.com/store/heartandsoil-coupon",
+          "evidence": "Unlock 10% Savings on Your Order ... HAYLEYWILSON (10% off)",
+          "good": true
+        },
+        {
+          "code": "SASHA10",
+          "text": "SASHA10 · $279.90 · saves $31.10 · Saves $31.10. · heartandsoil.orangeoffer.com (reported by the search)",
+          "source": "https://heartandsoil.orangeoffer.com/",
+          "evidence": "A user saved $19.04 with code SASHA10. (listed as 20% off; also on joincheckmate)",
+          "good": true
+        },
+        {
+          "code": "ASH10",
+          "text": "ASH10 · $279.90 · saves $31.10 · Saves $31.10. · ash-eats.com (reported by the search)",
+          "source": "https://ash-eats.com/heart-soil-promo-code-ash10-for-10-off/",
+          "evidence": "Enter ASH10 at checkout to save 10% on your entire Heart & Soil order. (10% off; affiliate blog)",
+          "good": true
+        },
+        {
+          "code": "RIBEYERACH",
+          "text": "RIBEYERACH · $279.90 · saves $31.10 · Saves $31.10. · ribeyerach.com (reported by the search)",
+          "source": "https://www.ribeyerach.com/heart-and-soil-discount-code",
+          "evidence": "10% off your order with the code \"RIBEYERACH (10% off; creator blog)",
+          "good": true
+        },
+        {
+          "code": "DARRENFEELGREAT10",
+          "text": "DARRENFEELGREAT10 · $311.00 · Not accepted by the store. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/heartandsoil.co",
+          "evidence": "10% Off Heart & Soil Discount Code ... DARRENFEELGREAT10 (10% off; also on HotDeals; Aug 2026)",
+          "good": false
+        },
+        {
+          "code": "IZZY10",
+          "text": "IZZY10 · $279.90 · saves $31.10 · Saves $31.10. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/heartandsoil.co",
+          "evidence": "Save 10% on Your Purchase ... IZZY10 (10% off; Aug 2026)",
+          "good": true
+        },
+        {
+          "code": "CROWELLANDCO",
+          "text": "CROWELLANDCO · $311.00 · Not accepted by the store. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/heartandsoil.co",
+          "evidence": "Enjoy 10% off in-store ... CROWELLANDCO (10% off; Aug 2026)",
+          "good": false
+        },
+        {
+          "code": "GETREALGF",
+          "text": "GETREALGF · $279.90 · saves $31.10 · Saves $31.10. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/heartandsoil.co",
+          "evidence": "Save 10% at Heart & Soil Today ... GETREALGF (10% off; Aug 2026)",
+          "good": true
+        },
+        {
+          "code": "WHISPERINGWI10",
+          "text": "WHISPERINGWI10 · $311.00 · Not accepted by the store. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/heartandsoil.co",
+          "evidence": "10% Off on Your Heart & Soil Order ... WHISPERINGWI10 (10% off; also on shipthedeal.com)",
+          "good": false
+        },
+        {
+          "code": "CASSIEBRUNS10",
+          "text": "CASSIEBRUNS10 · $279.90 · saves $31.10 · Saves $31.10. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/heartandsoil.co",
+          "evidence": "Enjoy 10% Off Your Purchase with Heart & Soil Promo Code ... CASSIEBRUNS10 (10% off)",
+          "good": true
+        },
+        {
+          "code": "MGEATSGOOD10",
+          "text": "MGEATSGOOD10 · $279.90 · saves $31.10 · Saves $31.10. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/heartandsoil.co",
+          "evidence": "Heart & Soil Coupon Code: Save 10% on Your Order Today ... MGEATSGOOD10 (10% off)",
+          "good": true
+        },
+        {
+          "code": "MIKAELA10",
+          "text": "MIKAELA10 · $279.90 · saves $31.10 · Saves $31.10. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/heartandsoil.co",
+          "evidence": "Limited Offer: 10% Off with Heart & Soil Promo Code ... MIKAELA10 (10% off)",
+          "good": true
+        },
+        {
+          "code": "TRENTEN10",
+          "text": "TRENTEN10 · $279.90 · saves $31.10 · Saves $31.10. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/heartandsoil.co",
+          "evidence": "Heart & Soil Promo Code for 10% Off - Shop Now ... TRENTEN10 (10% off)",
+          "good": true
+        },
+        {
+          "code": "PEACEWARCO10",
+          "text": "PEACEWARCO10 · $311.00 · Not accepted by the store. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/heartandsoil.co",
+          "evidence": "Item Sitewide ... PEACEWARCO10 (10% off listed; \"Expires soon)",
+          "good": false
+        },
+        {
+          "code": "AWAKEN10",
+          "text": "AWAKEN10 · $279.90 · saves $31.10 · Saves $31.10. · couponsvilla.com (reported by the search)",
+          "source": "https://couponsvilla.com/store/heart-soil/",
+          "evidence": "10% Off Any Purchase ... AWAKEN10 (10% off; also on shipthedeal.com)",
+          "good": true
+        },
+        {
+          "code": "HEALTHYW10",
+          "text": "HEALTHYW10 · $311.00 · Not accepted by the store. · heartandsoil.orangeoffer.com (reported by the search)",
+          "source": "https://heartandsoil.orangeoffer.com/",
+          "evidence": "A user saved $11.34 with code HEALTHYW10. (10% off; page showed expiry 09/25/2026)",
+          "good": false
+        },
+        {
+          "code": "THEHIVE10",
+          "text": "THEHIVE10 · $311.00 · Not accepted by the store. · thehive.health (reported by the search)",
+          "source": "https://thehive.health/heart-and-soil-discount-code-thehive10",
+          "evidence": "use code THEHIVE10 to get 10% off your entire order! (10% off; affiliate blog)",
+          "good": false
+        },
+        {
+          "code": "ANDREWJCASS10",
+          "text": "ANDREWJCASS10 · $279.90 · saves $31.10 · Saves $31.10. · andrewjcass.substack.com (reported by the search)",
+          "source": "https://andrewjcass.substack.com/p/andrew-recommends",
+          "evidence": "enter the code 'ANDREWJCASS10' to get 10% off at checkout (10% off; Substack newsletter)",
+          "good": true
+        },
+        {
+          "code": "GETSOME10 + MEGMAC",
+          "text": "GETSOME10 + MEGMAC · $279.90 · The store does not combine these codes. · both codes, applied together",
+          "source": "",
+          "evidence": "",
+          "good": false
+        },
+        {
+          "code": "GETSOME10 + SUMMERNEWMAN10",
+          "text": "GETSOME10 + SUMMERNEWMAN10 · $279.90 · The store does not combine these codes. · both codes, applied together",
+          "source": "",
+          "evidence": "",
+          "good": false
+        }
+      ],
+      "cartAfter": {
+        "total": 279.9,
+        "codes": [
+          {
+            "code": "GETSOME10",
+            "applicable": true
+          }
+        ],
+        "fields": {
+          "items": 1,
+          "subtotal": 31100,
+          "original": 31100,
+          "discount": 3110,
+          "currency": "USD"
+        }
+      },
+      "verify": {
+        "before": 311,
+        "after": 279.9,
+        "codes": [
+          {
+            "code": "GETSOME10",
+            "applicable": true
+          }
+        ],
+        "claimed": "$279.90",
+        "confirmed": true
+      },
+      "seconds": 184
+    },
+    {
+      "name": "Ancestral Supplements",
+      "url": "https://ancestralsupplements.com",
+      "group": "food",
+      "outcome": "applied",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant store-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=4 reported=16 dropped=0 masked=4",
+        "coupons:attempt 1 rejected",
+        "coupons:attempt 2 rejected",
+        "coupons:attempt 3 saving",
+        "coupons:attempt 4 saving",
+        "coupons:attempt 5 saving",
+        "coupons:attempt 6 saving",
+        "coupons:attempt 7 rejected",
+        "coupons:attempt 8 saving",
+        "coupons:attempt 9 rejected",
+        "coupons:attempt 10 rejected",
+        "coupons:attempt 11 saving",
+        "coupons:attempt 12 saving",
+        "coupons:attempt 13 saving",
+        "coupons:attempt 14 saving",
+        "coupons:attempt 15 saving",
+        "coupons:attempt 16 saving",
+        "coupons:attempt 17 saving",
+        "coupons:attempt 18 rejected",
+        "coupons:attempt 19 saving",
+        "coupons:attempt 20 saving",
+        "coupons:attempt 21 combo rejected",
+        "coupons:attempt 22 combo rejected",
+        "coupons:status done best applied",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 6.2,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 6.3,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 6.3,
+          "stage": "coupons:merchant store-host named"
+        },
+        {
+          "t": 6.4,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 6.9,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 6.9,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 195.2,
+          "stage": "coupons:candidates store=0 verified=4 reported=16 dropped=0 masked=4"
+        },
+        {
+          "t": 195.9,
+          "stage": "coupons:attempt 1 rejected"
+        },
+        {
+          "t": 196.9,
+          "stage": "coupons:attempt 2 rejected"
+        },
+        {
+          "t": 197.7,
+          "stage": "coupons:attempt 3 saving"
+        },
+        {
+          "t": 198.7,
+          "stage": "coupons:attempt 4 saving"
+        },
+        {
+          "t": 199.6,
+          "stage": "coupons:attempt 5 saving"
+        },
+        {
+          "t": 200.4,
+          "stage": "coupons:attempt 6 saving"
+        },
+        {
+          "t": 201.7,
+          "stage": "coupons:attempt 7 rejected"
+        },
+        {
+          "t": 202.6,
+          "stage": "coupons:attempt 8 saving"
+        },
+        {
+          "t": 203.4,
+          "stage": "coupons:attempt 9 rejected"
+        },
+        {
+          "t": 204.3,
+          "stage": "coupons:attempt 10 rejected"
+        },
+        {
+          "t": 205.5,
+          "stage": "coupons:attempt 11 saving"
+        },
+        {
+          "t": 206.4,
+          "stage": "coupons:attempt 12 saving"
+        },
+        {
+          "t": 207.4,
+          "stage": "coupons:attempt 13 saving"
+        },
+        {
+          "t": 208.2,
+          "stage": "coupons:attempt 14 saving"
+        },
+        {
+          "t": 209,
+          "stage": "coupons:attempt 15 saving"
+        },
+        {
+          "t": 209.9,
+          "stage": "coupons:attempt 16 saving"
+        },
+        {
+          "t": 210.7,
+          "stage": "coupons:attempt 17 saving"
+        },
+        {
+          "t": 211.6,
+          "stage": "coupons:attempt 18 rejected"
+        },
+        {
+          "t": 212.4,
+          "stage": "coupons:attempt 19 saving"
+        },
+        {
+          "t": 213.2,
+          "stage": "coupons:attempt 20 saving"
+        },
+        {
+          "t": 214.1,
+          "stage": "coupons:attempt 21 combo rejected"
+        },
+        {
+          "t": 214.7,
+          "stage": "coupons:attempt 22 combo rejected"
+        },
+        {
+          "t": 215.3,
+          "stage": "coupons:status done best applied"
+        },
+        {
+          "t": 215.3,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "f3c5f1c539",
+      "startedAt": "2026-10-17T15:49:48.687Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://ancestralsupplements.com/cart"
+      },
+      "cartBefore": {
+        "total": 44,
+        "codes": [],
+        "fields": {
+          "items": 1,
+          "subtotal": 4400,
+          "original": 4400,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Ancestral Supplements codes. Found 20 codes: 4 codes read on the pages that post them and 16 codes the search reported from pages it returned. 4 codes shown masked or behind a button could not be read, so they were not tested. I tested 20 codes. HOMEGROWN is the best: your total drops from $44.00 to $37.40 (you save $6.60, 15% off). It's applied to your cart, and I didn't go to checkout. Conditions seen with it: up to 15% off; page said it was confirmed working about 2 months before the page date.\n\nCode\tResult\tWhere it was found\nHOMEGROWN\tsaves $6.60, total $37.40\tancestral-supplements.tenereteam.com (reported by the search)\nSERENA\tsaves $6.60, total $37.40\tancestral-supplements.tenereteam.com (reported by the search)\nDUSTIN\tsaves $6.60, total $37.40\tancestral-supplements.tenereteam.com (reported by the search)\nMEHDI\tsaves $6.60, total $37.40\tancestralsupplementscom.valuecom.com (reported by the search)\nNEW20\tsaves $6.60, total $37.40\tancestralsupplementscom.valuecom.com (reported by the search)\nSKINALLIE\tsaves $6.60, total $37.40\tancestralsupplementscom.valuecom.com (reported by the search)\nNICOLEM\tsaves $6.60, total $37.40\tancestralsupplementscom.valuecom.com (reported by the search)\nWILTON15\tsaves $6.60, total $37.40\tancestralsupplementscom.valuecom.com (reported by the search)\nANNALINDLEY15\tsaves $6.60, total $37.40\tancestralsupplementscom.valuecom.com (reported by the search)\nWELCOME20\tsaves $6.60, total $37.40\tancestralsupplementscom.valuecom.com (reported by the search)\nAVAJUNEADVENTURES\tsaves $6.60, total $37.40\twethrift.com (reported by the search)\nMICHELLE_10\tsaves $4.40, total $39.60\tancestral-supplements.tenereteam.com (reported by the search)\nHORN10\tsaves $4.40, total $39.60\thotdeals.com (reported by the search)\nMETA10\tsaves $4.40, total $39.60\tancestralsupplementscom.valuecom.com (reported by the search)\n\nDidn't work: SPOTTERUP15, MUSCLEMAVEN, ENJOY30, HAPPYHEALTHYANDHOT, TAKE10, TRIBE10.\n\nCode-free offers the pages mention (not tested): 30% off on supplements for new customers who subscribe with their first email registration. Returning customers receive ; Ancestral Supplements provides a 20% discount for military personnel ... authenticate your status through GovX\" military.\n\nCheckout can still change the final price, for example tax, shipping, or whether the code applies to later orders.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Ancestral Supplements codes…",
+        "I searched the web for Ancestral Supplements codes. Found 20 codes: 4 codes read on the pages that post them and 16 codes the search reported from pages it returned. 4 codes shown masked or behind a button could not be read, so they were not tested.",
+        "Testing 20 codes on your cart, one at a time…"
+      ],
+      "attempts": [
+        {
+          "code": "SPOTTERUP15",
+          "text": "SPOTTERUP15 · $44.00 · Not accepted by the store. · seen on couponupto.com",
+          "source": "https://www.couponupto.com/coupons/ancestral-supplements",
+          "evidence": "SPOTTERUP15 Show Code ... 15% OFF Ancestral Supplements Coupon Code (old and unverified; the page links ancestral-supplements.myshopify.com)",
+          "good": false
+        },
+        {
+          "code": "MUSCLEMAVEN",
+          "text": "MUSCLEMAVEN · $44.00 · Not accepted by the store. · seen on dealdrop.com",
+          "source": "https://www.dealdrop.com/ancestral-supplements-1",
+          "evidence": "The best Ancestral Supplements coupons is MUSCLEMAVEN, giving customers 10% off (page dated June 2025; the page lists the store domain as ancestral-supplements.myshopify.com, so check that it is the sa)",
+          "good": false
+        },
+        {
+          "code": "HOMEGROWN",
+          "text": "HOMEGROWN · $37.40 · saves $6.60 · Saves $6.60. · ancestral-supplements.tenereteam.com (reported by the search)",
+          "source": "https://ancestral-supplements.tenereteam.com/coupons",
+          "evidence": "Click 'Get Code' to reveal your promo code: HOMEGROWN (up to 15% off; page said it was confirmed working about 2 months before the page date)",
+          "good": true
+        },
+        {
+          "code": "SERENA",
+          "text": "SERENA · $37.40 · saves $6.60 · Saves $6.60. · ancestral-supplements.tenereteam.com (reported by the search)",
+          "source": "https://ancestral-supplements.tenereteam.com/coupons",
+          "evidence": "Click 'Get Code' to reveal your promo code: SERENA (up to 15% off; worthepenny.com page also mentions the code serena for 30% off)",
+          "good": true
+        },
+        {
+          "code": "DUSTIN",
+          "text": "DUSTIN · $37.40 · saves $6.60 · Saves $6.60. · ancestral-supplements.tenereteam.com (reported by the search)",
+          "source": "https://ancestral-supplements.tenereteam.com/coupons",
+          "evidence": "Click 'Get Code' to reveal your promo code: DUSTIN (up to 10% off)",
+          "good": true
+        },
+        {
+          "code": "MICHELLE_10",
+          "text": "MICHELLE_10 · $39.60 · saves $4.40 · Saves $4.40. · ancestral-supplements.tenereteam.com (reported by the search)",
+          "source": "https://ancestral-supplements.tenereteam.com/coupons",
+          "evidence": "Click 'Get Code' to reveal your promo code: MICHELLE_10 (10% off; page said it was applied successfully on Jun 24, 2026 on a Grass Fed Beef Adrenal order)",
+          "good": true
+        },
+        {
+          "code": "ENJOY30",
+          "text": "ENJOY30 · $44.00 · Not accepted by the store. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/ancestral-supplements-promo-codes",
+          "evidence": "Shop now and enjoy 30% OFF at Ancestral Supplements ... ENJOY30",
+          "good": false
+        },
+        {
+          "code": "HORN10",
+          "text": "HORN10 · $39.60 · saves $4.40 · Saves $4.40. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/ancestral-supplements-promo-codes",
+          "evidence": "10% OFF on beef liver and beef thymus ... Horn10 (the code is probably tied to a creator; the hotdeals page was from June 2026)",
+          "good": true
+        },
+        {
+          "code": "HAPPYHEALTHYANDHOT",
+          "text": "HAPPYHEALTHYANDHOT · $44.00 · Not accepted by the store. · seen on couponupto.com",
+          "source": "https://www.couponupto.com/coupons/ancestral-supplements",
+          "evidence": "Save 10% off your order at Ancestral Supplements ... HAPPYHEALTHYANDHOT (expiry shown as 2021-07-25, so probably dead)",
+          "good": false
+        },
+        {
+          "code": "TAKE10",
+          "text": "TAKE10 · $44.00 · Not accepted by the store. · seen on couponupto.com",
+          "source": "https://www.couponupto.com/coupons/ancestral-supplements",
+          "evidence": "Extra 10% Off (Sitewide) at Ancestral Supplements ... TAKE10 (expiry shown as 2021-07-25, so probably dead)",
+          "good": false
+        },
+        {
+          "code": "META10",
+          "text": "META10 · $39.60 · saves $4.40 · Saves $4.40. · ancestralsupplementscom.valuecom.com (reported by the search)",
+          "source": "https://ancestralsupplementscom.valuecom.com/",
+          "evidence": "10% Off Your Purchase with Exclusive Coupon ... verified screenshot for code META10 (the page listed it as ending 09/06/2026)",
+          "good": true
+        },
+        {
+          "code": "MEHDI",
+          "text": "MEHDI · $37.40 · saves $6.60 · Saves $6.60. · ancestralsupplementscom.valuecom.com (reported by the search)",
+          "source": "https://ancestralsupplementscom.valuecom.com/",
+          "evidence": "20% Off Storewide at Ancestral Supplements ... screenshot for code MEHDI",
+          "good": true
+        },
+        {
+          "code": "NEW20",
+          "text": "NEW20 · $37.40 · saves $6.60 · Saves $6.60. · ancestralsupplementscom.valuecom.com (reported by the search)",
+          "source": "https://ancestralsupplementscom.valuecom.com/",
+          "evidence": "20% Off at Ancestral Supplements ... 2 verified screenshots for code NEW20",
+          "good": true
+        },
+        {
+          "code": "SKINALLIE",
+          "text": "SKINALLIE · $37.40 · saves $6.60 · Saves $6.60. · ancestralsupplementscom.valuecom.com (reported by the search)",
+          "source": "https://ancestralsupplementscom.valuecom.com/",
+          "evidence": "15% Off at Ancestral Supplements ... screenshot for code SKINALLIE Found on official social media",
+          "good": true
+        },
+        {
+          "code": "NICOLEM",
+          "text": "NICOLEM · $37.40 · saves $6.60 · Saves $6.60. · ancestralsupplementscom.valuecom.com (reported by the search)",
+          "source": "https://ancestralsupplementscom.valuecom.com/",
+          "evidence": "15% Off Storewide at Ancestral Supplements ... screenshot for code NICOLEM",
+          "good": true
+        },
+        {
+          "code": "WILTON15",
+          "text": "WILTON15 · $37.40 · saves $6.60 · Saves $6.60. · ancestralsupplementscom.valuecom.com (reported by the search)",
+          "source": "https://ancestralsupplementscom.valuecom.com/",
+          "evidence": "15% Off at Ancestral Supplements ... screenshot for code WILTON15 (also listed on hotdeals.com as 15% off beef kidney and beef spleen)",
+          "good": true
+        },
+        {
+          "code": "ANNALINDLEY15",
+          "text": "ANNALINDLEY15 · $37.40 · saves $6.60 · Saves $6.60. · ancestralsupplementscom.valuecom.com (reported by the search)",
+          "source": "https://ancestralsupplementscom.valuecom.com/",
+          "evidence": "Get 15% Off Everything at ancestralsupplements.com ... shopper copied promo code ANNALINDLEY15 (also listed on hotdeals.com)",
+          "good": true
+        },
+        {
+          "code": "TRIBE10",
+          "text": "TRIBE10 · $44.00 · Not accepted by the store. · ash-eats.com (reported by the search)",
+          "source": "http://ash-eats.com/ancestral-supplements-discount-code-10-off-with-code-tribe10/",
+          "evidence": "use code TRIBE10 at checkout for 10% off your order",
+          "good": false
+        },
+        {
+          "code": "WELCOME20",
+          "text": "WELCOME20 · $37.40 · saves $6.60 · Saves $6.60. · ancestralsupplementscom.valuecom.com (reported by the search)",
+          "source": "https://ancestralsupplementscom.valuecom.com/",
+          "evidence": "Verified 20% Off at Ancestral Supplements Ends 09/06/2026 ... code WELCOME20 ... First Order Only (first order only; the page listed it as ending 09/06/2026)",
+          "good": true
+        },
+        {
+          "code": "AVAJUNEADVENTURES",
+          "text": "AVAJUNEADVENTURES · $37.40 · saves $6.60 · Saves $6.60. · wethrift.com (reported by the search)",
+          "source": "https://www.wethrift.com/ancestral-supplements",
+          "evidence": "The best code to try is AVAJUNEADVENTURES for 15% off. (15% off your first order)",
+          "good": true
+        },
+        {
+          "code": "HOMEGROWN + SERENA",
+          "text": "HOMEGROWN + SERENA · $37.40 · The store does not combine these codes. · both codes, applied together",
+          "source": "",
+          "evidence": "",
+          "good": false
+        },
+        {
+          "code": "HOMEGROWN + DUSTIN",
+          "text": "HOMEGROWN + DUSTIN · $37.40 · The store does not combine these codes. · both codes, applied together",
+          "source": "",
+          "evidence": "",
+          "good": false
+        }
+      ],
+      "cartAfter": {
+        "total": 37.4,
+        "codes": [
+          {
+            "code": "HOMEGROWN",
+            "applicable": true
+          }
+        ],
+        "fields": {
+          "items": 1,
+          "subtotal": 3740,
+          "original": 4400,
+          "discount": 660,
+          "currency": "USD"
+        }
+      },
+      "verify": {
+        "before": 44,
+        "after": 37.4,
+        "codes": [
+          {
+            "code": "HOMEGROWN",
+            "applicable": true
+          }
+        ],
+        "claimed": "$37.40",
+        "confirmed": true
+      },
+      "seconds": 219
+    },
+    {
+      "name": "WORN",
+      "url": "https://wornbrand.com",
+      "group": "apparel",
+      "outcome": "no codes found",
+      "notes": [
+        "the cart page's /cart.js was empty after adding (an app's /cart/update.js); item added again from the cart page"
+      ],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant store-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=3",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 8.7,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 8.8,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 8.8,
+          "stage": "coupons:merchant store-host named"
+        },
+        {
+          "t": 8.9,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 9.3,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 9.3,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 125.2,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=3"
+        },
+        {
+          "t": 125.4,
+          "stage": "coupons:status no_codes"
+        },
+        {
+          "t": 125.4,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "f3c5f1c539",
+      "startedAt": "2026-10-17T15:53:30.890Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://wornbrand.com/cart"
+      },
+      "cartBefore": {
+        "total": 0.95,
+        "codes": [],
+        "fields": {
+          "items": 1,
+          "subtotal": 95,
+          "original": 95,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for WORN codes. No code posted for WORN could be found. 3 codes shown masked or behind a button could not be read, so they were not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for WORN codes…",
+        "I searched the web for WORN codes. No code posted for WORN could be found. 3 codes shown masked or behind a button could not be read, so they were not tested."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 0,
+        "codes": [],
+        "fields": {
+          "items": 0,
+          "subtotal": 0,
+          "original": 0,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "seconds": 129
+    },
+    {
+      "name": "Tackform",
+      "url": "https://www.tackform.com",
+      "group": "gear",
+      "outcome": "no codes found",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=3",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 6.3,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 6.4,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 6.4,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 6.6,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 7,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 7,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 243.2,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=3"
+        },
+        {
+          "t": 243.4,
+          "stage": "coupons:status no_codes"
+        },
+        {
+          "t": 243.4,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "f3c5f1c539",
+      "startedAt": "2026-10-17T15:55:42.965Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://www.tackform.com/cart"
+      },
+      "cartBefore": {
+        "total": 60,
+        "codes": [],
+        "fields": {
+          "items": 1,
+          "subtotal": 6000,
+          "original": 6000,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Tackform codes. No code posted for Tackform could be found. 3 codes shown masked or behind a button could not be read, so they were not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Tackform codes…",
+        "I searched the web for Tackform codes. No code posted for Tackform could be found. 3 codes shown masked or behind a button could not be read, so they were not tested."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 60,
+        "codes": [],
+        "fields": {
+          "items": 1,
+          "subtotal": 6000,
+          "original": 6000,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "seconds": 246
+    },
+    {
+      "name": "Dr. Squatch",
+      "url": "https://www.drsquatch.com",
+      "group": "home",
+      "outcome": "blocked: could not add to cart (no Add to cart button on the product page)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "f3c5f1c539",
+      "startedAt": "2026-10-17T15:59:52.371Z",
+      "seconds": 23
+    },
+    {
+      "name": "Brumate",
+      "url": "https://brumate.com",
+      "group": "extra",
+      "outcome": "applied",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host named",
+        "coupons:method page",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=11 reported=13 dropped=0 masked=7",
+        "coupons:attempt 1 saving",
+        "coupons:status done best applied",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 17.9,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 18,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 18,
+          "stage": "coupons:merchant other-host named"
+        },
+        {
+          "t": 21.6,
+          "stage": "coupons:method page"
+        },
+        {
+          "t": 22.5,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 22.5,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 133.6,
+          "stage": "coupons:candidates store=0 verified=11 reported=13 dropped=0 masked=7"
+        },
+        {
+          "t": 135.2,
+          "stage": "coupons:attempt 1 saving"
+        },
+        {
+          "t": 135.5,
+          "stage": "coupons:status done best applied"
+        },
+        {
+          "t": 135.5,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "f3c5f1c539",
+      "startedAt": "2026-10-17T16:00:18.798Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.brumate.com/"
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for BruMate codes. Found 24 codes: 11 codes read on the pages that post them and 13 codes the search reported from pages it returned. 7 codes shown masked or behind a button could not be read, so they were not tested. I tested 1 code. LL10-XEEG0MNF is the best: your total drops from $149.99 to $139.99 (you save $10.00, 7% off). It's applied to your cart, and I didn't go to checkout. Conditions seen with it: $10 off; no stacking, excludes sale items.\n\nCode\tResult\tWhere it was found\nLL10-XEEG0MNF\tsaves $10.00, total $139.99\tseen on brumate.tenereteam.com\n\nCode-free offers the pages mention (not tested): Brumate free domestic delivery for your over 75$\" free shipping on domestic orders over $75; Get Free Shipping on U.s. Orders +$75 at Brumate\" free shipping over $75; Save 15% on Your First Purchase Shop at BruMate and get a 15% discount on your first purchase.\" first-purchase offer; co.\n\nThe store kept the earlier code on the order and shows no remove button I can use safely, so I stopped testing there.\n\nCheckout can still change the final price, for example tax, shipping, or whether the code applies to later orders.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Found the coupon box. Searching the web for BruMate codes…",
+        "I searched the web for BruMate codes. Found 24 codes: 11 codes read on the pages that post them and 13 codes the search reported from pages it returned. 7 codes shown masked or behind a button could not be read, so they were not tested.",
+        "Testing 24 codes on your cart, one at a time…"
+      ],
+      "attempts": [
+        {
+          "code": "LL10-XEEG0MNF",
+          "text": "LL10-XEEG0MNF · $139.99 · saves $10.00 · Saves $10.00. · seen on brumate.tenereteam.com",
+          "source": "https://brumate.tenereteam.com/coupons",
+          "evidence": "10$ cheaper at least when using Brumate discount code. ($10 off; no stacking, excludes sale items)",
+          "good": true
+        }
+      ],
+      "seconds": 140
+    }
+  ]
+}
