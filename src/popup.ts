@@ -365,6 +365,9 @@ function syncSegmented(inputs: HTMLInputElement[]): void {
 
 const CONTEXT_TURNS = 10;
 
+/** The moving "processing" indicator: coupon milestones, a Working card's head, and an answer before its first words. */
+const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></span>';
+
 async function main(): Promise<void> {
   const chatView = el("chat-view");
   const settingsView = el("settings-view");
@@ -1416,7 +1419,8 @@ async function main(): Promise<void> {
     if (!v || !m) return;
     const text = v.prefix + m.text;
     if (text) renderMarkdown(document, v.bubble, text, { sources: allSources(v, m) });
-    else v.bubble.textContent = m.status === "error" || m.status === "complete" ? "" : "Thinking…";
+    else if (m.status === "error" || m.status === "complete") v.bubble.textContent = "";
+    else v.bubble.innerHTML = '<span class="thinking">' + PULSE + "<span>Thinking…</span></span>";
     v.bubble.appendChild(sharedLine(v.shared));
     if (v.closed && m.status === "complete" && !m.stopped && text) {
       v.bubble.appendChild(answerActions(v.bubble, { question: v.question, answer: text, sources: allSources(v, m) }));
@@ -1977,6 +1981,8 @@ async function main(): Promise<void> {
 
   function showTrace(t: TaskUi): void {
     task = t;
+    // The head moves while the task works, like a coupon run's (owner item 14).
+    t.head.insertAdjacentHTML("afterbegin", PULSE);
     refreshHead();
     t.timer = setInterval(refreshHead, 1000);
     t.take.addEventListener("click", onTakeControl);
@@ -1994,6 +2000,7 @@ async function main(): Promise<void> {
     if (t.timer) clearInterval(t.timer);
     t.timer = null;
     const word = statusOf === "done" ? "Finished" : statusOf === "stopped" ? "Stopped" : "Ended";
+    t.head.querySelector(".pulse")?.remove();
     t.headText.textContent = word + " " + elapsedText(Date.now() - t.startedAt);
     t.controls.remove();
     hideConfirm();
@@ -2321,7 +2328,6 @@ async function main(): Promise<void> {
 
   /** A find this soon after the last "Found" line adds to it instead of posting another. */
   const FOUND_EVERY_MS = 8000;
-  const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></span>';
   const DONE_MARK = '<svg class="done-mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>';
 
   /** Find coupons' milestone lines in the chat, outside the Working card; the newest one shows the moving indicator. */
