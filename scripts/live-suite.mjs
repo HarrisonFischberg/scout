@@ -185,35 +185,98 @@ async function firstProductLink(shop) {
 }
 const DISCOUNT_INPUTS = 'input[name*="discount" i], input[name*="coupon" i], input[name*="promo" i], input[placeholder*="discount" i], input[placeholder*="coupon" i], input[placeholder*="promo" i], input[aria-label*="discount" i], input[aria-label*="promo" i]';
 
+/** Marketing modals and cookie banners in front of the page: a shopper closes them; so does the runner (nothing else). */
+async function dismissOverlays(shop) {
+  await shop.keyboard.press("Escape").catch(() => null);
+  const closers = shop.locator('[role="dialog"] button[aria-label*="close" i], [class*="modal" i] button[aria-label*="close" i], [class*="popup" i] button[aria-label*="close" i], [id*="popup" i] button[aria-label*="close" i], [class*="modal" i] [class*="close" i], button[aria-label="Close"], button[aria-label="close"], button.close');
+  for (let i = 0, n = Math.min(await closers.count().catch(() => 0), 4); i < n; i++) {
+    const c = closers.nth(i);
+    if (await c.isVisible().catch(() => false)) await c.click({ timeout: 2_000 }).catch(() => null);
+  }
+  // Cookie banners cover the buttons below them; decline when offered, otherwise accept.
+  const decline = shop.locator("button, a").filter({ hasText: /^\s*(decline|reject( all)?( cookies)?|necessary (cookies )?only|only necessary)\s*$/i }).first();
+  if (await decline.isVisible().catch(() => false)) await decline.click({ timeout: 2_000 }).catch(() => null);
+  else {
+    const accept = shop.locator("button").filter({ hasText: /^\s*(accept( all)?( cookies)?|got it|i agree|ok(ay)?)\s*$/i }).first();
+    if (await accept.isVisible().catch(() => false)) await accept.click({ timeout: 2_000 }).catch(() => null);
+  }
+  await wait(500);
+}
+
+/** Up to `max` product links on the store's own hosts (not play.google.com/store), gift cards left out. */
+async function productLinks(shop, max = 6) {
+  const site = new URL(shop.url()).hostname.replace(/^www\./, "").split(".").slice(-2).join(".");
+  const out = [];
+  for (const a of await shop.$$(PRODUCT_LINKS)) {
+    const href = (await a.getAttribute("href")) || "";
+    let abs;
+    try {
+      abs = new URL(href, shop.url());
+    } catch {
+      continue;
+    }
+    if (!abs.hostname.endsWith(site)) continue;
+    const text = ((await a.textContent().catch(() => "")) || "").trim();
+    if (/gift[-\s]?card|e-?gift/i.test(href + " " + text)) continue;
+    const url = abs.origin + abs.pathname;
+    if (!out.includes(url)) out.push(url);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 /** Opens the checkout's first step from the cart and checks it is the information page. Never fills or submits anything. */
-async function openCheckoutStep(shop) {
-  const btn = shop
-    .locator('button, a, [role="button"]')
-    .filter({ hasText: /check ?out/i })
-    .filter({ hasNotText: /without|coverage|protection|continue shopping|express/i })
-    .first();
-  if (!(await btn.count())) return { ok: false, reason: "no Checkout button on the cart" };
+async function openCheckoutStep(shop, context) {
+  await dismissOverlays(shop);
+  const exclude = /without|coverage|protection|continue shopping|express|shop ?pay|paypal|apple pay|g ?pay|amazon pay/i;
+  const groups = [
+    shop.locator('a[href*="/checkout"]'),
+    shop.locator('button, a, [role="button"], input[type="submit"]').filter({ hasText: /check ?out/i }),
+    shop.locator('button, a, [role="button"]').filter({ hasText: /proceed to|continue (to|with) (checkout|one[- ]time|purchase)|go to checkout/i }),
+  ];
+  let btn = null;
+  for (const g of groups) {
+    const l = g.filter({ hasNotText: exclude });
+    for (let i = 0, n = Math.min(await l.count().catch(() => 0), 6); i < n && !btn; i++) if (await l.nth(i).isVisible().catch(() => false)) btn = l.nth(i);
+    if (btn) break;
+  }
+  if (!btn) return { ok: false, reason: "no Checkout button on the cart" };
   await btn.scrollIntoViewIfNeeded().catch(() => null);
+  // Some stores open checkout in a new tab; some need a second, forced click under a banner.
+  const popupPromise = context.waitForEvent("page", { timeout: 15_000 }).catch(() => null);
   await btn.click({ timeout: 10_000 }).catch(() => null);
-  await shop.waitForURL(/checkout/i, { timeout: 30_000 }).catch(() => null);
+  const isCheckoutUrl = (u) => /checkout/i.test(u) || /^checkout\./.test(new URL(u).hostname);
+  let page = shop;
+  const landed = await Promise.race([
+    shop.waitForURL((u) => isCheckoutUrl(u.toString()), { timeout: 15_000 }).then(() => "same").catch(() => null),
+    popupPromise.then((p) => (p ? "popup" : null)),
+  ]);
+  if (landed === "popup") {
+    page = await popupPromise;
+    await page.waitForLoadState("domcontentloaded").catch(() => null);
+  } else if (!landed) {
+    await btn.click({ force: true, timeout: 10_000 }).catch(() => null);
+    await shop.waitForURL((u) => isCheckoutUrl(u.toString()), { timeout: 20_000 }).catch(() => null);
+  }
   await wait(3000);
   let text = "";
   for (let i = 0; i < 6; i++) {
-    text = (await evalWithin(shop, () => document.body.innerText).catch(() => "")) || "";
+    text = (await evalWithin(page, () => document.body.innerText).catch(() => "")) || "";
     if (text.trim().length > 80) break;
     await wait(2500);
   }
-  const url = shop.url();
-  if (!/checkout/i.test(url)) return { ok: false, reason: "Checkout button did not open a checkout page", url };
+  const url = page.url();
+  if (!isCheckoutUrl(url)) return { ok: false, reason: "Checkout button did not open a checkout page", url };
   if (BOT_WALL.test(text)) return { ok: false, reason: "bot check on the checkout page", url };
-  const contactForm = (await shop.locator('input[type="email"], input[name*="email" i], input[autocomplete="email"], input[autocomplete*="address" i], input[name*="address" i]').count().catch(() => 0)) > 0;
+  const contactForm = (await page.locator('input[type="email"], input[name*="email" i], input[autocomplete="email"], input[autocomplete*="address" i], input[name*="address" i]').count().catch(() => 0)) > 0;
   if (/\/payment|\/thank_you|\/orders\//i.test(url) || (!contactForm && /card number|credit card/i.test(text))) return { ok: false, reason: "checkout went straight to a payment page", url };
   if (!contactForm && /sign in|log in/i.test(text)) return { ok: false, reason: "sign-in wall on the checkout page", url };
-  return { ok: true, url, step: contactForm ? "information" : "unknown" };
+  return { ok: true, url, step: contactForm ? "information" : "unknown", page };
 }
 
 /** A size or other option to pick before Add to cart appears (BYLT "Select a size", Cuts "Select Size"). */
 async function pickFirstOption(shop) {
+  await dismissOverlays(shop);
   const picker = shop.getByRole("button", { name: /select (a |your )?(size|option)/i }).first();
   if (await picker.count()) await picker.click({ timeout: 5_000 }).catch(() => null);
   const option = shop
@@ -235,50 +298,54 @@ async function addToCart(shop, origin) {
 
 /** The shopper's way: a product page, the store's own Add to cart button, then the cart page. */
 async function addByClicking(shop, origin) {
-  // Other stores: open a product page (a product link, or a "Shop now" / collection link and then
-  // a product link on that page), press Add to cart, open the cart.
-  let productLink = await firstProductLink(shop);
-  if (!productLink) {
+  let links = await productLinks(shop);
+  if (!links.length) {
     const entry = await shop.$('a:has-text("shop now"), a:has-text("buy now"), a[href*="/collections/"], a[href*="/collection/"]');
     if (!entry) return { ok: false, reason: "no product link found on the home page" };
     const entryHref = await entry.getAttribute("href");
     await shop.goto(new URL(entryHref, origin).toString(), { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
     await wait(1500);
-    productLink = await firstProductLink(shop);
+    links = await productLinks(shop);
+    if (!links.length && /\/(products?|store|item)\//.test(shop.url())) links = [shop.url()];
   }
-  const onProductPage = !productLink && /\/(products?|store|item)\//.test(shop.url());
-  if (!productLink && !onProductPage) return { ok: false, reason: "no product link found on the home page" };
-  const href = productLink ? await productLink.getAttribute("href") : shop.url();
-  if (productLink) {
-    await shop.goto(new URL(href, shop.url()).toString(), { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
+  if (!links.length) return { ok: false, reason: "no product link found on the home page" };
+  let reason = "no Add to cart button on the product page";
+  for (const href of links) {
+    if (shop.url().split("?")[0] !== href) await shop.goto(href, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
     await wait(1500);
+    await dismissOverlays(shop);
+    // A marketing site in front of a shop on another host (perfectketo.com -> shop.perfectketo.com):
+    // the cart lives where the product page lives, and that host may be Shopify after all.
+    const shopOrigin = new URL(shop.url()).origin;
+    if (shopOrigin !== origin) {
+      const viaShopApi = await addViaShopify(shop, shopOrigin);
+      if (viaShopApi) return viaShopApi;
+    }
+    const viaProduct = await addViaProductJson(shop, shopOrigin);
+    if (viaProduct) return viaProduct;
+    // The button's accessible name, or Shopify's product form submit when the name is an icon or a price.
+    const addBtn = shop
+      .getByRole("button", { name: /add to (cart|bag|basket)/i })
+      .or(shop.locator('button[name="add"], form[action*="/cart/add"] [type="submit"]'))
+      .first();
+    if (!(await addBtn.count())) await pickFirstOption(shop);
+    if (!(await addBtn.count())) continue; // a discontinued product or a non-product page: the next link
+    await addBtn.scrollIntoViewIfNeeded().catch(() => null);
+    await addBtn.click({ timeout: 10_000 }).catch(() => null);
+    await wait(2500);
+    for (const path of ["/cart", "/cart/", "/basket", "/bag", "/checkout/cart"]) {
+      const r = await shop.goto(shopOrigin + path, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
+      if (!(r && r.ok())) continue;
+      await wait(1500);
+      const text = (await evalWithin(shop, () => document.body.innerText).catch(() => "")) || "";
+      if (/cart is (currently )?empty|no items in your (cart|bag)|nothing in your (cart|bag)|bag is empty/i.test(text)) {
+        reason = "the Add to cart click did not put the item in the cart";
+        break;
+      }
+      return { ok: true, how: "clicked add to cart", product: href };
+    }
   }
-  // A marketing site in front of a shop on another host (perfectketo.com -> shop.perfectketo.com):
-  // the cart lives where the product page lives, and that host may be Shopify after all.
-  const shopOrigin = new URL(shop.url()).origin;
-  if (shopOrigin !== origin) {
-    const viaShopApi = await addViaShopify(shop, shopOrigin);
-    if (viaShopApi) return viaShopApi;
-  }
-  const viaProduct = await addViaProductJson(shop, shopOrigin);
-  if (viaProduct) return viaProduct;
-  // The button's accessible name, or Shopify's product form submit when the name is an icon or a price.
-  const addBtn = shop
-    .getByRole("button", { name: /add to (cart|bag|basket)/i })
-    .or(shop.locator('button[name="add"], form[action*="/cart/add"] [type="submit"]'))
-    .first();
-  if (!(await addBtn.count())) {
-    await pickFirstOption(shop);
-    if (!(await addBtn.count())) return { ok: false, reason: "no Add to cart button on the product page" };
-  }
-  await addBtn.scrollIntoViewIfNeeded().catch(() => null);
-  await addBtn.click({ timeout: 10_000 }).catch(() => null);
-  await wait(2500);
-  for (const path of ["/cart", "/cart/", "/basket", "/bag", "/checkout/cart"]) {
-    const r = await shop.goto(shopOrigin + path, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
-    if (r && r.ok()) return { ok: true, how: "clicked add to cart", product: href };
-  }
-  return { ok: false, reason: "cart page not found after adding" };
+  return { ok: false, reason };
 }
 
 /** The Shopify cart, when the store has one, for independent verification of the result. */
@@ -481,7 +548,9 @@ async function runMerchant(browser, m) {
       const boxes = await shop.locator(DISCOUNT_INPUTS).count().catch(() => 0);
       if (boxes > 0) result.notes.push("the cart has a discount field; checkout not opened");
       else {
-        const step = await openCheckoutStep(shop);
+        const step = await openCheckoutStep(shop, context);
+        if (step.page && step.page !== shop) shop = step.page;
+        delete step.page;
         result.checkout = step;
         await shop.screenshot({ path: join(dir, "checkout-step.png"), fullPage: false }).catch(() => null);
         if (!step.ok) {
