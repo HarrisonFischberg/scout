@@ -1,9 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { withWorker } from "./worker";
 
-// Mic and voice buttons (owner design 2026-10-17). The browser's recognizer and
-// speech synthesis are replaced by stubs the test drives through window hooks,
-// so the same steps run in any engine. Synthetic data only.
+// Mic button (owner, 2026-10-17): speech to text into the box; Send sends as
+// usual. The browser's recognizer is replaced by a stub the test drives
+// through window hooks, so the same steps run in any engine. Synthetic data only.
 const PAGE = { url: "https://shop.test/a", title: "Test shop", text: "Widget costs $10." };
 const GOOD_KEY = "sk-ant-test-synthetic-GOODKEY-0000";
 
@@ -11,8 +11,6 @@ const GOOD_KEY = "sk-ant-test-synthetic-GOODKEY-0000";
 async function stubSpeech(page: Page, opts: { refuse?: boolean; none?: boolean } = {}): Promise<void> {
   await page.addInitScript(({ refuse, none }) => {
     const g = globalThis as unknown as Record<string, unknown>;
-    const spoken: string[] = [];
-    g.__spoken = spoken;
     g.__listening = false;
     let current: Record<string, unknown> | null = null;
     class Rec {
@@ -54,31 +52,6 @@ async function stubSpeech(page: Page, opts: { refuse?: boolean; none?: boolean }
       g.webkitSpeechRecognition = Rec;
       g.SpeechRecognition = undefined;
     }
-    class Utterance {
-      lang = "";
-      onend: (() => void) | null = null;
-      onerror: (() => void) | null = null;
-      constructor(public text: string) {}
-    }
-    let speaking: Utterance | null = null;
-    g.SpeechSynthesisUtterance = Utterance;
-    Object.defineProperty(g, "speechSynthesis", {
-      configurable: true,
-      value: {
-        speak: (u: Utterance) => {
-          speaking = u;
-          spoken.push(u.text);
-        },
-        cancel: () => {
-          speaking = null;
-        },
-      },
-    });
-    g.__finishSpeaking = () => {
-      const u = speaking;
-      speaking = null;
-      u?.onend?.();
-    };
   }, { refuse: opts.refuse === true, none: opts.none === true });
 }
 
@@ -148,75 +121,48 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
 
 const foot = (page: Page) => page.locator(".composer-foot");
 
-test("an empty box shows the mic and the voice button; typing turns the voice button into Send", async ({ page }) => {
+test("the mic and Send are both always in the row", async ({ page }) => {
   await stubSpeech(page);
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
   await expect(foot(page).getByRole("button", { name: "Dictate" })).toBeVisible();
-  await expect(foot(page).getByRole("button", { name: "Start voice chat" })).toBeVisible();
-  await expect(foot(page).getByRole("button", { name: "Send" })).toBeHidden();
-  await page.getByLabel("Ask about this page").fill("hello");
   await expect(foot(page).getByRole("button", { name: "Send" })).toBeVisible();
-  await expect(foot(page).getByRole("button", { name: "Start voice chat" })).toBeHidden();
-  await page.getByLabel("Ask about this page").fill("");
-  await expect(foot(page).getByRole("button", { name: "Start voice chat" })).toBeVisible();
+  await page.getByLabel("Ask about this page").fill("hello");
+  await expect(foot(page).getByRole("button", { name: "Dictate" })).toBeVisible();
+  await expect(foot(page).getByRole("button", { name: "Send" })).toBeVisible();
   expect(await foot(page).evaluate((n) => n.scrollWidth - n.clientWidth)).toBe(0);
 });
 
-test("the mic dictates into the box after what was typed, and stops on a second tap", async ({ page }) => {
+test("the mic types what was said after what was typed, sends nothing, and Send sends it as usual", async ({ page }) => {
   await stubSpeech(page);
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
   const box = page.getByLabel("Ask about this page");
-  await box.fill("Find");
+  await box.fill("What does");
   await foot(page).getByRole("button", { name: "Dictate" }).click();
   await expect(foot(page).getByRole("button", { name: "Stop dictating" })).toHaveAttribute("aria-pressed", "true");
   expect(await page.evaluate(() => (window as unknown as { __continuous: boolean }).__continuous)).toBe(true);
-  await page.evaluate(() => (window as unknown as { __hear: (t: string, f: boolean) => void }).__hear("cheaper shoes", false));
-  await expect(box).toHaveValue("Find cheaper shoes");
+  await page.evaluate(() => (window as unknown as { __hear: (t: string, f: boolean) => void }).__hear("the widget cost", false));
+  await expect(box).toHaveValue("What does the widget cost");
   await foot(page).getByRole("button", { name: "Stop dictating" }).click();
   await expect(foot(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false");
-  await expect(box).toHaveValue("Find cheaper shoes");
-  await expect(foot(page).getByRole("button", { name: "Send" })).toBeVisible();
-  // Nothing was sent: dictation only fills the box.
+  await expect(box).toHaveValue("What does the widget cost");
   await expect(page.locator(".msg.user")).toHaveCount(0);
+  await foot(page).getByRole("button", { name: "Send" }).click();
+  await expect(page.locator(".msg.user").last()).toHaveText("What does the widget cost");
+  await expect(page.locator(".msg.assistant").last()).toContainText("The widget costs $10.");
 });
 
-test("a refused microphone says how to dictate with the keyboard and goes back to Send", async ({ page }) => {
+test("a refused microphone says how to dictate with the keyboard", async ({ page }) => {
   await stubSpeech(page, { refuse: true });
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
   await foot(page).getByRole("button", { name: "Dictate" }).click();
   await expect(page.locator("#status")).toContainText("Safari didn't allow the microphone here.");
-  await expect(foot(page).getByRole("button", { name: "Start voice chat" })).toBeHidden();
+  await expect(foot(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false");
   await expect(foot(page).getByRole("button", { name: "Send" })).toBeVisible();
 });
 
-test("without a recognizer the box keeps Send and the mic explains keyboard dictation", async ({ page }) => {
+test("without a recognizer the mic explains keyboard dictation", async ({ page }) => {
   await stubSpeech(page, { none: true });
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
-  await expect(foot(page).getByRole("button", { name: "Start voice chat" })).toBeHidden();
-  await expect(foot(page).getByRole("button", { name: "Send" })).toBeVisible();
   await foot(page).getByRole("button", { name: "Dictate" }).click();
   await expect(page.locator("#status")).toContainText("to dictate instead");
-});
-
-test("voice chat: what was said is sent, the answer is read aloud, then Scout listens again until ended", async ({ page }) => {
-  await stubSpeech(page);
-  await openPopup(page, { keys: { anthropic: GOOD_KEY } });
-  await foot(page).getByRole("button", { name: "Start voice chat" }).click();
-  await expect(foot(page).getByRole("button", { name: "End voice chat" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#status")).toHaveText("Listening…");
-  expect(await page.evaluate(() => (window as unknown as { __continuous: boolean }).__continuous)).toBe(false);
-  await page.evaluate(() => {
-    const w = window as unknown as { __hear: (t: string, f: boolean) => void; __endListening: () => void };
-    w.__hear("what does the widget cost", true);
-    w.__endListening();
-  });
-  await expect(page.locator(".msg.user").last()).toHaveText("what does the widget cost");
-  await expect.poll(() => page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken)).toEqual(["The widget costs $10."]);
-  await expect(page.locator("#voice")).toHaveAttribute("data-state", "speaking");
-  await page.evaluate(() => (window as unknown as { __finishSpeaking: () => void }).__finishSpeaking());
-  await expect(page.locator("#voice")).toHaveAttribute("data-state", "listening");
-  await foot(page).getByRole("button", { name: "End voice chat" }).click();
-  await expect(page.locator("#voice")).toHaveAttribute("data-state", "off");
-  expect(await page.evaluate(() => (window as unknown as { __listening: boolean }).__listening)).toBe(false);
-  await expect(foot(page).getByRole("button", { name: "Start voice chat" })).toBeVisible();
 });

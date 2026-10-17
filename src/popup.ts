@@ -55,7 +55,7 @@ import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/cons
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
-import { joinDictation, Listener, micBlocked, micErrorText, recognitionCtor, synthesisSpeaker, VoiceChat, type VoiceState } from "./panel/voice";
+import { joinDictation, Listener, micErrorText, recognitionCtor } from "./panel/voice";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
   appendHistory,
@@ -383,7 +383,6 @@ async function main(): Promise<void> {
   const send = el<HTMLButtonElement>("send");
   const stop = el<HTMLButtonElement>("stop");
   const mic = el<HTMLButtonElement>("mic");
-  const voiceBtn = el<HTMLButtonElement>("voice");
   const plus = el<HTMLButtonElement>("plus");
   const plusMenu = el("plus-menu");
   const couponsRun = el<HTMLButtonElement>("coupons-run");
@@ -464,8 +463,6 @@ async function main(): Promise<void> {
   const history: ChatMessage[] = [];
   /** The answer streaming now (Part 2), if any. */
   let activeChat: string | null = null;
-  /** The last answer, for the voice conversation to read aloud (set in finalize and runTask). */
-  let voiceAnswer: string | null = null;
   let control: AgentControl | null = null;
   let others: TabInfo[] = [];
   /** Tabs the user attached. They go with every question until removed. */
@@ -963,15 +960,11 @@ async function main(): Promise<void> {
   };
   question.addEventListener("input", autosize);
 
-  // ---------- Mic and voice (owner design 2026-10-17; src/panel/voice.ts) ----------
+  // ---------- Mic (owner, 2026-10-17; src/panel/voice.ts) ----------
+  // Speech to text into the box, nothing more: the user sends it with Send.
   const phone = matchMedia("(pointer: coarse)").matches;
   const speechLang = navigator.language || "en-US";
-  const Recognition = recognitionCtor(window);
-  const speak = synthesisSpeaker(window, speechLang);
-  // No recognizer, or Safari refused the microphone once: the box keeps the plain
-  // Send button and the mic explains the keyboard's own dictation.
-  let voiceBlocked = !Recognition || !speak;
-  const dictation = new Listener(Recognition, speechLang);
+  const dictation = new Listener(recognitionCtor(window), speechLang);
   let dictating = false;
   function setDictating(on: boolean): void {
     dictating = on;
@@ -982,18 +975,11 @@ async function main(): Promise<void> {
   function stopDictation(): void {
     if (dictating) dictation.stop();
   }
-  function listenFailed(code: string): void {
-    if (micBlocked(code)) voiceBlocked = true;
-    status.textContent = micErrorText(code, phone);
-    trace("voice:error " + code);
-    syncComposer();
-  }
   mic.addEventListener("click", () => {
     if (dictating) {
       dictation.stop();
       return;
     }
-    voiceChat.stop();
     const typed = question.value;
     setDictating(true);
     status.textContent = "Listening…";
@@ -1003,56 +989,19 @@ async function main(): Promise<void> {
         onText: (heard) => {
           question.value = joinDictation(typed, heard);
           autosize();
-          syncComposer();
         },
         onEnd: (error) => {
           setDictating(false);
-          if (error && !(error === "no-speech" && question.value !== typed)) listenFailed(error);
-          else if (status.textContent === "Listening…") status.textContent = "";
-          syncComposer();
+          if (error && !(error === "no-speech" && question.value !== typed)) {
+            status.textContent = micErrorText(error, phone);
+            trace("voice:error " + error);
+          } else if (status.textContent === "Listening…") status.textContent = "";
           question.focus();
         },
       },
       { continuous: true },
     );
   });
-  const voiceChat = new VoiceChat({
-    listener: new Listener(Recognition, speechLang),
-    speak: speak ?? ((_text, done) => (done(), () => undefined)),
-    send: async (text) => {
-      voiceAnswer = null;
-      if (mode() === "scout") await runTask(text);
-      else await ask(text);
-      return voiceAnswer;
-    },
-    onHeard: (text) => {
-      question.value = text;
-      autosize();
-    },
-    onState: (state: VoiceState) => {
-      voiceBtn.dataset.state = state;
-      voiceBtn.setAttribute("aria-pressed", String(state !== "off"));
-      voiceBtn.setAttribute("aria-label", state === "off" ? "Start voice chat" : "End voice chat");
-      voiceBtn.title = state === "off" ? "Voice chat" : "End voice chat";
-      if (state === "listening") status.textContent = "Listening…";
-      else if (state === "speaking") status.textContent = "Speaking. Tap the voice button to end.";
-      else if (state === "off" && /^(Listening|Speaking)/.test(status.textContent ?? "")) status.textContent = "";
-      trace("voice:" + state);
-      syncComposer();
-      if (state === "off" && !voiceBtn.hidden && document.activeElement === document.body) voiceBtn.focus();
-    },
-    onError: listenFailed,
-  });
-  voiceBtn.addEventListener("click", () => {
-    if (voiceChat.state !== "off") {
-      voiceChat.stop();
-      return;
-    }
-    stopDictation();
-    closePlus();
-    voiceChat.start();
-  });
-  question.addEventListener("input", () => syncComposer());
 
 
   function closePlus(focusButton = false): void {
@@ -1236,15 +1185,10 @@ async function main(): Promise<void> {
   // everything. It is the blue Send arrow, and the blue Stop square while an
   // answer streams, a Scout mode task runs, or Find coupons runs. The chat
   // itself never shows its own Stop.
-  // Owner design 2026-10-17: with an empty box that button is the round voice
-  // button instead, as long as this Safari can listen from the panel.
   function syncComposer(): void {
     const running = !!activeChat || !!task || !!couponRun;
-    const talking = voiceChat.state === "listening" || voiceChat.state === "speaking";
-    const voiceFirst = !voiceBlocked && (talking || !question.value.trim());
-    stop.hidden = !running || talking;
-    send.hidden = running || voiceFirst;
-    voiceBtn.hidden = (running && !talking) || !voiceFirst;
+    send.hidden = running;
+    stop.hidden = !running;
   }
 
   function setBusy(busy: boolean): void {
@@ -1256,9 +1200,8 @@ async function main(): Promise<void> {
     for (const i of modeInputs) i.disabled = busy;
     for (const c of empty.querySelectorAll<HTMLButtonElement>("button")) c.disabled = busy;
     for (const c of siteSuggestions.querySelectorAll<HTMLButtonElement>("button")) c.disabled = busy;
-    if (busy) {
-      if (voiceChat.state === "off") stop.focus();
-    } else if (!matchMedia("(pointer: coarse)").matches && voiceChat.state === "off") question.focus();
+    if (busy) stop.focus();
+    else if (!matchMedia("(pointer: coarse)").matches) question.focus();
   }
 
   // ---------- Attached tabs (Part 2, spec 6): only tabs the user picks ----------
@@ -1558,7 +1501,6 @@ async function main(): Promise<void> {
       history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
       status.textContent = m.usage ? formatCostLine(v.model, m.usage) : "";
       current.finish("done", "Answered (" + full.length + " characters).", m.usage);
-      voiceAnswer = full;
     } else if (m.status === "complete") {
       // The user pressed Stop: keep what arrived and say nothing (owner, 2026-10-17).
       if (!full) v.bubble.remove();
@@ -2257,7 +2199,6 @@ async function main(): Promise<void> {
     if (!out) return;
     // Stopped by the user: the trace already reads "Stopped", nothing more to show.
     if (out.status !== "stopped") addMessage(out.status === "done" ? "assistant" : "error", out.summary);
-    if (out.status === "done") voiceAnswer = out.summary;
     current.finish(out.status, out.summary, out.usage);
     status.textContent = formatCostLine(s.settings.model, out.usage);
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
@@ -2774,8 +2715,6 @@ async function main(): Promise<void> {
     updateEmpty();
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
   }
-
-  syncComposer();
 
   // ---------- Wiring ----------
   composer.addEventListener("submit", (event) => {
