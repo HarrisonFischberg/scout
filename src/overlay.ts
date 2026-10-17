@@ -267,18 +267,27 @@ if (!g[FLAG]) {
   const hide = (): void => {
     if (!layer || !host) return;
     shown = false;
+    const fading = layer;
     layer.classList.remove("on");
     if (removeTimer) clearTimeout(removeTimer);
-    // Gone from the page once the fade-out ends (400 ms, within the 500 ms the spec allows).
-    removeTimer = setTimeout(() => {
+    // Gone from the page once the fade-out ends (400 ms, within the 500 ms the
+    // spec allows): on the transition's own end event, with a timer as the
+    // fallback for reduced motion (no transition) or a page that drops the event.
+    let removed = false;
+    const remove = (): void => {
+      if (removed) return;
+      removed = true;
       removeTimer = null;
+      fading.removeEventListener("transitionend", remove);
       try {
         if (host?.matches(":popover-open")) (host as HTMLElement & { hidePopover(): void }).hidePopover();
       } catch {
         // ignore
       }
       host?.remove();
-    }, FADE_OUT_MS);
+    };
+    fading.addEventListener("transitionend", remove, { once: true });
+    removeTimer = setTimeout(remove, FADE_OUT_MS);
   };
 
   const marker = (x: number, y: number): void => {
