@@ -279,7 +279,8 @@ async function tabAgentPage(): Promise<CouponPage | null> {
 
   return {
     snapshot: async (limits: { maxElements?: number; maxTextChars?: number } = {}) => (await call({ type: "scout:snapshot", ...limits })) as Snapshot,
-    act: async (action: Action) => (await call({ type: "scout:act", action })) as ActionResult,
+    // Coupon runs show a pointer pressing and typing on the page, so the user can watch (owner, 2026-10-17).
+    act: async (action: Action) => (await call({ type: "scout:act", action, show: true })) as ActionResult,
     cart: {
       info: async () => (await call({ type: "scout:cart-info" })) as CartState | null,
       update: async (discount: string) => (await call({ type: "scout:cart-update", discount })) as CartState | { rateLimited: true } | null,

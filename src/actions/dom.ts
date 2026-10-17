@@ -1,15 +1,47 @@
 // DOM adapter for the action executor (T009). Content script only; exercised
 // by Playwright (tests/e2e/actions.spec.ts), not Vitest (no DOM there).
 import type { ActionEl, ActionPage } from "./executor";
+import type { Pointer } from "./pointer";
 
 function fireInput(el: Element): void {
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
-function wrap(el: Element): ActionEl {
+function wrap(el: Element, pointer?: Pointer): ActionEl {
   const input = el as HTMLInputElement;
+  const setValue = (value: string): void => {
+    // Use the prototype setter so frameworks that track the value see it.
+    const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
+    if (setter) setter.call(el, value);
+    else input.value = value;
+    (el as HTMLElement).focus();
+    fireInput(el);
+  };
+  const visible: Pick<ActionEl, "showClick" | "typeVisibly"> = pointer
+    ? {
+        async showClick() {
+          await pointer.moveTo(el);
+          await pointer.press();
+        },
+        async typeVisibly(start, text) {
+          await pointer.moveTo(el);
+          await pointer.press();
+          // Each character is a real value change with its input event, as a person typing would make.
+          let value = start;
+          setValue(value);
+          for (const ch of text) {
+            await pointer.keyPause();
+            if (!el.isConnected) break;
+            value += ch;
+            setValue(value);
+          }
+        },
+      }
+    : {};
   return {
+    ...visible,
     tag: el.tagName.toLowerCase(),
     type: el instanceof HTMLInputElement ? el.type : undefined,
     get disabled() {
@@ -20,15 +52,7 @@ function wrap(el: Element): ActionEl {
     },
     click: () => (el as HTMLElement).click(),
     getValue: () => input.value ?? "",
-    setValue(value: string) {
-      // Use the prototype setter so frameworks that track the value see it.
-      const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-      const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
-      if (setter) setter.call(el, value);
-      else input.value = value;
-      (el as HTMLElement).focus();
-      fireInput(el);
-    },
+    setValue,
     select(value: string) {
       if (!(el instanceof HTMLSelectElement)) return false;
       const want = value.trim().toLowerCase();
@@ -46,12 +70,13 @@ function wrap(el: Element): ActionEl {
   };
 }
 
-export function domPage(refs: Map<string, Element>, win: Window): ActionPage {
+/** `pointer`: coupon runs show a pointer moving, pressing and typing on the page. */
+export function domPage(refs: Map<string, Element>, win: Window, pointer?: Pointer): ActionPage {
   return {
     baseUrl: win.location.href,
     resolve(ref) {
       const el = refs.get(ref);
-      return el ? wrap(el) : undefined;
+      return el ? wrap(el, pointer) : undefined;
     },
     scroll(direction) {
       const h = win.document.documentElement.scrollHeight;

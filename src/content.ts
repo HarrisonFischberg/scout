@@ -6,6 +6,7 @@
 // Page content is untrusted data and only leaves via the return value.
 import { domPage } from "./actions/dom";
 import { executeAction, type ActionResult } from "./actions/executor";
+import { pagePointer, type Pointer } from "./actions/pointer";
 import { performTaskAction } from "./actions/task";
 import { taskDomPage } from "./actions/task-dom";
 import { buildSnapshot, fromElement, type SnapNode, type Snapshot } from "./snapshot/snapshot";
@@ -20,6 +21,7 @@ const g = globalThis as unknown as Record<string, unknown>;
 if (!g[FLAG]) {
   g[FLAG] = true;
   let refs = new Map<string, Element>();
+  let pointer: Pointer | null = null;
 
   const snapshot = (limits: { maxElements?: number; maxTextChars?: number } = {}): Snapshot => {
     const nodeToEl = new Map<SnapNode, Element>();
@@ -59,7 +61,10 @@ if (!g[FLAG]) {
 
   g[HANDLER] = (req: ContentRequest): Promise<unknown> | Snapshot | object | null => {
     if (req.type === "scout:snapshot") return snapshot({ maxElements: req.maxElements, maxTextChars: req.maxTextChars });
-    if (req.type === "scout:act") return executeAction(domPage(refs, window), req.action) as Promise<ActionResult>;
+    if (req.type === "scout:act") {
+      const shown = req.show === true ? (pointer ??= pagePointer(window)) : undefined;
+      return executeAction(domPage(refs, window, shown), req.action) as Promise<ActionResult>;
+    }
     if (req.type === "scout:task-probe") return taskDomPage(refs, window).probe(req.target);
     if (req.type === "scout:task-act") return performTaskAction(taskDomPage(refs, window), req.action);
     if (req.type === "scout:cart-info") return storeCartInfo();
