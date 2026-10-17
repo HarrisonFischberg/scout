@@ -155,6 +155,9 @@ describe("suggestCodes request and evidence", () => {
     expect(String(olipop.req?.messages[0]?.content)).toContain("Store: drinkolipop\nStore website: drinkolipop.com\nAlso written as: olipop");
     expect(seen.req).toMatchObject({ webSearch: true, webSearchMaxUses: 10, webFetch: true, webFetchMaxUses: 8 });
     expect(seen.req?.system).toContain("as soon as you see it");
+    // Live sweep 2026-10-17: Melin's search stopped at 6 masked codes; pages that print codes are named.
+    expect(String(seen.req?.messages[0]?.content)).toContain("https://www.wethrift.com/tackform https://dealhack.com/coupons/tackform https://www.dealdrop.com/tackform https://www.wethrift.com/codes/tackform.test");
+    expect(seen.req?.system).toContain("hide codes behind a 'Get code' button");
     expect(seen.req?.system).toContain("Never invent, complete, or vary a code");
     expect(seen.req?.system).not.toMatch(/guess/i);
   });
@@ -210,5 +213,19 @@ describe("suggestCodes request and evidence", () => {
       "www.getbeefy.co",
     );
     expect(r.codes.map((c) => c.code)).toEqual(["BEEFYVIP", "SOME5", "OTHER10"]);
+  });
+});
+
+describe("likelyCodePages", () => {
+  it("builds candidate pages from the domain label and the brand, without duplicates", async () => {
+    const { likelyCodePages } = await import("../../src/coupons/codes");
+    const { identifyMerchant } = await import("../../src/coupons/merchant");
+    const pages = likelyCodePages(identifyMerchant("https://www.heartandsoil.co/cart", { siteName: "Heart & Soil" }));
+    expect(pages).toContain("https://www.wethrift.com/heartandsoil");
+    expect(pages).toContain("https://www.wethrift.com/heart-and-soil");
+    expect(pages).toContain("https://www.dealdrop.com/heart-and-soil");
+    expect(new Set(pages).size).toBe(pages.length);
+    expect(pages.length).toBeLessThanOrEqual(8);
+    expect(likelyCodePages(identifyMerchant("http://127.0.0.1:4317/cart"))).toEqual([]);
   });
 });
