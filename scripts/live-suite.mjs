@@ -351,11 +351,14 @@ async function addByClicking(shop, origin) {
       const r = await shop.goto(shopOrigin + path, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => null);
       if (!(r && r.ok())) continue;
       await wait(1500);
-      if (!/cart|basket|bag|checkout/i.test(shop.url())) {
+      const text = (await evalWithin(shop, () => document.body.innerText).catch(() => "")) || "";
+      // A cart page, or a drawer opened on another page (Brumate: /cart lands on the home page with
+      // the drawer open); an empty-cart redirect to a store page (Paleovalley) is neither.
+      const looksLikeCart = /cart|basket|bag|checkout/i.test(shop.url()) || /\bsubtotal\b|\b(my|your|shopping) (cart|bag)\b|check ?out\s*[-–·]\s*[$€£]/i.test(text);
+      if (!looksLikeCart) {
         reason = "the Add to cart click did not put the item in the cart";
         break;
       }
-      const text = (await evalWithin(shop, () => document.body.innerText).catch(() => "")) || "";
       if (/cart is (currently )?empty|no items in your (cart|bag)|nothing in your (cart|bag)|bag is empty/i.test(text)) {
         reason = "the Add to cart click did not put the item in the cart";
         break;

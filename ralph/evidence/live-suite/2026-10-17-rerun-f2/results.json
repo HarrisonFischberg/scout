@@ -1,0 +1,21 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T17-12-54",
+  "results": [
+    {
+      "name": "Brumate",
+      "url": "https://brumate.com",
+      "group": "extra",
+      "outcome": "blocked: could not add to cart (the Add to cart click did not put the item in the cart)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "44d043d3f4",
+      "startedAt": "2026-10-17T17:12:54.343Z",
+      "seconds": 23
+    }
+  ]
+}
