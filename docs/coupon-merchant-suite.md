@@ -70,12 +70,13 @@ was tested in a cart. "Checkout outcome" stays empty until a live run.
 
 ## Running the live suite
 
-On a Mac with network access and the owner's key in the shell (never in chat
-or in a file):
+On a Mac with network access and the owner's Anthropic key in the shell as
+`SCOUT_LIVE_KEY` (never in chat or in a file; not as `ANTHROPIC_API_KEY`,
+which makes the Claude CLI refuse Remote Control):
 
 ```
 npm ci && npm run build
-ANTHROPIC_API_KEY=... node scripts/live-suite.mjs            # all merchants, WebKit
+SCOUT_LIVE_KEY=... node scripts/live-suite.mjs               # all merchants, WebKit
 node scripts/live-suite.mjs --only "Chomps,Rumpl" --headed   # a few, visibly
 node scripts/live-suite.mjs --browser chromium --limit 10
 ```
