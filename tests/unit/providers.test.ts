@@ -113,6 +113,7 @@ describe.each(["anthropic", "openai"] as const)("%s error mapping", (id) => {
     expect(err).toBeInstanceOf(ProviderError);
     expect(err.code).toBe(code);
     expect(err.userMessage).not.toContain("secret provider body");
+    expect(err.detail).toBeUndefined();
     if (code === "rate_limited") expect(err.retryAfterSeconds).toBe(7);
   });
 
@@ -171,6 +172,7 @@ describe("web search (T019)", () => {
     const f: FetchLike = async (_u, init) => {
       body = String(init.body);
       return sse([
+        { type: "response.output_item.done", item: { type: "web_search_call", action: { type: "search", sources: [{ type: "url", url: "https://deals.test/a" }] } } },
         {
           type: "response.output_text.annotation.added",
           annotation: { type: "url_citation", url: "https://deals.test/b", title: "More" },
@@ -180,7 +182,20 @@ describe("web search (T019)", () => {
     };
     const ev = await collect(createProvider("openai", { apiKey: "k", fetch: f }).stream(search));
     expect(JSON.parse(body).tools).toEqual([{ type: "web_search" }]);
+    // The pages each search returned are asked for, so a code's page can be checked against them.
+    expect(JSON.parse(body).include).toEqual(["web_search_call.action.sources"]);
+    expect(ev).toContainEqual({ type: "source", url: "https://deals.test/a" });
     expect(ev).toContainEqual({ type: "source", url: "https://deals.test/b", title: "More" });
+  });
+
+  it("sends the fetch tool on its own when only page reads are asked for", async () => {
+    let body = "";
+    const f: FetchLike = async (_u, init) => {
+      body = String(init.body);
+      return sse([{ type: "message_stop" }]);
+    };
+    await collect(createProvider("anthropic", { apiKey: "k", fetch: f }).stream({ ...search, webSearch: false, webFetch: true, webFetchMaxUses: 8 }));
+    expect(JSON.parse(body).tools).toEqual([{ type: "web_fetch_20260209", name: "web_fetch", max_uses: 8, citations: { enabled: true }, max_content_tokens: 40_000 }]);
   });
 
   it("omits tools when search is off and no tools given", async () => {
@@ -195,12 +210,58 @@ describe("web search (T019)", () => {
 });
 
 describe("web search depth and fetch (T031)", () => {
-  it("sends max_uses and the web fetch tool when asked, and reports fetched pages as sources", async () => {
+  it("reports each page the model asks the fetch tool for, loaded or not", async () => {
+    const stream = [
+      { type: "message_start", message: { usage: { input_tokens: 1, output_tokens: 1 } } },
+      { type: "content_block_start", index: 0, content_block: { type: "server_tool_use", id: "srv_1", name: "web_fetch", input: {} } },
+      { type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: '{"url":"https://deals.te' } },
+      { type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: 'st/blocked"}' } },
+      { type: "content_block_stop", index: 0 },
+      {
+        type: "content_block_start",
+        index: 1,
+        content_block: { type: "web_fetch_tool_result", tool_use_id: "srv_1", content: { type: "web_fetch_tool_result_error", error_code: "url_not_accessible" } },
+      },
+      { type: "content_block_stop", index: 1 },
+      { type: "content_block_start", index: 2, content_block: { type: "server_tool_use", id: "srv_2", name: "web_search", input: {} } },
+      { type: "content_block_delta", index: 2, delta: { type: "input_json_delta", partial_json: '{"query":"deals"}' } },
+      { type: "content_block_stop", index: 2 },
+      { type: "message_stop" },
+    ].map((e) => "event: " + e.type + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
+    const p = createProvider("anthropic", {
+      apiKey: "sk-test-synthetic",
+      fetch: async () => new Response(stream, { status: 200, headers: { "content-type": "text/event-stream" } }),
+    });
+    const events = [];
+    for await (const ev of p.stream({ model: "m", messages: [{ role: "user", content: "x" }], maxTokens: 10, webSearch: true, webFetch: true })) events.push(ev);
+    expect(events.filter((e) => e.type === "fetch")).toEqual([{ type: "fetch", url: "https://deals.test/blocked", ok: false, error: "url_not_accessible" }]);
+    // A fetch that failed is no source: nothing was retrieved from it.
+    expect(events.some((e) => e.type === "source")).toBe(false);
+  });
+
+  it("sends max_uses and the web fetch tool when asked, and reports fetched pages as sources with their text", async () => {
     let body = "";
     const stream = [
       { type: "message_start", message: { usage: { input_tokens: 1, output_tokens: 1 } } },
-      { type: "content_block_start", index: 0, content_block: { type: "web_fetch_tool_result", content: { type: "web_fetch_result", url: "https://linktr.ee/example" } } },
+      {
+        type: "content_block_start",
+        index: 0,
+        content_block: {
+          type: "web_fetch_tool_result",
+          content: {
+            type: "web_fetch_result",
+            url: "https://linktr.ee/example",
+            content: { type: "document", source: { type: "text", media_type: "text/plain", data: "Use code CREATOR10 for 10% off" }, title: "Example links" },
+          },
+        },
+      },
       { type: "content_block_stop", index: 0 },
+      {
+        type: "content_block_start",
+        index: 1,
+        content_block: { type: "web_search_tool_result", content: [{ type: "web_search_result", url: "https://deals.test/x", title: "Deals", page_age: "June 7, 2026" }] },
+      },
+      { type: "content_block_stop", index: 1 },
       { type: "message_stop" },
     ].map((e) => "event: " + e.type + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
     const p = createProvider("anthropic", {
@@ -211,12 +272,49 @@ describe("web search depth and fetch (T031)", () => {
       },
     });
     const events = [];
-    for await (const ev of p.stream({ model: "m", messages: [{ role: "user", content: "x" }], maxTokens: 10, webSearch: true, webSearchMaxUses: 8, webFetch: true })) events.push(ev);
+    for await (const ev of p.stream({ model: "m", messages: [{ role: "user", content: "x" }], maxTokens: 10, webSearch: true, webSearchMaxUses: 8, webFetch: true, webFetchMaxUses: 5 })) events.push(ev);
     expect(JSON.parse(body).tools).toEqual([
       { type: "web_search_20260209", name: "web_search", max_uses: 8 },
-      { type: "web_fetch_20260209", name: "web_fetch", max_uses: 8 },
+      { type: "web_fetch_20260209", name: "web_fetch", max_uses: 5, citations: { enabled: true }, max_content_tokens: 40_000 },
     ]);
-    expect(events).toContainEqual({ type: "source", url: "https://linktr.ee/example" });
+    expect(events).toContainEqual({ type: "fetch", url: "https://linktr.ee/example", ok: true, chars: 30 });
+    expect(events).toContainEqual({ type: "source", url: "https://linktr.ee/example", title: "Example links", page: "Use code CREATOR10 for 10% off" });
+    expect(events).toContainEqual({ type: "source", url: "https://deals.test/x", title: "Deals", age: "June 7, 2026" });
+  });
+});
+
+// Live sweep 2026-10-17: every search answered 400 for an hour and the user
+// saw only "The provider rejected the request". The provider's own reason
+// (a credit balance, a model the account cannot use) now travels with it.
+describe("rejected requests carry the provider's reason", () => {
+  const search = { model: "m", messages: [{ role: "user" as const, content: "find codes" }], maxTokens: 64 };
+  it.each(["anthropic", "openai"] as const)("%s: a JSON 400 names the reason, without key-like strings", async (id) => {
+    const body = JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "messages.0.content: field required.\n  Key sk-ant-abcdefghijklmnop was used." } });
+    const f: FetchLike = async () => new Response(body, { status: 400, headers: { "content-type": "application/json" } });
+    const err = await collect(createProvider(id, { apiKey: "k", fetch: f }).stream(search)).catch((e) => e);
+    expect(err).toBeInstanceOf(ProviderError);
+    expect(err.code).toBe("bad_request");
+    expect(err.userMessage).toBe("The provider rejected the request. The provider said: messages.0.content: field required. Key [removed] was used.");
+    expect(err.userMessage).not.toContain("sk-ant");
+  });
+
+  it("an account out of credit gets its own message, on either provider", async () => {
+    const anthropic = JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits." } });
+    let f: FetchLike = async () => new Response(anthropic, { status: 400 });
+    let err = await collect(createProvider("anthropic", { apiKey: "k", fetch: f }).stream(search)).catch((e) => e);
+    expect(err.code).toBe("no_credit");
+    expect(err.userMessage).toBe("Your Anthropic account has no API credit left. Add credits in the provider's billing console, then try again.");
+    const openai = JSON.stringify({ error: { message: "You exceeded your current quota, please check your plan and billing details.", type: "insufficient_quota", code: "insufficient_quota" } });
+    f = async () => new Response(openai, { status: 429 });
+    err = await collect(createProvider("openai", { apiKey: "k", fetch: f }).stream(search)).catch((e) => e);
+    expect(err.code).toBe("no_credit");
+    expect(err.userMessage).toBe("Your OpenAI account has no API credit left. Add credits in the provider's billing console, then try again.");
+  });
+
+  it("a 429 or 500 keeps its plain message", async () => {
+    const f: FetchLike = async () => new Response(JSON.stringify({ error: { message: "Overloaded" } }), { status: 529 });
+    const err = await collect(createProvider("anthropic", { apiKey: "k", fetch: f }).stream(search)).catch((e) => e);
+    expect(err.userMessage).toBe("The provider is having problems. Try again shortly.");
   });
 });
 

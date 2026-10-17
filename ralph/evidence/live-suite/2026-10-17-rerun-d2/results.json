@@ -1,0 +1,644 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T15-38-06",
+  "results": [
+    {
+      "name": "Cuts",
+      "url": "https://www.cutsclothing.com",
+      "group": "apparel",
+      "outcome": "no working code",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host",
+        "coupons:method shopify",
+        "coupons:store-codes 1",
+        "coupons:search",
+        "coupons:search-error timeout",
+        "coupons:candidates store=1 verified=0 reported=0 dropped=0 masked=0",
+        "coupons:attempt 1 rejected",
+        "coupons:ask-more tried=1 remaining=0 next=25",
+        "coupons:overlay-failed",
+        "coupons:more yes",
+        "coupons:find-more known=1",
+        "coupons:overlay-failed",
+        "coupons:candidates verified=0 reported=39 dropped=0 masked=4",
+        "coupons:attempt 2 rejected",
+        "coupons:attempt 3 rejected",
+        "coupons:attempt 4 rejected",
+        "coupons:attempt 5 rejected",
+        "coupons:attempt 6 rejected",
+        "coupons:attempt 7 rejected",
+        "coupons:attempt 8 rejected",
+        "coupons:attempt 9 rejected",
+        "coupons:attempt 10 rejected",
+        "coupons:attempt 11 rejected",
+        "coupons:attempt 12 rejected",
+        "coupons:attempt 13 rejected",
+        "coupons:attempt 14 rejected",
+        "coupons:attempt 15 rejected",
+        "coupons:attempt 16 rejected",
+        "coupons:attempt 17 rejected",
+        "coupons:attempt 18 rejected",
+        "coupons:attempt 19 rejected",
+        "coupons:attempt 20 rejected",
+        "coupons:attempt 21 rejected",
+        "coupons:attempt 22 rejected",
+        "coupons:attempt 23 rejected",
+        "coupons:attempt 24 rejected",
+        "coupons:attempt 25 rejected",
+        "coupons:attempt 26 rejected",
+        "coupons:ask-more tried=26 remaining=14 next=25",
+        "coupons:overlay-failed",
+        "coupons:more no",
+        "coupons:overlay-failed",
+        "coupons:status done none",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 28.3,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 28.3,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 28.3,
+          "stage": "coupons:merchant other-host"
+        },
+        {
+          "t": 28.5,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 29,
+          "stage": "coupons:store-codes 1"
+        },
+        {
+          "t": 29,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 269,
+          "stage": "coupons:search-error timeout"
+        },
+        {
+          "t": 269,
+          "stage": "coupons:candidates store=1 verified=0 reported=0 dropped=0 masked=0"
+        },
+        {
+          "t": 269.8,
+          "stage": "coupons:attempt 1 rejected"
+        },
+        {
+          "t": 270.1,
+          "stage": "coupons:ask-more tried=1 remaining=0 next=25"
+        },
+        {
+          "t": 270.1,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 270.5,
+          "stage": "coupons:more yes"
+        },
+        {
+          "t": 270.5,
+          "stage": "coupons:find-more known=1"
+        },
+        {
+          "t": 270.5,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 339.4,
+          "stage": "coupons:candidates verified=0 reported=39 dropped=0 masked=4"
+        },
+        {
+          "t": 340.1,
+          "stage": "coupons:attempt 2 rejected"
+        },
+        {
+          "t": 341.1,
+          "stage": "coupons:attempt 3 rejected"
+        },
+        {
+          "t": 342.1,
+          "stage": "coupons:attempt 4 rejected"
+        },
+        {
+          "t": 343,
+          "stage": "coupons:attempt 5 rejected"
+        },
+        {
+          "t": 343.9,
+          "stage": "coupons:attempt 6 rejected"
+        },
+        {
+          "t": 344.8,
+          "stage": "coupons:attempt 7 rejected"
+        },
+        {
+          "t": 345.8,
+          "stage": "coupons:attempt 8 rejected"
+        },
+        {
+          "t": 346.7,
+          "stage": "coupons:attempt 9 rejected"
+        },
+        {
+          "t": 347.6,
+          "stage": "coupons:attempt 10 rejected"
+        },
+        {
+          "t": 348.6,
+          "stage": "coupons:attempt 11 rejected"
+        },
+        {
+          "t": 349.5,
+          "stage": "coupons:attempt 12 rejected"
+        },
+        {
+          "t": 350.5,
+          "stage": "coupons:attempt 13 rejected"
+        },
+        {
+          "t": 351.4,
+          "stage": "coupons:attempt 14 rejected"
+        },
+        {
+          "t": 352.2,
+          "stage": "coupons:attempt 15 rejected"
+        },
+        {
+          "t": 353.2,
+          "stage": "coupons:attempt 16 rejected"
+        },
+        {
+          "t": 354.1,
+          "stage": "coupons:attempt 17 rejected"
+        },
+        {
+          "t": 355.1,
+          "stage": "coupons:attempt 18 rejected"
+        },
+        {
+          "t": 356,
+          "stage": "coupons:attempt 19 rejected"
+        },
+        {
+          "t": 357,
+          "stage": "coupons:attempt 20 rejected"
+        },
+        {
+          "t": 358.1,
+          "stage": "coupons:attempt 21 rejected"
+        },
+        {
+          "t": 359,
+          "stage": "coupons:attempt 22 rejected"
+        },
+        {
+          "t": 360,
+          "stage": "coupons:attempt 23 rejected"
+        },
+        {
+          "t": 360.9,
+          "stage": "coupons:attempt 24 rejected"
+        },
+        {
+          "t": 362.1,
+          "stage": "coupons:attempt 25 rejected"
+        },
+        {
+          "t": 363,
+          "stage": "coupons:attempt 26 rejected"
+        },
+        {
+          "t": 363.3,
+          "stage": "coupons:ask-more tried=26 remaining=14 next=25"
+        },
+        {
+          "t": 363.3,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 364,
+          "stage": "coupons:more no"
+        },
+        {
+          "t": 364,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 364.5,
+          "stage": "coupons:status done none"
+        },
+        {
+          "t": 364.5,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:38:07.075Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.cutsclothing.com/cart"
+      },
+      "checkout": {
+        "ok": true,
+        "url": "https://shop.cutsclothing.com/checkouts/cn/hWNI4zfwh38A5qCbUwtTbRsv/en-us?_r=AQABTJHs32YolQwGPmp4EPuHTx-t_5uByqFNvwXeWxzlxuG1Cpb8&_s=34e15f30-80b5-44bc-b8cd-174344daee55&_y=ec48f424-f8fc-4be1-a643-0196e2f6b0ff&auto_redirect=false&edge_redirect=true&skip_shop_pay=true",
+        "step": "information"
+      },
+      "apiErrors": [],
+      "summary": "The web search ended early (The web search took too long). Found 40 codes: 1 code on the store's own site and 39 codes the search reported from pages it returned. 4 codes shown masked or behind a button could not be read, so they were not tested. I tested 26 codes and none lowered your total of $101.50, so your cart is unchanged. 14 more codes were left untested.\n\nDidn't work: GET, WTFAB, JINDIA15, INVITE30, HONEY10, THANKYOU20, LAURAB, DISCOUNT-6ZJ5S, GIFTING2022, JASON15 and 16 more.\n\nCode-free offers the pages mention (not tested): VIP Membership: Log Into Your Account on cutsclothing.com and Get 25% Off\" account login required; no code.",
+      "secondPass": true,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Cuts codes…",
+        "The web search ended early (The web search took too long). Found 1 code on the store's own site.",
+        "Testing 1 code on your cart, one at a time…",
+        "Searching the web again for Cuts codes, in other places…",
+        "Found 39 more codes to try. Testing them on your cart…"
+      ],
+      "attempts": [
+        {
+          "code": "GET",
+          "text": "GET · $101.50 · Not accepted by the store. · the store's own site (shop.cutsclothing.com)",
+          "source": "https://shop.cutsclothing.com/",
+          "evidence": "4383805767768:1 USD Account Skip For You Orders Profile GET X% OFF ON THE APP Scan the QR Code GET X% OFF",
+          "good": false
+        },
+        {
+          "code": "WTFAB",
+          "text": "WTFAB · $101.50 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/cutsclothing-promo-code",
+          "evidence": "Promotion Details: 15% Off Sitewide ... coupon code WTFAB (Code Expires in 24 Hours\" shown)",
+          "good": false
+        },
+        {
+          "code": "JINDIA15",
+          "text": "JINDIA15 · $101.50 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/cutsclothing-promo-code",
+          "evidence": "15% Off Cuts Clothing Discount Code ... JINDIA15 ... 15% Off Ao Curve Hem Tee (may apply to the Ao Curve Hem Tee only)",
+          "good": false
+        },
+        {
+          "code": "INVITE30",
+          "text": "INVITE30 · $101.50 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/cutsclothing-promo-code",
+          "evidence": "30% Off Sitewide In-app Purchase ... INVITE30 (in-app purchase)",
+          "good": false
+        },
+        {
+          "code": "HONEY10",
+          "text": "HONEY10 · $101.50 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/cutsclothing-promo-code",
+          "evidence": "Cuts Clothing Coupon for 10% Off ... HONEY10 ... 10% Off the Entire Order",
+          "good": false
+        },
+        {
+          "code": "THANKYOU20",
+          "text": "THANKYOU20 · $101.50 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/cutsclothing-promo-code",
+          "evidence": "Cuts Clothing Promo Code: $20 Off Your Order ... THANKYOU20 ... $20 Off Storewide (the same code is also listed as 20% off on another Coupert page, so the offer is unclear)",
+          "good": false
+        },
+        {
+          "code": "LAURAB",
+          "text": "LAURAB · $101.50 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/cutsclothing-promo-code",
+          "evidence": "Get extra savings at cutsclothing.com. Code Expires in 24 Hours. Get Code LAURAB",
+          "good": false
+        },
+        {
+          "code": "DISCOUNT-6ZJ5S",
+          "text": "DISCOUNT-6ZJ5S · $101.50 · Not accepted by the store. · top.coupert.com (reported by the search)",
+          "source": "https://top.coupert.com/coupons/cutsclothing-promo-code",
+          "evidence": "Discover Special Offers at cutsclothing.com DISCOUNT-6ZJ5S",
+          "good": false
+        },
+        {
+          "code": "GIFTING2022",
+          "text": "GIFTING2022 · $101.50 · Not accepted by the store. · dontpayfull.com (reported by the search)",
+          "source": "https://www.dontpayfull.com/at/cutsclothing.com",
+          "evidence": "captured the code \"Gifting2022\" from Cuts Clothing ... 20% Discount on Your Purchase (the page says \"still live\" as of Aug 30, 2026)",
+          "good": false
+        },
+        {
+          "code": "JASON15",
+          "text": "JASON15 · $101.50 · Not accepted by the store. · dontpayfull.com (reported by the search)",
+          "source": "https://www.dontpayfull.com/at/cutsclothing.com",
+          "evidence": "tested the code \"jason15\" at checkout on cutsclothing.com ... Save 15% (tested Jul 25, 2026)",
+          "good": false
+        },
+        {
+          "code": "HOLLY15",
+          "text": "HOLLY15 · $101.50 · Not accepted by the store. · dontpayfull.com (reported by the search)",
+          "source": "https://www.dontpayfull.com/at/cutsclothing.com",
+          "evidence": "tested the code \"HOLLY15\" at checkout on cutsclothing.com ... 15% Off Storewide (tested Jun 2026)",
+          "good": false
+        },
+        {
+          "code": "CUTS62439",
+          "text": "CUTS62439 · $101.50 · Not accepted by the store. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/cutsclothing.com",
+          "evidence": "50% Off Sitewide + Free Shipping ... CUTS62439 (probably a one-off code)",
+          "good": false
+        },
+        {
+          "code": "SAMBREENA65772",
+          "text": "SAMBREENA65772 · $101.50 · Not accepted by the store. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/cutsclothing.com",
+          "evidence": "30% Off Sitewide + Free Shipping ... SAMBREENA65772 (probably a one-off code)",
+          "good": false
+        },
+        {
+          "code": "JEREMYPIVEN",
+          "text": "JEREMYPIVEN · $101.50 · Not accepted by the store. · coupert.com (reported by the search)",
+          "source": "https://www.coupert.com/store/cutsclothing.com",
+          "evidence": "20% off your order + Free Shipping ... JEREMYPIVEN",
+          "good": false
+        },
+        {
+          "code": "TAKE25",
+          "text": "TAKE25 · $101.50 · Not accepted by the store. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/cutsclothing-promo-codes",
+          "evidence": "25% Off All Orders with Discount Code ... TAKE25",
+          "good": false
+        },
+        {
+          "code": "ELLIE15",
+          "text": "ELLIE15 · $101.50 · Not accepted by the store. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/cutsclothing-promo-codes",
+          "evidence": "Unleash 15% Savings at shop.cutsclothing.com ... ELLIE15",
+          "good": false
+        },
+        {
+          "code": "LMM15",
+          "text": "LMM15 · $101.50 · Not accepted by the store. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/cutsclothing-promo-codes",
+          "evidence": "Don't Miss 15% off - Act Fast with cutsclothing Discount Code ... LMM15",
+          "good": false
+        },
+        {
+          "code": "OFFPATHLIFE",
+          "text": "OFFPATHLIFE · $101.50 · Not accepted by the store. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/cutsclothing-promo-codes",
+          "evidence": "Enjoy 5% off Exquisite Products at shop.cutsclothing.com ... OFFPATHLIFE (creator code)",
+          "good": false
+        },
+        {
+          "code": "FRAZER",
+          "text": "FRAZER · $101.50 · Not accepted by the store. · couponnova.com (reported by the search)",
+          "source": "https://couponnova.com/cutsclothing",
+          "evidence": "20% Off with Cuts Promo Code ... FRAZER",
+          "good": false
+        },
+        {
+          "code": "CHGO",
+          "text": "CHGO · $101.50 · Not accepted by the store. · couponnova.com (reported by the search)",
+          "source": "https://couponnova.com/cutsclothing",
+          "evidence": "Cuts Coupon: 20% Off Your Purchase ... CHGO",
+          "good": false
+        },
+        {
+          "code": "RUSH",
+          "text": "RUSH · $101.50 · Not accepted by the store. · couponnova.com (reported by the search)",
+          "source": "https://couponnova.com/cutsclothing",
+          "evidence": "Save 20% Off w/ Discount Code ... RUSH",
+          "good": false
+        },
+        {
+          "code": "GAMETHEORY",
+          "text": "GAMETHEORY · $101.50 · Not accepted by the store. · couponnova.com (reported by the search)",
+          "source": "https://couponnova.com/cutsclothing",
+          "evidence": "Cuts Coupon: 20% Off Your Order ... GAMETHEORY (creator code)",
+          "good": false
+        },
+        {
+          "code": "CONNECT",
+          "text": "CONNECT · $101.50 · Not accepted by the store. · couponnova.com (reported by the search)",
+          "source": "https://couponnova.com/cutsclothing",
+          "evidence": "Save 20% Off ... CONNECT",
+          "good": false
+        },
+        {
+          "code": "HENDRIX",
+          "text": "HENDRIX · $101.50 · Not accepted by the store. · couponnova.com (reported by the search)",
+          "source": "https://couponnova.com/cutsclothing",
+          "evidence": "Save 20% Off ... HENDRIX",
+          "good": false
+        },
+        {
+          "code": "DPRATT",
+          "text": "DPRATT · $101.50 · Not accepted by the store. · couponnova.com (reported by the search)",
+          "source": "https://couponnova.com/cutsclothing",
+          "evidence": "Take 20% Off Your Order ... DPratt",
+          "good": false
+        },
+        {
+          "code": "FIRST1000",
+          "text": "FIRST1000 · $101.50 · Not accepted by the store. · hotdeals.com (reported by the search)",
+          "source": "https://www.hotdeals.com/coupons/cuts-promo-codes",
+          "evidence": "FIRST1000 (20% OFF)",
+          "good": false
+        }
+      ],
+      "cartAfter": {
+        "total": 101.5,
+        "codes": [],
+        "fields": {
+          "items": 2,
+          "subtotal": 10150,
+          "original": 10150,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "seconds": 368
+    },
+    {
+      "name": "Caraway",
+      "url": "https://www.carawayhome.com",
+      "group": "extra",
+      "outcome": "no codes found",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=6",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 20.7,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 20.7,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 20.7,
+          "stage": "coupons:merchant other-host"
+        },
+        {
+          "t": 21,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 21.2,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 21.2,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 133.4,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=6"
+        },
+        {
+          "t": 133.7,
+          "stage": "coupons:status no_codes"
+        },
+        {
+          "t": 133.7,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "f3c5f1c539",
+      "startedAt": "2026-10-17T15:44:17.859Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.carawayhome.com/cart"
+      },
+      "checkout": {
+        "ok": true,
+        "url": "https://shop.carawayhome.com/checkouts/cn/hWNI50HVFcqrYFpwORqzz1qz/en-us/information?_r=AQABzAsAQWRiARoTMD7evwFuNpBnMZE7kT288tp0wOf0CRGYz4DJ&_s=676034f1-4444-4209-89a0-8e3be2d45289&_y=9e69a196-721f-4f3c-a46b-9a43d9595de5&auto_redirect=false&edge_redirect=true&skip_shop_pay=true",
+        "step": "information"
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Caraway codes. No code posted for Caraway could be found. 6 codes shown masked or behind a button could not be read, so they were not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for Caraway codes…",
+        "I searched the web for Caraway codes. No code posted for Caraway could be found. 6 codes shown masked or behind a button could not be read, so they were not tested."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 453.5,
+        "codes": [],
+        "fields": {
+          "items": 2,
+          "subtotal": 45350,
+          "original": 45350,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "seconds": 137
+    },
+    {
+      "name": "Bombas",
+      "url": "https://bombas.com",
+      "group": "extra",
+      "outcome": "no codes found",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant other-host",
+        "coupons:method page",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=3",
+        "coupons:status no_codes",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 23.6,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 23.6,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 23.6,
+          "stage": "coupons:merchant other-host"
+        },
+        {
+          "t": 23.8,
+          "stage": "coupons:method page"
+        },
+        {
+          "t": 24.1,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 24.1,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 109.9,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=3"
+        },
+        {
+          "t": 109.9,
+          "stage": "coupons:status no_codes"
+        },
+        {
+          "t": 109.9,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "build": "f3c5f1c539",
+      "startedAt": "2026-10-17T15:46:37.969Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://bombas.com/cart"
+      },
+      "checkout": {
+        "ok": true,
+        "url": "https://shop.bombas.com/checkouts/cn/hWNI50W9oUdOylxzqgV4BFwn/en-us?_r=AQABLhmsAmYlNOnrOuNukmPTLll5heL7KIPvQ48FG8mWApq7p2rJ&skip_shop_pay=true",
+        "step": "information"
+      },
+      "apiErrors": [],
+      "summary": "I searched the web for Bombas codes. No code posted for Bombas could be found. 3 codes shown masked or behind a button could not be read, so they were not tested. Nothing was tested, and your cart is unchanged.",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Found the coupon box. Searching the web for Bombas codes…",
+        "I searched the web for Bombas codes. No code posted for Bombas could be found. 3 codes shown masked or behind a button could not be read, so they were not tested."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 0,
+        "codes": [],
+        "fields": {
+          "items": 0,
+          "subtotal": 0,
+          "original": 0,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "seconds": 113
+    }
+  ]
+}
