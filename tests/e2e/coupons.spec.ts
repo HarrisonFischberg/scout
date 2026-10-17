@@ -195,6 +195,10 @@ test("no winning code: offers to search again, searches without repeating codes,
     BATCH_WAIT,
   );
   await expect(page.getByRole("button", { name: "Search again" })).toBeFocused();
+  // Owner, 2026-10-17: Stop is the composer's button, never one in the chat.
+  await expect(page.getByRole("log").getByRole("button", { name: "Stop", exact: true })).toHaveCount(0);
+  await expect(page.locator(".composer-foot").getByRole("button", { name: "Stop", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send" })).toBeHidden();
   await page.getByRole("button", { name: "Search again" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   await expect(answer).toContainText("I tested 5 codes found online for shop and none lowered your total of $100.00, so your cart is unchanged. I couldn't find any more codes to try.", BATCH_WAIT);
@@ -212,6 +216,25 @@ test("no winning code: offers to search again, searches without repeating codes,
   await expect(rows).toHaveCount(5);
   const codes = await rows.locator(".code").allTextContents();
   expect(new Set(codes).size).toBe(5);
+});
+
+// Owner, 2026-10-17: the send arrow turns into Stop while the run works, and Stop halts it.
+test("Find coupons turns Send into Stop next to the model picker, and Stop ends the run", async ({ page }) => {
+  test.setTimeout(90_000);
+  await openPopup(page, { pct: {} });
+  await page.getByRole("button", { name: "Find coupons" }).click();
+  const composerStop = page.locator(".composer-foot").getByRole("button", { name: "Stop", exact: true });
+  await expect(composerStop).toBeVisible();
+  await expect(composerStop).toHaveClass(/\bsend\b/);
+  await expect(page.getByRole("button", { name: "Send" })).toBeHidden();
+  await expect(page.getByRole("log").getByRole("button", { name: "Stop", exact: true })).toHaveCount(0);
+  // Stop also answers the inline "try more codes?" question when it is up.
+  await expect(page.locator("#coupons-more-text")).toBeVisible(BATCH_WAIT);
+  await composerStop.click();
+  await expect(page.locator("#coupons-more")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+  await expect(composerStop).toBeHidden();
+  await expect(page.locator("#task .trace-head")).toContainText(/Finished|Stopped/);
 });
 
 // Owner rule 2026-10-17: a failed web search means nothing is tested; no guesses stand in for it.
