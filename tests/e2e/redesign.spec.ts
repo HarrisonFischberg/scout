@@ -198,7 +198,8 @@ test("the model pill opens the Models sheet: picking a model or effort saves it 
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
   const pill = page.locator("#model-pill");
   // Default for a new install: Haiku 5.5 at High.
-  await expect(pill).toHaveText("Haiku 5.5 · High");
+  await expect(pill).toHaveText("Haiku 5.5");
+  await expect(pill).toHaveAttribute("aria-label", "Haiku 5.5, High effort, change model or effort");
   await expect(pill).toHaveAttribute("aria-haspopup", "dialog");
   await pill.click();
   const sheet = page.getByRole("dialog", { name: "Models" });
@@ -220,13 +221,15 @@ test("the model pill opens the Models sheet: picking a model or effort saves it 
   await expect(sheet).toBeHidden();
   await expect(page.locator("#settings-view")).toBeHidden();
   await expect(pill).toBeFocused();
-  await expect(pill).toHaveText("Opus 5.5 · High");
+  await expect(pill).toHaveText("Opus 5.5");
+  await expect(pill).toHaveAttribute("aria-label", "Opus 5.5, High effort, change model or effort");
   await expect(page.locator("#status")).toHaveText("");
   await expect.poll(() => savedSettings(page)).toMatchObject({ provider: "anthropic", model: "claude-opus-5-5", effort: "high" });
 
   await pill.click();
   await sheet.getByRole("radiogroup", { name: "Effort levels" }).getByRole("radio", { name: "Low", exact: true }).click();
-  await expect(pill).toHaveText("Opus 5.5 · Low");
+  await expect(pill).toHaveText("Opus 5.5");
+  await expect(pill).toHaveAttribute("aria-label", "Opus 5.5, Low effort, change model or effort");
   await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-opus-5-5", effort: "low" });
 
   // Close changes nothing.
@@ -244,7 +247,8 @@ test("the Models sheet lists every provider with a saved key, and picking anothe
   await expect(models.getByRole("radio", { name: "Claude Haiku 5.5" })).toBeVisible();
   await expect(page.locator("#model-menu-note")).toHaveText("Showing models for your Anthropic and OpenAI API keys. Add keys in Settings.");
   await models.getByRole("radio", { name: "GPT-5" }).click();
-  await expect(page.locator("#model-pill")).toHaveText("GPT-5 · High");
+  await expect(page.locator("#model-pill")).toHaveText("GPT-5");
+  await expect(page.locator("#model-pill")).toHaveAttribute("aria-label", "GPT-5, High effort, change model or effort");
   await expect.poll(() => savedSettings(page)).toMatchObject({ provider: "openai", model: "gpt-5", effort: "high" });
 });
 
@@ -268,7 +272,8 @@ test("the Models sheet works by keyboard: arrows move, Enter picks, Escape close
   await expect(sheet.getByRole("radio", { name: "Max" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(sheet).toBeHidden();
-  await expect(pill).toHaveText("Haiku 5.5 · Max");
+  await expect(pill).toHaveText("Haiku 5.5");
+  await expect(pill).toHaveAttribute("aria-label", "Haiku 5.5, Max effort, change model or effort");
   await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-haiku-5-5", effort: "max" });
 });
 
@@ -277,7 +282,8 @@ test("the mode switch stays on one line beside the model pill when the popup fir
     keys: { anthropic: GOOD_KEY },
     data: { settings: { provider: "anthropic", model: "claude-opus-5-5", effort: "medium", retention: "7" } },
   });
-  await expect(page.locator("#model-pill")).toHaveText("Opus 5.5 · Medium");
+  await expect(page.locator("#model-pill")).toHaveText("Opus 5.5");
+  await expect(page.locator("#model-pill")).toHaveAttribute("aria-label", "Opus 5.5, Medium effort, change model or effort");
   for (const label of await page.locator(".composer-foot fieldset.segmented label").all()) {
     expect((await label.boundingBox())!.height).toBeLessThanOrEqual(30);
   }
