@@ -17,6 +17,7 @@ import { answerText, fillSourceCard, savedUrl, siteIcon, siteName, type Source }
 import { ConversationStore, type StoredMessage } from "./chat/store";
 import { MAX_EXTRA_TABS, type TabInfo } from "./chat/tabs";
 import { suggestCodes, type SuggestedCodes } from "./coupons/codes";
+import { browserTrace, type BrowserTarget, type PageBrowser } from "./coupons/browser-read";
 import { locateForm } from "./coupons/locate";
 import { identifyMerchant, type MerchantMeta } from "./coupons/merchant";
 import { formatMoney } from "./coupons/money";
@@ -313,6 +314,66 @@ async function tabAgentPage(): Promise<CouponPage | null> {
       const m = (await call({ type: "scout:page-meta" })) as MerchantMeta | null;
       return m && typeof m === "object" ? m : null;
     },
+  };
+}
+
+/** Settings key: "asked" once Find coupons has asked Safari for access to every site (for the browser fallback). */
+const COUPON_BROWSER_KEY = "couponBrowser";
+const BROWSER_SNAPSHOT = { maxElements: 600, maxTextChars: 60_000 };
+
+const originOf = (url: string): string | null => {
+  try {
+    return new URL(url).origin + "/*";
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Find coupons' browser fallback (src/coupons/browser-read.ts): coupon pages
+ * the reader could not load open in background tabs of the user's own Safari
+ * window (a Private window stays private), read through Scout's content
+ * script, and close again with any tab they opened.
+ */
+function backgroundTabs(windowId: number | undefined): PageBrowser {
+  const children = new Map<number, Set<number>>();
+  const onCreated = (t: { id?: number; openerTabId?: number }): void => {
+    if (t.id !== undefined && t.openerTabId !== undefined) children.get(t.openerTabId)?.add(t.id);
+  };
+  let listening = false;
+  return {
+    open: async (url) => {
+      const origin = originOf(url);
+      if (!origin || !browser.tabs.create) return null;
+      // Without site access the tab could open but never be read.
+      if (browser.permissions.contains && !(await browser.permissions.contains({ origins: [origin] }).catch(() => false))) return null;
+      if (!listening) {
+        browser.tabs.onCreated?.addListener(onCreated);
+        listening = true;
+      }
+      const t = await browser.tabs.create({ url, active: false, ...(windowId !== undefined ? { windowId } : {}) });
+      if (t.id === undefined) return null;
+      children.set(t.id, new Set());
+      return t.id;
+    },
+    read: async (tab) => {
+      const snap = (await callInjected(tab, "content.js", CONTENT_HANDLER, { type: "scout:snapshot", ...BROWSER_SNAPSHOT }).catch(() => null)) as Snapshot | null;
+      return snap && typeof snap.text === "string" && Array.isArray(snap.elements) ? snap : null;
+    },
+    click: async (tab, ref) => {
+      const r = (await callInjected(tab, "content.js", CONTENT_HANDLER, { type: "scout:act", action: { type: "click", ref } }).catch(() => null)) as ActionResult | null;
+      return r?.ok === true;
+    },
+    close: async (tab) => {
+      const extra = [...(children.get(tab) ?? [])];
+      children.delete(tab);
+      if (!children.size && listening) {
+        browser.tabs.onCreated?.removeListener?.(onCreated);
+        listening = false;
+      }
+      await browser.tabs.remove?.([tab, ...extra]);
+    },
+    wait: (ms) => new Promise((r) => setTimeout(r, ms)),
   };
 }
 
@@ -2373,6 +2434,34 @@ async function main(): Promise<void> {
     });
   }
 
+  /**
+   * Coupon pages the reader could not load open in background tabs
+   * automatically (owner's choice, 2026-10-17), wherever Safari gives Scout
+   * access to those sites. Access to every site is asked for once, on the
+   * Find coupons press (see `askSiteAccessOnce`); without it the pages are
+   * skipped and the summary says so.
+   */
+  async function allowBrowserPages(pages: BrowserTarget[]): Promise<boolean> {
+    const origins = [...new Set(pages.flatMap((p) => originOf(p.url) ?? []))];
+    const ok = origins.length > 0 && (await browser.permissions.contains?.({ origins }).catch(() => false)) === true;
+    trace("coupons:browser-allow " + (ok ? "auto" : "no-access") + " pages=" + pages.length);
+    return ok;
+  }
+
+  // Asked once ever: Safari's site-access prompt for every site, so later runs open blocked pages without asking.
+  let siteAccessAsked = storage ? (await storage.get(COUPON_BROWSER_KEY).catch(() => ({}) as Record<string, unknown>))[COUPON_BROWSER_KEY] === "asked" : false;
+  function askSiteAccessOnce(): void {
+    if (siteAccessAsked) return;
+    siteAccessAsked = true;
+    // Called inside the button press, before any await, so Safari can show its prompt.
+    try {
+      void browser.permissions.request({ origins: ALL_SITES }).catch(() => false).then((ok) => trace("coupons:site-access " + (ok ? "granted" : "declined")));
+    } catch {
+      trace("coupons:site-access unavailable");
+    }
+    if (storage) void storage.set({ [COUPON_BROWSER_KEY]: "asked" }).catch(() => undefined);
+  }
+
   /** A find this soon after the last "Found" line adds to it instead of posting another. */
   const FOUND_EVERY_MS = 8000;
   const DONE_MARK = '<svg class="done-mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>';
@@ -2412,6 +2501,7 @@ async function main(): Promise<void> {
   async function runCoupons(): Promise<void> {
     if (activeChat || control || task || couponRun || !session) return;
     const s = session;
+    askSiteAccessOnce();
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     startRun("coupons", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model });
     const page = await tabAgentPage().catch(() => null);
@@ -2560,7 +2650,13 @@ async function main(): Promise<void> {
         const queue = new CodeQueue();
         const storeFound = new Set(onSite.map((c) => c.code));
         trace("coupons:search");
+        const browserPages = {
+          tabs: backgroundTabs(tab.windowId),
+          allow: allowBrowserPages,
+          onPage: (p: Parameters<typeof browserTrace>[0]) => trace(browserTrace(p)),
+        };
         const searching = suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
+          browser: browserPages,
           onFound: (fresh) => {
             queue.push(fresh);
             first.found(fresh.filter((c) => !storeFound.has(c.code)).length);
@@ -2585,6 +2681,12 @@ async function main(): Promise<void> {
           discovery.dropped += more.dropped;
           discovery.offers = [...(discovery.offers ?? []), ...more.offers];
           if (more.error && !discovery.error) discovery.error = more.error;
+          if (more.browserPages.length) {
+            discovery.browserOpened = (discovery.browserOpened ?? 0) + more.browserPages.length;
+            discovery.browserCodes = (discovery.browserCodes ?? 0) + more.browserCodes;
+          }
+          if (more.browserSkipped?.why === "declined") discovery.browserDeclined = (discovery.browserDeclined ?? 0) + more.browserSkipped.count;
+          if (more.browserSkipped) trace("coupons:browser-skipped " + more.browserSkipped.why + " " + more.browserSkipped.count);
         };
         // Host and path only, for the run trace (no query strings).
         const pageLabel = (url: string): string => {
@@ -2630,6 +2732,7 @@ async function main(): Promise<void> {
             const again = progress(true);
             const more = new CodeQueue();
             void suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
+              browser: browserPages,
               exclude: known,
               more: true,
               onFound: (fresh) => {

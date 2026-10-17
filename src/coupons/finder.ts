@@ -752,6 +752,11 @@ export interface DiscoveryInfo {
   masked: number;
   dropped: number;
   offers?: string[];
+  /** Pages opened in a background Safari tab because the web reader could not load them, and codes found there. */
+  browserOpened?: number;
+  browserCodes?: number;
+  /** Pages that needed the browser and were not opened: Scout has no access to those sites in Safari. */
+  browserDeclined?: number;
 }
 
 export const plural = (n: number, what: string): string => n + " " + what + (n === 1 ? "" : "s");
@@ -771,6 +776,16 @@ export function discoveryLine(d: DiscoveryInfo): string {
   line += found ? " Found " + (parts.length > 1 ? plural(found, "code") + ": " + list : list) + "." : " No code posted for " + d.brand + " could be found.";
   if (d.masked) line += " " + plural(d.masked, "code") + " shown masked or behind a button could not be read, so " + (d.masked === 1 ? "it was" : "they were") + " not tested.";
   if (d.dropped) line += " " + plural(d.dropped, "code") + " the search mentioned without a page it had opened " + (d.dropped === 1 ? "was" : "were") + " left out.";
+  if (d.browserOpened) {
+    line +=
+      " The web reader couldn't load " + plural(d.browserOpened, "page") + ", so I opened " + (d.browserOpened === 1 ? "it" : "them") + " in Safari and found " +
+      (d.browserCodes ? plural(d.browserCodes, "code") + " there (found on the page, not yet tested)." : "no code there.");
+  }
+  if (d.browserDeclined) {
+    line +=
+      " " + plural(d.browserDeclined, "page") + " the web reader couldn't load " + (d.browserDeclined === 1 ? "was" : "were") +
+      " not opened in Safari, because Scout for Safari isn't allowed on " + (d.browserDeclined === 1 ? "that site" : "those sites") + " (Safari Settings, Extensions).";
+  }
   return line;
 }
 
