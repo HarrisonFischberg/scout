@@ -225,7 +225,11 @@ export function noBoxMessage(snap: Snapshot): string {
   return "No coupon box found on this page. Open the cart or checkout page first.";
 }
 const EPS = 0.004;
-const KEPT_NOTE = "The store kept the earlier code on the order and shows no remove button I can use safely, so I stopped testing there.";
+// Why the page path stopped with a code still on the order: each says which
+// step failed, so a live run's summary tells the two apart.
+const REMOVE_FAILED_NOTE = "The store kept the earlier code on the order: I pressed its remove control, but the total did not go back, so I stopped testing there.";
+const BOX_GONE_NOTE =
+  "The store kept the earlier code on the order and shows no remove button I can use safely, and its coupon box is not available while that code is on, so I stopped testing there.";
 const stackedNote = (kept: string, code: string): string =>
   "The store kept " + kept + " on the order and added " + code + " on top of it, so the total now counts both codes. Codes cannot be measured one at a time here, so I stopped testing.";
 
@@ -320,14 +324,14 @@ async function pageTester(
     // tells whether this code replaced it (see below).
     if (kept) {
       const off = await takeOff(before, kept.code);
-      if (off === null) return { total: null, accepted: null, halt: true, note: KEPT_NOTE };
+      if (off === null) return { total: null, accepted: null, halt: true, note: REMOVE_FAILED_NOTE };
       if (off !== "none") {
         before = off;
         kept = null;
       }
     }
     const box = await open(before);
-    if (!box) return { total: null, accepted: null, ...(kept ? { halt: true, note: KEPT_NOTE } : { note: "The coupon box is gone." }) };
+    if (!box) return { total: null, accepted: null, ...(kept ? { halt: true, note: BOX_GONE_NOTE } : { note: "The coupon box is gone." }) };
     const typed = await act({ type: "type", ref: box.form.input.ref, text: code, clear: true });
     if (!typed.ok) return { total: null, accepted: null, note: "Could not type the code: " + typed.message };
     // Some stores enable Apply only once a code is typed.

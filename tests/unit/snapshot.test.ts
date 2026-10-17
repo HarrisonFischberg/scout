@@ -70,6 +70,22 @@ describe("snapshot", () => {
     expect(snap.text).not.toMatch(/zzz|Ghost|aria secret|tok/);
   });
 
+  // Live sweep 2026-10-17, Brumate: the drawer's remove-discount button is an
+  // × icon whose only name is the SVG's <title>; an SVG without one names nothing.
+  it("names an icon button by its SVG title, and nothing by an SVG without one", () => {
+    const tree = n("body", {}, [
+      n("button", { type: "button" }, [n("svg", { viewBox: "0 0 24 24" }, [n("title", {}, [t("Remove discount")]), n("use", { href: "/svgs/close.svg#close" })])]),
+      n("button", { "aria-label": "Close cart drawer" }, [n("svg", {}, [n("title", {}, [t("Arrow Left")])])]),
+      n("button", {}, [n("svg", {}, [n("path", { d: "M0 0" })])]),
+      n("p", {}, [n("svg", {}, [n("title", {}, [t("Discount")])]), t("LL10-XEEG0MNF")]),
+    ]);
+    const snap = buildSnapshot(tree, opts);
+    expect(snap.elements.map((e) => e.name)).toEqual(["Remove discount", "Close cart drawer", ""]);
+    // Drawing never becomes page text; the code next to the icon still does.
+    expect(snap.text).not.toContain("Discount");
+    expect(snap.text).toContain("LL10-XEEG0MNF");
+  });
+
   it("stays under the size budget on a large page and flags truncation", () => {
     const rows: SnapNode[] = [];
     for (let i = 0; i < 5000; i++) {
