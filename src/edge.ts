@@ -2,7 +2,8 @@
 // it only on sites the user let Scout access, and only while Settings > Button
 // on webpages is on; it never runs in frames or Private Browsing, and it reads
 // nothing from the page. It draws a tab on the edge of the viewport in a closed
-// shadow root. The tab opens itself once, on the first page after install, and
+// shadow root (fixed to the screen on Mac and iPad; on iPhone it rides along in
+// the page so Safari's bottom bar stays see-through, see tabInPage). The tab opens itself once, on the first page after install, and
 // otherwise stays tucked until the user reaches for it; on touch the first tap
 // brings it out and the next one opens Scout (owner requests 2026-10-17). It
 // can be dragged up and down or to the other side. Opening it asks the worker to open Scout's toolbar panel
@@ -18,6 +19,8 @@ import {
   PAGE_BUTTON_KEY,
   parsePageButton,
   snapSide,
+  tabArea,
+  tabInPage,
   tabScale,
   tapOnlyWakes,
   TUCK_AFTER_MS,
@@ -81,6 +84,12 @@ const CSS = `
 .toast:empty { display: none; }
 `;
 
+// iPhone (tabInPage): the tab and the status line sit in a screen-sized box in
+// the page, not fixed to the screen, so Safari keeps its bottom bar see-through.
+const IN_PAGE_CSS = `
+.tab, .toast { position: absolute; pointer-events: auto; }
+`;
+
 // Inline !important on the host beats any page stylesheet.
 const HOST_STYLE = [
   "all: initial",
@@ -127,11 +136,16 @@ function viewportInfo(): Parameters<typeof tabScale>[0] {
 }
 
 function mount(initial: PageButton, save: (side: Side, y: number) => void, introduce: boolean): EdgeUi {
+  const inPage = tabInPage(viewportInfo().coarse, Math.min(screen.width, screen.height));
   const host = document.createElement("div");
   host.setAttribute("style", HOST_STYLE);
+  if (inPage) {
+    // Hidden until placed over the screen, so it never flashes at the top of the page.
+    for (const [k, v] of [["position", "absolute"], ["pointer-events", "none"], ["visibility", "hidden"]]) host.style.setProperty(k, v, "important");
+  }
   const root = host.attachShadow({ mode: "closed" });
   root.innerHTML =
-    "<style>" + CSS + "</style>" +
+    "<style>" + CSS + (inPage ? IN_PAGE_CSS : "") + "</style>" +
     '<button class="tab" type="button" aria-label="Open Scout for Safari"><span class="pill">' + GLYPH + "</span></button>" +
     '<p class="toast" role="status"></p>';
   const tab = root.querySelector("button") as HTMLButtonElement;
@@ -145,6 +159,36 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, intro
     tab.style.left = "";
   };
   placeTab();
+
+  // ---------- The screen, as the tab sees it ----------
+  // Fixed: the window. In the page: the part of the page on screen now, which
+  // the host covers; client coordinates are offset from it by visualViewport.
+  const view = (): { x: number; y: number; w: number; h: number } => {
+    const vv = window.visualViewport;
+    if (!inPage || !vv) return { x: 0, y: 0, w: innerWidth, h: innerHeight };
+    return { x: vv.offsetLeft, y: vv.offsetTop, w: vv.width, h: vv.height };
+  };
+  const follow = (): void => {
+    if (!inPage) return;
+    const vv = window.visualViewport;
+    const page = document.scrollingElement ?? document.documentElement;
+    const a = tabArea(
+      vv ? { left: vv.pageLeft, top: vv.pageTop, width: vv.width, height: vv.height } : { left: scrollX, top: scrollY, width: innerWidth, height: innerHeight },
+      page.scrollWidth,
+      page.scrollHeight,
+    );
+    host.style.setProperty("left", a.left + "px", "important");
+    host.style.setProperty("top", a.top + "px", "important");
+    host.style.setProperty("width", a.width + "px", "important");
+    host.style.setProperty("height", a.height + "px", "important");
+    host.style.setProperty("visibility", "visible", "important");
+  };
+  if (inPage) {
+    window.addEventListener("scroll", follow, { passive: true });
+    window.visualViewport?.addEventListener("scroll", follow);
+    window.visualViewport?.addEventListener("resize", follow);
+    window.addEventListener("resize", follow);
+  }
 
   // ---------- Same size on screen when Safari zooms the page out ----------
   const rescale = (): void => {
@@ -192,8 +236,9 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, intro
     if (!dragging && !isDrag(e.clientX - pointer.x, e.clientY - pointer.y)) return;
     dragging = true;
     tab.classList.add("dragging");
-    tab.style.left = e.clientX + "px";
-    tab.style.top = e.clientY + "px";
+    const v = view();
+    tab.style.left = e.clientX - v.x + "px";
+    tab.style.top = e.clientY - v.y + "px";
   });
   const endPointer = (e: PointerEvent, cancelled: boolean): void => {
     if (!pointer || e.pointerId !== pointer.id) return;
@@ -205,9 +250,10 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, intro
       suppressClick = true;
       window.setTimeout(() => (suppressClick = false), 400);
       tab.classList.remove("dragging");
-      if (!cancelled && innerWidth > 0 && innerHeight > 0) {
-        side = snapSide(e.clientX, innerWidth);
-        y = clampY(e.clientY / innerHeight);
+      const v = view();
+      if (!cancelled && v.w > 0 && v.h > 0) {
+        side = snapSide(e.clientX - v.x, v.w);
+        y = clampY((e.clientY - v.y) / v.h);
         save(side, y);
       }
       placeTab();
@@ -278,9 +324,10 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, intro
     try {
       host.showPopover();
     } catch {
-      // Stays a fixed element with the top z-index.
+      // Stays a plain element with the top z-index.
     }
   }
+  follow();
   if (introduce) wake();
 
   return {
@@ -295,6 +342,10 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, intro
       window.clearTimeout(toastTimer);
       window.visualViewport?.removeEventListener("resize", rescale);
       window.removeEventListener("resize", rescale);
+      window.removeEventListener("scroll", follow);
+      window.visualViewport?.removeEventListener("scroll", follow);
+      window.visualViewport?.removeEventListener("resize", follow);
+      window.removeEventListener("resize", follow);
       host.remove();
     },
   };
