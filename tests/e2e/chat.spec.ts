@@ -32,7 +32,13 @@ async function openPopup(page: Page, opts: { key: string | null }): Promise<{ bo
         // Sharing with the provider already allowed (consent.spec.ts covers asking).
         storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } } } : {}), set: async () => undefined, clear: async () => undefined } },
         tabs: { query: async () => [{ id: 1, url: pageData.url, title: pageData.title, active: true }] },
-        scripting: { executeScript: async () => [{ result: pageData }] },
+        scripting: {
+          executeScript: async (injection: { func?: unknown }) => {
+            const g = globalThis as unknown as { __injected?: string[] };
+            (g.__injected ??= []).push(String(injection.func));
+            return [{ result: pageData }];
+          },
+        },
       };
       (globalThis as unknown as { browser: unknown }).browser = stub;
     },
@@ -68,11 +74,66 @@ test("ask about the page streams a Markdown answer", async ({ page }) => {
   expect(bodies[0]).toContain("Widget costs $10.");
 });
 
+test("an answer shows the moving indicator until its first words", async ({ page }) => {
+  await openPopup(page, { key: "sk-test-synthetic" });
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((r) => (release = r));
+  await page.route("https://api.anthropic.com/**", async (r) => {
+    await gate;
+    await r.fulfill({ status: 200, contentType: "text/event-stream", body: ANSWER });
+  });
+  await page.getByLabel("Ask about this page").fill("How much is the widget?");
+  await page.getByRole("button", { name: "Send" }).click();
+  const log = page.getByRole("log", { name: "Conversation" });
+  await expect(log.locator(".msg.assistant .thinking .pulse")).toHaveCount(1);
+  await expect(log.locator(".msg.assistant .thinking")).toHaveText("Thinking…");
+  release();
+  await expect(log.getByText("with free shipping.")).toBeVisible();
+  await expect(log.locator(".pulse")).toHaveCount(0);
+});
+
 test("summarize button works", async ({ page }) => {
   await openPopup(page, { key: "sk-test-synthetic" });
-  await page.getByRole("button", { name: "More actions" }).click();
-  await page.getByRole("button", { name: "Summarize page" }).click();
+  await page.getByRole("button", { name: "Summarize this page" }).click();
   await expect(page.getByRole("log").getByText("with free shipping.")).toBeVisible();
+});
+
+test("scrolling up while an answer types out stays where the user put it", async ({ page }) => {
+  await openPopup(page, { key: "sk-test-synthetic" });
+  const long = Array.from({ length: 40 }, (_, i) => "Paragraph " + (i + 1) + " of the summary, with enough words to wrap.").join("\n\n");
+  await page.unroute("https://api.anthropic.com/**");
+  await page.route("https://api.anthropic.com/**", (r) =>
+    r.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      body: sse([
+        { type: "message_start", message: { usage: { input_tokens: 30, output_tokens: 1 } } },
+        { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
+        { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: long } },
+        { type: "content_block_stop", index: 0 },
+        { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 400 } },
+        { type: "message_stop" },
+      ]),
+    }),
+  );
+  await page.getByRole("button", { name: "Summarize this page" }).click();
+  const thread = page.locator("#thread");
+  const gap = (): Promise<number> => thread.evaluate((t) => t.scrollHeight - t.scrollTop - t.clientHeight);
+  // While it types, the thread follows the new text.
+  await expect.poll(() => thread.evaluate((t) => t.scrollHeight > t.clientHeight + 200), { timeout: 15_000 }).toBe(true);
+  expect(await gap()).toBeLessThan(24);
+  // The user scrolls up to read from the top; typing goes on and does not pull them back down.
+  await thread.hover();
+  await page.mouse.wheel(0, -5000);
+  await expect.poll(() => thread.evaluate((t) => t.scrollTop)).toBe(0);
+  const typedBefore = await thread.evaluate((t) => t.textContent?.length ?? 0);
+  await page.waitForTimeout(1000);
+  expect(await thread.evaluate((t) => t.textContent?.length ?? 0)).toBeGreaterThan(typedBefore);
+  expect(await thread.evaluate((t) => t.scrollTop)).toBe(0);
+  // Scrolling back to the bottom follows the new text again.
+  await page.mouse.wheel(0, 100_000);
+  await page.waitForTimeout(500);
+  expect(await gap()).toBeLessThan(24);
 });
 
 test("keyboard only: type, Enter sends, focus returns to the field", async ({ page }) => {
@@ -102,6 +163,38 @@ test.describe("touch device", () => {
     await expect(page.getByLabel("Ask about this page")).toBeVisible();
     await expect(page.getByLabel("Ask about this page")).not.toBeFocused();
   });
+
+  // Owner decision 2026-10-18: no page blur on iPhone. Safari tells a panel
+  // that was never tapped that it has closed only about half a second after
+  // its sheet has gone, so the blur outlived the sheet.
+  test.describe("iPhone screen", () => {
+    test.use({ screen: { width: 402, height: 874 } });
+    test("never blurs the page behind the panel, before or after a tap", async ({ page }) => {
+      await openPopup(page, { key: "sk-test-synthetic" });
+      await expect(page.getByLabel("Ask about this page")).toBeVisible();
+      await page.getByRole("button", { name: "New chat" }).tap();
+      await page.waitForTimeout(200);
+      const injected = await page.evaluate(() => (globalThis as unknown as { __injected?: string[] }).__injected ?? []);
+      expect(injected.filter((src) => src.includes("backdrop-filter"))).toEqual([]);
+    });
+  });
+
+  // Owner item 6 (2026-10-17): Safari's sheet bar already names Scout, so the
+  // chat header drops its own icon and title but keeps New chat and Settings.
+  test("the chat header shows no repeated name, only New chat and Settings", async ({ page }) => {
+    await openPopup(page, { key: "sk-test-synthetic" });
+    const header = page.locator("#chat-view > header");
+    await expect(header.locator("img")).toBeHidden();
+    await expect(page.getByRole("heading", { name: "Scout for Safari", level: 1 })).toHaveCSS("width", "1px");
+    await expect(page.getByRole("button", { name: "New chat" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
+  });
+});
+
+test("on Mac the chat header keeps the icon and the name", async ({ page }) => {
+  await openPopup(page, { key: "sk-test-synthetic" });
+  await expect(page.locator("#chat-view > header img")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scout for Safari", level: 1 })).toBeVisible();
 });
 
 // T018: with OpenAI chosen but only an Anthropic key saved, the popup used

@@ -9,6 +9,7 @@ async function openPopup(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const data: Record<string, unknown> = {
       settings: { provider: "anthropic", model: "claude-sonnet-5-5", retention: "7" },
+      modelMigration: "haiku-5-5-high",
       // OpenAI allowed, Anthropic not: Settings shows a Withdraw button and the first chat request asks.
       aiConsent: { openai: { at: 1, version: 2 } },
     };
@@ -64,7 +65,7 @@ for (const scheme of ["light", "dark"] as const) {
     test("popup model menu has no WCAG 2.2 AA violations", async ({ page }) => {
       await openPopup(page);
       await page.locator("#model-pill").click();
-      await expect(page.getByRole("menu", { name: "Model and effort" })).toBeVisible();
+      await expect(page.getByRole("dialog", { name: "Models" })).toBeVisible();
       expect(await axe(page)).toEqual([]);
     });
 

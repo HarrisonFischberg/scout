@@ -7,9 +7,11 @@
 // runs there, and a closed tab ends its task.
 import { PANEL_EVENTS, PANEL_PORT, checkSchema, classifySender, createRouter, envelope, parseEnvelope, type MessageSender, type Self } from "./bridge/messages";
 import { createScoutWorker } from "./server/worker";
-import { edgeMatches, EDGE_SCRIPT_ID, PAGE_BUTTON_KEY, parsePageButton, sameMatches } from "./panel/edge";
+import { edgeMatches, EDGE_RUN_AT, EDGE_SCRIPT_ID, PAGE_BUTTON_KEY, pageButtonOffered, parsePageButton, platformOs, sameMatches } from "./panel/edge";
 import { clearTabStates, forgetTab, loadTabStates, setPanelOpen, tabKey } from "./panel/state";
 import { openPanel, toolbarIcon, TITLE_CLOSE, TITLE_OPEN } from "./panel/toolbar";
+import { createWarmer } from "./panel/warm";
+import { nativeSend } from "./keychain";
 
 const self = (): Self => ({ id: browser.runtime.id ?? "", baseUrl: browser.runtime.getURL?.("") ?? "" });
 const storage = browser.storage?.local;
@@ -21,6 +23,11 @@ const syncIcon = (): void => {
 };
 syncIcon();
 dark?.addEventListener?.("change", syncIcon);
+
+// ---------- Ready before the panel opens (src/panel/warm.ts) ----------
+// The app's native handler is slow to start after Safari launches; waking it
+// while a page loads means the panel's Keychain reads find it running.
+const warmNative = createWarmer(nativeSend);
 
 // ---------- Request/response ----------
 const scout = createScoutWorker(storage, {
@@ -39,6 +46,11 @@ const route = createRouter(
     },
     // Page button (src/edge.ts): Safari's own panel, never a frame in the page.
     "panel.open": () => openPanel(browser.action),
+    // Page button loaded or touched: answer at once, warm in the background.
+    "panel.warm": () => {
+      void warmNative();
+      return {};
+    },
   },
   self,
 );
@@ -51,9 +63,9 @@ browser.runtime.onMessage.addListener((message: unknown, sender?: MessageSender)
 
 // ---------- Panel port ----------
 // The port is open while the panel is. Safari closes the popover when the user
-// switches tabs, so a close followed quickly by a tab switch keeps the tab
-// marked open, and switching back reopens the panel (action.openPopup).
-const SWITCH_GRACE_MS = 400;
+// switches tabs; the panel then stays closed when they come back, until they
+// click Scout, which shows that tab's own conversation (owner request
+// 2026-10-18, replacing Part 1's reopen on tab switch).
 
 browser.runtime.onConnect?.addListener((port) => {
   if (port.name !== PANEL_PORT || classifySender(port.sender, self()) !== "panel") {
@@ -74,25 +86,8 @@ browser.runtime.onConnect?.addListener((port) => {
   port.onDisconnect.addListener(() => {
     void browser.action?.setTitle?.({ title: TITLE_OPEN })?.catch(() => undefined);
     if (tabId === undefined || !storage) return;
-    const closedTab = tabId;
-    setTimeout(() => {
-      void browser.tabs
-        .query({ active: true, currentWindow: true })
-        .then(([active]) => {
-          // Still on the same tab: the user closed the panel.
-          if (active?.id === closedTab) return setPanelOpen(storage, closedTab, false, Date.now());
-          return undefined;
-        })
-        .catch(() => undefined);
-    }, SWITCH_GRACE_MS);
+    void setPanelOpen(storage, tabId, false, Date.now()).catch(() => undefined);
   });
-});
-
-browser.tabs.onActivated?.addListener(({ tabId }) => {
-  if (!storage || !browser.action?.openPopup) return;
-  void loadTabStates(storage)
-    .then((states) => (states[tabKey(tabId)]?.open ? browser.action?.openPopup?.() : undefined))
-    .catch(() => undefined);
 });
 
 browser.tabs.onRemoved?.addListener((tabId) => {
@@ -104,24 +99,26 @@ browser.runtime.onStartup?.addListener(() => {
   if (storage) void clearTabStates(storage).catch(() => undefined);
   syncIcon();
   queuePageButtonSync();
+  void warmNative();
 });
 
 // ---------- Page button: the edge script runs only where Scout has site access ----------
 // Registered for the granted web origins while the setting is on, and
-// unregistered when it is off or no site is granted. Updated when the setting
+// unregistered when it is off, no site is granted, or Safari is on a Mac. Updated when the setting
 // or the grants change. Pages already open drop the button themselves when the
 // setting goes off (src/edge.ts).
 async function syncPageButton(): Promise<void> {
   const scripting = browser.scripting;
   if (!storage || !scripting.registerContentScripts || !scripting.unregisterContentScripts) return;
   const pref = parsePageButton((await storage.get(PAGE_BUTTON_KEY))[PAGE_BUTTON_KEY]);
-  const matches = pref.on ? edgeMatches((await browser.permissions.getAll()).origins ?? []) : [];
+  const matches = pref.on && pageButtonOffered(await platformOs()) ? edgeMatches((await browser.permissions.getAll()).origins ?? []) : [];
   const existing = (await scripting.getRegisteredContentScripts?.({ ids: [EDGE_SCRIPT_ID] }).catch(() => [])) ?? [];
   const current = existing.find((s) => s.id === EDGE_SCRIPT_ID);
-  if (current ? sameMatches(current.matches ?? [], matches) : matches.length === 0) return;
+  // An older install registered it at document_idle; re-register so it starts early.
+  if (current ? current.runAt === EDGE_RUN_AT && sameMatches(current.matches ?? [], matches) : matches.length === 0) return;
   if (current) await scripting.unregisterContentScripts({ ids: [EDGE_SCRIPT_ID] });
   if (matches.length) {
-    await scripting.registerContentScripts([{ id: EDGE_SCRIPT_ID, js: ["edge.js"], matches, runAt: "document_idle", allFrames: false }]);
+    await scripting.registerContentScripts([{ id: EDGE_SCRIPT_ID, js: ["edge.js"], matches, runAt: EDGE_RUN_AT, allFrames: false }]);
   }
 }
 

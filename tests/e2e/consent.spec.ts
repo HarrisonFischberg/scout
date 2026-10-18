@@ -183,6 +183,7 @@ test("Summarize, Scout mode, and Find coupons also ask first and read nothing be
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Not now" }).click();
 
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Not now" }).click();
@@ -203,7 +204,7 @@ test("Summarize, Scout mode, and Find coupons also ask first and read nothing be
 test("consent is per provider: switching to OpenAI asks again before any OpenAI request", async ({ page }) => {
   const calls = await openPopup(page, {
     keys: { anthropic: KEY, openai: OPENAI_KEY },
-    data: { settings: { provider: "anthropic", model: "claude-sonnet-5-5", retention: "7" }, aiConsent: { anthropic: ALLOWED } },
+    data: { settings: { provider: "anthropic", model: "claude-sonnet-5-5", retention: "7" }, modelMigration: "haiku-5-5-high", aiConsent: { anthropic: ALLOWED } },
   });
   await page.getByLabel("Ask about this page").fill("How much?");
   await page.getByRole("button", { name: "Send" }).click();

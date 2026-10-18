@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AgentControl } from "../../src/agent/control";
 import type { Action, ActionResult } from "../../src/actions/executor";
 import { isMasked, mergeCandidates, normalizeCode, originLabel } from "../../src/coupons/candidates";
 import {
+  CodeQueue,
   couponStatusText,
   couponSummary,
   discoveryLine,
@@ -264,8 +265,10 @@ describe("candidates and evidence", () => {
     expect(out.attempts[0]).toMatchObject({ sourceUrl: "https://deals.test/a", context: "SAVE10 10% off", conditions: "new customers" });
     expect(out.attempts.map((a) => originLabel(a))).toEqual(["seen on deals.test", "deals.test (reported by the search)", "the store's own site (shop.test)"]);
     expect(out.best?.code).toBe("SAVE20");
-    expect(couponSummary(out)).toContain("| SAVE20 | saves $20.00, total $80.00 | [deals.test (reported by the search)](https://deals.test/b) |");
-    expect(couponSummary(out)).toContain("Didn't work: NOPE5.");
+    // The chat summary is a few sentences; each code's row stays in the Working card.
+    expect(couponSummary(out)).toBe(
+      "I tested **3 codes**. **SAVE20** is the best: your total drops from **$100.00** to **$80.00** (you save $20.00, 20% off). It's applied to your cart, and I didn't go to checkout.",
+    );
     expect(couponSummary(out)).not.toMatch(/guess/i);
   });
 
@@ -336,7 +339,6 @@ describe("batches", () => {
       page: shop(),
       codes,
       settleMs: 0,
-      batchSize: 25,
       askMore: async () => {
         asked++;
         return true;
@@ -356,45 +358,42 @@ describe("batches", () => {
     expect(couponSummary(out)).toContain("you save $20.00, 20% off");
   });
 
-  it("when none worked and the queue runs short, finds codes not tried yet to fill the next 25", async () => {
-    const asked: Array<{ tried: number; remaining: number; next: number }> = [];
+  // Owner, 2026-10-17: no fixed batch of 25. Every code a search found is
+  // tested, then (when none saved) the user is asked about another search.
+  it("tests every code the first search found, however many, before asking to search again", async () => {
+    const asked: number[] = [];
     const known: string[][] = [];
     const out = await runCouponSearch({
       page: shop(),
       codes: many,
       settleMs: 0,
-      batchSize: 25,
       askMore: async (st) => {
-        asked.push({ tried: st.tried, remaining: st.remaining, next: st.next });
+        asked.push(st.tried);
         return asked.length === 1;
       },
       findMore: async (k) => {
         known.push(k);
-        return [{ code: "NOPE10", origin: "reported", sourceUrl: "https://deals.test/list" }, ...Array.from({ length: 30 }, (_, i) => ({ code: "FRESH" + (i + 10), origin: "reported" as const, sourceUrl: "https://deals.test/more" }))];
+        return [{ code: "NOPE10", origin: "reported", sourceUrl: "https://deals.test/list" }, ...Array.from({ length: 12 }, (_, i) => ({ code: "FRESH" + (i + 10), origin: "reported" as const, sourceUrl: "https://deals.test/more" }))];
       },
     });
-    expect(asked).toEqual([
-      { tried: 25, remaining: 5, next: 25 },
-      { tried: 50, remaining: 10, next: 25 },
-    ]);
+    expect(asked).toEqual([30, 42]);
     expect(known).toHaveLength(1);
     expect(known[0]).toHaveLength(30);
-    expect(out.attempts).toHaveLength(50);
-    expect(out.attempts.slice(25, 30).map((a) => a.code)).toEqual(["NOPE35", "NOPE36", "NOPE37", "NOPE38", "NOPE39"]);
+    expect(out.attempts).toHaveLength(42);
     expect(out.attempts[30]?.code).toBe("FRESH10");
-    expect(new Set(out.attempts.map((a) => a.code)).size).toBe(50);
+    expect(new Set(out.attempts.map((a) => a.code)).size).toBe(42);
+    expect(out.untested).toBe(0);
   });
 
-  it("finds more even when every queued code was tried, and stops when none are left to find", async () => {
+  it("stops asking when another search finds nothing new", async () => {
     let asked = 0;
     const out = await runCouponSearch({
       page: shop(),
       codes: many.slice(0, 25),
       settleMs: 0,
-      batchSize: 25,
       askMore: async (st) => {
         asked++;
-        expect(st).toMatchObject({ tried: 25, remaining: 0, next: 25 });
+        expect(st).toEqual({ tried: 25 });
         return true;
       },
       findMore: async () => [],
@@ -406,27 +405,77 @@ describe("batches", () => {
     expect(couponSummary(out)).toContain("I tested **25 codes** and none lowered your total of $100.00, so your cart is unchanged. I couldn't find any more codes to try.");
   });
 
-  it("asks after each batch and stops when the user says no", async () => {
+  it("stops when the user says no to another search", async () => {
     const asked: number[] = [];
     const out = await runCouponSearch({
       page: shop(),
       codes: many,
       settleMs: 0,
-      batchSize: 25,
       askMore: async (st) => {
         asked.push(st.tried);
         return false;
       },
+      findMore: async () => [],
     });
-    expect(asked).toEqual([25]);
-    expect(out.attempts).toHaveLength(25);
-    expect(out.untested).toBe(5);
-    expect(couponSummary(out)).toContain("I tested **25 codes** and none lowered your total of $100.00, so your cart is unchanged. 5 more codes were left untested.");
+    expect(asked).toEqual([30]);
+    expect(out.attempts).toHaveLength(30);
+    expect(out.untested).toBe(0);
+    expect(couponSummary(out)).toBe("I tested **30 codes** and none lowered your total of $100.00, so your cart is unchanged.");
   });
 
-  it("continues when the user says yes", async () => {
-    const out = await runCouponSearch({ page: shop(), codes: many, settleMs: 0, batchSize: 25, askMore: async () => true });
-    expect(out.attempts).toHaveLength(30);
+  // Owner, 2026-10-17: codes are tested as the search finds them, not after it ends.
+  it("tests codes as they arrive from a search still running, and ends the round when the search does", async () => {
+    const queue = new CodeQueue();
+    const tried: string[] = [];
+    const run = runCouponSearch({
+      page: shop(),
+      codes: [],
+      incoming: queue,
+      settleMs: 0,
+      onTry: (code) => tried.push(code),
+    });
+    queue.push([{ code: "NOPE1", origin: "verified", sourceUrl: "https://deals.test/a" }]);
+    await vi.waitFor(() => expect(tried).toEqual(["NOPE1"]));
+    queue.push([
+      { code: "SAVE10", origin: "verified", sourceUrl: "https://deals.test/a" },
+      { code: "NOPE1", origin: "verified", sourceUrl: "https://deals.test/b" },
+    ]);
+    await vi.waitFor(() => expect(tried).toEqual(["NOPE1", "SAVE10"]));
+    queue.push([{ code: "SAVE20", origin: "reported", sourceUrl: "https://deals.test/c" }]);
+    queue.close();
+    const out = await run;
+    expect(tried).toEqual(["NOPE1", "SAVE10", "SAVE20"]);
+    expect(out.best?.code).toBe("SAVE20");
+    expect(out.applied).toBe(true);
+  });
+
+  it("a search that ends with nothing found tests nothing and says so", async () => {
+    const queue = new CodeQueue();
+    queue.close();
+    const out = await runCouponSearch({ page: shop(), codes: [], incoming: queue, settleMs: 0 });
+    expect(out.status).toBe("no_codes");
+    expect(out.attempts).toEqual([]);
+  });
+
+  it("a streamed second search is tested as it arrives too", async () => {
+    let asked = 0;
+    const out = await runCouponSearch({
+      page: shop(),
+      codes: many.slice(0, 3),
+      settleMs: 0,
+      askMore: async () => ++asked === 1,
+      findMore: () => {
+        const q = new CodeQueue();
+        setTimeout(() => {
+          q.push([{ code: "SAVE10", origin: "verified", sourceUrl: "https://deals.test/a" }]);
+          q.close();
+        }, 5);
+        return q;
+      },
+    });
+    expect(asked).toBe(1);
+    expect(out.attempts.map((a) => a.code)).toEqual(["NOPE10", "NOPE11", "NOPE12", "SAVE10"]);
+    expect(out.best?.code).toBe("SAVE10");
   });
 });
 
@@ -493,8 +542,68 @@ describe("Shopify cart path", () => {
     const text = couponSummary(out);
     expect(text).toContain("I tested **4 codes**. **BEEFY15** is the best: your total drops from **$151.80** to **$135.81**");
     expect(text).toContain("It's applied to your cart, and I didn't go to checkout.");
-    expect(text).toContain("| KETO |");
-    expect(text).toContain("Didn't work: RACH, WELCOME10.");
+    expect(text).not.toContain("|");
+  });
+
+  // Owner choice 2026-10-17: tested through the API, but the winner is typed
+  // into the page's own box and Apply pressed, so the user can watch it go in.
+  it("types the winning code into the page's coupon box and presses Apply when the page has one", async () => {
+    const cart = shopify();
+    const acts: Action[] = [];
+    let typed = "";
+    const withBox: CouponPage = {
+      cart,
+      snapshot: async () => ({
+        url: "https://shop.test/cart",
+        title: "Cart",
+        text: "Total: $151.80",
+        elements: [
+          { ref: "e1", tag: "input", role: "textbox", name: "Discount code", type: "text" },
+          { ref: "e2", tag: "button", role: "button", name: "Apply" },
+        ],
+        truncated: false,
+      }),
+      act: async (a: Action) => {
+        acts.push(a);
+        if (a.type === "type") typed = a.text;
+        // The store's own Apply posts the box's code to its cart.
+        if (a.type === "click" && a.ref === "e2") await cart.update(typed);
+        return { ok: true, action: a.type, message: "ok" };
+      },
+    };
+    const out = await runCouponSearch({ page: withBox, codes: cands });
+    expect(out.best?.code).toBe("BEEFY15");
+    expect(out.applied).toBe(true);
+    expect(cart.codes).toEqual(["BEEFY15"]);
+    expect(acts.filter((a) => a.type !== "wait")).toEqual([
+      { type: "type", ref: "e1", text: "BEEFY15", clear: true },
+      { type: "click", ref: "e2" },
+    ]);
+    // The last tested code came off through the API first; the page's Apply put the winner on.
+    expect(cart.calls[cart.calls.length - 2]).toBe("");
+    expect(cart.calls[cart.calls.length - 1]).toBe("BEEFY15");
+    expect(cart.reloads).toBe(1);
+  });
+
+  it("applies the winner through the API when the page's Apply does not take it", async () => {
+    const cart = shopify();
+    const deadBox: CouponPage = {
+      cart,
+      snapshot: async () => ({
+        url: "https://shop.test/cart",
+        title: "Cart",
+        text: "Total: $151.80",
+        elements: [
+          { ref: "e1", tag: "input", role: "textbox", name: "Discount code", type: "text" },
+          { ref: "e2", tag: "button", role: "button", name: "Apply" },
+        ],
+        truncated: false,
+      }),
+      act: async (a: Action) => ({ ok: true, action: a.type, message: "ok" }),
+    };
+    const out = await runCouponSearch({ page: deadBox, codes: cands });
+    expect(out.applied).toBe(true);
+    expect(cart.codes).toEqual(["BEEFY15"]);
   });
 
   // Stores whose cart API takes two codes: the best code is tried together
@@ -510,7 +619,7 @@ describe("Shopify cart path", () => {
     expect(couponSummary(out)).toContain("**BEEFY15** + **KETO** together is the best");
     // The pair has no page of its own: its row says what it is, not "seen on its page".
     expect(originLabel(combo!)).toBe("both codes, applied together");
-    expect(couponSummary(out)).toMatch(/\| BEEFY15 \+ KETO \| [^|]+ \| both codes, applied together \|/);
+
   });
 
   it("keeps the single best code when the store refuses the pair", async () => {

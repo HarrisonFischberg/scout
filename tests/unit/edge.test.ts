@@ -1,13 +1,50 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { clampY, coversAllSites, edgeMatches, isDrag, parsePageButton, reachText, sameMatches, snapSide, Y_MAX, Y_MIN } from "../../src/panel/edge";
+import { clampY, coversAllSites, edgeMatches, isDrag, MAX_TAB_SCALE, pageButtonOffered, parsePageButton, reachText, sameMatches, snapSide, TAB_SIZE, tabScale, topLayerTab, Y_MAX, Y_MIN } from "../../src/panel/edge";
 import { openPanel } from "../../src/panel/toolbar";
 
 describe("page button settings", () => {
-  it("is off by default and drops malformed stored values", () => {
-    expect(parsePageButton(undefined)).toEqual({ on: false, side: "right", y: 0.45 });
-    expect(parsePageButton({ on: "yes", side: "top", y: "middle" })).toEqual({ on: false, side: "right", y: 0.45 });
+  // Owner bug report 2026-10-18: a top-layer tab's ::backdrop made iPhone
+  // Safari paint the page background solid under its bottom bar.
+  it("keeps the tab out of the top layer on a phone, and in it on Mac and iPad", () => {
+    expect(topLayerTab(true, 390)).toBe(false);
+    expect(topLayerTab(true, 440)).toBe(false);
+    expect(topLayerTab(true, 820)).toBe(true);
+    expect(topLayerTab(false, 390)).toBe(true);
+    expect(topLayerTab(false, 1440)).toBe(true);
+  });
+
+  it("is on from a fresh install, keeps a stored choice, and drops malformed stored values", () => {
+    // Owner request 2026-10-17: a fresh install starts with the floating icon.
+    expect(parsePageButton(undefined)).toEqual({ on: true, side: "right", y: 0.45 });
+    expect(parsePageButton({ side: "left" })).toEqual({ on: true, side: "left", y: 0.45 });
+    expect(parsePageButton({ on: false })).toEqual({ on: false, side: "right", y: 0.45 });
+    expect(parsePageButton({ on: "yes", side: "top", y: "middle" })).toEqual({ on: true, side: "right", y: 0.45 });
     expect(parsePageButton({ on: true, side: "left", y: 0.3 })).toEqual({ on: true, side: "left", y: 0.3 });
+  });
+
+  // Owner request 2026-10-18: smaller, but the truck still clear and the tap
+  // target still at Apple's 44 pt minimum height.
+  it("is a small pill that still shows the truck and is easy to hit", () => {
+    expect(TAB_SIZE.width).toBeLessThan(56);
+    expect(TAB_SIZE.height).toBeLessThan(60);
+    expect(TAB_SIZE.height + 4).toBeGreaterThanOrEqual(44);
+    expect(TAB_SIZE.glyph / TAB_SIZE.width).toBeGreaterThan(0.6);
+  });
+
+  it("keeps the tab its own size when Safari zooms a wide page out", () => {
+    const base = { coarse: true, idealWidth: 390, visualWidth: 390, pageZoom: 1 };
+    expect(tabScale(base)).toBe(1);
+    // iPhone fits a 1000 px wide page into 390 pt: scaled back up.
+    expect(tabScale({ ...base, visualWidth: 1000 })).toBeCloseTo(1000 / 390, 2);
+    // Pinch-zoomed in: left alone.
+    expect(tabScale({ ...base, visualWidth: 200 })).toBe(1);
+    // Mac: the window is narrower than the screen, which is not a zoom-out.
+    expect(tabScale({ coarse: false, idealWidth: 1512, visualWidth: 800, pageZoom: 1 })).toBe(1);
+    // A root CSS zoom shrinks it anywhere.
+    expect(tabScale({ coarse: false, idealWidth: 1512, visualWidth: 800, pageZoom: 0.5 })).toBe(2);
+    expect(tabScale({ ...base, visualWidth: 100_000 })).toBe(MAX_TAB_SCALE);
+    expect(tabScale({ ...base, pageZoom: Number.NaN, idealWidth: 0 })).toBe(1);
   });
 
   it("keeps the tab clear of the page header and Safari's bottom bar", () => {
@@ -26,6 +63,12 @@ describe("page button settings", () => {
 });
 
 describe("where the edge script runs", () => {
+  it("is offered on iPhone and iPad, not on Mac", () => {
+    expect(pageButtonOffered("ios")).toBe(true);
+    expect(pageButtonOffered(undefined)).toBe(true);
+    expect(pageButtonOffered("mac")).toBe(false);
+  });
+
   it("uses only granted web origins, never the AI provider hosts", () => {
     expect(
       edgeMatches(["https://shop.test/*", "https://api.anthropic.com/*", "https://api.openai.com/*", "file:///*", "not a pattern"]),

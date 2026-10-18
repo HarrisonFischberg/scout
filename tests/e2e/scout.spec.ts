@@ -187,6 +187,8 @@ test("a task runs a batch, logs each step in plain language, shows the overlay a
   await openPopup(page, [toolTurn("act", { actions: [{ type: "fill_field", target: { ref: "e1" }, value: "Ada" }, { type: "click", target: { ref: "e3" } }] }, "Found the name field, filling it and applying."), finish("Applied the code.\n- Filled the name")]);
   await startTask(page, "Apply my code");
   await expect(traceHead(page)).toContainText("Working");
+  // The moving indicator shows while the task works (owner item 14).
+  await expect(traceHead(page).locator(".pulse")).toHaveCount(1);
   // Folded by default; the chevron opens it.
   await expect(page.locator("#task .trace-body")).toBeHidden();
   await traceHead(page).click();
@@ -198,6 +200,7 @@ test("a task runs a batch, logs each step in plain language, shows the overlay a
   await expect(log.getByText("Applied the code.")).toBeVisible();
   // The trace stays inline, folded under "Finished", with the steps under its Steps row.
   await expect(traceHead(page)).toContainText("Finished");
+  await expect(traceHead(page).locator(".pulse")).toHaveCount(0);
   await expect(page.locator("#task .controls")).toHaveCount(0);
   await expect(page.locator("#task .step")).toHaveText(["Browsed · 2 actions"]);
   await expect(page.locator("#task .steps summary")).toHaveText("Steps (4)");
@@ -237,8 +240,11 @@ test("unknown actions are rejected and logged, and never performed", async ({ pa
   await expect(page.locator("#task .step.bad")).toHaveText("Rejected unknown action “hack”");
   await expect(taskLog(page)).toContainText("Rejected unknown action “hack”");
   expect(await acts(page)).toEqual([]);
-  await page.getByRole("button", { name: "Settings" }).click();
-  await expect(page.getByRole("list", { name: "Activity" })).toContainText("Action (hack) · shop.test · rejected");
+  const logged = await page.evaluate(async () => {
+    const r = (await (globalThis as unknown as { browser: { runtime: { sendMessage(m: unknown): Promise<unknown> } } }).browser.runtime.sendMessage({ type: "tools.log", request_id: "r-log", payload: {} })) as { payload: { entries?: Array<{ tool: string; site: string; status: string }> } };
+    return (r.payload.entries ?? []).map((e) => [e.tool, e.site, e.status].join(" · "));
+  });
+  expect(logged).toContain("action:hack · shop.test · rejected");
 });
 
 test("every sensitive action asks first, even when the server marks it pre-approved; Deny leaves the page untouched", async ({ page }) => {
@@ -298,10 +304,16 @@ test("Take control stops actions within 250 ms, Resume continues, and Stop remov
   await expect.poll(async () => (await acts(page)).length, { timeout: 8000 }).toBe(2);
   await expect(taskLog(page)).toContainText("Did: wait 1.5 s");
   // The next batch starts with an 8 s wait: Stop ends it and the overlay goes at once.
+  // Stop is the composer's blue button in place of Send, never one in the chat (owner, 2026-10-17).
+  await expect(page.getByRole("log", { name: "Conversation" }).getByRole("button", { name: "Stop" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Start task" })).toBeHidden();
   const stopAt = Date.now();
-  await page.getByRole("button", { name: "Stop" }).click();
-  await expect(page.getByRole("log", { name: "Conversation" }).getByText("Stopped.", { exact: true })).toBeVisible();
+  await page.locator(".composer-foot").getByRole("button", { name: "Stop" }).click();
+  await expect(traceHead(page)).toContainText("Stopped");
   expect(Date.now() - stopAt).toBeLessThan(2000);
+  // Stop just stops: the trace says so, with no error card under it (owner, 2026-10-17).
+  await expect(page.locator(".msg.error")).toHaveCount(0);
+  await expect(page.getByRole("log", { name: "Conversation" }).getByText("Stopped.", { exact: true })).toHaveCount(0);
   f = await fake(page);
   const stopClick = f.rec.find((r) => r.what === "overlay:hide")!;
   expect(stopClick).toBeDefined();
@@ -320,18 +332,12 @@ test("the Scout server can ask for a task mid-answer (run_task): the task runs a
   await expect(taskLog(page)).toContainText("Did: click “Apply”");
   await expect(page.getByRole("log", { name: "Conversation" }).locator(".msg.assistant").last()).toContainText("Done: the code is applied.");
   expect(await acts(page)).toEqual(["click"]);
-  await expect(page.getByRole("log", { name: "Conversation" })).toContainText("Scout mode task (shop.test)");
+  // What was shared is not listed under the answer (owner, 2026-10-18).
+  await expect(page.getByRole("log", { name: "Conversation" })).not.toContainText("Scout mode task (shop.test)");
 });
 
-test("Scout mode is off in Private Browsing and when turned off in Settings, and the Permissions screen shows every control", async ({ page }) => {
+test("Scout mode is off when turned off in Settings, and the Permissions screen shows every control", async ({ page }) => {
   await openPopup(page, [finish("x")]);
-  // The worker refuses a task on a private tab, before touching the page.
-  const reply = await page.evaluate(async () => {
-    const r = (await (globalThis as unknown as { browser: { runtime: { sendMessage(m: unknown): Promise<unknown> } } }).browser.runtime.sendMessage({ type: "task.start", request_id: "r-private", payload: { tab_id: 7, goal: "Buy it" } })) as { type: string; payload: { message?: string } };
-    return r.type + ": " + (r.payload.message ?? "");
-  });
-  expect(reply).toBe("error: Scout mode is off in Private Browsing.");
-  expect((await fake(page)).rec.filter((r) => r.what === "inject")).toHaveLength(0);
   // Permissions screen (spec 10).
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page.getByRole("heading", { name: "Permissions" })).toBeVisible();
@@ -342,7 +348,7 @@ test("Scout mode is off in Private Browsing and when turned off in Settings, and
   await expect(page.getByText("Always on. It cannot be turned off.")).toBeVisible();
   await expect(page.getByRole("list", { name: "Always allowed sites" })).toContainText("No sites always allowed.");
   await expect(page.getByRole("list", { name: "Blocked sites" })).toContainText("No sites blocked.");
-  await expect(page.getByText("Disabled. Scout for Safari does not run in Private Browsing")).toBeVisible();
+  await expect(page.getByText("Scout for Safari works in Private Browsing like in any other tab.")).toBeVisible();
   await expect(page.getByRole("list", { name: "Shared in conversations" })).toBeVisible();
   // Off refuses the task before touching the page.
   await page.getByRole("combobox", { name: "Scout mode (acting on pages for you)" }).selectOption("off");

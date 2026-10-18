@@ -1,35 +1,42 @@
 // Popup (S04, redesigned T021–T026): chat-first panel with a Chat / Scout
 // mode switch, saved conversation, and an in-popup Settings view.
 // Part 1: the Scout panel ("scout-panel"). One conversation per tab, a port to
-// the background worker while open, and no use in Private Browsing.
+// the background worker while open; Private Browsing chats go when the tab closes.
 // Part 3: Scout mode runs in the worker (src/server/task-host.ts); the panel
-// shows its action log, Take control / Stop, and the sensitive-action
-// confirmation, and the Permissions screen in Settings.
+// shows its action log, Take control, and the sensitive-action confirmation
+// (Stop is the composer's button), and the Permissions screen in Settings.
 import { AgentControl } from "./agent/control";
 import type { Action, ActionResult } from "./actions/executor";
 import type { Snapshot } from "./snapshot/snapshot";
 import { CONTENT_HANDLER, OVERLAY_HANDLER, type ContentRequest, type OverlayRequest } from "./content-api";
 import { callInjected } from "./content-call";
 import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
-import { renderMarkdown } from "./chat/markdown";
-import { ConversationStore } from "./chat/store";
+import { chipSources, renderMarkdown } from "./chat/markdown";
+import { answerText, fillSourceCard, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
+import { ConversationStore, type StoredMessage } from "./chat/store";
 import { MAX_EXTRA_TABS, type TabInfo } from "./chat/tabs";
 import { suggestCodes, type SuggestedCodes } from "./coupons/codes";
+import { browserTrace, type BrowserTarget, type PageBrowser } from "./coupons/browser-read";
+import { READER_HOSTS_KEY, browserFirstSites, countFetch, parseReaderHosts } from "./coupons/reader-hosts";
 import { locateForm } from "./coupons/locate";
 import { identifyMerchant, type MerchantMeta } from "./coupons/merchant";
 import { formatMoney } from "./coupons/money";
 import { codesWithContext, MAX_STORE_CODES, type StoreCode } from "./coupons/store";
 import { mergeCandidates, originLabel, rankCandidates, type CouponCandidate } from "./coupons/candidates";
 import {
+  CodeQueue,
   couponStatusText,
   couponSummary,
   discoveryLine,
   openCouponTester,
+  checkoutTarget,
+  goToCheckout,
+  percentOff,
+  plural,
   runCouponSearch,
   type BatchState,
   type CartApi,
   type CartState,
-  type CouponOutcome,
   type DiscoveryInfo,
 } from "./coupons/finder";
 import { formatCostLine } from "./cost";
@@ -38,35 +45,47 @@ import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { BridgeError, envelope, newRequestId, request, type Envelope } from "./bridge/messages";
 import { connectPanelPort, type PanelPort } from "./bridge/port";
 import type { ReadStatus, SharedTab } from "./context/gather";
-import { activityLine, dropMention, mentionAt, sharedLabel, suggestTabs, toolLabel } from "./panel/attach";
+import { dropMention, mentionAt, sharedLabel, suggestTabs, toolLabel } from "./panel/attach";
+import { cutAt, nextShown } from "./panel/typing";
 import { hostOf, loadPageAccess, normalizeSite, parsePolicy, savePageAccess, screenshotDecision, withoutAlwaysAllow, type PageAccess } from "./permissions/gate";
 import { KIND_LABEL, type SensitiveKind } from "./safety/classifier";
 import type { TaskView } from "./server/task-host";
 import { DEV_MOCK_KEY, DEV_MOCK_URL, mockServerUrl } from "./server/dev";
 import { fromWire } from "./server/protocol";
 import type { ToolDecision, ToolResult } from "./tools/host";
-import type { ToolLogEntry } from "./tools/log";
-import { ALL_SITES, PAGE_BUTTON_KEY, parsePageButton, reachText, type PageButton } from "./panel/edge";
+import { ALL_SITES, PAGE_BUTTON_KEY, pageButtonOffered, parsePageButton, platformOs, reachText, type PageButton } from "./panel/edge";
 import { conversationForTab, startNewConversation } from "./panel/state";
 import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/consent";
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
+import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
+import { joinDictation, Listener, micErrorText, recognitionCtor } from "./panel/voice";
+import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
+import { probeDrag } from "./panel/drag-probe";
+import { hintedProvider, KEY_HINT_KEY, parseKeyHint, sameHint, type KeyHint } from "./panel/warm";
+import { isStandalone, openStandalone } from "./panel/standalone";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
   appendHistory,
   clearHistory,
   clearShared,
+  DEFAULT_EFFORT,
   DEFAULT_MODEL,
   deleteAllData,
   deleteReportText,
   loadConversation,
   loadHistory,
+  loadRatings,
   loadSettings,
   parseSettings,
+  ratingKey,
+  saveRating,
   saveSettings,
   summarizeShared,
   type EffortSetting,
+  type HistoryEntry,
   type HistoryKind,
+  type Rating,
   type Settings,
   type StorageArea,
 } from "./settings/settings";
@@ -80,36 +99,56 @@ function el<T extends HTMLElement>(id: string): T {
   return node as T;
 }
 
+type KeyRead = { key: string | null; error?: string };
+type SavedKeys = Record<Provider, KeyRead>;
+
+// Both providers' keys in one parallel round of Keychain reads. Each read wakes
+// the app's native handler, which is slow the first time after Safari starts,
+// so the panel reads them once, in parallel, as it opens (owner request
+// 2026-10-18), instead of one after another.
+async function readKeys(): Promise<SavedKeys> {
+  const keychain = createKeychain(nativeSend);
+  const read = async (p: Provider): Promise<KeyRead> => {
+    try {
+      return { key: await keychain.getKey(p) };
+    } catch (err) {
+      return { key: null, error: err instanceof Error ? err.message : "unknown" };
+    }
+  };
+  const [anthropic, openai] = await Promise.all([read("anthropic"), read("openai")]);
+  return { anthropic, openai };
+}
+
 // Prefers the provider chosen in settings, then any provider with a saved key.
 // A fallback provider uses its own default model, not the chosen model.
 // Uses the chosen provider's key. Falls back to the other provider only with
 // a note the popup shows, never silently (seen in T018: OpenAI chosen, Anthropic
 // used with no explanation).
-async function findKey(
+function findKey(
   chosen: Settings,
-): Promise<{ settings: Settings; apiKey: string; fellBackFrom?: Provider } | null> {
-  const keychain = createKeychain(nativeSend);
+  keys: SavedKeys,
+): { settings: Settings; apiKey: string; fellBackFrom?: Provider } | null {
   const order: Provider[] = chosen.provider === "openai" ? ["openai", "anthropic"] : ["anthropic", "openai"];
   for (const provider of order) {
-    let apiKey: string | null = null;
-    try {
-      apiKey = await keychain.getKey(provider);
-      trace("key:" + provider + (apiKey ? " found" : " missing"));
-    } catch (err) {
-      // Treat an unreadable item like a missing one.
-      trace("key:" + provider + " error " + (err instanceof Error ? err.message : "unknown"));
-    }
+    const { key: apiKey, error } = keys[provider];
+    // Treat an unreadable item like a missing one.
+    trace("key:" + provider + (error !== undefined ? " error " + error : apiKey ? " found" : " missing"));
     if (apiKey) {
       const same = provider === chosen.provider;
       const model = same ? chosen.model : DEFAULT_MODEL[provider];
       return {
-        settings: { ...chosen, provider, model, effort: same ? chosen.effort : "default" },
+        settings: { ...chosen, provider, model, effort: same ? chosen.effort : DEFAULT_EFFORT[provider] },
         apiKey,
         ...(provider !== chosen.provider ? { fellBackFrom: chosen.provider } : {}),
       };
     }
   }
   return null;
+}
+
+/** Providers with a key in the Keychain; the Models sheet lists only their models. */
+function savedProviders(keys: SavedKeys): Set<Provider> {
+  return new Set((["anthropic", "openai"] as const).filter((p) => keys[p].key));
 }
 
 const PROVIDER_NAME: Record<Provider, string> = { anthropic: "Anthropic", openai: "OpenAI" };
@@ -131,6 +170,7 @@ interface ActiveTab {
   id?: number;
   windowId?: number;
   url?: string;
+  favIconUrl?: string;
   incognito: boolean;
 }
 
@@ -141,6 +181,7 @@ async function activeTab(): Promise<ActiveTab> {
       ...(tab?.id !== undefined ? { id: tab.id } : {}),
       ...(tab?.windowId !== undefined ? { windowId: tab.windowId } : {}),
       ...(tab?.url ? { url: tab.url } : {}),
+      ...(tab?.favIconUrl ? { favIconUrl: tab.favIconUrl } : {}),
       incognito: tab?.incognito === true || browser.extension?.inIncognitoContext === true,
     };
   } catch {
@@ -268,7 +309,8 @@ async function tabAgentPage(): Promise<CouponPage | null> {
 
   return {
     snapshot: async (limits: { maxElements?: number; maxTextChars?: number } = {}) => (await call({ type: "scout:snapshot", ...limits })) as Snapshot,
-    act: async (action: Action) => (await call({ type: "scout:act", action })) as ActionResult,
+    // Coupon runs show a pointer pressing and typing on the page, so the user can watch (owner, 2026-10-17).
+    act: async (action: Action) => (await call({ type: "scout:act", action, show: true })) as ActionResult,
     cart: {
       info: async () => (await call({ type: "scout:cart-info" })) as CartState | null,
       update: async (discount: string) => (await call({ type: "scout:cart-update", discount })) as CartState | { rateLimited: true } | null,
@@ -284,6 +326,66 @@ async function tabAgentPage(): Promise<CouponPage | null> {
       const m = (await call({ type: "scout:page-meta" })) as MerchantMeta | null;
       return m && typeof m === "object" ? m : null;
     },
+  };
+}
+
+/** Settings key: "asked" once Find coupons has asked Safari for access to every site (for the browser fallback). */
+const COUPON_BROWSER_KEY = "couponBrowser";
+const BROWSER_SNAPSHOT = { maxElements: 600, maxTextChars: 60_000 };
+
+const originOf = (url: string): string | null => {
+  try {
+    return new URL(url).origin + "/*";
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Find coupons' browser fallback (src/coupons/browser-read.ts): coupon pages
+ * the reader could not load open in background tabs of the user's own Safari
+ * window (a Private window stays private), read through Scout's content
+ * script, and close again with any tab they opened.
+ */
+function backgroundTabs(windowId: number | undefined): PageBrowser {
+  const children = new Map<number, Set<number>>();
+  const onCreated = (t: { id?: number; openerTabId?: number }): void => {
+    if (t.id !== undefined && t.openerTabId !== undefined) children.get(t.openerTabId)?.add(t.id);
+  };
+  let listening = false;
+  return {
+    open: async (url) => {
+      const origin = originOf(url);
+      if (!origin || !browser.tabs.create) return null;
+      // Without site access the tab could open but never be read.
+      if (browser.permissions.contains && !(await browser.permissions.contains({ origins: [origin] }).catch(() => false))) return null;
+      if (!listening) {
+        browser.tabs.onCreated?.addListener(onCreated);
+        listening = true;
+      }
+      const t = await browser.tabs.create({ url, active: false, ...(windowId !== undefined ? { windowId } : {}) });
+      if (t.id === undefined) return null;
+      children.set(t.id, new Set());
+      return t.id;
+    },
+    read: async (tab) => {
+      const snap = (await callInjected(tab, "content.js", CONTENT_HANDLER, { type: "scout:snapshot", ...BROWSER_SNAPSHOT }).catch(() => null)) as Snapshot | null;
+      return snap && typeof snap.text === "string" && Array.isArray(snap.elements) ? snap : null;
+    },
+    click: async (tab, ref) => {
+      const r = (await callInjected(tab, "content.js", CONTENT_HANDLER, { type: "scout:act", action: { type: "click", ref } }).catch(() => null)) as ActionResult | null;
+      return r?.ok === true;
+    },
+    close: async (tab) => {
+      const extra = [...(children.get(tab) ?? [])];
+      children.delete(tab);
+      if (!children.size && listening) {
+        browser.tabs.onCreated?.removeListener?.(onCreated);
+        listening = false;
+      }
+      await browser.tabs.remove?.([tab, ...extra]);
+    },
+    wait: (ms) => new Promise((r) => setTimeout(r, ms)),
   };
 }
 
@@ -337,6 +439,13 @@ function syncSegmented(inputs: HTMLInputElement[]): void {
 
 const CONTEXT_TURNS = 10;
 
+/** The moving "processing" indicator: coupon milestones, a Working card's head, and an answer before its first words. */
+const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></span>';
+
+/** Scout as its own page in a tab (src/panel/standalone.ts), not the toolbar panel. */
+const STANDALONE = isStandalone(location.search);
+if (STANDALONE) document.documentElement.dataset.standalone = "";
+
 async function main(): Promise<void> {
   const chatView = el("chat-view");
   const settingsView = el("settings-view");
@@ -345,17 +454,15 @@ async function main(): Promise<void> {
   const log = el("log");
   const noKey = el("no-key");
   const empty = el("empty");
+  const siteSuggestions = el<HTMLUListElement>("site-suggestions");
   const composer = el<HTMLFormElement>("composer");
   const question = el<HTMLTextAreaElement>("question");
   const send = el<HTMLButtonElement>("send");
   const stop = el<HTMLButtonElement>("stop");
+  const mic = el<HTMLButtonElement>("mic");
   const plus = el<HTMLButtonElement>("plus");
   const plusMenu = el("plus-menu");
-  const summarize = el<HTMLButtonElement>("summarize");
   const couponsRun = el<HTMLButtonElement>("coupons-run");
-  const tabsToggle = el<HTMLButtonElement>("tabs-toggle");
-  const tabsBox = el("tabs");
-  const tabList = el("tab-list");
   const modeChip = el("mode-chip");
   const modelPill = el<HTMLButtonElement>("model-pill");
   const modelPillText = el("model-pill-text");
@@ -370,36 +477,44 @@ async function main(): Promise<void> {
 
   const storage: StorageArea | undefined = browser.storage?.local;
   const keychain = createKeychain(nativeSend);
+  // Started now so the Keychain reads run while the rest of the panel loads;
+  // the first connect() uses them, later ones read again.
+  let firstKeys: Promise<SavedKeys> | null = readKeys();
   let settings = parseSettings(undefined);
-  if (storage) settings = await loadSettings(storage).catch(() => settings);
+  // Everything the panel needs before it can show anything, read at once
+  // rather than one after another: each storage call is slow on a phone
+  // that just started Safari (owner request 2026-10-18).
   // Permission to share with each AI provider (src/settings/consent.ts). Every
   // provider request goes through providerFetch, which refuses one without it.
-  const consent = await Consent.load(storage);
+  const none = {} as Record<string, unknown>;
+  const [loaded, consent, tab, early] = await Promise.all([
+    storage ? loadSettings(storage).catch(() => settings) : settings,
+    Consent.load(storage),
+    // Private Browsing works like a regular tab (owner request 2026-10-17); its
+    // chats are deleted from history when the tab closes (src/panel/state.ts).
+    activeTab(),
+    storage ? storage.get([KEY_HINT_KEY, COUPON_BROWSER_KEY]).catch(() => none) : none,
+  ]);
+  settings = loaded;
+  /** Which providers had a saved key last time (src/panel/warm.ts). */
+  let keyHint: KeyHint = parseKeyHint(early[KEY_HINT_KEY]);
   const providerFetch = gatedFetch((p) => consent.has(p), (i, init) => fetch(i, init));
 
   document.addEventListener("keydown", (e) => {
-    if (isToggleShortcut(e)) {
+    if (isToggleShortcut(e) && !STANDALONE) {
       e.preventDefault();
       window.close();
     }
   });
-
-  // ---------- Private Browsing: the panel is off ----------
-  const tab = await activeTab();
-  if (tab.incognito) {
-    el("private").hidden = false;
-    el("new-chat").hidden = true;
-    el("settings-open").hidden = true;
-    status.textContent = "Scout for Safari is off in Private Browsing.";
-    return;
-  }
 
   // ---------- Per-tab conversation and the worker port ----------
   // Answers stream from the Scout server in the worker over this port (Part 2).
   // After a reconnect, every unfinished answer is resubscribed from the last
   // event the panel has, so nothing is shown twice.
   const store = new ConversationStore();
-  let conv = storage ? await conversationForTab(storage, tab.id, Date.now()).catch(() => "") : "";
+  // Read alongside the model lists below.
+  const convRead = storage ? conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "") : Promise.resolve("");
+  let conv = "";
   let port: PanelPort | null = null;
   if (browser.runtime.connect && tab.id !== undefined) {
     const tabId = tab.id;
@@ -422,12 +537,22 @@ async function main(): Promise<void> {
   window.addEventListener("pagehide", () => port?.close());
 
   // Cached or built-in model lists, so names and effort support are known
-  // before Settings is opened. No network call here.
-  for (const p of ["anthropic", "openai"] as const) {
-    rememberModels(p, (await loadModelList(storage, p, null, providerFetch, Date.now())).models);
-  }
+  // before Settings is opened. No network call here. Debug builds load their
+  // diagnostics in the same round.
+  const mockRead = __SCOUT_DEBUG__ && storage ? storage.get(DEV_MOCK_KEY).catch(() => none) : Promise.resolve(none);
+  if (__SCOUT_DEBUG__) diag = new Diagnostics(storage);
+  [conv] = await Promise.all([
+    convRead,
+    diag?.load(),
+    ...(["anthropic", "openai"] as const).map(async (p) => rememberModels(p, (await loadModelList(storage, p, null, providerFetch, Date.now())).models)),
+  ]);
 
   let session: Session | null = null;
+  /**
+   * Set while the panel shows the question box from the key hint and the
+   * first Keychain read is still out. Anything sent meanwhile waits for it.
+   */
+  let connecting: Promise<void> | null = null;
   const history: ChatMessage[] = [];
   /** The answer streaming now (Part 2), if any. */
   let activeChat: string | null = null;
@@ -440,17 +565,15 @@ async function main(): Promise<void> {
   // ---------- Diagnostics (debug builds only) ----------
   if (__SCOUT_DEBUG__) {
     const diagBox = el("diag");
-    diag = new Diagnostics(storage);
-    await diag.load();
     const diagStatus = el("diag-status");
     const diagQuestion = el<HTMLInputElement>("diag-question");
     const diagCopy = el<HTMLButtonElement>("diag-copy");
-    diagQuestion.checked = diag.includeQuestion;
+    diagQuestion.checked = diag?.includeQuestion === true;
     diagQuestion.addEventListener("change", () => void diag?.setIncludeQuestion(diagQuestion.checked));
     diagCopy.addEventListener("click", () => void copyDiagnostics(diagCopy.parentElement ?? diagCopy, diagStatus));
     // Answers from the local mock server (scripts/mock-scout-server.mjs) instead of Anthropic.
     const diagMock = el<HTMLInputElement>("diag-mock");
-    const mockSet = storage ? await storage.get(DEV_MOCK_KEY).catch(() => ({}) as Record<string, unknown>) : {};
+    const mockSet = await mockRead;
     diagMock.checked = typeof mockSet[DEV_MOCK_KEY] === "string";
     diagMock.addEventListener("change", () => {
       void storage?.set({ [DEV_MOCK_KEY]: diagMock.checked ? DEV_MOCK_URL : null }).then(async () => {
@@ -467,27 +590,321 @@ async function main(): Promise<void> {
   // ---------- Thread ----------
   // Stay pinned to the newest message when the thread grows or shrinks (the
   // composer grows as you type or when Scout mode adds its chip), unless
-  // the user has scrolled up to read. Scrolls the app makes always count as
-  // "at the bottom"; only later scroll events can unpin it.
+  // the user has scrolled up to read. scrollToEnd pins it (a new question,
+  // a prompt to answer); followEnd only keeps an already pinned thread at
+  // the bottom, so an answer typing out never pulls the user back down
+  // while they read from its top (owner, 2026-10-18).
   let atBottom = true;
-  let programmaticAt = 0;
+  let pinnedTop = -1;
   const scrollToEnd = (): void => {
     atBottom = true;
-    programmaticAt = performance.now();
     thread.scrollTop = thread.scrollHeight;
+    pinnedTop = thread.scrollTop;
+  };
+  const followEnd = (): void => {
+    if (atBottom) scrollToEnd();
   };
   thread.addEventListener("scroll", () => {
-    if (performance.now() - programmaticAt < 150) return;
+    // Our own scroll, before the content grew under it, is not the user's.
+    if (Math.abs(thread.scrollTop - pinnedTop) < 2) return;
     atBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 24;
   });
-  new ResizeObserver(() => {
-    if (atBottom) scrollToEnd();
-  }).observe(thread);
+  // Unpin as soon as the user starts scrolling up, before the next typed
+  // frame can scroll the thread back down under their finger or wheel.
+  thread.addEventListener("wheel", (e) => {
+    if (e.deltaY < 0) atBottom = false;
+  }, { passive: true });
+  let touchY = 0;
+  thread.addEventListener("touchstart", (e) => {
+    touchY = e.touches[0]?.clientY ?? 0;
+  }, { passive: true });
+  thread.addEventListener("touchmove", (e) => {
+    if ((e.touches[0]?.clientY ?? 0) > touchY + 4) atBottom = false;
+  }, { passive: true });
+  new ResizeObserver(followEnd).observe(thread);
 
-  function addMessage(kind: "user" | "assistant" | "error", text: string, opts: { mode?: string } = {}): HTMLElement {
+  // ---------- Answer actions and sources (owner items 10 and 12) ----------
+  // Under each finished answer: Copy, Share, Good / Bad answer, Branch, and
+  // "N sources". Citations show as site chips at the end of the paragraph
+  // that used them; hovering (or tapping, on touch) shows the source's card.
+  // Ratings stay on this device (storage key `ratings`); nothing is sent.
+
+  /** Saved entries shown in this chat, in order; chat answers carry their bubble. */
+  const turns: Array<{ bubble?: HTMLElement; entry: HistoryEntry }> = [];
+  let ratingsLoad: Promise<Record<string, Rating>> | null = null;
+  const ratings = (): Promise<Record<string, Rating>> =>
+    (ratingsLoad ??= storage ? loadRatings(storage).catch(() => ({})) : Promise.resolve({}));
+
+  const ICON_PATHS = {
+    copy: ["M9 8h10a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z", "M16 8V4a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h3"],
+    check: ["M5 12.5l4.5 4.5L19 7.5"],
+    share: ["M12 15V3", "M7.5 7.5L12 3l4.5 4.5", "M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"],
+    up: ["M7 10.5V21", "M7 10.5l4-8a2.5 2.5 0 0 1 3 2.6V9h5a2 2 0 0 1 2 2.4l-1.5 8A2 2 0 0 1 17.5 21H4a1 1 0 0 1-1-1v-8.5a1 1 0 0 1 1-1Z"],
+    down: ["M17 13.5V3", "M17 13.5l-4 8a2.5 2.5 0 0 1-3-2.6V15H5a2 2 0 0 1-2-2.4l1.5-8A2 2 0 0 1 6.5 3H20a1 1 0 0 1 1 1v8.5a1 1 0 0 1-1 1Z"],
+    branch: ["M6 3v5a6 6 0 0 0 6 6", "M18 3v5a6 6 0 0 1-6 6v7"],
+  };
+  type IconName = keyof typeof ICON_PATHS;
+
+  function icon(name: IconName): SVGSVGElement {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "i");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    for (const d of ICON_PATHS[name]) {
+      const path = document.createElementNS(NS, "path");
+      path.setAttribute("d", d);
+      svg.appendChild(path);
+    }
+    return svg;
+  }
+
+  function actionButton(name: IconName, label: string, onClick: (b: HTMLButtonElement) => void): HTMLButtonElement {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "icon-btn";
+    b.setAttribute("aria-label", label);
+    b.title = label;
+    b.appendChild(icon(name));
+    b.addEventListener("click", () => onClick(b));
+    return b;
+  }
+
+  async function copyText(text: string): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** The row under a finished chat answer. */
+  function answerActions(bubble: HTMLElement, turn: { question: string; answer: string; sources?: Source[] }): HTMLElement {
+    const sources = turn.sources ?? [];
+    const row = document.createElement("div");
+    row.className = "answer-actions";
+    row.setAttribute("role", "group");
+    row.setAttribute("aria-label", "Answer actions");
+
+    const copy = actionButton("copy", "Copy answer", (b) => {
+      void copyText(answerText(turn.answer, sources)).then((ok) => {
+        status.textContent = ok ? "Copied the answer." : "Could not copy. Select the answer and press Command-C.";
+        if (!ok) return;
+        b.replaceChildren(icon("check"));
+        setTimeout(() => b.replaceChildren(icon("copy")), 1500);
+      });
+    });
+
+    const share = actionButton("share", "Share answer", () => {
+      const text = turn.question + "\n\n" + answerText(turn.answer, sources);
+      void (async () => {
+        const data = { title: "Scout for Safari", text };
+        if (typeof navigator.share === "function" && (!navigator.canShare || navigator.canShare(data))) {
+          try {
+            await navigator.share(data);
+            return;
+          } catch (err) {
+            // Closed the share sheet: nothing else to do.
+            if (err instanceof Error && err.name === "AbortError") return;
+          }
+        }
+        status.textContent = (await copyText(text))
+          ? "Sharing is not available here, so the question and answer were copied. Paste them where you want to share."
+          : "Could not share or copy. Select the answer and press Command-C.";
+      })();
+    });
+
+    const key = ratingKey(turn.question, turn.answer);
+    const good = actionButton("up", "Good answer", () => void rate("up"));
+    const bad = actionButton("down", "Bad answer", () => void rate("down"));
+    const show = (r: Rating | undefined): void => {
+      good.setAttribute("aria-pressed", String(r === "up"));
+      bad.setAttribute("aria-pressed", String(r === "down"));
+    };
+    show(undefined);
+    void ratings().then((all) => show(all[key]));
+    async function rate(r: Rating): Promise<void> {
+      const all = await ratings();
+      const next = all[key] === r ? null : r;
+      if (next) all[key] = next;
+      else delete all[key];
+      show(next ?? undefined);
+      status.textContent = next ? "Marked as a " + (next === "up" ? "good" : "bad") + " answer. This stays on this device." : "Rating removed.";
+      if (storage) await saveRating(storage, key, next).catch(() => undefined);
+    }
+
+    const branch = actionButton("branch", "Branch from this answer", () => void branchFrom(bubble));
+    row.append(copy, share, good, bad, branch);
+
+    if (sources.length) {
+      const listId = "sources-" + Math.random().toString(36).slice(2, 10);
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "sources-toggle";
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-controls", listId);
+      const stack = document.createElement("span");
+      stack.className = "site-stack";
+      const seen = new Set<string>();
+      for (const s of sources) {
+        const name = siteName(s.url);
+        if (seen.has(name) || seen.size >= 3) continue;
+        seen.add(name);
+        stack.appendChild(siteIcon(document, s.url));
+      }
+      toggle.append(stack, sources.length === 1 ? "1 source" : sources.length + " sources");
+      const list = document.createElement("ol");
+      list.id = listId;
+      list.className = "source-list";
+      list.setAttribute("aria-label", "Sources");
+      list.hidden = true;
+      for (const s of sources) {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.href = s.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        const site = document.createElement("span");
+        site.className = "source-site";
+        site.textContent = siteName(s.url);
+        const title = document.createElement("span");
+        title.className = "source-title";
+        title.textContent = s.title || s.url;
+        a.append(siteIcon(document, s.url), site, title);
+        li.appendChild(a);
+        list.appendChild(li);
+      }
+      toggle.addEventListener("click", () => {
+        list.hidden = !list.hidden;
+        toggle.setAttribute("aria-expanded", String(!list.hidden));
+        if (!list.hidden) list.scrollIntoView({ block: "nearest" });
+      });
+      row.appendChild(toggle);
+      const wrap = document.createElement("div");
+      wrap.className = "answer-foot";
+      wrap.append(row, list);
+      return wrap;
+    }
+    return row;
+  }
+
+  /**
+   * Branch: a new chat holding this conversation up to and including this
+   * answer, so the next question continues from here. Later messages stay in
+   * the old chat's saved history and leave the view.
+   */
+  async function branchFrom(bubble: HTMLElement): Promise<void> {
+    if (activeChat || control || task || couponRun) {
+      status.textContent = "Wait until Scout for Safari finishes, then branch.";
+      return;
+    }
+    const i = turns.findIndex((t) => t.bubble === bubble);
+    const target = turns[i]?.entry;
+    if (!target) return;
+    let entries = turns.slice(0, i + 1).map((t) => t.entry);
+    // Saved history also has Scout mode runs from this session; use it when it has this answer.
+    if (storage && conv) {
+      const stored = await loadConversation(storage, settings.retention, Date.now(), conv).catch(() => []);
+      const j = stored.map((e) => (!e.kind || e.kind === "chat") && e.question === target.question && e.answer === target.answer).lastIndexOf(true);
+      if (j >= 0) entries = stored.slice(0, j + 1);
+    }
+    clearThread();
+    if (storage) {
+      conv = await startNewConversation(storage, tab.id, Date.now(), tab.incognito).catch(() => conv);
+      for (const e of entries) {
+        await appendHistory(storage, settings.retention, {
+          ...e,
+          conv,
+          ...(e.sources ? { sources: e.sources.map((s) => ({ url: savedUrl(s.url), ...(s.title ? { title: s.title } : {}), ...(s.kind ? { kind: s.kind } : {}) })) } : {}),
+        }).catch(() => undefined);
+      }
+    }
+    showEntries(entries);
+    updateEmpty();
+    status.textContent = "Branched into a new chat from that answer. Ask your next question to continue from there.";
+    trace("conversation:branch " + entries.length);
+    scrollToEnd();
+  }
+
+  const sourceCard = document.createElement("div");
+  sourceCard.id = "source-card";
+  sourceCard.hidden = true;
+  document.body.appendChild(sourceCard);
+  let cardFor: HTMLElement | null = null;
+  let cardTimer = 0;
+
+  function showSourceCard(chip: HTMLElement): void {
+    const src = chipSources.get(chip);
+    if (!src) return;
+    clearTimeout(cardTimer);
+    if (cardFor !== chip) {
+      cardFor?.removeAttribute("aria-describedby");
+      fillSourceCard(document, sourceCard, src);
+    }
+    cardFor = chip;
+    chip.setAttribute("aria-describedby", sourceCard.id);
+    sourceCard.hidden = false;
+    const r = chip.getBoundingClientRect();
+    const w = sourceCard.offsetWidth;
+    const h = sourceCard.offsetHeight;
+    const left = Math.max(8, Math.min(r.left, innerWidth - w - 8));
+    const top = r.bottom + 6 + h <= innerHeight - 8 ? r.bottom + 6 : Math.max(8, r.top - h - 6);
+    sourceCard.style.left = left + "px";
+    sourceCard.style.top = top + "px";
+  }
+
+  function hideSourceCard(): void {
+    clearTimeout(cardTimer);
+    sourceCard.hidden = true;
+    cardFor?.removeAttribute("aria-describedby");
+    cardFor = null;
+  }
+
+  const chipOf = (t: EventTarget | null): HTMLElement | null => (t instanceof Element ? t.closest<HTMLElement>("a.cite") : null);
+  log.addEventListener("pointerover", (e) => {
+    const chip = chipOf(e.target);
+    if (!chip || e.pointerType !== "mouse") return;
+    clearTimeout(cardTimer);
+    cardTimer = window.setTimeout(() => showSourceCard(chip), 120);
+  });
+  log.addEventListener("pointerout", (e) => {
+    if (!chipOf(e.target) || e.pointerType !== "mouse") return;
+    clearTimeout(cardTimer);
+    cardTimer = window.setTimeout(hideSourceCard, 250);
+  });
+  sourceCard.addEventListener("pointerenter", () => clearTimeout(cardTimer));
+  sourceCard.addEventListener("pointerleave", () => {
+    cardTimer = window.setTimeout(hideSourceCard, 250);
+  });
+  log.addEventListener("focusin", (e) => {
+    const chip = chipOf(e.target);
+    if (chip) showSourceCard(chip);
+  });
+  log.addEventListener("focusout", (e) => {
+    if (chipOf(e.target) && !(e.relatedTarget instanceof Node && sourceCard.contains(e.relatedTarget))) hideSourceCard();
+  });
+  // Touch has no hover: the first tap shows the card (its title opens the page).
+  log.addEventListener("click", (e) => {
+    const chip = chipOf(e.target);
+    if (!chip || !matchMedia("(pointer: coarse)").matches || (cardFor === chip && !sourceCard.hidden)) return;
+    e.preventDefault();
+    showSourceCard(chip);
+  });
+  document.addEventListener("pointerdown", (e) => {
+    if (!sourceCard.hidden && !(e.target instanceof Node && sourceCard.contains(e.target)) && !chipOf(e.target)) hideSourceCard();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !sourceCard.hidden) hideSourceCard();
+  });
+  thread.addEventListener("scroll", () => {
+    if (!sourceCard.hidden) hideSourceCard();
+  });
+
+  function addMessage(kind: "user" | "assistant" | "error", text: string, opts: { mode?: string; sources?: Source[] } = {}): HTMLElement {
     const node = document.createElement("div");
     node.className = "msg " + kind;
-    if (kind === "assistant") renderMarkdown(document, node, text);
+    if (kind === "assistant") renderMarkdown(document, node, text, { sources: opts.sources ?? [] });
     else if (kind === "user" && opts.mode) {
       const label = document.createElement("span");
       label.className = "mode";
@@ -518,38 +935,51 @@ async function main(): Promise<void> {
 
   function updateEmpty(): void {
     const busyCards = !!task || !!couponRun || !confirmBox.hidden;
-    empty.hidden = !session || log.childElementCount > 0 || busyCards;
+    empty.hidden = !(session || connecting) || log.childElementCount > 0 || busyCards;
+    siteSuggestions.hidden = empty.hidden || !siteSuggestions.childElementCount;
   }
 
   async function saveEntry(kind: HistoryKind, q: string, answer: string): Promise<void> {
+    turns.push({ entry: { at: Date.now(), question: q, answer, kind } });
     if (!storage) return;
     // Created on first use: after Delete all data, nothing is stored until the next answer.
-    if (!conv) conv = await conversationForTab(storage, tab.id, Date.now()).catch(() => "");
+    if (!conv) conv = await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "");
     await appendHistory(storage, settings.retention, { at: Date.now(), question: q, answer, kind, ...(conv ? { conv } : {}) }).catch(() => undefined);
   }
 
   async function restoreConversation(): Promise<void> {
     if (!storage || !conv) return;
     const entries = await loadConversation(storage, settings.retention, Date.now(), conv).catch(() => []);
-    history.length = 0;
-    for (const e of entries) {
-      const mode = e.kind === "agent" ? "Scout mode" : e.kind === "coupons" ? "Find coupons" : undefined;
-      const isSummary = e.question === SUMMARIZE_QUESTION || LEGACY_SUMMARIZE_QUESTIONS.includes(e.question);
-      addMessage("user", isSummary ? "Summarize page" : e.question, mode ? { mode } : {});
-      const answer = addMessage("assistant", e.answer);
-      if ((!e.kind || e.kind === "chat") && e.shared) answer.appendChild(sharedLine(e.shared));
-      if (!e.kind || e.kind === "chat") history.push({ role: "user", content: e.question }, { role: "assistant", content: e.answer });
-    }
-    history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
+    showEntries(entries);
     if (entries.length) trace("conversation:restored " + entries.length);
     // Again after layout and images settle, so the newest message is in view.
     requestAnimationFrame(scrollToEnd);
     window.addEventListener("load", scrollToEnd, { once: true });
   }
 
+  /** Shows saved entries as the thread and sets the model's context from them. */
+  function showEntries(entries: HistoryEntry[]): void {
+    history.length = 0;
+    for (const e of entries) {
+      const mode = e.kind === "agent" ? "Scout mode" : e.kind === "coupons" ? "Find coupons" : undefined;
+      const isSummary = e.question === SUMMARIZE_QUESTION || LEGACY_SUMMARIZE_QUESTIONS.includes(e.question);
+      addMessage("user", isSummary ? "Summarize page" : e.question, mode ? { mode } : {});
+      const chat = !e.kind || e.kind === "chat";
+      const answer = addMessage("assistant", e.answer, chat ? { sources: e.sources ?? [] } : {});
+      if (chat) {
+        history.push({ role: "user", content: e.question }, { role: "assistant", content: e.answer });
+        answer.appendChild(answerActions(answer, e));
+      }
+      turns.push(chat ? { bubble: answer, entry: e } : { entry: e });
+    }
+    history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
+  }
+
   function clearThread(): void {
     store.clear();
     views.clear();
+    turns.length = 0;
+    hideSourceCard();
     log.replaceChildren();
     confirmBox.hidden = true;
     history.length = 0;
@@ -558,13 +988,27 @@ async function main(): Promise<void> {
 
   // ---------- Session (provider + key) ----------
   let fallbackNotice: HTMLElement | null = null;
+  const sessionReady = async (): Promise<void> => {
+    if (!session && connecting) await connecting;
+  };
 
   // record=false after Delete all data, so no new diagnostics land in the
   // storage that was just cleared.
   async function connect(record = true): Promise<void> {
     if (record) startRun("startup", { provider: settings.provider, model: settings.model });
     else current = disabledRun;
-    const found = await findKey(settings);
+    const keys = await (firstKeys ?? readKeys());
+    if (firstKeys && __SCOUT_DEBUG__) trace("open:keys " + Math.round(performance.now()) + " ms");
+    firstKeys = null;
+    const found = findKey(settings, keys);
+    keyed = savedProviders(keys);
+    // Remembered for the next open, so it can show the question box at once.
+    // Only after a successful read: an unreadable Keychain says nothing.
+    const hint: KeyHint = { anthropic: keyed.has("anthropic"), openai: keyed.has("openai") };
+    if (record && storage && !keys.anthropic.error && !keys.openai.error && !sameHint(hint, keyHint)) {
+      keyHint = hint;
+      void storage.set({ [KEY_HINT_KEY]: hint }).catch(() => undefined);
+    }
     fallbackNotice?.remove();
     fallbackNotice = null;
     if (!found) {
@@ -592,10 +1036,11 @@ async function main(): Promise<void> {
     };
     noKey.hidden = true;
     composer.hidden = false;
-    const pill = prettyModel(session.settings.model) + (effort ? " · " + EFFORT_LABEL[effort] : "");
+    // Owner, 2026-10-17: the pill shows the short model name only; the effort is in the Models sheet.
+    const pill = prettyModel(session.settings.model);
     modelPillText.textContent = pill;
     // Accessible name starts with the visible text (WCAG 2.5.3 Label in Name).
-    modelPill.setAttribute("aria-label", pill + ", change model or effort");
+    modelPill.setAttribute("aria-label", pill + (effort ? ", " + EFFORT_LABEL[effort] + " effort" : "") + ", change model or effort");
     // Nothing shown when ready; the line under the conversation is for each run's cost.
     status.textContent = "";
     current.finish(
@@ -634,6 +1079,50 @@ async function main(): Promise<void> {
   };
   question.addEventListener("input", autosize);
 
+  // ---------- Mic (owner, 2026-10-17; src/panel/voice.ts) ----------
+  // Speech to text into the box, nothing more: the user sends it with Send.
+  const phone = matchMedia("(pointer: coarse)").matches;
+  const speechLang = navigator.language || "en-US";
+  const dictation = new Listener(recognitionCtor(window), speechLang);
+  let dictating = false;
+  function setDictating(on: boolean): void {
+    dictating = on;
+    mic.setAttribute("aria-pressed", String(on));
+    mic.setAttribute("aria-label", on ? "Stop dictating" : "Dictate");
+    mic.title = on ? "Stop dictating" : "Dictate";
+  }
+  function stopDictation(): void {
+    if (dictating) dictation.stop();
+  }
+  mic.addEventListener("click", () => {
+    if (dictating) {
+      dictation.stop();
+      return;
+    }
+    const typed = question.value;
+    setDictating(true);
+    status.textContent = "Listening…";
+    trace("voice:dictate");
+    dictation.start(
+      {
+        onText: (heard) => {
+          question.value = joinDictation(typed, heard);
+          autosize();
+        },
+        onEnd: (error) => {
+          setDictating(false);
+          if (error && !(error === "no-speech" && question.value !== typed)) {
+            status.textContent = micErrorText(error, phone);
+            trace("voice:error " + error);
+          } else if (status.textContent === "Listening…") status.textContent = "";
+          question.focus();
+        },
+      },
+      { continuous: true },
+    );
+  });
+
+
   function closePlus(focusButton = false): void {
     plusMenu.hidden = true;
     plus.setAttribute("aria-expanded", "false");
@@ -655,29 +1144,35 @@ async function main(): Promise<void> {
   document.addEventListener("click", (e) => {
     const t = e.target as Node;
     if (!plusMenu.hidden && !plusMenu.contains(t) && !plus.contains(t)) closePlus();
-    if (!modelMenu.hidden && !modelMenu.contains(t) && !modelPill.contains(t)) closeModelMenu();
   });
 
-  // ---------- Model menu: pick the model and effort in place ----------
-  // A menu of radio items above the pill. Choosing one saves it and closes the
-  // menu; Settings keeps the full controls (custom model ID, refresh).
-  const CHECK_ICON = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
-  const menuItems = (): HTMLButtonElement[] => Array.from(modelMenu.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'));
+  // ---------- Models sheet: pick the model and effort in place ----------
+  // Owner design 2026-10-17: a "Models" sheet over the panel listing every
+  // model of each provider with a saved key, then the effort levels. Choosing
+  // one saves it and closes the sheet; Settings keeps the full controls
+  // (custom model ID, refresh).
+  const CHECK_ICON = '<svg class="i check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
+  // Monochrome provider marks, drawn here (no vendor artwork is bundled).
+  const PROVIDER_GLYPH: Record<Provider, string> = {
+    anthropic:
+      '<svg class="i glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4M8.5 3.6l7 16.8M15.5 3.6l-7 16.8M3.6 8.5l16.8 7M3.6 15.5l16.8-7"/></svg>',
+    openai:
+      '<svg class="i glyph" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="4"/><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(120 12 12)"/></svg>',
+  };
+  const menuItems = (): HTMLButtonElement[] => Array.from(modelMenu.querySelectorAll<HTMLButtonElement>('[role="radio"]'));
+  /** Providers with a key in the Keychain, read on each connect. */
+  let keyed = new Set<Provider>();
 
-  function menuGroup(group: HTMLElement, heading: string, items: Array<{ key: string; label: string; checked: boolean; pick: () => void }>): void {
-    const head = document.createElement("div");
-    head.className = "menu-head";
-    head.setAttribute("aria-hidden", "true");
-    head.textContent = heading;
+  function menuGroup(group: HTMLElement, items: Array<{ key: string; label: string; glyph?: string; checked: boolean; pick: () => void }>): void {
     group.replaceChildren(
-      head,
       ...items.map((item) => {
         const b = document.createElement("button");
         b.type = "button";
-        b.tabIndex = -1;
+        b.tabIndex = item.checked ? 0 : -1;
         b.dataset.key = item.key;
-        b.setAttribute("role", "menuitemradio");
+        b.setAttribute("role", "radio");
         b.setAttribute("aria-checked", String(item.checked));
+        if (item.glyph) b.insertAdjacentHTML("beforeend", item.glyph);
         const text = document.createElement("span");
         text.textContent = item.label;
         b.append(text);
@@ -690,17 +1185,30 @@ async function main(): Promise<void> {
 
   // The session's provider and model: after a fallback, those of the key in use.
   const activeSettings = (): Settings => session?.settings ?? settings;
+  /** Providers the sheet lists: those with a saved key, and always the one in use. */
+  const menuProviders = (): Provider[] => (["anthropic", "openai"] as const).filter((p) => keyed.has(p) || p === activeSettings().provider);
 
   function renderModelMenu(): void {
     const cur = activeSettings();
+    const providers = menuProviders();
     const list = withModel(knownModels[cur.provider], cur.provider, cur.model);
     const levels = list.find((m) => m.id === cur.model)?.efforts ?? [];
     const effort = levels.includes(cur.effort as Effort) ? cur.effort : "default";
     const focused = modelMenu.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset.key : undefined;
-    menuGroup(el("model-menu-models"), "Model", list.map((m) => ({ key: "model:" + m.id, label: m.name, checked: m.id === cur.model, pick: () => void pickModel(m.id) })));
+    menuGroup(
+      el("model-menu-models"),
+      providers.flatMap((p) =>
+        (p === cur.provider ? list : knownModels[p]).map((m) => ({
+          key: "model:" + p + ":" + m.id,
+          label: m.name,
+          glyph: PROVIDER_GLYPH[p],
+          checked: p === cur.provider && m.id === cur.model,
+          pick: () => void pickModel(p, m.id),
+        })),
+      ),
+    );
     menuGroup(
       el("model-menu-efforts"),
-      "Effort",
       (["default", ...levels] as EffortSetting[]).map((v) => ({
         key: "effort:" + v,
         label: EFFORT_LABEL[v] + (v === "default" ? " (model decides)" : ""),
@@ -708,31 +1216,34 @@ async function main(): Promise<void> {
         pick: () => void pickEffort(v),
       })),
     );
-    el("model-menu-sep").hidden = el("model-menu-efforts").hidden = levels.length === 0;
+    el("model-menu-effort-title").hidden = el("model-menu-efforts").hidden = levels.length === 0;
+    el("model-menu-note").textContent =
+      "Showing models for your " + providers.map((p) => PROVIDER_NAME[p]).join(" and ") + " API key" + (providers.length > 1 ? "s" : "") + ". Add keys in Settings.";
     if (focused) menuItems().find((b) => b.dataset.key === focused)?.focus();
   }
 
   // Cached list, else the provider's list (no tokens billed), as in Settings.
   // Only after the user allowed sharing with that provider.
   async function refreshMenuModels(): Promise<void> {
-    const p = activeSettings().provider;
-    let key: string | null = null;
-    try {
-      key = consent.has(p) ? await keychain.getKey(p) : null;
-    } catch {
-      key = null;
-    }
-    const list = await loadModelList(storage, p, key, providerFetch, Date.now());
-    const changed = JSON.stringify(list.models) !== JSON.stringify(knownModels[p]);
-    rememberModels(p, list.models);
-    if (changed && !modelMenu.hidden && activeSettings().provider === p) renderModelMenu();
+    await Promise.all(
+      menuProviders().map(async (p) => {
+        let key: string | null = null;
+        try {
+          key = consent.has(p) ? await keychain.getKey(p) : null;
+        } catch {
+          key = null;
+        }
+        const list = await loadModelList(storage, p, key, providerFetch, Date.now());
+        const changed = JSON.stringify(list.models) !== JSON.stringify(knownModels[p]);
+        rememberModels(p, list.models);
+        if (changed && !modelMenu.hidden) renderModelMenu();
+      }),
+    );
   }
 
   function openModelMenu(focus: "checked" | "last" = "checked"): void {
     closePlus();
     renderModelMenu();
-    // Fits the space above the composer, which grows with the text and chips.
-    modelMenu.style.maxHeight = Math.max(160, composer.getBoundingClientRect().top - 12) + "px";
     modelMenu.hidden = false;
     modelPill.setAttribute("aria-expanded", "true");
     const items = menuItems();
@@ -745,12 +1256,12 @@ async function main(): Promise<void> {
     if (focusPill) modelPill.focus();
   }
 
-  /** Saves a model from the menu; an effort the new model does not support goes back to Default. */
-  async function pickModel(id: string): Promise<void> {
+  /** Saves a model from the sheet; an effort the new model does not support goes back to Default. */
+  async function pickModel(provider: Provider, id: string): Promise<void> {
     const cur = activeSettings();
-    const levels = withModel(knownModels[cur.provider], cur.provider, id).find((m) => m.id === id)?.efforts ?? [];
+    const levels = withModel(knownModels[provider], provider, id).find((m) => m.id === id)?.efforts ?? [];
     closeModelMenu(true);
-    await persist({ ...settings, provider: cur.provider, model: id, effort: levels.includes(cur.effort as Effort) ? cur.effort : "default" });
+    await persist({ ...settings, provider, model: id, effort: levels.includes(cur.effort as Effort) ? cur.effort : "default" });
   }
   async function pickEffort(effort: EffortSetting): Promise<void> {
     const cur = activeSettings();
@@ -765,6 +1276,7 @@ async function main(): Promise<void> {
       openModelMenu(e.key === "ArrowUp" ? "last" : "checked");
     }
   });
+  el("model-menu-close").addEventListener("click", () => closeModelMenu(true));
   modelMenu.addEventListener("keydown", (e) => {
     const items = menuItems();
     const at = items.indexOf(document.activeElement as HTMLButtonElement);
@@ -779,25 +1291,40 @@ async function main(): Promise<void> {
     else if (e.key === "Escape") {
       e.preventDefault();
       closeModelMenu(true);
+    } else if (e.key === "Tab") {
+      // Modal: focus moves between the close button and the checked rows.
+      const stops = [el<HTMLButtonElement>("model-menu-close"), ...items.filter((b) => b.tabIndex === 0)];
+      const i = stops.indexOf(document.activeElement as HTMLButtonElement);
+      e.preventDefault();
+      stops[(i + (e.shiftKey ? stops.length - 1 : 1)) % stops.length]?.focus();
     }
-    // Tab leaves the menu from the pill, so focus moves on to the next control.
-    else if (e.key === "Tab") closeModelMenu(true);
   });
 
+  // Owner, 2026-10-17: one button next to the model picker starts and stops
+  // everything. It is the blue Send arrow, and the blue Stop square while an
+  // answer streams, a Scout mode task runs, or Find coupons runs. The chat
+  // itself never shows its own Stop.
+  function syncComposer(): void {
+    const running = !!activeChat || !!task || !!couponRun;
+    send.hidden = running;
+    stop.hidden = !running;
+  }
+
   function setBusy(busy: boolean): void {
-    send.hidden = busy;
-    stop.hidden = !busy;
-    plus.disabled = modelPill.disabled = busy;
+    syncComposer();
+    plus.disabled = modelPill.disabled = mic.disabled = busy;
+    if (busy) stopDictation();
     if (busy) closeModelMenu();
     question.disabled = busy;
     for (const i of modeInputs) i.disabled = busy;
     for (const c of empty.querySelectorAll<HTMLButtonElement>("button")) c.disabled = busy;
+    for (const c of siteSuggestions.querySelectorAll<HTMLButtonElement>("button")) c.disabled = busy;
     if (busy) stop.focus();
     else if (!matchMedia("(pointer: coarse)").matches) question.focus();
   }
 
   // ---------- Attached tabs (Part 2, spec 6): only tabs the user picks ----------
-  // Picked in the + menu's list or by typing @, shown as chips above the field,
+  // Picked by typing @, shown as chips above the field,
   // and sent with every question until removed. Nothing else is read.
   const attachedBox = el("attached");
   const mentionList = el<HTMLUListElement>("mention-list");
@@ -822,7 +1349,6 @@ async function main(): Promise<void> {
       }),
     );
     attachedBox.hidden = attached.size === 0;
-    for (const box of tabList.querySelectorAll<HTMLInputElement>("input[data-tab]")) box.checked = attached.has(Number(box.dataset.tab));
   }
   function attachTab(t: TabInfo): void {
     if (!attached.has(t.id) && attached.size >= MAX_EXTRA_TABS) {
@@ -841,18 +1367,6 @@ async function main(): Promise<void> {
   async function loadTabs(): Promise<void> {
     others = (await listTabs()).filter((t) => !t.active);
     for (const id of [...attached.keys()]) if (!others.some((t) => t.id === id)) attached.delete(id);
-    tabList.replaceChildren();
-    for (const t of others) {
-      const label = document.createElement("label");
-      const box = document.createElement("input");
-      box.type = "checkbox";
-      box.dataset.tab = String(t.id);
-      box.checked = attached.has(t.id);
-      box.addEventListener("change", () => (box.checked ? attachTab(t) : detachTab(t.id)));
-      label.append(box, document.createTextNode(t.title));
-      tabList.appendChild(label);
-    }
-    tabsToggle.disabled = others.length === 0;
     renderAttached();
   }
 
@@ -933,13 +1447,6 @@ async function main(): Promise<void> {
   }
   question.addEventListener("input", updateMentions);
   question.addEventListener("blur", () => setTimeout(closeMentions, 0));
-  tabsToggle.addEventListener("click", () => {
-    tabsBox.hidden = !tabsBox.hidden;
-    tabsToggle.setAttribute("aria-expanded", String(!tabsBox.hidden));
-    closePlus();
-    if (!tabsBox.hidden) tabList.querySelector<HTMLInputElement>("input")?.focus();
-    else question.focus();
-  });
 
   // ---------- Consent: asked once per provider before anything is sent ----------
   // App Store Review Guideline 5.1.2(i). A modal dialog: focus starts on its
@@ -1031,14 +1538,19 @@ async function main(): Promise<void> {
     model: string;
     /** Tabs this answer may read: the current tab when shared, attached tabs, tabs it opened. */
     scope: number[];
-    /** Numbered sources [n]: the pages sent with the question. */
-    sources: Array<{ url: string; title?: string }>;
+    /** Numbered sources [n]: the pages sent with the question (after a Continue, the earlier part's sources). */
+    sources: Source[];
     shared: Array<{ title: string; host: string; status: string }>;
     /** Text shown before this answer continued (Continue after a drop). */
     prefix: string;
     handled: Set<string>;
     queue: Promise<void>;
     closed: boolean;
+    /** Characters of prefix + text on screen; the reveal types toward the full text. */
+    shown: number;
+    /** The pending animation frame of the reveal, if any. */
+    typing: number | null;
+    typedAt: number;
     done: () => void;
     finished: Promise<void>;
   }
@@ -1047,29 +1559,10 @@ async function main(): Promise<void> {
   function newView(id: string, bubble: HTMLElement, q: string, model: string, prefix = ""): MessageView {
     let done: () => void = () => undefined;
     const finished = new Promise<void>((resolve) => (done = resolve));
-    const v: MessageView = { bubble, question: q, model, scope: [], sources: [], shared: [], prefix, handled: new Set(), queue: Promise.resolve(), closed: false, done, finished };
+    const v: MessageView = { bubble, question: q, model, scope: [], sources: [], shared: [], prefix, handled: new Set(), queue: Promise.resolve(), closed: false, shown: prefix.length, typing: null, typedAt: 0, done, finished };
     store.create(id);
     views.set(id, v);
     return v;
-  }
-
-  /** "Shared: Test shop (shop.test) · Screenshot (shop.test)" under an answer. */
-  function sharedLine(items: Array<{ title: string; host: string; status: string }>): HTMLElement {
-    const p = document.createElement("p");
-    p.className = "shared";
-    if (!items.length) {
-      p.textContent = "No pages shared.";
-      return p;
-    }
-    const ul = document.createElement("ul");
-    ul.setAttribute("aria-label", "Shared with this answer");
-    for (const item of items) {
-      const li = document.createElement("li");
-      li.textContent = sharedLabel(item);
-      ul.appendChild(li);
-    }
-    p.append("Shared: ", ul);
-    return p;
   }
 
   function renderView(id: string): void {
@@ -1077,27 +1570,44 @@ async function main(): Promise<void> {
     const m = store.get(id);
     if (!v || !m) return;
     const text = v.prefix + m.text;
-    if (text) renderMarkdown(document, v.bubble, text, { sources: [...v.sources, ...m.citations] });
-    else v.bubble.textContent = m.status === "error" || m.status === "complete" ? "" : "Thinking…";
-    if (m.citations.length) {
-      const ol = document.createElement("ol");
-      ol.className = "sources";
-      ol.start = v.sources.length + 1;
-      ol.setAttribute("aria-label", "Web sources");
-      for (const c of m.citations) {
-        const li = document.createElement("li");
-        const a = document.createElement("a");
-        a.href = c.url;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        a.textContent = c.title || hostOf(c.url) || c.url;
-        li.appendChild(a);
-        ol.appendChild(li);
-      }
-      v.bubble.appendChild(ol);
+    // A stopped or failed answer shows what arrived at once.
+    if (m.stopped || m.status === "error") v.shown = text.length;
+    const cut = cutAt(text, v.shown);
+    if (cut < text.length && v.typing === null) {
+      v.typedAt = performance.now();
+      v.typing = requestAnimationFrame((t) => typeOn(id, t));
     }
-    v.bubble.appendChild(sharedLine(v.shared));
-    scrollToEnd();
+    const visible = text.slice(0, cut);
+    if (visible) renderMarkdown(document, v.bubble, visible, { sources: allSources(v, m) });
+    else if (m.status === "error" || m.status === "complete") v.bubble.textContent = "";
+    else v.bubble.innerHTML = '<span class="thinking">' + PULSE + "<span>Thinking…</span></span>";
+    if (v.closed && m.status === "complete" && !m.stopped && text && cut >= text.length) {
+      v.bubble.appendChild(answerActions(v.bubble, { question: v.question, answer: text, sources: allSources(v, m) }));
+    }
+    followEnd();
+  }
+
+  /** One frame of the steady reveal of a streamed answer. */
+  function typeOn(id: string, now: number): void {
+    const v = views.get(id);
+    const m = store.get(id);
+    if (!v || !m) return;
+    v.typing = null;
+    const full = (v.prefix + m.text).length;
+    v.shown = nextShown(v.shown, full, now - v.typedAt);
+    v.typedAt = now;
+    renderView(id);
+  }
+
+  /** The start of a shared page's text, for its source card. Shown only, never saved. */
+  function snippetOf(text: string): string {
+    const t = text.replace(/\s+/g, " ").trim();
+    return t.length > 180 ? t.slice(0, 177).replace(/\s+\S*$/, "") + "…" : t;
+  }
+
+  /** The pages sent with the question, then the web pages the provider cited. */
+  function allSources(v: MessageView, m: StoredMessage): Source[] {
+    return [...v.sources, ...m.citations.map((c): Source => ({ ...c, kind: "web" }))];
   }
 
   function finalize(id: string): void {
@@ -1109,13 +1619,16 @@ async function main(): Promise<void> {
     const full = v.prefix + m.text;
     if (m.status === "complete" && !m.stopped) {
       history.push({ role: "user", content: v.question }, { role: "assistant", content: full });
+      // Without snippets: they quote page text, which history never keeps.
+      const sources = allSources(v, m).map(({ url, title, kind }) => ({ url, ...(title ? { title } : {}), ...(kind ? { kind } : {}) }));
+      turns.push({ bubble: v.bubble, entry: { at: Date.now(), question: v.question, answer: full, kind: "chat", ...(sources.length ? { sources } : {}), ...(v.shared.length ? { shared: v.shared } : {}) } });
       history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
       status.textContent = m.usage ? formatCostLine(v.model, m.usage) : "";
       current.finish("done", "Answered (" + full.length + " characters).", m.usage);
     } else if (m.status === "complete") {
+      // The user pressed Stop: keep what arrived and say nothing (owner, 2026-10-17).
       if (!full) v.bubble.remove();
-      addMessage("error", "Stopped.");
-      status.textContent = m.usage ? formatCostLine(v.model, m.usage) : "Stopped.";
+      status.textContent = m.usage ? formatCostLine(v.model, m.usage) : "";
       current.finish("stopped", "Stopped.", m.usage);
     } else {
       if (!full) v.bubble.remove();
@@ -1129,7 +1642,7 @@ async function main(): Promise<void> {
         more.textContent = "Continue";
         more.addEventListener("click", () => {
           err.remove();
-          void ask(CONTINUE_PROMPT, { continueOf: { bubble: v.bubble, question: v.question, partial: full, shared: v.shared } });
+          void ask(CONTINUE_PROMPT, { continueOf: { bubble: v.bubble, question: v.question, partial: full, shared: v.shared, sources: allSources(v, m) } });
         });
         err.appendChild(more);
       }
@@ -1352,8 +1865,9 @@ async function main(): Promise<void> {
     read_current: boolean;
   }
 
-  async function ask(text: string, opts: { continueOf?: { bubble: HTMLElement; question: string; partial: string; shared: MessageView["shared"] } } = {}): Promise<void> {
+  async function ask(text: string, opts: { continueOf?: { bubble: HTMLElement; question: string; partial: string; shared: MessageView["shared"]; sources: Source[] } } = {}): Promise<void> {
     const trimmed = text.trim();
+    await sessionReady();
     if (!trimmed || activeChat || control || task || !session) return;
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
@@ -1386,19 +1900,22 @@ async function main(): Promise<void> {
     }
     const v = newView(id, bubble, cont ? cont.question : trimmed, s.settings.model, cont ? cont.partial + (/\s$/.test(cont.partial) ? "" : " ") : "");
     renderView(id);
-    status.textContent = cont ? "Finishing the answer." : "Reading the page and waiting for the answer.";
+    status.textContent = cont ? "Finishing the answer." : STANDALONE ? "Waiting for the answer." : "Reading the page and waiting for the answer.";
     setBusy(true);
     if (!storage) conv = conv || "";
-    else if (!conv) conv = await conversationForTab(storage, tab.id, Date.now()).catch(() => "");
+    else if (!conv) conv = await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "");
 
     let pages: PageContext[] = [];
-    if (cont) v.shared = [...cont.shared];
+    if (cont) {
+      v.shared = [...cont.shared];
+      v.sources = [...cont.sources];
+    }
     else {
       // Spec 6: the current tab when shared, plus the attached tabs. Nothing else.
       const ctx = await request<ContextReply>(
         toWorker,
         "context.read",
-        { ...(tab.id !== undefined ? { current_tab: tab.id } : {}), attached: granted ? extra.map((t) => t.id) : [], include_current: true },
+        { ...(tab.id !== undefined ? { current_tab: tab.id } : {}), attached: granted ? extra.map((t) => t.id) : [], include_current: !STANDALONE },
         { timeoutMs: 15_000 },
       ).catch(() => null);
       pages = ctx?.pages ?? [];
@@ -1407,9 +1924,9 @@ async function main(): Promise<void> {
       const cur = shared.find((t) => t.tab_id === tab.id);
       current.page(readOk(cur?.status) ? pages[0]?.url : undefined);
       trace(readOk(cur?.status) ? "page:read ok" : "page:read failed");
-      if (ctx?.read_current !== false && !readOk(cur?.status)) status.textContent = "Could not read this page. Answering without it.";
-      v.scope = [...(ctx?.read_current !== false && tab.id !== undefined ? [tab.id] : []), ...extra.map((t) => t.id)];
-      v.sources = pages.map((p) => ({ url: p.url, title: p.title }));
+      if (!STANDALONE && ctx?.read_current !== false && !readOk(cur?.status)) status.textContent = "Could not read this page. Answering without it.";
+      v.scope = [...(!STANDALONE && ctx?.read_current !== false && tab.id !== undefined ? [tab.id] : []), ...extra.map((t) => t.id)];
+      v.sources = pages.map((p) => ({ url: p.url, title: p.title, kind: "page", snippet: snippetOf(p.text) }));
       v.shared = shared.map((t) => ({ title: attached.get(t.tab_id)?.title || t.title, host: t.host, status: t.status }));
       for (const t of extra) if (!shared.some((x) => x.tab_id === t.id)) v.shared.push({ title: t.title, host: hostOf(t.url) ?? "", status: "failed" });
       if (extra.length) trace("tabs:read " + shared.filter((t) => t.tab_id !== tab.id && readOk(t.status)).length + "/" + extra.length);
@@ -1442,7 +1959,9 @@ async function main(): Promise<void> {
           history: cont ? [...past, { role: "user", content: cont.question }, { role: "assistant", content: cont.partial }] : past,
           pages,
           shared: v.shared,
-          ...(cont ? { display_question: cont.question, answer_prefix: v.prefix } : {}),
+          ...(cont
+            ? { display_question: cont.question, answer_prefix: v.prefix, prefix_sources: cont.sources.map((x) => ({ url: x.url, title: x.title ?? "" })) }
+            : {}),
         },
         { timeoutMs: 10_000 },
       );
@@ -1477,8 +1996,8 @@ async function main(): Promise<void> {
   // The trace sits inline in the thread under the user's message (owner
   // reference 2026-10-17): a "Working 11s" line, the model's own short
   // narration, muted "Browsed" rows for each batch of actions, rejected or
-  // denied actions in red, and Take control / Stop while it runs. When the
-  // task ends the line becomes "Finished 1m 43s" with a chevron that folds
+  // denied actions in red, and Take control while it runs (Stop is the
+  // composer's button, next to the model picker). When the task ends the line becomes "Finished 1m 43s" with a chevron that folds
   // the trace, and the outcome follows as a normal message. The plain-language
   // action log (spec 8.5) is kept under a collapsed "Steps" row. Events arrive
   // on the port (task.event) for this tab; a reopened panel catches up with
@@ -1500,7 +2019,6 @@ async function main(): Promise<void> {
     stepsSummary: HTMLElement;
     controls: HTMLElement;
     take: HTMLButtonElement;
-    stopBtn: HTMLButtonElement;
     /** The current "Browsed" row, while consecutive actions are grouped into it. */
     group: { row: HTMLElement; label: HTMLElement; count: number } | null;
     state: string;
@@ -1581,7 +2099,7 @@ async function main(): Promise<void> {
     const e = { text, status: statusOf };
     task.entries.push(e);
     renderEntry(task, e);
-    scrollToEnd();
+    followEnd();
   }
 
   /** Builds the inline trace under the user's message and returns it. */
@@ -1619,17 +2137,13 @@ async function main(): Promise<void> {
     take.type = "button";
     take.className = "btn";
     take.textContent = state === "paused" ? "Resume" : "Take control";
-    const stopBtn = document.createElement("button");
-    stopBtn.type = "button";
-    stopBtn.className = "btn";
-    stopBtn.textContent = "Stop";
-    if (opts.takeControl !== false) controls.append(take);
-    controls.append(stopBtn);
+    controls.append(take);
     body.append(steps);
     // Controls sit outside the folded part, so they are always reachable.
-    node.append(head, body, controls);
+    node.append(head, body);
+    if (opts.takeControl !== false) node.append(controls);
     log.appendChild(node);
-    const t = { entries: [] as Entry[], startedAt, node, head, headText, body, stepsList, stepsSummary, controls, take, stopBtn, group: null, state, timer: null } as Omit<TaskUi, "id" | "goal" | "source" | "promptId" | "resolve" | "finished">;
+    const t = { entries: [] as Entry[], startedAt, node, head, headText, body, stepsList, stepsSummary, controls, take, group: null, state, timer: null } as Omit<TaskUi, "id" | "goal" | "source" | "promptId" | "resolve" | "finished">;
     for (const e of entries) {
       t.entries.push(e);
       renderEntry(t as TaskUi, e);
@@ -1639,11 +2153,12 @@ async function main(): Promise<void> {
 
   function showTrace(t: TaskUi): void {
     task = t;
+    // The head moves while the task works, like a coupon run's (owner item 14).
+    t.head.insertAdjacentHTML("afterbegin", PULSE);
     refreshHead();
     t.timer = setInterval(refreshHead, 1000);
     t.take.addEventListener("click", onTakeControl);
-    t.stopBtn.addEventListener("click", onStopTask);
-    send.hidden = true;
+    syncComposer();
     plus.disabled = modelPill.disabled = true;
     for (const i of modeInputs) i.disabled = true;
     closeModelMenu();
@@ -1657,12 +2172,13 @@ async function main(): Promise<void> {
     if (t.timer) clearInterval(t.timer);
     t.timer = null;
     const word = statusOf === "done" ? "Finished" : statusOf === "stopped" ? "Stopped" : "Ended";
+    t.head.querySelector(".pulse")?.remove();
     t.headText.textContent = word + " " + elapsedText(Date.now() - t.startedAt);
     t.controls.remove();
     hideConfirm();
     // A task asked for mid-answer (run_task) ends while the answer still streams: the composer stays busy then.
     const busy = !!activeChat;
-    send.hidden = busy;
+    syncComposer();
     plus.disabled = modelPill.disabled = busy;
     for (const i of modeInputs) i.disabled = busy;
     updateEmpty();
@@ -1701,7 +2217,7 @@ async function main(): Promise<void> {
     setTaskState("running");
     status.textContent = "Scout mode is running.";
     void request(toWorker, "task.decide", { task_id: task.id, prompt_id: promptId, decision }).catch(() => undefined);
-    task.stopBtn.focus();
+    stop.focus();
   }
   confirmOnce.addEventListener("click", () => decide("once"));
   confirmAlways.addEventListener("click", () => decide("always"));
@@ -1769,7 +2285,7 @@ async function main(): Promise<void> {
       return null;
     }
     if (!storage) conv = conv || "";
-    else if (!conv) conv = await conversationForTab(storage, tab.id, Date.now()).catch(() => "");
+    else if (!conv) conv = await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "");
     // Watch this tab's events on the port now, in case the watch sent when the
     // port opened reached the worker before it was listening.
     watchTab();
@@ -1786,7 +2302,7 @@ async function main(): Promise<void> {
     const finished = new Promise<{ status: string; summary: string; usage: Usage }>((r) => (resolve = r));
     const t: TaskUi = { ...buildTrace([], "running", Date.now()), id: started.task_id, goal, source, promptId: null, resolve, finished };
     showTrace(t);
-    t.stopBtn.focus();
+    stop.focus();
     const out = await finished;
     task = null;
     finishTrace(t, out.status);
@@ -1796,6 +2312,7 @@ async function main(): Promise<void> {
   // The composer's Scout mode: a user message, the task, then its outcome in the thread.
   async function runTask(goal: string): Promise<void> {
     const trimmed = goal.trim();
+    await sessionReady();
     if (!trimmed || activeChat || control || task || !session) return;
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
@@ -1806,7 +2323,8 @@ async function main(): Promise<void> {
     autosize();
     const out = await startTask(trimmed, "panel");
     if (!out) return;
-    addMessage(out.status === "done" ? "assistant" : "error", out.summary);
+    // Stopped by the user: the trace already reads "Stopped", nothing more to show.
+    if (out.status !== "stopped") addMessage(out.status === "done" ? "assistant" : "error", out.summary);
     current.finish(out.status, out.summary, out.usage);
     status.textContent = formatCostLine(s.settings.model, out.usage);
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
@@ -1851,18 +2369,22 @@ async function main(): Promise<void> {
     task = null;
     finishTrace(t, out.status);
     if (t0.source === "panel") {
-      addMessage(out.status === "done" ? "assistant" : "error", out.summary);
+      if (out.status !== "stopped") addMessage(out.status === "done" ? "assistant" : "error", out.summary);
       status.textContent = formatCostLine(activeSettings().model, out.usage);
     }
   }
 
-  // ---------- Coupons (S07, T031): find many codes, test them in batches of 25. ----------
-  // Owner, 2026-10-16: a batch that finds a saving applies the best code and
-  // ends; a batch with none asks whether to find and test 25 more.
+  // ---------- Coupons (S07, T031): find codes online and test them on the cart. ----------
+  // Owner, 2026-10-16: a run that finds a saving applies the best code and
+  // ends; one with none asks whether to search the web again.
   // Owner, 2026-10-17: no results card. The run shows inline like Scout mode
-  // (a Working line, one line per code as it is tested, the question for more
-  // codes inline, then the summary), and the page glows with the same overlay
-  // while it runs; its toast's Stop reaches this panel through the worker.
+  // (a folded Working card with one line per code as it is tested, then the
+  // summary), and the page glows with the same overlay while it runs; its
+  // toast's Stop reaches this panel through the worker.
+  // Owner, 2026-10-17 (later): codes are tested as the search finds them, all
+  // of them rather than the first 25; milestones (searching, found N, a code
+  // that saves, the search done) post in the chat outside the card, the newest
+  // with a moving indicator; the summary is a few sentences.
   interface CouponRun {
     id: string;
     stop(): void;
@@ -1928,10 +2450,11 @@ async function main(): Promise<void> {
       row.appendChild(link);
     } else row.append(label);
     t.body.appendChild(row);
-    scrollToEnd();
+    followEnd();
   }
 
-  function askMoreCodes(state: BatchState, t: { body: HTMLElement; controls: HTMLElement; stopBtn: HTMLButtonElement }): Promise<boolean> {
+  /** The question after a search whose codes saved nothing; the composer's Stop (or the overlay's) answers it "no". */
+  function askMoreCodes(state: BatchState, stopped: AbortSignal): Promise<boolean> {
     return new Promise((resolve) => {
       const box = document.createElement("div");
       box.className = "more";
@@ -1942,44 +2465,110 @@ async function main(): Promise<void> {
       p.id = "coupons-more-text";
       p.textContent =
         "We've tried " + state.tried + " code" + (state.tried === 1 ? "" : "s") + " and none lowered your total. " +
-        (state.remaining > 0
-          ? "Test the " + state.remaining + " still untested?"
-          : "Would you like Scout for Safari to search the web again, in other places, for more codes to test?");
+        "Would you like Scout for Safari to search the web again, in other places, for more codes to test?";
       const row = document.createElement("div");
       row.className = "row";
       const yesBtn = document.createElement("button");
       yesBtn.type = "button";
       yesBtn.className = "btn primary";
-      yesBtn.textContent = state.remaining > 0 ? "Keep testing" : "Search again";
+      yesBtn.textContent = "Search again";
       const noBtn = document.createElement("button");
       noBtn.type = "button";
       noBtn.className = "btn";
       noBtn.textContent = "Stop here";
       row.append(yesBtn, noBtn);
       box.append(p, row);
-      t.controls.insertAdjacentElement("beforebegin", box);
-      status.textContent = "Waiting for you: try more codes?";
+      // In the chat, not the folded card, so it is seen.
+      log.appendChild(box);
       scrollToEnd();
       yesBtn.focus();
-      trace("coupons:ask-more tried=" + state.tried + " remaining=" + state.remaining + " next=" + state.next);
+      trace("coupons:ask-more tried=" + state.tried);
       const done = (ok: boolean): void => {
         box.remove();
-        t.stopBtn.removeEventListener("click", no);
+        stopped.removeEventListener("abort", no);
         trace("coupons:more " + (ok ? "yes" : "no"));
-        if (ok) t.stopBtn.focus();
+        if (ok) stop.focus();
         resolve(ok);
       };
       const yes = (): void => done(true);
       const no = (): void => done(false);
+      if (stopped.aborted) return done(false);
       yesBtn.addEventListener("click", yes);
       noBtn.addEventListener("click", no);
-      t.stopBtn.addEventListener("click", no);
+      stopped.addEventListener("abort", no, { once: true });
     });
   }
 
+  /**
+   * Coupon pages the reader could not load open in background tabs
+   * automatically (owner's choice, 2026-10-17), wherever Safari gives Scout
+   * access to those sites. Access to every site is asked for once, on the
+   * Find coupons press (see `askSiteAccessOnce`); without it the pages are
+   * skipped and the summary says so.
+   */
+  async function allowBrowserPages(pages: BrowserTarget[]): Promise<boolean> {
+    const origins = [...new Set(pages.flatMap((p) => originOf(p.url) ?? []))];
+    const ok = origins.length > 0 && (await browser.permissions.contains?.({ origins }).catch(() => false)) === true;
+    trace("coupons:browser-allow " + (ok ? "auto" : "no-access") + " pages=" + pages.length);
+    return ok;
+  }
+
+  // Asked once ever: Safari's site-access prompt for every site, so later runs open blocked pages without asking.
+  // Read with the first round of settings at the top of main().
+  let siteAccessAsked = early[COUPON_BROWSER_KEY] === "asked";
+  function askSiteAccessOnce(): void {
+    if (siteAccessAsked) return;
+    siteAccessAsked = true;
+    // Called inside the button press, before any await, so Safari can show its prompt.
+    try {
+      void browser.permissions.request({ origins: ALL_SITES }).catch(() => false).then((ok) => trace("coupons:site-access " + (ok ? "granted" : "declined")));
+    } catch {
+      trace("coupons:site-access unavailable");
+    }
+    if (storage) void storage.set({ [COUPON_BROWSER_KEY]: "asked" }).catch(() => undefined);
+  }
+
+  /** A find this soon after the last "Found" line adds to it instead of posting another. */
+  const FOUND_EVERY_MS = 8000;
+  const DONE_MARK = '<svg class="done-mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>';
+
+  /** Find coupons' milestone lines in the chat, outside the Working card; the newest one shows the moving indicator. */
+  function couponSteps(): { post(text: string): HTMLElement; edit(line: HTMLElement, text: string): void; latest(): HTMLElement | null; end(): void } {
+    let last: HTMLElement | null = null;
+    const settle = (): void => {
+      if (!last) return;
+      last.classList.remove("busy");
+      last.querySelector(".pulse")?.insertAdjacentHTML("afterend", DONE_MARK);
+      last.querySelector(".pulse")?.remove();
+    };
+    return {
+      post(text) {
+        settle();
+        const line = document.createElement("p");
+        line.className = "coupon-step busy";
+        line.innerHTML = PULSE;
+        const words = document.createElement("span");
+        words.textContent = text;
+        line.appendChild(words);
+        log.appendChild(line);
+        last = line;
+        followEnd();
+        return line;
+      },
+      edit(line, text) {
+        const words = line.querySelector("span:last-child");
+        if (words) words.textContent = text;
+      },
+      latest: () => last,
+      end: settle,
+    };
+  }
+
   async function runCoupons(): Promise<void> {
+    await sessionReady();
     if (activeChat || control || task || couponRun || !session) return;
     const s = session;
+    askSiteAccessOnce();
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     startRun("coupons", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model });
     const page = await tabAgentPage().catch(() => null);
@@ -2002,20 +2591,22 @@ async function main(): Promise<void> {
       p.className = "say";
       p.textContent = text;
       t.body.appendChild(p);
-      scrollToEnd();
+      followEnd();
     };
+    const steps = couponSteps();
     const timer = setInterval(() => (t.headText.textContent = "Working " + elapsedText(Date.now() - t.startedAt)), 1000);
     t.headText.textContent = "Working 0s";
-    send.hidden = true;
+    // The card's head moves too while the run works (owner, 2026-10-17).
+    t.head.insertAdjacentHTML("afterbegin", PULSE);
+    syncComposer();
     plus.disabled = modelPill.disabled = true;
     for (const i of modeInputs) i.disabled = true;
     closeModelMenu();
-    status.textContent = "Finding coupons. The web search can take a couple of minutes.";
+    // Progress shows in the chat (milestones), not on the status line.
+    status.textContent = "";
     updateEmpty();
     scrollToEnd();
-    t.stopBtn.focus();
-    const onStop = (): void => run.stop();
-    t.stopBtn.addEventListener("click", onStop);
+    stop.focus();
     void overlay.show();
     let used: Usage = { inputTokens: 0, outputTokens: 0 };
     let summary = "";
@@ -2036,7 +2627,6 @@ async function main(): Promise<void> {
       const merchant = identifyMerchant(snap.url, meta ?? {});
       trace("coupons:merchant " + (merchant.host === merchant.domain ? "store-host" : "other-host") + (meta?.siteName ? " named" : ""));
       const ac = new AbortController();
-      t.stopBtn.addEventListener("click", () => ac.abort(), { once: true });
       run.signal.addEventListener("abort", () => ac.abort(), { once: true });
       // Checkout summaries sit late in big pages: read more of them than the agent does.
       // Waits run here, not in the page, so they outlast a page that reloads.
@@ -2058,7 +2648,24 @@ async function main(): Promise<void> {
       // 1. A way to test codes, before any search: the store's cart API or its
       //    coupon box. A page with neither stops here, in seconds.
       say("Looking for the coupon box on this page…");
-      const tester = await openCouponTester(couponPage, { locate });
+      let tester = await openCouponTester(couponPage, { locate });
+      // No box on the cart: many stores take codes only at checkout. Scout presses the store's own
+      // Checkout button and works on the checkout page (owner's choice 2026-10-17); nothing is typed.
+      let atCheckout = false;
+      if ("error" in tester && tester.error === "no_form" && !run.isStopped) {
+        const here = await couponPage.snapshot().catch(() => null);
+        if (here && checkoutTarget(here)) {
+          say("This store takes codes at checkout. Opening checkout (nothing is bought, and none of your details are filled in)…");
+          trace("coupons:checkout press");
+          const step = await goToCheckout(couponPage, here);
+          trace("coupons:checkout " + (step.ok ? "opened" : step.why));
+          if (step.ok) {
+            atCheckout = true;
+            current.page(step.url);
+            tester = await openCouponTester(couponPage, { locate });
+          } else tester = { error: step.why === "captcha" ? "captcha" : "no_form", message: step.message };
+        }
+      }
       if ("error" in tester) {
         trace("coupons:method none status " + tester.error);
         statusOf = tester.error === "stopped" ? "stopped" : "error";
@@ -2069,39 +2676,111 @@ async function main(): Promise<void> {
       } else {
         trace("coupons:method " + tester.method);
         say((tester.method === "page" ? "Found the coupon box." : "Reached the store's cart.") + " Searching the web for " + merchant.brand + " codes…");
+        steps.post("Searching for coupons for " + merchant.brand + "…");
         // 2. Codes the store advertises itself (banner, announcement bar): this
-        //    page and its home page, read on the device. Then the web search.
+        //    page and its home page, read on the device. Then the web search,
+        //    whose codes are tested as it finds them.
         const storeUrl = new URL("/", snap.url).toString();
         const asStore = (c: StoreCode, sourceUrl: string): CouponCandidate => ({ code: c.code, origin: "store", sourceUrl, context: c.context });
-        const onSite = mergeCandidates(
-          codesWithContext(snap.text).map((c) => asStore(c, snap.url)),
-          (await page.storeCodes().catch((): StoreCode[] => [])).map((c) => asStore(c, storeUrl)),
-        ).slice(0, MAX_STORE_CODES);
+        const onSite = rankCandidates(
+          mergeCandidates(
+            codesWithContext(snap.text).map((c) => asStore(c, snap.url)),
+            (await page.storeCodes().catch((): StoreCode[] => [])).map((c) => asStore(c, storeUrl)),
+          ).slice(0, MAX_STORE_CODES),
+          merchant,
+        );
         trace("coupons:store-codes " + onSite.length);
+        // Milestones for one search: "Found 5 coupons…", then "Found 10 more…"
+        // at most every few seconds (a quicker find adds to the last line).
+        let tried = 0;
+        let over = false;
+        const progress = (again: boolean) => {
+          let count = 0;
+          let line: HTMLElement | null = null;
+          let lineCount = 0;
+          let lineAt = 0;
+          let lineFirst = false;
+          return {
+            found(n: number): void {
+              if (n <= 0) return;
+              const firstFind = count === 0;
+              count += n;
+              if (line && steps.latest() === line && Date.now() - lineAt < FOUND_EVERY_MS) lineCount += n;
+              else {
+                line = null;
+                lineCount = n;
+                lineAt = Date.now();
+                lineFirst = firstFind;
+              }
+              const text = lineFirst
+                ? "Found " + plural(lineCount, again ? "new coupon" : "coupon") + ". Applying them to your cart while I keep searching."
+                : "Found " + lineCount + " more, continuing to search.";
+              if (line) steps.edit(line, text);
+              else line = steps.post(text);
+            },
+            done(): void {
+              if (count === 0 || over || run.isStopped) return;
+              const left = count - (tried - (again ? triedBefore : 0));
+              steps.post("Found all relevant coupons, " + count + " in all." + (left > 0 ? " Applying the rest now." : ""));
+            },
+            get count(): number {
+              return count;
+            },
+          };
+        };
+        let triedBefore = 0;
+        const first = progress(false);
+        if (onSite.length) first.found(onSite.length);
+        const queue = new CodeQueue();
+        const storeFound = new Set(onSite.map((c) => c.code));
         trace("coupons:search");
-        const sug = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal, s.effort ? { effort: s.effort } : {});
-        addUsage(sug);
-        if (sug.error) trace("coupons:search-error " + sug.error.code);
+        // Sites that refused the reader on this device go to a background tab first; each fetch is counted.
+        let readerHosts = parseReaderHosts(storage ? (await storage.get(READER_HOSTS_KEY).catch(() => ({}) as Record<string, unknown>))[READER_HOSTS_KEY] : undefined);
+        const browserPages = {
+          tabs: backgroundTabs(tab.windowId),
+          allow: allowBrowserPages,
+          onPage: (p: Parameters<typeof browserTrace>[0]) => trace(browserTrace(p)),
+          firstHosts: browserFirstSites(readerHosts),
+          onReader: (url: string, ok: boolean) => {
+            readerHosts = countFetch(readerHosts, url, ok, Date.now());
+            if (storage) void storage.set({ [READER_HOSTS_KEY]: readerHosts }).catch(() => undefined);
+          },
+        };
+        trace("coupons:browser-first " + browserPages.firstHosts.length);
+        const searching = suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
+          browser: browserPages,
+          onFound: (fresh) => {
+            queue.push(fresh);
+            first.found(fresh.filter((c) => !storeFound.has(c.code)).length);
+          },
+          ...(s.effort ? { effort: s.effort } : {}),
+        });
         const discovery: DiscoveryInfo = {
           brand: merchant.brand,
-          searched: sug.searched,
-          ...(sug.error ? { error: sug.error } : {}),
+          searched: true,
           store: onSite.length,
-          verified: sug.verified,
-          reported: sug.reported,
-          masked: sug.masked,
-          dropped: sug.dropped,
-          offers: sug.offers,
+          verified: 0,
+          reported: 0,
+          masked: 0,
+          dropped: 0,
+          offers: [],
+          ...(atCheckout ? { atCheckout: true } : {}),
         };
         const tally = (more: SuggestedCodes): void => {
+          discovery.searched = discovery.searched && more.searched;
           discovery.verified += more.verified;
           discovery.reported += more.reported;
           discovery.masked += more.masked;
           discovery.dropped += more.dropped;
           discovery.offers = [...(discovery.offers ?? []), ...more.offers];
           if (more.error && !discovery.error) discovery.error = more.error;
+          if (more.browserPages.length) {
+            discovery.browserOpened = (discovery.browserOpened ?? 0) + more.browserPages.length;
+            discovery.browserCodes = (discovery.browserCodes ?? 0) + more.browserCodes;
+          }
+          if (more.browserSkipped?.why === "declined") discovery.browserDeclined = (discovery.browserDeclined ?? 0) + more.browserSkipped.count;
+          if (more.browserSkipped) trace("coupons:browser-skipped " + more.browserSkipped.why + " " + more.browserSkipped.count);
         };
-        const codes = rankCandidates(mergeCandidates(onSite, sug.codes), merchant);
         // Host and path only, for the run trace (no query strings).
         const pageLabel = (url: string): string => {
           try {
@@ -2111,67 +2790,98 @@ async function main(): Promise<void> {
             return "?";
           }
         };
-        trace("coupons:pages listed=" + sug.pagesListed + " opened=" + sug.pagesOpened + (sug.pagesRead ? " read-first" : ""));
-        for (const p of sug.pages) trace("coupons:page " + pageLabel(p.url) + " " + (p.ok ? "ok" : p.error ?? "error") + " " + (p.chars ?? 0));
-        trace("coupons:candidates store=" + onSite.length + " verified=" + sug.verified + " reported=" + sug.reported + " dropped=" + sug.dropped + " masked=" + sug.masked + " ignored=" + sug.ignored + " read=" + sug.readFromPages);
-        say(discoveryLine(discovery));
-        if (codes.length === 0) {
+        const searched = searching.then((sug) => {
+          addUsage(sug);
+          tally(sug);
+          if (sug.error) trace("coupons:search-error " + sug.error.code);
+          trace("coupons:pages listed=" + sug.pagesListed + " opened=" + sug.pagesOpened + (sug.pagesRead ? " read-first" : ""));
+          for (const p of sug.pages) trace("coupons:page " + pageLabel(p.url) + " " + (p.ok ? "ok" : p.error ?? "error") + " " + (p.chars ?? 0));
+          trace("coupons:candidates store=" + onSite.length + " verified=" + sug.verified + " reported=" + sug.reported + " dropped=" + sug.dropped + " masked=" + sug.masked + " ignored=" + sug.ignored + " read=" + sug.readFromPages);
+          say(discoveryLine(discovery));
+          if (sug.offers.length) say("Code-free offers the pages mention (not tested): " + sug.offers.slice(0, 3).join("; ") + ".");
+          first.done();
+          return sug;
+        }).finally(() => queue.close());
+        let best: number | null = null;
+        const outcome = await runCouponSearch({
+          page: couponPage,
+          tester,
+          codes: onSite,
+          incoming: queue,
+          control: run,
+          delayMs: 250,
+          askMore: async (state) => {
+            void overlay.state("waiting");
+            steps.end();
+            const more = await askMoreCodes(state, run.signal);
+            void overlay.state("running");
+            return more;
+          },
+          findMore: (known) => {
+            trace("coupons:find-more known=" + known.length);
+            say("Searching the web again for " + merchant.brand + " codes, in other places…");
+            steps.post("Searching the web again for " + merchant.brand + " coupons, in other places…");
+            triedBefore = tried;
+            const again = progress(true);
+            const more = new CodeQueue();
+            void suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
+              browser: browserPages,
+              exclude: known,
+              more: true,
+              onFound: (fresh) => {
+                more.push(fresh);
+                again.found(fresh.length);
+              },
+              ...(s.effort ? { effort: s.effort } : {}),
+            })
+              .then((found) => {
+                addUsage(found);
+                tally(found);
+                if (found.error) trace("coupons:search-error " + found.error.code);
+                trace("coupons:candidates verified=" + found.verified + " reported=" + found.reported + " dropped=" + found.dropped + " masked=" + found.masked);
+                say(found.codes.length > 0 ? "Found " + plural(found.codes.length, "more code") + " to try." : "No more codes found.");
+                again.done();
+              })
+              .catch(() => undefined)
+              .finally(() => more.close());
+            return more;
+          },
+          onTry: () => {
+            tried++;
+          },
+          onAttempt: (a, index, _total, currency) => {
+            trace("coupons:attempt " + index + (a.combo ? " combo" : "") + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none"));
+            attemptRow(a, currency, t);
+            // A new best: say so in the chat.
+            if (a.accepted !== false && a.saving !== null && a.saving > 0 && a.total !== null && (best === null || a.saving > best)) {
+              best = a.saving;
+              const off = formatMoney(a.saving, currency) + " (" + percentOff(tester.baseline, a.total) + ")";
+              steps.post(
+                a.combo
+                  ? a.combo.join(" + ") + " together save " + off + "."
+                  : "Found code " + a.code + ", saves " + off + ". Continuing to apply for better savings.",
+              );
+            }
+          },
+        });
+        // A run that ended early (CAPTCHA, the store asked to slow down) needs no more codes.
+        over = true;
+        ac.abort();
+        await searched.catch(() => undefined);
+        steps.end();
+        trace("coupons:status " + outcome.status + (outcome.best ? " best" : " none") + (outcome.applied ? " applied" : ""));
+        if (outcome.status === "no_codes") {
           // Nothing to test: say so plainly; the cart stays as it was.
-          await tester.finish(null).catch(() => undefined);
-          const failed = !!sug.error && sug.error.code !== "stopped";
-          const outcome: CouponOutcome = {
-            status: sug.error?.code === "stopped" ? "stopped" : failed ? "search_failed" : "no_codes",
-            method: tester.method,
-            baseline: tester.baseline,
-            ...(tester.currency ? { currency: tester.currency } : {}),
-            attempts: [],
-            applied: false,
-            untested: 0,
-            message: "Nothing was tested, and your cart is unchanged.",
-          };
-          trace("coupons:status " + outcome.status);
-          statusOf = outcome.status === "stopped" ? "stopped" : failed ? "error" : "done";
+          const stopped = discovery.error?.code === "stopped" || run.isStopped;
+          const failed = !stopped && !!discovery.error;
+          outcome.status = stopped ? "stopped" : failed ? "search_failed" : "no_codes";
+          outcome.message = "Nothing was tested, and your cart is unchanged.";
+          statusOf = stopped ? "stopped" : failed ? "error" : "done";
           summary = couponSummary(outcome, discovery);
           status.textContent = formatCostLine(s.settings.model, used);
           current.finish(outcome.status, outcome.message, used);
           addMessage(failed ? "error" : "assistant", summary);
         } else {
-          say("Testing " + codes.length + " code" + (codes.length === 1 ? "" : "s") + " on your cart, one at a time…");
-          const outcome = await runCouponSearch({
-            page: couponPage,
-            tester,
-            codes,
-            control: run,
-            delayMs: 250,
-            askMore: async (state) => {
-              void overlay.state("waiting");
-              const more = await askMoreCodes(state, t);
-              void overlay.state("running");
-              return more;
-            },
-            findMore: async (known) => {
-              trace("coupons:find-more known=" + known.length);
-              say("Searching the web again for " + merchant.brand + " codes, in other places…");
-              status.textContent = "Finding more coupons. The web search can take a couple of minutes.";
-              const more = await suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
-                exclude: known,
-                more: true,
-                ...(s.effort ? { effort: s.effort } : {}),
-              });
-              addUsage(more);
-              tally(more);
-              if (more.error) trace("coupons:search-error " + more.error.code);
-              trace("coupons:candidates verified=" + more.verified + " reported=" + more.reported + " dropped=" + more.dropped + " masked=" + more.masked);
-              say(more.codes.length > 0 ? "Found " + more.codes.length + " more code" + (more.codes.length === 1 ? "" : "s") + " to try. Testing them on your cart…" : "No more codes found.");
-              return more.codes;
-            },
-            onAttempt: (a, index, total, currency) => {
-              trace("coupons:attempt " + index + (a.combo ? " combo" : "") + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none"));
-              status.textContent = a.combo ? "Testing two codes together…" : "Testing code " + index + " of " + total + "…";
-              attemptRow(a, currency, t);
-            },
-          });
-          trace("coupons:status " + outcome.status + (outcome.best ? " best" : " none") + (outcome.applied ? " applied" : ""));
           statusOf = outcome.status === "stopped" ? "stopped" : outcome.status === "done" ? "done" : "error";
           summary = couponSummary(outcome, discovery);
           status.textContent = formatCostLine(s.settings.model, used);
@@ -2188,14 +2898,14 @@ async function main(): Promise<void> {
       current.finish("error", summary, used);
     }
     clearInterval(timer);
-    t.stopBtn.removeEventListener("click", onStop);
-    t.controls.remove();
+    steps.end();
+    t.head.querySelector(".pulse")?.remove();
     t.headText.textContent = (statusOf === "done" ? "Finished " : statusOf === "stopped" ? "Stopped " : "Ended ") + elapsedText(Date.now() - t.startedAt);
     void overlay.hide();
     await saveEntry("coupons", ask, summary);
     control = null;
     couponRun = null;
-    send.hidden = false;
+    syncComposer();
     plus.disabled = modelPill.disabled = false;
     for (const i of modeInputs) i.disabled = false;
     updateEmpty();
@@ -2216,14 +2926,46 @@ async function main(): Promise<void> {
       composer.requestSubmit();
     }
   });
-  summarize.addEventListener("click", () => {
-    closePlus();
-    void ask(SUMMARIZE_QUESTION);
-  });
   couponsRun.addEventListener("click", () => {
     closePlus();
     void runCoupons();
   });
+  // On a known shopping site the composer lists store actions and the general chips go.
+  const shop = suggestionsFor(tab.url);
+  if (shop) {
+    const iconUrl = siteIconUrl(tab.url, tab.favIconUrl);
+    const letterTile = (): HTMLElement => {
+      const t = document.createElement("span");
+      t.className = "site-icon tile";
+      t.setAttribute("aria-hidden", "true");
+      t.style.background = shop.site.color;
+      t.dataset.letter = shop.site.name.replace(/^The /, "").charAt(0);
+      return t;
+    };
+    for (const s of shop.items) {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.type = "button";
+      let icon: HTMLElement = letterTile();
+      if (iconUrl) {
+        const img = document.createElement("img");
+        img.className = "site-icon";
+        img.alt = "";
+        img.referrerPolicy = "no-referrer";
+        img.src = iconUrl;
+        img.addEventListener("error", () => img.replaceWith(letterTile()), { once: true });
+        icon = img;
+      }
+      icon.setAttribute("aria-hidden", "true");
+      b.append(icon, s.label);
+      b.addEventListener("click", () => void ask(s.prompt));
+      li.appendChild(b);
+      siteSuggestions.appendChild(li);
+    }
+    siteSuggestions.setAttribute("aria-label", "Suggestions for " + shop.site.name);
+    el("starters").hidden = true;
+    updateEmpty();
+  }
   for (const chip of empty.querySelectorAll<HTMLButtonElement>("button[data-prompt]")) {
     chip.addEventListener("click", () => {
       const p = chip.dataset.prompt ?? "";
@@ -2232,21 +2974,36 @@ async function main(): Promise<void> {
       else void ask(p);
     });
   }
+  // The composer's Stop halts whatever runs: a coupon run, a Scout mode task,
+  // and the answer streaming around a task the model asked for.
   stop.addEventListener("click", () => {
+    if (couponRun) {
+      trace("ui:stop-click coupons");
+      couponRun.stop();
+    }
+    if (task) onStopTask();
     const id = activeChat;
     if (!id) return;
     trace("ui:stop-click chat");
     void request(toWorker, "chat.stop", { message_id: id }).catch(() => {
       // The worker is gone: end it here with what arrived.
-      store.lose(id, "Stopped.");
+      store.stopLocally(id);
       finalize(id);
+    });
+  });
+  // Opens Scout as its own page in a new tab, to bookmark (owner request 2026-10-18).
+  el("open-page").addEventListener("click", () => {
+    trace("ui:open-page");
+    void openStandalone(browser).then((ok) => {
+      if (ok) window.close();
+      else status.textContent = "Safari did not open a new tab. Try again.";
     });
   });
   el("new-chat").addEventListener("click", () => {
     if (activeChat || control || task) return;
     clearThread();
     if (storage) {
-      void startNewConversation(storage, tab.id, Date.now())
+      void startNewConversation(storage, tab.id, Date.now(), tab.incognito)
         .then((next) => (conv = next))
         .catch(() => undefined);
     }
@@ -2436,11 +3193,10 @@ async function main(): Promise<void> {
     }
     await renderPageButton(origins);
     await renderAccess();
-    await renderActivity();
     await renderShared();
   }
 
-  // ---------- Page access (Part 2, spec 10a) and Activity ----------
+  // ---------- Page access (Part 2, spec 10a) ----------
   const accessRead = el<HTMLInputElement>("access-read");
   const accessSearch = el<HTMLInputElement>("access-search");
   const accessScout = el<HTMLSelectElement>("access-scout");
@@ -2453,7 +3209,6 @@ async function main(): Promise<void> {
   const blockCurrent = el<HTMLButtonElement>("block-current");
   const blockList = el("block-list");
   const blockStatus = el("block-status");
-  const activityList = el("activity-list");
   const currentHost = hostOf(tab.url ?? "");
 
   function listRow(text: string, button?: { label: string; aria: string; onClick: () => void }): HTMLLIElement {
@@ -2583,7 +3338,6 @@ async function main(): Promise<void> {
                 if (!storage) return;
                 void clearShared(storage, g.conv).then(async () => {
                   sharedStatus.textContent = "Cleared.";
-                  if (g.conv === conv) for (const n of log.querySelectorAll(".shared")) n.remove();
                   await renderShared();
                 });
               },
@@ -2596,7 +3350,6 @@ async function main(): Promise<void> {
     if (!storage) return;
     void clearShared(storage).then(async () => {
       sharedStatus.textContent = "Cleared every shared record.";
-      for (const n of log.querySelectorAll(".shared")) n.remove();
       await renderShared();
     });
   });
@@ -2608,18 +3361,16 @@ async function main(): Promise<void> {
     if (currentHost) blockSite(currentHost);
   });
 
-  async function renderActivity(): Promise<void> {
-    const got = await request<{ entries: ToolLogEntry[] }>(toWorker, "tools.log", {}, { timeoutMs: 3_000 }).catch(() => null);
-    const entries = got?.entries ?? [];
-    activityList.replaceChildren(...(entries.length ? entries.slice(0, 20).map((e) => listRow(activityLine(e))) : [listRow("No tool calls yet.")]));
-  }
-
   // ---------- Button on webpages (src/edge.ts) ----------
-  // Off until turned on here. Turning it on asks Safari for site access; the
+  // On from a fresh install; it shows on sites Scout can access. Turning it on here asks Safari for site access; the
   // user may grant every site or fewer, and the button shows where granted.
   const pageOn = el<HTMLInputElement>("pagebutton-on");
   const pageSides = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="pagebutton-side"]'));
   const pageStatus = el("pagebutton-status");
+  // Not offered on Mac, where Scout is in the toolbar.
+  const pageOffered = pageButtonOffered(await platformOs());
+  el("pagebutton-section").hidden = !pageOffered;
+  el("toolbar-pagebutton").hidden = !pageOffered;
 
   async function loadPageButton(): Promise<PageButton> {
     const got = storage ? await storage.get(PAGE_BUTTON_KEY).catch(() => ({}) as Record<string, unknown>) : {};
@@ -2630,6 +3381,7 @@ async function main(): Promise<void> {
     await storage.set({ [PAGE_BUTTON_KEY]: next });
   }
   async function renderPageButton(origins?: string[]): Promise<void> {
+    if (!pageOffered) return;
     const pb = await loadPageButton();
     pageOn.checked = pb.on;
     for (const i of pageSides) i.checked = i.value === pb.side;
@@ -2705,7 +3457,7 @@ async function main(): Promise<void> {
       keyInput.value = "";
       keyError.textContent = "";
       keyInput.removeAttribute("aria-invalid");
-      const effort = effortForId(p, DEFAULT_MODEL[p], settings.effort, knownModels[p]) ?? "default";
+      const effort = effortForId(p, DEFAULT_MODEL[p], DEFAULT_EFFORT[p], knownModels[p]) ?? "default";
       void persist({ ...settings, provider: p, model: DEFAULT_MODEL[p], effort }).then(refreshSettings);
     });
   }
@@ -2846,10 +3598,35 @@ async function main(): Promise<void> {
   });
 
   // ---------- Start ----------
+  // iPhone and iPad: keep the composer above the on-screen keyboard (src/panel/keyboard.ts).
+  if (matchMedia("(pointer: coarse)").matches && window.visualViewport) {
+    fitAboveKeyboard(window, window.visualViewport, document.body, () => editableFocused(document.activeElement));
+    // Debug builds: log how Safari resizes the panel mid-drag (src/panel/drag-probe.ts).
+    if (__SCOUT_DEBUG__) probeDrag(window, () => document.getElementById("starters"), trace);
+  }
   setMode("chat");
-  await connect();
+  // A key was saved last time: show the question box and this tab's chat now,
+  // and let the Keychain read finish behind them (owner request 2026-10-18:
+  // Scout should open at once). If the key has gone since, connect() switches
+  // to the no-key screen as before.
+  const likely = hintedProvider(settings.provider, keyHint);
+  if (likely) {
+    const pill = prettyModel(likely === settings.provider ? settings.model : DEFAULT_MODEL[likely]);
+    modelPillText.textContent = pill;
+    modelPill.setAttribute("aria-label", pill + ", change model or effort");
+    noKey.hidden = true;
+    composer.hidden = false;
+    connecting = connect().finally(() => (connecting = null));
+    updateEmpty();
+    if (__SCOUT_DEBUG__) trace("open:shown " + Math.round(performance.now()) + " ms (from saved key hint)");
+    await Promise.all([connecting, restoreConversation()]);
+    // The key has gone since: back to the no-key screen, without the old chat.
+    if (!session) clearThread();
+  } else {
+    await connect();
+  }
   if (session) {
-    await restoreConversation();
+    if (!likely) await restoreConversation();
     await resumeActive();
     await resumeTask();
     await loadTabs();

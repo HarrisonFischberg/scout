@@ -3,11 +3,10 @@ import SwiftUI
 import SafariServices
 #endif
 
-// S01 (macOS) / S02 (iOS): enable the extension. S03: provider + key.
+// S01 (macOS) / S02 (iOS): enable the extension. S03: where to add the key.
 struct OnboardingView: View {
     // Must match PRODUCT_BUNDLE_IDENTIFIER of the macOS extension target (only macOS uses it).
     private let extensionBundleIdentifier = "com.harrisonfischberg.SafariScout.Extension"
-    @StateObject private var setup = SetupViewModel()
     @State fileprivate var showing: LegalDoc?
 
     fileprivate enum LegalDoc: String, Identifiable {
@@ -51,6 +50,11 @@ struct OnboardingView: View {
         }
     }
 
+    // The key is entered in the extension's own Settings on both platforms:
+    // one place to add, test, replace, or delete it, and the extension asks
+    // for permission to share with the provider before the first request.
+    // (On iOS the app and the extension share one Keychain item, so a key
+    // saved in either is the same key.)
     private var keySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("2. Add your API key")
@@ -59,108 +63,13 @@ struct OnboardingView: View {
             Text("Scout for Safari sends page content to the provider you choose, using your own key. The key is stored in Keychain on this device.")
             Text("Your provider bills your account for every request Scout for Safari makes, at the provider's prices. Scout for Safari shows an estimated cost after each answer or task.")
             #if os(macOS)
-            // On Mac the app and the extension do not share a Keychain group yet
-            // (launch-blockers 14), so the key is added in Safari, where the
-            // extension stores it itself.
-            Text("On Mac, add your key in Safari: click the Scout for Safari icon in the toolbar, then Settings.")
+            Text("Add your key in Safari: click the Scout for Safari icon in the toolbar, then Settings.")
+                .bold()
+            #else
+            Text("Add your key in Safari: open Scout for Safari from the menu in the address bar, then tap Settings.")
                 .bold()
             #endif
-            #if os(iOS)
-            Picker("Provider", selection: $setup.provider) {
-                ForEach(Provider.allCases) { Text($0.displayName).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            SecureField("API key", text: $setup.key)
-                .textFieldStyle(.roundedBorder)
-                .autocorrectionDisabled()
-                .accessibilityHint("Paste the key from your provider account")
-            HStack {
-                // Always enabled: a press that cannot proceed explains why
-                // in the status line below instead of greying the button out.
-                Button("Test key") { Task { await setup.testKey() } }
-                Button("Save key") { setup.save() }
-                    .buttonStyle(AccentButtonStyle())
-            }
-            // Status is text, never colour alone.
-            Text(setup.statusMessage)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityLabel("Key status: \(setup.statusMessage)")
-            if setup.sharingAllowed {
-                // App Store Review Guideline 5.1.2(i): the permission can be withdrawn here.
-                Text("You allowed this app to share with \(setup.provider.displayName) to test your key.")
-                    .fixedSize(horizontal: false, vertical: true)
-                Button("Withdraw permission") { setup.withdrawSharing() }
-                    .accessibilityLabel("Withdraw permission to share with \(setup.provider.displayName)")
-            }
-            #endif
         }
-        #if os(iOS)
-        .sheet(item: $setup.consentRequest) { provider in
-            ConsentSheet(
-                provider: provider,
-                allow: { Task { await setup.allowSharing() } },
-                notNow: { setup.declineSharing() }
-            )
-        }
-        #endif
-    }
-}
-
-// Asked before "Test key" sends anything to the provider (App Store Review
-// Guideline 5.1.2(i)). Same disclosure as the Safari panel
-// (src/settings/consent.ts). Both buttons look alike so neither is pushed;
-// VoiceOver starts on the heading; Escape is Not now; swiping the sheet away
-// is disabled, so the choice is always explicit.
-private struct ConsentSheet: View {
-    let provider: Provider
-    let allow: () -> Void
-    let notNow: () -> Void
-    @AccessibilityFocusState private var headingFocused: Bool
-
-    private var name: String { provider.displayName }
-
-    private var items: [String] {
-        [
-            "Now, to test your key: only the key, so \(name) can check it.",
-            "Later, in Safari: your messages and the tasks you type.",
-            "When a request uses the page (questions, Summarize, Scout mode, Find coupons): the page's address, title, and text, and for Scout mode and Find coupons its links, buttons, and form fields. Password and card fields are hidden first. Scout mode sends them again after each step it takes.",
-            "Text of other tabs only when you choose them.",
-            "Your API key goes only to \(name), to sign in. Scout for Safari never sends it anywhere else.",
-        ]
-    }
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Share with \(name)?")
-                    .font(.title2.bold())
-                    .accessibilityAddTraits(.isHeader)
-                    .accessibilityFocused($headingFocused)
-                Text("Scout for Safari sends your requests to \(name), a third-party AI provider, using your own API key. \(name) receives:")
-                    .fixedSize(horizontal: false, vertical: true)
-                ForEach(items, id: \.self) { item in
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("•").accessibilityHidden(true)
-                        Text(item).fixedSize(horizontal: false, vertical: true)
-                    }
-                    .accessibilityElement(children: .combine)
-                }
-                Link("\(name) privacy policy", destination: provider.privacyPolicy)
-                Link("How \(name) handles API data", destination: provider.apiDataTerms)
-                Text("Nothing is sent until you choose Allow. Safari asks again before Scout for Safari's first request from the browser. You can withdraw this permission on this screen.")
-                    .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 24) {
-                    Button("Not now", action: notNow)
-                        .keyboardShortcut(.cancelAction)
-                    Button("Allow", action: allow)
-                }
-                .padding(.top, 4)
-            }
-            .padding(24)
-            .frame(maxWidth: 560, alignment: .leading)
-        }
-        .interactiveDismissDisabled()
-        .onAppear { headingFocused = true }
     }
 }
 

@@ -27,6 +27,8 @@ export interface HistoryEntry {
   conv?: string;
   /** Part 2: tabs and screenshots shared for this answer (title, host, status). Never page text. */
   shared?: Array<{ title: string; host: string; status: string }>;
+  /** Numbered sources the answer may cite as [n] (pages shared, then web results): address without query, title, kind. */
+  sources?: Array<{ url: string; title?: string; kind?: "page" | "web" }>;
 }
 
 /** Start of the single conversation used before per-tab chats. Read only to migrate it (src/panel/state.ts). */
@@ -40,14 +42,20 @@ export interface StorageArea {
 }
 
 export const DEFAULT_MODEL: Record<Provider, string> = {
-  anthropic: "claude-sonnet-5-5",
+  anthropic: "claude-haiku-5-5",
   openai: "gpt-5",
+};
+
+/** Effort that goes with each provider's default model (owner decision 2026-10-17: Haiku 5.5 at High). */
+export const DEFAULT_EFFORT: Record<Provider, EffortSetting> = {
+  anthropic: "high",
+  openai: "default",
 };
 
 export const DEFAULT_SETTINGS: Settings = {
   provider: "anthropic",
   model: DEFAULT_MODEL.anthropic,
-  effort: "default",
+  effort: DEFAULT_EFFORT.anthropic,
   retention: "7",
 };
 
@@ -72,16 +80,36 @@ function isEffortSetting(v: unknown): v is EffortSetting {
 export function parseSettings(raw: unknown): Settings {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const provider = isProvider(r.provider) ? r.provider : DEFAULT_SETTINGS.provider;
-  const model =
-    typeof r.model === "string" && r.model.trim() ? r.model.trim() : DEFAULT_MODEL[provider];
-  const effort = isEffortSetting(r.effort) ? r.effort : DEFAULT_SETTINGS.effort;
+  const hasModel = typeof r.model === "string" && !!r.model.trim();
+  const model = hasModel ? (r.model as string).trim() : DEFAULT_MODEL[provider];
+  // A missing effort takes the default model's effort only when the model is
+  // also the default; a model chosen before efforts existed keeps "default".
+  const effort = isEffortSetting(r.effort) ? r.effort : hasModel ? "default" : DEFAULT_EFFORT[provider];
   const retention = isRetention(r.retention) ? r.retention : DEFAULT_SETTINGS.retention;
   return { provider, model, effort, retention };
 }
 
+/**
+ * One-time switch (owner decision 2026-10-17): installs that already picked an
+ * Anthropic model move to the default (Haiku 5.5 at High) once. The flag is
+ * written either way, so any model chosen afterwards sticks.
+ */
+export const MODEL_MIGRATION_KEY = "modelMigration";
+const MODEL_MIGRATION = "haiku-5-5-high";
+
 export async function loadSettings(storage: StorageArea): Promise<Settings> {
-  const got = await storage.get(SETTINGS_KEY);
-  return parseSettings(got[SETTINGS_KEY]);
+  const got = await storage.get([SETTINGS_KEY, MODEL_MIGRATION_KEY]);
+  const settings = parseSettings(got[SETTINGS_KEY]);
+  if (got[MODEL_MIGRATION_KEY] === MODEL_MIGRATION) return settings;
+  const migrated: Settings =
+    got[SETTINGS_KEY] !== undefined && settings.provider === "anthropic"
+      ? { ...settings, model: DEFAULT_MODEL.anthropic, effort: DEFAULT_EFFORT.anthropic }
+      : settings;
+  await storage.set({
+    ...(migrated !== settings ? { [SETTINGS_KEY]: migrated } : {}),
+    [MODEL_MIGRATION_KEY]: MODEL_MIGRATION,
+  });
+  return migrated;
 }
 
 export async function saveSettings(storage: StorageArea, settings: Settings): Promise<void> {
@@ -123,10 +151,28 @@ function parseHistory(raw: unknown): HistoryEntry[] {
             ...(r.kind === "agent" || r.kind === "coupons" || r.kind === "chat" ? { kind: r.kind } : {}),
             ...(typeof r.conv === "string" && r.conv ? { conv: r.conv } : {}),
             ...(Array.isArray(r.shared) ? { shared: parseShared(r.shared) } : {}),
+            ...(Array.isArray(r.sources) ? { sources: parseSources(r.sources) } : {}),
           },
         ]
       : [];
   });
+}
+
+function parseSources(raw: unknown[]): NonNullable<HistoryEntry["sources"]> {
+  return raw
+    .flatMap((x: unknown) => {
+      const r = x as { url?: unknown; title?: unknown; kind?: unknown } | null;
+      return r && typeof r.url === "string" && /^https?:\/\//i.test(r.url)
+        ? [
+            {
+              url: r.url.slice(0, 500),
+              ...(typeof r.title === "string" && r.title ? { title: r.title.slice(0, 200) } : {}),
+              ...(r.kind === "page" || r.kind === "web" ? { kind: r.kind as "page" | "web" } : {}),
+            },
+          ]
+        : [];
+    })
+    .slice(0, 50);
 }
 
 // Loads history, writes back the pruned list, and returns it.
@@ -230,9 +276,39 @@ export async function loadConversation(
   return all.filter((e) => e.conv === conv);
 }
 
-/** Removes all saved chat history. */
+// Thumbs up or down on an answer: kept on this device only, never sent.
+export type Rating = "up" | "down";
+const RATINGS_KEY = "ratings";
+const MAX_RATINGS = 200;
+
+/** Key for an answer's rating: a short hash of its question and answer. */
+export function ratingKey(question: string, answer: string): string {
+  let h = 5381;
+  for (const ch of question + "\u0000" + answer) h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0;
+  return h.toString(36);
+}
+
+export async function loadRatings(storage: StorageArea): Promise<Record<string, Rating>> {
+  const raw = (await storage.get(RATINGS_KEY))[RATINGS_KEY];
+  const out: Record<string, Rating> = {};
+  if (raw && typeof raw === "object") {
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) if (v === "up" || v === "down") out[k] = v;
+  }
+  return out;
+}
+
+/** Sets or clears (null) a rating; the oldest go first past MAX_RATINGS. */
+export async function saveRating(storage: StorageArea, key: string, rating: Rating | null): Promise<void> {
+  const all = await loadRatings(storage);
+  delete all[key];
+  if (rating) all[key] = rating;
+  const kept = Object.fromEntries(Object.entries(all).slice(-MAX_RATINGS));
+  await storage.set({ [RATINGS_KEY]: kept });
+}
+
+/** Removes all saved chat history and the ratings given to its answers. */
 export async function clearHistory(storage: StorageArea): Promise<void> {
-  await storage.set({ [HISTORY_KEY]: [] });
+  await storage.set({ [HISTORY_KEY]: [], [RATINGS_KEY]: {} });
 }
 
 /** Part 3, spec 10: what each conversation shared (tabs, screenshots, tools), for Settings > Permissions. */

@@ -38,6 +38,16 @@ export interface StartRequest {
   /** Continue after a drop: saved under this question, with this text before the new part. */
   display_question?: string;
   answer_prefix?: string;
+  /** Continue after a drop: the sources numbered in the text before the new part. */
+  prefix_sources?: Array<{ url: string; title: string }>;
+}
+
+/** A numbered source saved with the answer: a shared page, then web citations. */
+export interface SourceRef {
+  url: string;
+  title?: string;
+  /** Absent for an earlier part's sources (Continue), whose kind the panel does not send. */
+  kind?: "page" | "web";
 }
 
 export interface ToolReply {
@@ -52,7 +62,7 @@ export interface EngineDeps {
   provider(p: Provider, model: string): Promise<ProviderClient>;
   /** Tools to offer the model now (src/tools/registry.ts offeredTools). */
   tools(): Promise<ToolSpec[]>;
-  save(entry: { at: number; conv: string; question: string; answer: string; shared: SharedRef[] }): Promise<void>;
+  save(entry: { at: number; conv: string; question: string; answer: string; shared: SharedRef[]; sources: SourceRef[] }): Promise<void>;
   now(): number;
   /** How long a tool request waits for the panel. Default 2 minutes. */
   toolTimeoutMs?: number;
@@ -185,7 +195,7 @@ export class ScoutServer {
     const { req } = run;
     const signal = run.abort.signal;
     const usage: Usage = { inputTokens: 0, outputTokens: 0 };
-    const cited = new Set<string>();
+    const cited = new Map<string, string | undefined>();
     let full = "";
     this.emit(run, { kind: "start" });
     try {
@@ -214,7 +224,7 @@ export class ScoutServer {
             full += delta;
             this.emit(run, { kind: "text", delta });
           } else if (ev.type === "source" && !cited.has(ev.url)) {
-            cited.add(ev.url);
+            cited.set(ev.url, ev.title);
             this.emit(run, { kind: "citation", url: ev.url, ...(ev.title ? { title: ev.title } : {}) });
           } else if (ev.type === "tool_call") calls.push(ev);
           else if (ev.type === "usage") {
@@ -258,6 +268,12 @@ export class ScoutServer {
           question: req.display_question ?? req.question,
           answer: (req.answer_prefix ?? "") + full,
           shared: [...(req.shared ?? []), ...run.shared],
+          // Numbered as the panel numbers them: earlier part, pages, then citations.
+          sources: [
+            ...(req.prefix_sources ?? []).map((s): SourceRef => ({ url: s.url, ...(s.title ? { title: s.title } : {}) })),
+            ...req.pages.map((p): SourceRef => ({ url: p.url, ...(p.title ? { title: p.title } : {}), kind: "page" })),
+            ...[...cited].map(([url, title]): SourceRef => ({ url, ...(title ? { title } : {}), kind: "web" })),
+          ],
         })
         .catch(() => undefined);
     }
