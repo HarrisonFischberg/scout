@@ -110,6 +110,18 @@ describe("page blur behind the panel (owner design 2026-10-17)", () => {
       expect(layer?.style.opacity).toBe("");
     });
 
+    // Second report the same night: a closed panel kept pinging.
+    it("goes within about a third of a second once the pings stop, and a late ping puts it back", () => {
+      vi.useFakeTimers();
+      fakePage();
+      addPageBlur(ID, BLUR_TIMEOUT_MS);
+      expect(BLUR_TIMEOUT_MS).toBeLessThanOrEqual(400);
+      vi.advanceTimersByTime(BLUR_TIMEOUT_MS + 1);
+      expect(layer).toBeNull();
+      listener?.({ blur: ID, alive: true });
+      expect(layer).not.toBeNull();
+    });
+
     it("ignores messages that are not its own", () => {
       vi.useFakeTimers();
       fakePage();
