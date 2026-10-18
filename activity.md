@@ -1718,3 +1718,10 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Expected: the blur clears at once however the panel is closed.
 - Step: instead of a third guess, debug builds now log how the blur goes away (`src/panel/blur-probe.ts`): the panel's focus, blur, pagehide, visibility, resize and taps; the page's own focus, resize and visibility; ping gaps; the goodbye; and when the layer is removed. The next open on the same page writes the previous log into Diagnostics as `blur-probe:` stages. Times and event names only. Release builds carry none of it (`check:release` now also checks for it).
 - Evidence: new unit tests in `tests/unit/blur-probe.test.ts`; unit 467/468 (known Take control failure), typecheck, lint, `check:release` clean; chat, panel, diagnostics and settings e2e pass in Chromium.
+
+## 2026-10-18 — iPhone: first-open blur lag, what the probe showed
+
+- Probe, close after a tap: panel focus at the tap; on close the page got focus and the panel's blur arrived 24 ms later, so the goodbye came at once. Pagehide only came 520 ms after that.
+- Probe, close with no tap (the bug): `focus no` at open, no focus or blur events at all, pings kept arriving until pagehide at 1687 ms (last ping 37 ms before the layer went). So the panel keeps drawing frames while the sheet slides away, and nothing reaches it until pagehide, about half a second after the sheet is gone. This is why #33 (focusing an element does not focus the window) and #34 (a shorter wait cannot help while pings continue) did not work.
+- Step: the panel now calls `window.focus()` as it opens on iPhone, so that if WebKit grants it, closing sends the blur at once as after a tap. Debug builds also log viewport scrolls and, at each ping, any change in the panel's screen position, viewport, or focus, so the next capture shows whether focus was granted and whether anything moves while the sheet closes.
+- Evidence: unit 467/468 (known Take control failure), typecheck, lint, `check:release` clean; chat, panel, diagnostics and settings e2e pass in Chromium. Device result pending.
