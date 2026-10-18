@@ -1,0 +1,16 @@
+<!-- Scout for Safari solid glyph for dark pills (src/edge.ts floating tab, src/overlay.ts "Working…" toast): the truck
+     filled in currentColor, its parts separated by a cut line in the pill color (.body stroke) and the window and hubs
+     drawn in the pill color (.lens). Shown here with the edge tab's pill color. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" color="#f2f2f7">
+  <g fill="currentColor" stroke="#2c2c2e" stroke-width="3" stroke-linejoin="round">
+    <polygon points="13,26 16.5,11 36,11 40.5,26"/>
+    <rect x="5" y="26" width="54" height="17" rx="4"/>
+    <circle cx="18" cy="44" r="9"/>
+    <circle cx="46" cy="44" r="9"/>
+  </g>
+  <g fill="#2c2c2e">
+    <polygon points="21,16 32.5,16 34.5,23 21,23"/>
+    <circle cx="18" cy="44" r="2.5"/>
+    <circle cx="46" cy="44" r="2.5"/>
+  </g>
+</svg>

@@ -1,0 +1,16 @@
+<!-- Scout for Safari toolbar icon (owner choice 2026-10-18): an outline safari truck in side view, replacing the
+     binoculars (too close to the owner's Sunglasses at Night icon). Shapes are painted in order: each one's inside
+     erases what is under it and its outline is drawn on top, like the panel's .scout-mark (fill = canvas, stroke = gray);
+     fill="currentColor" paints the inside instead (the wheel hubs). Original artwork made for this project.
+     scripts/render-toolbar-icons.mjs renders it to src/icons/toolbar[-dark]-N.png. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <g fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round">
+    <polygon points="13,26 16.5,11 36,11 40.5,26"/>
+    <polygon points="21,16 32.5,16 34.5,23 21,23"/>
+    <rect x="5" y="26" width="54" height="17" rx="4"/>
+    <circle cx="18" cy="44" r="9"/>
+    <circle cx="46" cy="44" r="9"/>
+    <circle cx="18" cy="44" r="2.5" fill="currentColor"/>
+    <circle cx="46" cy="44" r="2.5" fill="currentColor"/>
+  </g>
+</svg>

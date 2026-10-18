@@ -1,7 +1,8 @@
-// Renders the toolbar icons (design/icons/safari-scout-binoculars-outline*.svg)
+// Renders the toolbar icons (design/icons/scout-truck-outline*.svg)
 // to src/icons/ without a browser, so it also runs where WebKit cannot launch.
 // Supports only the SVG subset those files use: one stroke-width, and
-// <rect x y width height rx>, <circle cx cy r> and <path d="Mx yvN"> painted in
+// <rect x y width height rx>, <circle cx cy r>, <polygon points> and
+// <path d="Mx yvN"> painted in
 // order. Each shape erases what is under it (like the panel's .scout-mark,
 // whose fill is the canvas color), then draws its outline; fill="currentColor"
 // paints its inside instead. Outputs, per size: toolbar-N.png (glyph for light
@@ -35,11 +36,17 @@ function parse(svg) {
   const stroke = num(/<g\b[^>]*>/.exec(svg)?.[0] ?? "", "stroke-width");
   if (!stroke) throw new Error("stroke-width on <g> required");
   const shapes = [];
-  for (const m of svg.matchAll(/<(rect|circle|path)\b([^>]*)\/>/g)) {
+  for (const m of svg.matchAll(/<(rect|circle|polygon|path)\b([^>]*)\/>/g)) {
     const [, tag, a] = m;
     const filled = /fill="currentColor"/.test(a);
     if (tag === "rect") shapes.push({ tag, x: num(a, "x"), y: num(a, "y"), w: num(a, "width"), h: num(a, "height"), rx: num(a, "rx"), filled });
-    else if (tag === "circle") shapes.push({ tag, cx: num(a, "cx"), cy: num(a, "cy"), r: num(a, "r"), filled });
+    else if (tag === "polygon") {
+      const p = (/points="([^"]+)"/.exec(a)?.[1] ?? "").trim().split(/[\s,]+/).map(Number);
+      const pts = [];
+      for (let k = 0; k + 1 < p.length; k += 2) pts.push([p[k], p[k + 1]]);
+      if (pts.length < 3) throw new Error("<polygon> needs 3+ points");
+      shapes.push({ tag, pts, filled });
+    } else if (tag === "circle") shapes.push({ tag, cx: num(a, "cx"), cy: num(a, "cy"), r: num(a, "r"), filled });
     else {
       const d = /d="M([-\d.]+) ([-\d.]+)v([-\d.]+)"/.exec(a);
       if (!d) throw new Error("only <path d=\"Mx yvN\"> is supported");
@@ -52,6 +59,20 @@ function parse(svg) {
 // Signed distance from (x, y) to the shape's edge: negative inside.
 function distance(s, x, y) {
   if (s.tag === "circle") return Math.hypot(x - s.cx, y - s.cy) - s.r;
+  if (s.tag === "polygon") {
+    // Nearest edge, with even-odd for the sign. Outer corners come out round, like stroke-linejoin="round".
+    let d = Infinity;
+    let inside = false;
+    for (let k = 0, j = s.pts.length - 1; k < s.pts.length; j = k++) {
+      const [ax, ay] = s.pts[j];
+      const [bx, by] = s.pts[k];
+      const ex = bx - ax, ey = by - ay;
+      const t = Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / (ex * ex + ey * ey)));
+      d = Math.min(d, Math.hypot(x - ax - t * ex, y - ay - t * ey));
+      if (ay > y !== by > y && x < ax + ((y - ay) * ex) / ey) inside = !inside;
+    }
+    return inside ? -d : d;
+  }
   const r = Math.min(s.rx, s.w / 2, s.h / 2);
   const qx = Math.abs(x - (s.x + s.w / 2)) - (s.w / 2 - r);
   const qy = Math.abs(y - (s.y + s.h / 2)) - (s.h / 2 - r);
@@ -130,8 +151,8 @@ function png(w, h, rgba) {
 
 await mkdir(out, { recursive: true });
 const jobs = [
-  ["safari-scout-binoculars-outline.svg", "toolbar"],
-  ["safari-scout-binoculars-outline-active.svg", "toolbar-active"],
+  ["scout-truck-outline.svg", "toolbar"],
+  ["scout-truck-outline-active.svg", "toolbar-active"],
 ];
 for (const [file, name] of jobs) {
   const icon = parse(await readFile(join(root, "design", "icons", file), "utf8"));

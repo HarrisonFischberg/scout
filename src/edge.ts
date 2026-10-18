@@ -31,15 +31,15 @@ const g = globalThis as unknown as Record<string, unknown>;
 
 const CANT_OPEN = "Couldn't open Scout for Safari here. Use the Scout button in Safari's page menu.";
 
-// Monochrome binoculars (design/icons/safari-scout-binoculars.svg). Lenses are
+// Monochrome Scout truck (design/icons/scout-truck-solid.svg). Window and hubs are
 // drawn in the pill color instead of a mask: url(#id) masks are unreliable
 // inside shadow roots.
 const GLYPH =
   '<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><g class="body">' +
-  '<rect x="11.5" y="5" width="11" height="11" rx="2.5"/><rect x="41.5" y="5" width="11" height="11" rx="2.5"/>' +
-  '<rect x="26" y="17" width="12" height="11" rx="3"/><rect x="5" y="14" width="24" height="28" rx="7"/>' +
-  '<rect x="35" y="14" width="24" height="28" rx="7"/><circle cx="17" cy="44" r="14"/><circle cx="47" cy="44" r="14"/></g>' +
-  '<circle class="lens" cx="17" cy="44" r="8"/><circle class="lens" cx="47" cy="44" r="8"/></svg>';
+  '<polygon points="13,26 16.5,11 36,11 40.5,26"/><rect x="5" y="26" width="54" height="17" rx="4"/>' +
+  '<circle cx="18" cy="44" r="9"/><circle cx="46" cy="44" r="9"/></g>' +
+  '<polygon class="lens" points="21,16 32.5,16 34.5,23 21,23"/><circle class="lens" cx="18" cy="44" r="2.5"/>' +
+  '<circle class="lens" cx="46" cy="44" r="2.5"/></svg>';
 
 // Dark glass in both themes, like Safari's own controls: it stands out on
 // light pages, and the light border keeps it visible on dark ones. Awake: a
@@ -64,7 +64,7 @@ const CSS = `
 .tab[data-side="left"] .pill { border-radius: 0 30px 30px 0; border-right: 1px solid rgb(255 255 255 / 22%); border-left: 0; }
 .tab.tucked .pill { width: 16px; }
 .pill svg { width: 30px; height: 30px; flex: none; }
-.pill .body { fill: currentColor; }
+.pill .body { fill: currentColor; stroke: rgb(44 44 46); stroke-width: 3; stroke-linejoin: round; }
 .pill .lens { fill: rgb(44 44 46); }
 .tab.tucked svg { opacity: 0; }
 .tab:focus-visible .pill { outline: 2px solid #2997ff; outline-offset: 2px; }

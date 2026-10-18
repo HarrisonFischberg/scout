@@ -1,7 +1,7 @@
 # Scout for Safari
 
 Your AI Scout for the Safari Browser. A Safari Web Extension for macOS
-and iOS, opened from the binoculars button in the toolbar (on iPhone and iPad,
+and iOS, opened from the Scout truck button in the toolbar (on iPhone and iPad,
 from the page menu). It uses your own Anthropic or OpenAI API key, kept in your
 Keychain. There is no Scout for Safari server.
 
