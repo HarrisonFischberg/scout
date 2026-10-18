@@ -10,7 +10,7 @@ import type { Action, ActionResult } from "./actions/executor";
 import type { Snapshot } from "./snapshot/snapshot";
 import { CONTENT_HANDLER, OVERLAY_HANDLER, type ContentRequest, type OverlayRequest } from "./content-api";
 import { callInjected } from "./content-call";
-import { addPageBlur, BLUR_FADE_IN_MS, BLUR_LAYER_ID, BLUR_PING_MS, BLUR_TIMEOUT_MS, wantsPageBlur, type BlurPing } from "./panel/blur";
+import { addPageBlur, BLUR_FADE_IN_MS, BLUR_LAYER_ID, BLUR_PING_MS, BLUR_QUIET_MS, BLUR_TIMEOUT_MS, wantsPageBlur, type BlurPing } from "./panel/blur";
 import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { chipSources, renderMarkdown } from "./chat/markdown";
 import { answerText, fillSourceCard, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
@@ -448,15 +448,16 @@ const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></spa
  * effort: pages Scout cannot script stay as they are. Resolves to the blurred
  * tab's id.
  */
+// How long the layer waits for the next ping before it clears itself. Long
+// while the panel starts (its main thread can stall then), short once it has
+// settled, since without a goodbye this wait is the whole lag on close.
+let blurTtl = BLUR_TIMEOUT_MS;
+function settleBlur(): void {
+  blurTtl = BLUR_QUIET_MS;
+}
+
 async function frostPage(): Promise<number | undefined> {
   if (!wantsPageBlur(matchMedia("(pointer: coarse)").matches, screen.width)) return undefined;
-  // Owner report 2026-10-18: closing from Settings cleared the blur at once,
-  // closing from the chat lagged a split second. Settings focuses its heading;
-  // the chat focused nothing on iPhone (no keyboard on open), so the panel's
-  // window never had focus and never got the blur that says goodbye, leaving
-  // the layer to time out. Focusing the chat's heading (not the question box)
-  // gives the window focus without raising the keyboard.
-  document.getElementById("chat-title")?.focus({ preventScroll: true });
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true }).catch(() => []);
   const tabId = tab?.id;
   if (tabId === undefined) return undefined;
@@ -465,7 +466,7 @@ async function frostPage(): Promise<number | undefined> {
     .then(() => true, () => false);
   if (!ok) return undefined;
   const ping = (alive: boolean): void => {
-    const m: BlurPing = { blur: BLUR_LAYER_ID, alive };
+    const m: BlurPing = { blur: BLUR_LAYER_ID, alive, ttl: blurTtl };
     void browser.tabs.sendMessage?.(tabId, m)?.catch(() => undefined);
   };
   // Pinged from animation frames, which stop as soon as the panel is off
@@ -3614,6 +3615,7 @@ async function main(): Promise<void> {
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
   }
   updateEmpty();
+  settleBlur();
 }
 
 void main();
