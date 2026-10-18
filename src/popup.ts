@@ -60,6 +60,7 @@ import { createProvider, textOf, type ChatMessage, type Effort, type ProviderCli
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
 import { joinDictation, Listener, micErrorText, recognitionCtor } from "./panel/voice";
+import { fitAboveKeyboard } from "./panel/keyboard";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
   appendHistory,
@@ -3528,6 +3529,10 @@ async function main(): Promise<void> {
   });
 
   // ---------- Start ----------
+  // iPhone and iPad: keep the composer above the on-screen keyboard (src/panel/keyboard.ts).
+  if (matchMedia("(pointer: coarse)").matches && window.visualViewport) {
+    fitAboveKeyboard(window, window.visualViewport, document.body);
+  }
   setMode("chat");
   await connect();
   if (session) {
