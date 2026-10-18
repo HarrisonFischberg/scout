@@ -31,7 +31,8 @@ export interface PageBrowser {
 }
 
 /** Why a page went to the browser. */
-export type BrowserReason = "refused" | "failed" | "short" | "masked";
+/** Why a page went to the browser; "blocked": its site keeps refusing the reader, so it went to the browser first. */
+export type BrowserReason = "refused" | "failed" | "short" | "masked" | "blocked";
 
 export interface BrowserTarget {
   url: string;
@@ -67,8 +68,10 @@ export interface BrowserCode {
   how: "printed" | "revealed";
 }
 
-export const BROWSER_MAX_PAGES = 5;
-export const BROWSER_TIME_MS = 120_000;
+export const BROWSER_MAX_PAGES = 8;
+export const BROWSER_TIME_MS = 150_000;
+/** Background tabs open at the same time. */
+export const BROWSER_TABS = 2;
 /** One page: load, presses and reading. */
 export const BROWSER_PAGE_MS = 30_000;
 export const BROWSER_MAX_CLICKS = 6;
