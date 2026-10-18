@@ -1743,3 +1743,9 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Request: the standalone Scout page should use the full window, not a centered column.
 - Change: removed the 760 px column; header, conversation and composer now span the tab.
 - Evidence: unit (known Take control failure only), typecheck, lint; redesign e2e pass in Chromium. Device check pending.
+## 2026-10-18 — Scroll up while an answer types; slower typing (owner request)
+
+- Request: while an answer types out (Summarize this page, Explain the key points), let the user scroll up smoothly to read from the top; and show the text about 50% slower.
+- Cause: every typed frame called `scrollToEnd()`, which re-pinned the thread to the bottom and ignored scroll events for 150 ms after it, so with frames every ~16 ms a user scroll never counted.
+- Change: typed frames and Scout mode / coupon progress lines now call `followEnd()`, which scrolls only while the thread is pinned. Scrolling up (wheel, touch drag, or any scroll that leaves the bottom) unpins it; scrolling back to the bottom pins it again. New questions and prompts that need an answer still jump to the bottom. `src/panel/typing.ts`: 25 characters a second (was 50) and at most about 6 s behind (was 3 s), so the whole reveal is half as fast.
+- Evidence: new e2e `scrolling up while an answer types out…` (chat spec) fails on main (scrollTop pulled back to 1497) and passes here. Unit 458/459 (known Take control failure), typecheck, lint, `check:release` clean; full Chromium e2e: 130 passed, 20 failed, the same part2 mock-stream and keyboard-focus set as main. WebKit is not installed in the cloud sandbox. Needs the Mac and iPhone check.
