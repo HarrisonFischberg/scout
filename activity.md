@@ -1812,10 +1812,3 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 ## 2026-10-18 — iPhone quick ask removed (owner decision)
 
 - Owner tried the quick ask box from #51 on his iPhone and decided not to keep it. This reverts #51 exactly; the page tab opens Scout's sheet directly again. The pre-#51 state is also kept as branch `saved/before-quick-ask`.
-
-## 2026-10-18 — iPhone: half see-through panel, question box focused on open (owner idea)
-
-- Request (owner): make the panel background about half see-through so the page shows behind it, and open Scout with the keyboard already up.
-- Change: on a phone-sized touch screen (`isPhoneScreen`) the panel gets `html.see-through`: the page background is transparent and the body is `--bg-canvas` at 50% (light and dark). Cards, bubbles, menus and the question box stay solid; the docked composer is transparent on an empty chat and frosted (12 px blur) once a conversation scrolls under it. A new chat on iPhone focuses the question box on open (debug trace `open:focus field|refused`). Mac and iPad are unchanged.
-- Unknowns for the device check: whether Safari's sheet draws the page behind a transparent extension page (if not, the panel just looks slightly lighter), and whether iOS raises the keyboard for a focus without a tap (earlier probes found an untapped panel gets no focus, so likely not).
-- Evidence: new e2e (chat spec, iPhone screen) checks the transparent page, the 50% body and the focused field; the iPad and Mac tests check the solid background and no auto-focus. Unit 468/469 (known Take control failure), typecheck, lint clean; Chromium e2e for chat, redesign, panel, edge: 59/60, the one failure also fails on main. WebKit is not installed in the cloud sandbox. Preview (simulated page behind): `/mnt/project-files/see-through-panel/preview.png`.
