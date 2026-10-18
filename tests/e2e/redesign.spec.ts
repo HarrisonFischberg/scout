@@ -415,4 +415,25 @@ test.describe("touch device", () => {
     await expect(page.getByText("The widget costs")).toBeVisible();
     await expect(starters).toBeHidden();
   });
+  test("Find coupons opens right above the + button, not above Summarize / Explain (owner 2026-10-18)", async ({ page }) => {
+    await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+    await expect(page.locator("#composer > #starters")).toBeVisible();
+    await page.getByRole("button", { name: "More actions" }).tap();
+    const menu = page.locator("#plus-menu");
+    await expect(menu).toBeVisible();
+    const [m, box, plus, starters] = await Promise.all(
+      ["#plus-menu", ".composer-box", "#plus", "#starters"].map((s) => page.locator(s).boundingBox()),
+    );
+    // Just above the question box, starting at its left edge by the + button.
+    expect(box!.y - (m!.y + m!.height)).toBeGreaterThanOrEqual(0);
+    expect(box!.y - (m!.y + m!.height)).toBeLessThanOrEqual(10);
+    expect(Math.abs(m!.x - box!.x)).toBeLessThanOrEqual(2);
+    expect(m!.x).toBeLessThanOrEqual(plus!.x);
+    // It covers the starters rather than floating over the empty-chat logo above them.
+    expect(m!.y + m!.height).toBeGreaterThan(starters!.y);
+    await page.getByRole("button", { name: "Find coupons" }).tap();
+    await expect(menu).toBeHidden();
+    // Tapping it starts the coupon search (the run itself is covered in coupons.spec.ts).
+    await expect(page.getByRole("log").getByText("Find the best coupon for this cart.")).toBeVisible();
+  });
 });
