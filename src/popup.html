@@ -443,6 +443,10 @@
       /* Text one step smaller than before (owner 2026-10-18); the question box stays at
          16px, below which iOS zooms the page when the box is tapped. */
       @media (pointer: coarse) {
+        /* No rubber-band bounce of the panel page itself: a drag on the panel
+           moves Safari's sheet instead of first stretching the page and then
+           handing over mid-gesture (owner 2026-10-18, smooth sheet drag). */
+        html, body { overscroll-behavior: none; }
         body { font-size: 14px; }
         #starters button { font-size: 16px; min-height: 32px; padding: 2px 4px; }
         .composer-box { border-radius: 22px; padding: 10px 10px 8px 14px; }

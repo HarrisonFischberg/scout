@@ -60,7 +60,7 @@ import { createProvider, textOf, type ChatMessage, type Effort, type ProviderCli
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
 import { joinDictation, Listener, micErrorText, recognitionCtor } from "./panel/voice";
-import { fitAboveKeyboard } from "./panel/keyboard";
+import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
 import { isStandalone, openStandalone } from "./panel/standalone";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
@@ -3564,7 +3564,7 @@ async function main(): Promise<void> {
   // ---------- Start ----------
   // iPhone and iPad: keep the composer above the on-screen keyboard (src/panel/keyboard.ts).
   if (matchMedia("(pointer: coarse)").matches && window.visualViewport) {
-    fitAboveKeyboard(window, window.visualViewport, document.body);
+    fitAboveKeyboard(window, window.visualViewport, document.body, () => editableFocused(document.activeElement));
   }
   setMode("chat");
   await connect();
