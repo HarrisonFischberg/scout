@@ -1587,3 +1587,11 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - How: WebKit's own `webkitSpeechRecognition` (`src/panel/voice.ts`): tap the mic, the words appear in the box after what was typed, tap again to stop; nothing is sent. Safari decides whether an extension panel may use the microphone; if it refuses, or this Safari has no recognizer, the status line says to use the keyboard's own dictation (the keyboard mic on iPhone, the Dictation key or Fn twice on Mac). New data flow in `docs/data-inventory.md` (speech goes to Apple's recognizer; Scout stores no audio).
 - Evidence: `tests/unit/voice.test.ts` (5 cases), `tests/e2e/voice.spec.ts` (4 cases with a stubbed recognizer: both buttons always shown, dictation then Send, refused mic, no recognizer). Unit: only the known Take control failure; full Chromium e2e: the same 20 failures as `main`; typecheck, lint, `check:release` clean.
 - Not verified: whether Safari lets the extension panel use the microphone on Mac and iPhone (no WebKit or Safari in the cloud). Needs the device check.
+
+## 2026-10-18 — Gray outline binoculars in the Safari toolbar (owner)
+
+- Actual (owner): Safari's toolbar showed Scout's icon in blue.
+- Expected (owner, with an image): the gray outline binoculars from the new-chat screen.
+- Cause of the blue: the toolbar icon was a pure grayscale glyph, and Safari paints grayscale extension icons in the system accent color while the extension can read the page (Apple Developer Forums threads 660596 and 733949).
+- Change: new `design/icons/safari-scout-binoculars-outline[-active].svg`, the same drawing as `.scout-mark` in `src/popup.html` with a slightly heavier line for small sizes; `scripts/render-toolbar-icons.mjs` now paints stroked shapes in order (each inside erases what is under it, like the panel's canvas fill) and renders gray glyphs with a faint warm tint, so the icon is not grayscale and Safari shows it as drawn. Light and dark toolbars still get their own gray (the worker swaps them). Active state: the same outline with filled lenses.
+- Evidence: rendered PNGs checked visually against the owner's image at 128, 38 and 19 px on light and dark backgrounds. The tint workaround is reported by developers, not documented by Apple; not seen in real Safari yet (needs the device check on Mac and iPhone).
