@@ -1682,3 +1682,11 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Ask (owner): the binoculars look too close to his Sunglasses at Night extension. He picked option 1, a safari truck in side view, from a preview of a truck and a pith helmet.
 - Change: new original artwork in `design/icons/` (`scout-truck-outline[-active].svg` toolbar, `scout-truck-solid.svg` edge tab and overlay toast, `truck-icon.svg` extension tile, `truck-appicon-{mac,ios}.svg`); the binoculars SVGs are removed. The panel's new-chat mark, the Scout mode switch and the Scout mode chip use the truck. `scripts/render-toolbar-icons.mjs` now supports `<polygon>`. Active toolbar state: large filled hubs.
 - Evidence: unit 459/460 (known Take control failure), typecheck, lint, build, `check:release`; screenshots of the panel, toolbar PNGs and app icon checked by eye. App icons were rendered with Chromium in the cloud sandbox (`scripts/render-icons.mjs` needs macOS `sips`). Needs the Mac and iPhone check.
+
+## 2026-10-18 — iPhone: blur lags when closing from the chat view
+
+- Actual (owner, iPhone): closing Scout from Settings clears the page blur at once; closing from the chat view (swipe down or Safari's checkmark) leaves it up for a split second.
+- Expected: the blur clears at once wherever the panel is closed.
+- Cause (inferred from the difference, not traced on device): Settings focuses its heading on open; the chat view focuses nothing on iPhone so the keyboard stays down. With nothing focused the panel's window never had focus, so its `blur` event (the goodbye from #31) never fired and the layer waited out its 350 ms timeout.
+- Fix: on iPhone the panel focuses the chat's visually hidden heading (`#chat-title`, `tabindex="-1"`) as it starts, which gives the window focus without raising the keyboard.
+- Evidence: new e2e `touch device › iPhone screen › focuses the chat heading on open…` fails without the fix and passes with it (Chromium). Unit 459/460 (known Take control failure), typecheck, lint, `check:release` clean; a11y Option+Tab and edge arrow-key e2e fail identically on main in Chromium.
