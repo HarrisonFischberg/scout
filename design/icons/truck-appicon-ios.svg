@@ -1,0 +1,22 @@
+<!-- Scout for Safari iOS app icon: the safari truck on sand (original artwork made for this project, 2026-10-18).
+     Full-bleed and opaque; iOS applies its own rounded mask. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FBF5E4"/>
+      <stop offset="1" stop-color="#EEDCAA"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <svg x="172" y="172" width="680" height="680" viewBox="0 0 64 64">
+    <g stroke="#14231A" stroke-width="3.2" stroke-linejoin="round">
+      <polygon points="13,26 16.5,11 36,11 40.5,26" fill="#4A7836"/>
+      <polygon points="21,16 32.5,16 34.5,23 21,23" fill="#9CCBDC"/>
+      <rect x="5" y="26" width="54" height="17" rx="4" fill="#5E9445"/>
+      <circle cx="18" cy="44" r="9" fill="#2E3B33"/>
+      <circle cx="46" cy="44" r="9" fill="#2E3B33"/>
+    </g>
+    <circle cx="18" cy="44" r="3.5" fill="#EAF4F8"/>
+    <circle cx="46" cy="44" r="3.5" fill="#EAF4F8"/>
+  </svg>
+</svg>
