@@ -84,6 +84,8 @@
       /* Thread */
       #thread { flex: 1; overflow-y: auto; padding: 12px 14px 4px; display: flex; flex-direction: column; gap: 12px; }
       #log { display: flex; flex-direction: column; gap: 12px; }
+      /* An empty conversation takes no room, so the starters sit right above the composer (owner 2026-10-18). */
+      #log:empty { margin-top: -12px; }
       .msg { overflow-wrap: anywhere; }
       /* Answer typography (T029): calm spacing, readable lists, no raw marks. */
       .msg p, .msg ul, .msg ol, .msg pre, .msg blockquote, .msg .table-wrap { margin: 0 0 10px; }
@@ -149,7 +151,7 @@
         fill: var(--bg-canvas); stroke: var(--text-muted); stroke-width: 3.5; stroke-linejoin: round;
       }
       .scout-mark .hub { fill: var(--text-muted); }
-      #starters { list-style: none; margin: 0 0 2px; padding: 0; }
+      #starters { list-style: none; margin: 0; padding: 0; }
       #starters button {
         display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 6px 4px;
         border: 0; border-radius: 10px; background: transparent; color: var(--text-secondary); font-size: 16px; text-align: left;
@@ -185,6 +187,7 @@
 
       /* Composer */
       #status { padding: 0 16px 4px; min-height: 20px; }
+      #status:empty { min-height: 0; padding-bottom: 0; }
       #composer { margin: 0 10px 10px; position: relative; }
       .composer-box {
         background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 16px;
@@ -424,13 +427,16 @@
 
       /* iPhone (owner design 2026-10-17): larger starters and a rounder composer.
          The page behind the sheet is blurred by the worker (src/panel/blur.ts). */
+      /* Text one step smaller than before (owner 2026-10-18); the question box stays at
+         16px, below which iOS zooms the page when the box is tapped. */
       @media (pointer: coarse) {
-        #starters button { font-size: 18px; min-height: 44px; }
-        .composer-box { border-radius: 24px; padding: 12px 10px 8px 16px; }
-        #question { font-size: 17px; }
-        .composer-foot { gap: 6px; margin-top: 8px; }
-        .composer-foot .round { width: 38px; height: 38px; }
-        #model-pill { min-height: 38px; padding: 0 16px; font-size: 15px; }
+        body { font-size: 14px; }
+        #starters button { font-size: 16px; min-height: 32px; padding: 2px 4px; }
+        .composer-box { border-radius: 22px; padding: 10px 10px 8px 14px; }
+        #question { font-size: 16px; }
+        .composer-foot { gap: 6px; margin-top: 6px; }
+        .composer-foot .round { width: 36px; height: 36px; }
+        #model-pill { min-height: 36px; padding: 0 14px; font-size: 14px; }
         .composer-foot .segmented label { min-height: 34px; padding: 0 10px; }
         .sheet-list button { min-height: 56px; font-size: 17px; }
         /* Safari's own sheet bar already shows the name (owner item 6, 2026-10-17):
@@ -454,7 +460,7 @@
           <source srcset="icons/toolbar-dark-64.png" media="(prefers-color-scheme: dark)" />
           <img src="icons/toolbar-64.png" alt="" />
         </picture>
-        <h1 id="chat-title" tabindex="-1">Scout for Safari</h1>
+        <h1>Scout for Safari</h1>
         <button id="new-chat" class="icon-btn" type="button" aria-label="New chat">
           <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
         </button>
