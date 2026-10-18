@@ -34,6 +34,10 @@ export function wantsPageBlur(coarsePointer: boolean, screenWidth: number): bool
 // a last resort.
 export const BLUR_PING_MS = 250;
 export const BLUR_TIMEOUT_MS = 900;
+// Owner request 2026-10-18: the blur should come and go quickly. It fades in
+// over this long once the panel starts (it used to wait for the panel's
+// settings and chat to load, then appear at once) and goes at once on close.
+export const BLUR_FADE_IN_MS = 120;
 
 /** Message from the panel to the layer: `alive: false` clears it now. */
 export interface BlurPing {
@@ -41,7 +45,7 @@ export interface BlurPing {
   alive: boolean;
 }
 
-export function addPageBlur(id: string, timeoutMs: number): boolean {
+export function addPageBlur(id: string, timeoutMs: number, fadeInMs = 0): boolean {
   const g = globalThis as unknown as { __scoutBlur?: { timer?: ReturnType<typeof setTimeout>; listening?: boolean } };
   const state = (g.__scoutBlur ??= {});
   const drop = (): void => {
@@ -68,7 +72,13 @@ export function addPageBlur(id: string, timeoutMs: number): boolean {
     layer.style.cssText =
       "all: initial; position: fixed; top: 0; left: 0; right: 0; bottom: 96px; z-index: 2147483646; pointer-events: none;" +
       "background: rgb(0 0 0 / 5.5%); -webkit-backdrop-filter: blur(4.5px) saturate(120%); backdrop-filter: blur(4.5px) saturate(120%);";
+    const fade = fadeInMs > 0 && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (fade) {
+      layer.style.opacity = "0";
+      layer.style.transition = `opacity ${fadeInMs}ms ease-out`;
+    }
     (document.body ?? document.documentElement).appendChild(layer);
+    if (fade) requestAnimationFrame(() => (layer.style.opacity = "1"));
   }
   arm();
   return true;
