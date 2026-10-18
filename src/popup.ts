@@ -465,6 +465,11 @@ async function frostPage(): Promise<number | undefined> {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true }).catch(() => []);
   const tabId = tab?.id;
   if (tabId === undefined) return undefined;
+  // Owner diagnostics 2026-10-18: closed with no tap, the panel hears nothing
+  // until pagehide about half a second after the sheet has gone; after a tap
+  // its window has focus and its blur arrives at once. Ask for focus now.
+  window.focus();
+  let watchFrame: (() => void) | undefined;
   if (__SCOUT_DEBUG__) {
     blurProbeLog = await browser.scripting
       .executeScript({ target: { tabId }, func: probeBlur, args: [BLUR_LAYER_ID, BLUR_PROBE_MAX] })
@@ -478,7 +483,14 @@ async function frostPage(): Promise<number | undefined> {
     document.addEventListener("visibilitychange", () => note("visibility " + document.visibilityState));
     const vv = window.visualViewport;
     vv?.addEventListener("resize", () => note(`viewport ${Math.round(vv.width)}x${Math.round(vv.height)} top ${Math.round(vv.offsetTop)}`));
+    vv?.addEventListener("scroll", () => note(`viewport scroll top ${Math.round(vv.offsetTop)} pageTop ${Math.round(vv.pageTop)}`));
     note(`open, focus ${document.hasFocus() ? "yes" : "no"}`);
+    // Anything about the panel's frame that moves while the sheet slides away.
+    let seen = "";
+    watchFrame = () => {
+      const now = `screen ${Math.round(window.screenX)},${Math.round(window.screenY)} viewport ${vv ? `${Math.round(vv.height)} top ${Math.round(vv.offsetTop)}` : "none"} focus ${document.hasFocus() ? "yes" : "no"}`;
+      if (now !== seen) note("frame " + (seen = now));
+    };
   }
   const ok = await browser.scripting
     .executeScript({ target: { tabId }, func: addPageBlur, args: [BLUR_LAYER_ID, BLUR_TIMEOUT_MS, BLUR_FADE_IN_MS] })
@@ -497,6 +509,7 @@ async function frostPage(): Promise<number | undefined> {
     if (now - last >= BLUR_PING_MS) {
       last = now;
       ping(true);
+      watchFrame?.();
     }
     requestAnimationFrame(beat);
   };
