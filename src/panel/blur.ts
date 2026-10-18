@@ -25,15 +25,52 @@ export function wantsPageBlur(coarsePointer: boolean, screenWidth: number): bool
   return coarsePointer && screenWidth < 600;
 }
 
-export function addPageBlur(id: string): boolean {
-  if (document.getElementById(id)) return true;
-  const layer = document.createElement("div");
-  layer.id = id;
-  layer.setAttribute("aria-hidden", "true");
-  layer.style.cssText =
-    "all: initial; position: fixed; top: 0; left: 0; right: 0; bottom: 96px; z-index: 2147483646; pointer-events: none;" +
-    "background: rgb(0 0 0 / 5.5%); -webkit-backdrop-filter: blur(4.5px) saturate(120%); backdrop-filter: blur(4.5px) saturate(120%);";
-  (document.body ?? document.documentElement).appendChild(layer);
+// Owner bug report 2026-10-18: after closing Scout the page stayed frosted for
+// a while. Removal waited on the worker, which only hears that the panel
+// closed once its port drops, and a suspended worker can take long to wake
+// for that. So the layer also clears itself: the open panel pings it every
+// BLUR_PING_MS, says goodbye as it closes (pagehide), and a layer that hears
+// nothing for BLUR_TIMEOUT_MS takes itself off. The worker's removal stays as
+// a last resort.
+export const BLUR_PING_MS = 250;
+export const BLUR_TIMEOUT_MS = 900;
+
+/** Message from the panel to the layer: `alive: false` clears it now. */
+export interface BlurPing {
+  blur: string;
+  alive: boolean;
+}
+
+export function addPageBlur(id: string, timeoutMs: number): boolean {
+  const g = globalThis as unknown as { __scoutBlur?: { timer?: ReturnType<typeof setTimeout>; listening?: boolean } };
+  const state = (g.__scoutBlur ??= {});
+  const drop = (): void => {
+    clearTimeout(state.timer);
+    document.getElementById(id)?.remove();
+  };
+  const arm = (): void => {
+    clearTimeout(state.timer);
+    state.timer = setTimeout(drop, timeoutMs);
+  };
+  if (!state.listening) {
+    state.listening = true;
+    browser.runtime.onMessage.addListener((m: unknown) => {
+      const ping = m as Partial<BlurPing> | null;
+      if (!ping || ping.blur !== id) return;
+      if (ping.alive === true) arm();
+      else drop();
+    });
+  }
+  if (!document.getElementById(id)) {
+    const layer = document.createElement("div");
+    layer.id = id;
+    layer.setAttribute("aria-hidden", "true");
+    layer.style.cssText =
+      "all: initial; position: fixed; top: 0; left: 0; right: 0; bottom: 96px; z-index: 2147483646; pointer-events: none;" +
+      "background: rgb(0 0 0 / 5.5%); -webkit-backdrop-filter: blur(4.5px) saturate(120%); backdrop-filter: blur(4.5px) saturate(120%);";
+    (document.body ?? document.documentElement).appendChild(layer);
+  }
+  arm();
   return true;
 }
 

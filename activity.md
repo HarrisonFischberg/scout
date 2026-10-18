@@ -1653,3 +1653,11 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Cause: the page blur behind the iPhone sheet (`src/panel/blur.ts`) was a see-through fixed box over the whole screen (`inset: 0`), which Safari 26 samples as a dimming layer and fills the strip under its bar with the page background. The worker removes it only after the panel's port closes, so it outlives the sheet by a moment.
 - Fix: the layer now stops `PAGE_BLUR_BOTTOM_GAP_PX` (96 px) above the bottom, out of the strip Safari samples. The sheet covers the bottom of the page while it is open, so nothing visible changes.
 - Evidence: new unit test in `tests/unit/blur.test.ts` (the injected layer has the bottom gap and no `inset: 0`). Unit 453/454 (known Take control failure), typecheck, lint, `check:release` clean. Needs the real iPhone check: open and close Scout and watch the bar.
+
+## 2026-10-18 — Page stays frosted after closing Scout (owner bug)
+
+- Actual (owner, iPhone, citizenfreepress.com, screenshot): right after closing Scout, a see-through frosted layer stays over the page (all but the bottom strip #28 leaves clear).
+- Expected (owner): the page is clear as soon as Scout closes.
+- Cause: the blur layer (`src/panel/blur.ts`) was removed only by the worker, after it noticed the panel's port had closed. The worker is non-persistent, so waking it and injecting the removal can take a noticeable time (before #28 the same delay showed as the white flash under the bar).
+- Fix: the layer now clears itself. The open panel pings it every `BLUR_PING_MS` (250 ms) over `tabs.sendMessage` and says goodbye on `pagehide`/hidden, which removes it at once; a layer that hears nothing for `BLUR_TIMEOUT_MS` (900 ms) removes itself. The worker's removal stays as a last resort. Layer geometry from #28 unchanged, so the bar stays clear.
+- Evidence: new unit tests in `tests/unit/blur.test.ts` with a fake page and fake timers (stays while pinged, goes on goodbye, goes on its own after 900 ms of silence, ignores other messages). Unit 456/457 (known Take control failure), typecheck, lint, `check:release` clean; Chromium e2e `panel` + `redesign` 20/20, same as `main`. Needs the real iPhone check: open and close Scout.
