@@ -190,7 +190,7 @@
       #status:empty { min-height: 0; padding-bottom: 0; }
       #composer { margin: 0 10px 10px; position: relative; }
       .composer-box {
-        background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 16px;
+        position: relative; background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 16px;
         box-shadow: var(--shadow); padding: 8px 8px 6px 12px;
       }
       /* The textarea has no outline of its own; the box around it shows focus. */
@@ -557,13 +557,15 @@
       <p id="status" class="hint" role="status">Loading…</p>
 
       <form id="composer" hidden>
-        <ul id="plus-menu" aria-label="More actions" hidden>
-          <li><button id="coupons-run" type="button">
-            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12 12 20 3 11V3h8Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Find coupons</button></li>
-        </ul>
-        <!-- Typing @ suggests tabs to attach (src/panel/attach.ts). -->
-        <ul id="mention-list" role="listbox" aria-label="Tabs to attach" hidden></ul>
         <div class="composer-box">
+          <!-- Anchored to the question box, not the composer: on iPhone the composer also
+               holds Summarize / Explain (src/panel/dock.ts), and the menu opened above those. -->
+          <ul id="plus-menu" aria-label="More actions" hidden>
+            <li><button id="coupons-run" type="button">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12 12 20 3 11V3h8Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Find coupons</button></li>
+          </ul>
+          <!-- Typing @ suggests tabs to attach (src/panel/attach.ts). -->
+          <ul id="mention-list" role="listbox" aria-label="Tabs to attach" hidden></ul>
           <!-- On a known shopping site, while the chat is empty (src/panel/suggestions.ts). Filled from script. -->
           <ul id="site-suggestions" aria-label="Suggestions for this store" hidden></ul>
           <div id="mode-chip" hidden>
