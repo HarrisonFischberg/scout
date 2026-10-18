@@ -8,6 +8,8 @@ async function openPopup(page: Page, os?: string): Promise<void> {
   await page.addInitScript((os) => {
     const data: Record<string, unknown> = {
       settings: { provider: "anthropic", model: "claude-sonnet-5-5", retention: "7" },
+      // A choice made after the one-time switch to Haiku 5.5 High, so it is kept.
+      modelMigration: "haiku-5-5-high",
       history: [{ at: Date.now(), question: "hi", answer: "hello" }],
       // Sharing with the providers already allowed (consent.spec.ts covers asking).
       aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } },
