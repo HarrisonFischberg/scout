@@ -17,7 +17,7 @@ await mkdir(out, { recursive: true });
 // needed). These colours only drive the preview below; keep them in step.
 const LIGHT_BAR_GLYPH = "#4A4A4F";
 const DARK_BAR_GLYPH = "#D8D8DC";
-const jobs = [{ svg: "binoculars-icon.svg", name: "icon", sizes: [48, 64, 96, 128, 256, 512] }];
+const jobs = [{ svg: "truck-icon.svg", name: "icon", sizes: [48, 64, 96, 128, 256, 512] }];
 
 const browser = await webkit.launch();
 const page = await browser.newPage();
@@ -36,13 +36,13 @@ for (const job of jobs) {
 // 1024 (rendered as JPEG, then converted to PNG so it has no alpha channel).
 const appIcons = join(root, "apple", "App", "Assets.xcassets", "AppIcon.appiconset");
 await mkdir(appIcons, { recursive: true });
-const macSvg = await readFile(join(root, "design", "icons", "binoculars-appicon-mac.svg"), "utf8");
+const macSvg = await readFile(join(root, "design", "icons", "truck-appicon-mac.svg"), "utf8");
 for (const size of [16, 32, 64, 128, 256, 512, 1024]) {
   await page.setViewportSize({ width: size, height: size });
   await page.setContent(`<html><body style="margin:0;background:transparent">${macSvg.replace("<svg ", `<svg width="${size}" height="${size}" `)}</body></html>`);
   await page.screenshot({ path: join(appIcons, `mac-${size}.png`), omitBackground: true });
 }
-const iosSvg = await readFile(join(root, "design", "icons", "binoculars-appicon-ios.svg"), "utf8");
+const iosSvg = await readFile(join(root, "design", "icons", "truck-appicon-ios.svg"), "utf8");
 await page.setViewportSize({ width: 1024, height: 1024 });
 await page.setContent(`<html><body style="margin:0;background:#F5F3FF">${iosSvg.replace("<svg ", '<svg width="1024" height="1024" ')}</body></html>`);
 const jpg = join(root, "build", "ios-1024.jpg");
@@ -53,9 +53,9 @@ await rm(jpg);
 
 // Preview at real toolbar size (16 and 32 for retina) on light and dark bars,
 // normal and active.
-const t = await readFile(join(root, "design", "icons", "safari-scout-binoculars.svg"), "utf8");
-const a = await readFile(join(root, "design", "icons", "safari-scout-binoculars-active.svg"), "utf8");
-const i = await readFile(join(root, "design", "icons", "binoculars-icon.svg"), "utf8");
+const t = await readFile(join(root, "design", "icons", "scout-truck-outline.svg"), "utf8");
+const a = await readFile(join(root, "design", "icons", "scout-truck-outline-active.svg"), "utf8");
+const i = await readFile(join(root, "design", "icons", "truck-icon.svg"), "utf8");
 const icon = (s, n) => s.replace("<svg ", `<svg width="${n}" height="${n}" `);
 const row = (bg, fg, label) =>
   `<div style="display:flex;gap:18px;align-items:center;padding:14px;background:${bg};color:${fg}">${icon(t, 16)}${icon(t, 19)}${icon(t, 32)}${icon(a, 16)}${icon(a, 32)}<span>${label}</span>${icon(i, 64)}</div>`;
