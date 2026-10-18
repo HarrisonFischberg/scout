@@ -32,7 +32,13 @@ async function openPopup(page: Page, opts: { key: string | null }): Promise<{ bo
         // Sharing with the provider already allowed (consent.spec.ts covers asking).
         storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } } } : {}), set: async () => undefined, clear: async () => undefined } },
         tabs: { query: async () => [{ id: 1, url: pageData.url, title: pageData.title, active: true }] },
-        scripting: { executeScript: async () => [{ result: pageData }] },
+        scripting: {
+          executeScript: async (injection: { func?: unknown }) => {
+            const g = globalThis as unknown as { __injected?: string[] };
+            (g.__injected ??= []).push(String(injection.func));
+            return [{ result: pageData }];
+          },
+        },
       };
       (globalThis as unknown as { browser: unknown }).browser = stub;
     },
@@ -118,6 +124,21 @@ test.describe("touch device", () => {
     await openPopup(page, { key: "sk-test-synthetic" });
     await expect(page.getByLabel("Ask about this page")).toBeVisible();
     await expect(page.getByLabel("Ask about this page")).not.toBeFocused();
+  });
+
+  // Owner decision 2026-10-18: no page blur on iPhone. Safari tells a panel
+  // that was never tapped that it has closed only about half a second after
+  // its sheet has gone, so the blur outlived the sheet.
+  test.describe("iPhone screen", () => {
+    test.use({ screen: { width: 402, height: 874 } });
+    test("never blurs the page behind the panel, before or after a tap", async ({ page }) => {
+      await openPopup(page, { key: "sk-test-synthetic" });
+      await expect(page.getByLabel("Ask about this page")).toBeVisible();
+      await page.getByRole("button", { name: "New chat" }).tap();
+      await page.waitForTimeout(200);
+      const injected = await page.evaluate(() => (globalThis as unknown as { __injected?: string[] }).__injected ?? []);
+      expect(injected.filter((src) => src.includes("backdrop-filter"))).toEqual([]);
+    });
   });
 
   // Owner item 6 (2026-10-17): Safari's sheet bar already names Scout, so the

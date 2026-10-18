@@ -13,7 +13,7 @@
 // buttons: only trusted events count, and the layer never reads the page.
 import { request } from "./bridge/messages";
 import { OVERLAY_HANDLER, type OverlayRequest } from "./content-api";
-import { wantsPageBlur } from "./panel/blur";
+import { isPhoneScreen } from "./panel/blur";
 
 const FLAG = "__safariScoutOverlayLoaded";
 const g = globalThis as unknown as Record<string, unknown>;
@@ -194,7 +194,7 @@ if (!g[FLAG]) {
     const style = document.createElement("style");
     style.textContent = STYLE_TEXT;
     layer = document.createElement("div");
-    layer.className = wantsPageBlur(matchMedia("(pointer: coarse)").matches, screen.width) ? "layer phone" : "layer";
+    layer.className = isPhoneScreen(matchMedia("(pointer: coarse)").matches, screen.width) ? "layer phone" : "layer";
     layer.setAttribute("role", "group");
     layer.setAttribute("aria-label", "Scout for Safari is controlling this page");
     const glow = document.createElement("div");
