@@ -7,6 +7,10 @@
 // nothing from the page and lets every touch through.
 
 export const BLUR_LAYER_ID = "__safari-scout-blur";
+// Owner, 2026-10-18: cleared to about a third of the first design (was 18% dim,
+// 14px blur), so the page stays readable behind the coupon search glow.
+export const PAGE_DIM = "5.5%";
+export const PAGE_BLUR_PX = 4.5;
 
 /** The panel blurs the page only on a phone-sized touch screen, not on Mac or iPad. */
 export function wantsPageBlur(coarsePointer: boolean, screenWidth: number): boolean {
@@ -20,7 +24,7 @@ export function addPageBlur(id: string): boolean {
   layer.setAttribute("aria-hidden", "true");
   layer.style.cssText =
     "all: initial; position: fixed; inset: 0; z-index: 2147483646; pointer-events: none;" +
-    "background: rgb(0 0 0 / 18%); -webkit-backdrop-filter: blur(14px) saturate(120%); backdrop-filter: blur(14px) saturate(120%);";
+    "background: rgb(0 0 0 / 5.5%); -webkit-backdrop-filter: blur(4.5px) saturate(120%); backdrop-filter: blur(4.5px) saturate(120%);";
   (document.body ?? document.documentElement).appendChild(layer);
   return true;
 }
