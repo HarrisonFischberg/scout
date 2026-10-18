@@ -98,6 +98,44 @@ test("summarize button works", async ({ page }) => {
   await expect(page.getByRole("log").getByText("with free shipping.")).toBeVisible();
 });
 
+test("scrolling up while an answer types out stays where the user put it", async ({ page }) => {
+  await openPopup(page, { key: "sk-test-synthetic" });
+  const long = Array.from({ length: 40 }, (_, i) => "Paragraph " + (i + 1) + " of the summary, with enough words to wrap.").join("\n\n");
+  await page.unroute("https://api.anthropic.com/**");
+  await page.route("https://api.anthropic.com/**", (r) =>
+    r.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      body: sse([
+        { type: "message_start", message: { usage: { input_tokens: 30, output_tokens: 1 } } },
+        { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
+        { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: long } },
+        { type: "content_block_stop", index: 0 },
+        { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 400 } },
+        { type: "message_stop" },
+      ]),
+    }),
+  );
+  await page.getByRole("button", { name: "Summarize this page" }).click();
+  const thread = page.locator("#thread");
+  const gap = (): Promise<number> => thread.evaluate((t) => t.scrollHeight - t.scrollTop - t.clientHeight);
+  // While it types, the thread follows the new text.
+  await expect.poll(() => thread.evaluate((t) => t.scrollHeight > t.clientHeight + 200), { timeout: 15_000 }).toBe(true);
+  expect(await gap()).toBeLessThan(24);
+  // The user scrolls up to read from the top; typing goes on and does not pull them back down.
+  await thread.hover();
+  await page.mouse.wheel(0, -5000);
+  await expect.poll(() => thread.evaluate((t) => t.scrollTop)).toBe(0);
+  const typedBefore = await thread.evaluate((t) => t.textContent?.length ?? 0);
+  await page.waitForTimeout(1000);
+  expect(await thread.evaluate((t) => t.textContent?.length ?? 0)).toBeGreaterThan(typedBefore);
+  expect(await thread.evaluate((t) => t.scrollTop)).toBe(0);
+  // Scrolling back to the bottom follows the new text again.
+  await page.mouse.wheel(0, 100_000);
+  await page.waitForTimeout(500);
+  expect(await gap()).toBeLessThan(24);
+});
+
 test("keyboard only: type, Enter sends, focus returns to the field", async ({ page }) => {
   await openPopup(page, { key: "sk-test-synthetic" });
   await expect(page.getByLabel("Ask about this page")).toBeFocused();

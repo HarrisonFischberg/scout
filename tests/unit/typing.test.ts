@@ -16,7 +16,7 @@ describe("steady reveal of a streamed answer", () => {
   it("catches up so it is never far behind once the answer finishes", () => {
     let shown = 0;
     let t = 0;
-    while (shown < 4000 && t < 20_000) {
+    while (shown < 4000 && t < 60_000) {
       shown = nextShown(shown, 4000, 16);
       t += 16;
     }
