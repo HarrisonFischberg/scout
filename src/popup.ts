@@ -61,6 +61,7 @@ import { checkKey, looksLikeKey } from "./providers/keytest";
 import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
 import { joinDictation, Listener, micErrorText, recognitionCtor } from "./panel/voice";
 import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
+import { hintedProvider, KEY_HINT_KEY, parseKeyHint, sameHint, type KeyHint } from "./panel/warm";
 import { isStandalone, openStandalone } from "./panel/standalone";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
@@ -479,10 +480,23 @@ async function main(): Promise<void> {
   // the first connect() uses them, later ones read again.
   let firstKeys: Promise<SavedKeys> | null = readKeys();
   let settings = parseSettings(undefined);
-  if (storage) settings = await loadSettings(storage).catch(() => settings);
+  // Everything the panel needs before it can show anything, read at once
+  // rather than one after another: each storage call is slow on a phone
+  // that just started Safari (owner request 2026-10-18).
   // Permission to share with each AI provider (src/settings/consent.ts). Every
   // provider request goes through providerFetch, which refuses one without it.
-  const consent = await Consent.load(storage);
+  const none = {} as Record<string, unknown>;
+  const [loaded, consent, tab, early] = await Promise.all([
+    storage ? loadSettings(storage).catch(() => settings) : settings,
+    Consent.load(storage),
+    // Private Browsing works like a regular tab (owner request 2026-10-17); its
+    // chats are deleted from history when the tab closes (src/panel/state.ts).
+    activeTab(),
+    storage ? storage.get([KEY_HINT_KEY, COUPON_BROWSER_KEY]).catch(() => none) : none,
+  ]);
+  settings = loaded;
+  /** Which providers had a saved key last time (src/panel/warm.ts). */
+  let keyHint: KeyHint = parseKeyHint(early[KEY_HINT_KEY]);
   const providerFetch = gatedFetch((p) => consent.has(p), (i, init) => fetch(i, init));
 
   document.addEventListener("keydown", (e) => {
@@ -492,16 +506,14 @@ async function main(): Promise<void> {
     }
   });
 
-  // Private Browsing works like a regular tab (owner request 2026-10-17); its
-  // chats are deleted from history when the tab closes (src/panel/state.ts).
-  const tab = await activeTab();
-
   // ---------- Per-tab conversation and the worker port ----------
   // Answers stream from the Scout server in the worker over this port (Part 2).
   // After a reconnect, every unfinished answer is resubscribed from the last
   // event the panel has, so nothing is shown twice.
   const store = new ConversationStore();
-  let conv = storage ? await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "") : "";
+  // Read alongside the model lists below.
+  const convRead = storage ? conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "") : Promise.resolve("");
+  let conv = "";
   let port: PanelPort | null = null;
   if (browser.runtime.connect && tab.id !== undefined) {
     const tabId = tab.id;
@@ -524,12 +536,22 @@ async function main(): Promise<void> {
   window.addEventListener("pagehide", () => port?.close());
 
   // Cached or built-in model lists, so names and effort support are known
-  // before Settings is opened. No network call here.
-  for (const p of ["anthropic", "openai"] as const) {
-    rememberModels(p, (await loadModelList(storage, p, null, providerFetch, Date.now())).models);
-  }
+  // before Settings is opened. No network call here. Debug builds load their
+  // diagnostics in the same round.
+  const mockRead = __SCOUT_DEBUG__ && storage ? storage.get(DEV_MOCK_KEY).catch(() => none) : Promise.resolve(none);
+  if (__SCOUT_DEBUG__) diag = new Diagnostics(storage);
+  [conv] = await Promise.all([
+    convRead,
+    diag?.load(),
+    ...(["anthropic", "openai"] as const).map(async (p) => rememberModels(p, (await loadModelList(storage, p, null, providerFetch, Date.now())).models)),
+  ]);
 
   let session: Session | null = null;
+  /**
+   * Set while the panel shows the question box from the key hint and the
+   * first Keychain read is still out. Anything sent meanwhile waits for it.
+   */
+  let connecting: Promise<void> | null = null;
   const history: ChatMessage[] = [];
   /** The answer streaming now (Part 2), if any. */
   let activeChat: string | null = null;
@@ -542,17 +564,15 @@ async function main(): Promise<void> {
   // ---------- Diagnostics (debug builds only) ----------
   if (__SCOUT_DEBUG__) {
     const diagBox = el("diag");
-    diag = new Diagnostics(storage);
-    await diag.load();
     const diagStatus = el("diag-status");
     const diagQuestion = el<HTMLInputElement>("diag-question");
     const diagCopy = el<HTMLButtonElement>("diag-copy");
-    diagQuestion.checked = diag.includeQuestion;
+    diagQuestion.checked = diag?.includeQuestion === true;
     diagQuestion.addEventListener("change", () => void diag?.setIncludeQuestion(diagQuestion.checked));
     diagCopy.addEventListener("click", () => void copyDiagnostics(diagCopy.parentElement ?? diagCopy, diagStatus));
     // Answers from the local mock server (scripts/mock-scout-server.mjs) instead of Anthropic.
     const diagMock = el<HTMLInputElement>("diag-mock");
-    const mockSet = storage ? await storage.get(DEV_MOCK_KEY).catch(() => ({}) as Record<string, unknown>) : {};
+    const mockSet = await mockRead;
     diagMock.checked = typeof mockSet[DEV_MOCK_KEY] === "string";
     diagMock.addEventListener("change", () => {
       void storage?.set({ [DEV_MOCK_KEY]: diagMock.checked ? DEV_MOCK_URL : null }).then(async () => {
@@ -914,7 +934,7 @@ async function main(): Promise<void> {
 
   function updateEmpty(): void {
     const busyCards = !!task || !!couponRun || !confirmBox.hidden;
-    empty.hidden = !session || log.childElementCount > 0 || busyCards;
+    empty.hidden = !(session || connecting) || log.childElementCount > 0 || busyCards;
     siteSuggestions.hidden = empty.hidden || !siteSuggestions.childElementCount;
   }
 
@@ -967,6 +987,9 @@ async function main(): Promise<void> {
 
   // ---------- Session (provider + key) ----------
   let fallbackNotice: HTMLElement | null = null;
+  const sessionReady = async (): Promise<void> => {
+    if (!session && connecting) await connecting;
+  };
 
   // record=false after Delete all data, so no new diagnostics land in the
   // storage that was just cleared.
@@ -974,9 +997,17 @@ async function main(): Promise<void> {
     if (record) startRun("startup", { provider: settings.provider, model: settings.model });
     else current = disabledRun;
     const keys = await (firstKeys ?? readKeys());
+    if (firstKeys && __SCOUT_DEBUG__) trace("open:keys " + Math.round(performance.now()) + " ms");
     firstKeys = null;
     const found = findKey(settings, keys);
     keyed = savedProviders(keys);
+    // Remembered for the next open, so it can show the question box at once.
+    // Only after a successful read: an unreadable Keychain says nothing.
+    const hint: KeyHint = { anthropic: keyed.has("anthropic"), openai: keyed.has("openai") };
+    if (record && storage && !keys.anthropic.error && !keys.openai.error && !sameHint(hint, keyHint)) {
+      keyHint = hint;
+      void storage.set({ [KEY_HINT_KEY]: hint }).catch(() => undefined);
+    }
     fallbackNotice?.remove();
     fallbackNotice = null;
     if (!found) {
@@ -1835,6 +1866,7 @@ async function main(): Promise<void> {
 
   async function ask(text: string, opts: { continueOf?: { bubble: HTMLElement; question: string; partial: string; shared: MessageView["shared"]; sources: Source[] } } = {}): Promise<void> {
     const trimmed = text.trim();
+    await sessionReady();
     if (!trimmed || activeChat || control || task || !session) return;
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
@@ -2279,6 +2311,7 @@ async function main(): Promise<void> {
   // The composer's Scout mode: a user message, the task, then its outcome in the thread.
   async function runTask(goal: string): Promise<void> {
     const trimmed = goal.trim();
+    await sessionReady();
     if (!trimmed || activeChat || control || task || !session) return;
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
@@ -2480,7 +2513,8 @@ async function main(): Promise<void> {
   }
 
   // Asked once ever: Safari's site-access prompt for every site, so later runs open blocked pages without asking.
-  let siteAccessAsked = storage ? (await storage.get(COUPON_BROWSER_KEY).catch(() => ({}) as Record<string, unknown>))[COUPON_BROWSER_KEY] === "asked" : false;
+  // Read with the first round of settings at the top of main().
+  let siteAccessAsked = early[COUPON_BROWSER_KEY] === "asked";
   function askSiteAccessOnce(): void {
     if (siteAccessAsked) return;
     siteAccessAsked = true;
@@ -2530,6 +2564,7 @@ async function main(): Promise<void> {
   }
 
   async function runCoupons(): Promise<void> {
+    await sessionReady();
     if (activeChat || control || task || couponRun || !session) return;
     const s = session;
     askSiteAccessOnce();
@@ -3567,9 +3602,28 @@ async function main(): Promise<void> {
     fitAboveKeyboard(window, window.visualViewport, document.body, () => editableFocused(document.activeElement));
   }
   setMode("chat");
-  await connect();
+  // A key was saved last time: show the question box and this tab's chat now,
+  // and let the Keychain read finish behind them (owner request 2026-10-18:
+  // Scout should open at once). If the key has gone since, connect() switches
+  // to the no-key screen as before.
+  const likely = hintedProvider(settings.provider, keyHint);
+  if (likely) {
+    const pill = prettyModel(likely === settings.provider ? settings.model : DEFAULT_MODEL[likely]);
+    modelPillText.textContent = pill;
+    modelPill.setAttribute("aria-label", pill + ", change model or effort");
+    noKey.hidden = true;
+    composer.hidden = false;
+    connecting = connect().finally(() => (connecting = null));
+    updateEmpty();
+    if (__SCOUT_DEBUG__) trace("open:shown " + Math.round(performance.now()) + " ms (from saved key hint)");
+    await Promise.all([connecting, restoreConversation()]);
+    // The key has gone since: back to the no-key screen, without the old chat.
+    if (!session) clearThread();
+  } else {
+    await connect();
+  }
   if (session) {
-    await restoreConversation();
+    if (!likely) await restoreConversation();
     await resumeActive();
     await resumeTask();
     await loadTabs();

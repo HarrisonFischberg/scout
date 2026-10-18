@@ -49,24 +49,20 @@ export function isDrag(dx: number, dy: number): boolean {
   return Math.hypot(dx, dy) >= DRAG_SLOP;
 }
 
-/** The tab shrinks to a sliver after this long without use. */
-export const TUCK_AFTER_MS = 2500;
+/**
+ * The tab's size in CSS px (owner request 2026-10-18: smaller than the first
+ * 56 x 60 pill, still clearly showing the truck, and always out instead of
+ * tucking away). The tap target adds a few transparent px around the pill.
+ */
+export const TAB_SIZE = { width: 42, height: 44, glyph: 28 } as const;
 
 /**
- * Set once the tab has shown itself open on a page. After that it starts
- * tucked on every page and opens only when the user reaches for it (owner
- * request 2026-10-17: popping open while browsing was annoying).
+ * How long a new page waits for the saved side and height before it draws the
+ * tab at the default spot (owner request 2026-10-18: the button should be
+ * there at once). Settings normally arrive well inside this, so a tab the user
+ * moved does not jump.
  */
-export const PAGE_BUTTON_INTRO_KEY = "pageButtonIntroduced";
-
-/**
- * A tap on a tucked tab (touch or pen) only brings it out; the next tap opens
- * Scout (owner request 2026-10-17). A mouse wakes it on hover, and a key press
- * on a focused tab, so both open at once.
- */
-export function tapOnlyWakes(pointerType: string, wasTucked: boolean): boolean {
-  return wasTucked && (pointerType === "touch" || pointerType === "pen");
-}
+export const PLACE_WAIT_MS = 150;
 
 export interface ViewportInfo {
   /** Touch-first device (iPhone, iPad): Safari may zoom the whole page out. */
