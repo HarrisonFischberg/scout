@@ -15,8 +15,6 @@ interface Fake {
   panelOpens: number;
   /** panel.warm requests: the tab getting Scout ready (src/panel/warm.ts). */
   warms: number;
-  /** panel.ask payloads: the quick ask on a phone (src/quick-ask.ts). */
-  asks: unknown[];
   permissionRequests: string[][];
   injected: string[][];
 }
@@ -27,7 +25,7 @@ async function stub(page: Page, pageButton: unknown): Promise<void> {
       const g = globalThis as unknown as Record<string, unknown>;
       const top = (window.top ?? window) as unknown as Record<string, unknown>;
       if (!top.__fake) {
-        top.__fake = { data: { aiConsent: { anthropic: { at: 1, version: 2 } }, pageButton }, panelOpens: 0, warms: 0, asks: [], permissionRequests: [], injected: [] };
+        top.__fake = { data: { aiConsent: { anthropic: { at: 1, version: 2 } }, pageButton }, panelOpens: 0, warms: 0, permissionRequests: [], injected: [] };
         top.__listeners = [];
       }
       const fake = top.__fake as Fake;
@@ -40,10 +38,6 @@ async function stub(page: Page, pageButton: unknown): Promise<void> {
           sendMessage: async (m: { type: string; request_id: string }) => {
             if (m.type === "panel.open") {
               fake.panelOpens += 1;
-              return { type: m.type + ".result", request_id: m.request_id, payload: { opened: true } };
-            }
-            if (m.type === "panel.ask") {
-              fake.asks.push((m as unknown as { payload: unknown }).payload);
               return { type: m.type + ".result", request_id: m.request_id, payload: { opened: true } };
             }
             if (m.type === "panel.warm") {
@@ -123,8 +117,6 @@ async function tabThere(page: Page, at: { x: number; y: number }): Promise<boole
 }
 
 const panelOpens = async (page: Page) => (await fake(page)).panelOpens;
-/** Whether the quick ask box is open (the host carries data-quick-ask while it is). */
-const quickAskOpen = (page: Page) => page.evaluate(() => document.querySelector("[data-quick-ask=open]") !== null);
 /** Frames the extension put in the page: there must be none. */
 const extensionFrames = (page: Page) => page.frames().filter((f) => f !== page.mainFrame()).length;
 
@@ -385,9 +377,9 @@ test.describe("iPhone", () => {
     // The rest of the screen still belongs to the page.
     expect(await tabThere(page, { x: Math.round(vp.width / 2), y })).toBe(false);
 
-    // One tap opens the quick ask box (src/quick-ask.ts).
+    // One tap opens Scout.
     await page.touchscreen.tap(vp.width - 8, y);
-    await expect.poll(() => quickAskOpen(page)).toBe(true);
+    await expect.poll(() => panelOpens(page)).toBe(1);
   });
 
   test("dragging after a scroll drops the tab where the finger lets go", async ({ page }) => {
@@ -407,109 +399,6 @@ test.describe("iPhone", () => {
     expect(((await fake(page)).data.pageButton as { y: number }).y).toBeCloseTo(0.7, 1);
     const to = await tabPoint(page, "left", ((await fake(page)).data.pageButton as { y: number }).y);
     await expect.poll(() => tabThere(page, to)).toBe(true);
-  });
-});
-
-// Owner request 2026-10-18 (option A of the Comet comparison): on a phone the
-// tab opens a small question box over a dimmed, blurred page, with the
-// keyboard up; what is asked goes to Scout's panel. The box and the dim never
-// reach the strip under Safari's bottom bar (the white bar, #27-#39).
-test.describe("iPhone quick ask", () => {
-  test.use({ viewport: { width: 390, height: 664 }, screen: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
-
-  async function openPhone(page: Page): Promise<{ width: number; height: number }> {
-    await page.addInitScript(() => {
-      const attach = Element.prototype.attachShadow;
-      Element.prototype.attachShadow = function (init: ShadowRootInit) {
-        return attach.call(this, { ...init, mode: "open" });
-      };
-    });
-    await stub(page, { on: true });
-    await page.route("**/phone.html", (r) =>
-      r.fulfill({
-        contentType: "text/html",
-        body: '<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Phone</title></head><body><h1>Phone fixture</h1><p>Synthetic text.</p></body></html>',
-      }),
-    );
-    await page.goto("/phone.html");
-    await page.addScriptTag({ path: "apple/Extension/Resources/edge.js" });
-    const vp = page.viewportSize() ?? { width: 390, height: 664 };
-    await expect.poll(() => tabThere(page, { x: vp.width - 8, y: Math.round(vp.height * 0.45) })).toBe(true);
-    return vp;
-  }
-
-  const shadow = (page: Page) => page.locator("[data-quick-ask=open]");
-  const box = (page: Page) => page.locator("div[style*='2147483647'] >> .qa");
-  const field = (page: Page) => page.locator("div[style*='2147483647'] >> .qa textarea");
-
-  test("tapping the tab opens the box with the cursor in it, not Safari's sheet", async ({ page }) => {
-    const vp = await openPhone(page);
-    await page.touchscreen.tap(vp.width - 8, Math.round(vp.height * 0.45));
-    await expect(shadow(page)).toHaveCount(1);
-    await expect(box(page)).toBeVisible();
-    await expect(field(page)).toBeFocused();
-    expect(await panelOpens(page)).toBe(0);
-    // Plain elements only: no extension frame, nothing in the top layer.
-    expect(extensionFrames(page)).toBe(0);
-    expect(await page.evaluate(() => document.querySelectorAll(":popover-open, :modal").length)).toBe(0);
-  });
-
-  test("the box and the dim stay out of the strip under Safari's bottom bar", async ({ page }) => {
-    const vp = await openPhone(page);
-    await page.touchscreen.tap(vp.width - 8, Math.round(vp.height * 0.45));
-    await expect(box(page)).toBeVisible();
-    await page.waitForTimeout(400);
-    const bottoms = await page.evaluate(() => {
-      const host = document.querySelector("[data-quick-ask=open]");
-      const root = host?.shadowRoot;
-      return ["qa", "qa-dim"].map((c) => root?.querySelector("." + c)?.getBoundingClientRect().bottom ?? -1);
-    });
-    for (const b of bottoms) {
-      expect(b).toBeGreaterThan(0);
-      expect(b).toBeLessThanOrEqual(vp.height - 96);
-    }
-  });
-
-  test("sending hands the question to Scout's panel and closes the box", async ({ page }) => {
-    const vp = await openPhone(page);
-    await page.touchscreen.tap(vp.width - 8, Math.round(vp.height * 0.45));
-    await expect(field(page)).toBeFocused();
-    await page.keyboard.type("Is this in stock?");
-    await page.keyboard.press("Enter");
-    await expect.poll(async () => (await fake(page)).asks).toEqual([{ kind: "ask", question: "Is this in stock?" }]);
-    await expect(shadow(page)).toHaveCount(0);
-  });
-
-  test("Summarize this page asks without typing", async ({ page }) => {
-    const vp = await openPhone(page);
-    await page.touchscreen.tap(vp.width - 8, Math.round(vp.height * 0.45));
-    await page.locator("div[style*='2147483647'] >> .qa-sum").tap();
-    await expect.poll(async () => (await fake(page)).asks).toEqual([{ kind: "summarize", question: "" }]);
-  });
-
-  test("tapping the dimmed page closes the box and asks nothing", async ({ page }) => {
-    const vp = await openPhone(page);
-    await page.touchscreen.tap(vp.width - 8, Math.round(vp.height * 0.45));
-    await expect(box(page)).toBeVisible();
-    await page.touchscreen.tap(Math.round(vp.width / 2), 80);
-    await expect(shadow(page)).toHaveCount(0);
-    await expect(box(page)).toBeHidden();
-    expect((await fake(page)).asks).toEqual([]);
-    expect(await panelOpens(page)).toBe(0);
-  });
-
-  test("the page does not see what is typed in the box", async ({ page }) => {
-    const vp = await openPhone(page);
-    await page.evaluate(() => {
-      const seen: string[] = [];
-      (window as unknown as { __seen: string[] }).__seen = seen;
-      document.addEventListener("keydown", (e) => seen.push(e.key));
-      document.addEventListener("input", () => seen.push("input"));
-    });
-    await page.touchscreen.tap(vp.width - 8, Math.round(vp.height * 0.45));
-    await expect(field(page)).toBeFocused();
-    await page.keyboard.type("secret");
-    expect(await page.evaluate(() => (window as unknown as { __seen: string[] }).__seen)).toEqual([]);
   });
 });
 
