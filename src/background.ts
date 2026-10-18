@@ -52,9 +52,9 @@ browser.runtime.onMessage.addListener((message: unknown, sender?: MessageSender)
 
 // ---------- Panel port ----------
 // The port is open while the panel is. Safari closes the popover when the user
-// switches tabs, so a close followed quickly by a tab switch keeps the tab
-// marked open, and switching back reopens the panel (action.openPopup).
-const SWITCH_GRACE_MS = 400;
+// switches tabs; the panel then stays closed when they come back, until they
+// click Scout, which shows that tab's own conversation (owner request
+// 2026-10-18, replacing Part 1's reopen on tab switch).
 
 browser.runtime.onConnect?.addListener((port) => {
   if (port.name !== PANEL_PORT || classifySender(port.sender, self()) !== "panel") {
@@ -80,25 +80,8 @@ browser.runtime.onConnect?.addListener((port) => {
       void browser.scripting.executeScript({ target: { tabId }, func: removePageBlur, args: [BLUR_LAYER_ID] }).catch(() => undefined);
     }
     if (tabId === undefined || !storage) return;
-    const closedTab = tabId;
-    setTimeout(() => {
-      void browser.tabs
-        .query({ active: true, currentWindow: true })
-        .then(([active]) => {
-          // Still on the same tab: the user closed the panel.
-          if (active?.id === closedTab) return setPanelOpen(storage, closedTab, false, Date.now());
-          return undefined;
-        })
-        .catch(() => undefined);
-    }, SWITCH_GRACE_MS);
+    void setPanelOpen(storage, tabId, false, Date.now()).catch(() => undefined);
   });
-});
-
-browser.tabs.onActivated?.addListener(({ tabId }) => {
-  if (!storage || !browser.action?.openPopup) return;
-  void loadTabStates(storage)
-    .then((states) => (states[tabKey(tabId)]?.open ? browser.action?.openPopup?.() : undefined))
-    .catch(() => undefined);
 });
 
 browser.tabs.onRemoved?.addListener((tabId) => {
