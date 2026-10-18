@@ -10,8 +10,6 @@ import type { Action, ActionResult } from "./actions/executor";
 import type { Snapshot } from "./snapshot/snapshot";
 import { CONTENT_HANDLER, OVERLAY_HANDLER, type ContentRequest, type OverlayRequest } from "./content-api";
 import { callInjected } from "./content-call";
-import { BLUR_PROBE_MAX, probeBlur, type BlurProbeNote } from "./panel/blur-probe";
-import { addPageBlur, BLUR_FADE_IN_MS, BLUR_LAYER_ID, BLUR_PING_MS, BLUR_QUIET_MS, BLUR_TIMEOUT_MS, wantsPageBlur, type BlurPing } from "./panel/blur";
 import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { chipSources, renderMarkdown } from "./chat/markdown";
 import { answerText, fillSourceCard, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
@@ -441,98 +439,6 @@ const CONTEXT_TURNS = 10;
 /** The moving "processing" indicator: coupon milestones, a Working card's head, and an answer before its first words. */
 const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></span>';
 
-/**
- * iPhone: frost the page above the sheet (src/panel/blur.ts) as soon as the
- * panel starts, without waiting for settings or the chat (owner request
- * 2026-10-18: the blur should come and go quickly). Keeps the layer alive
- * while the panel is open and clears it the moment the panel closes. Best
- * effort: pages Scout cannot script stay as they are. Resolves to the blurred
- * tab's id.
- */
-// How long the layer waits for the next ping before it clears itself. Long
-// while the panel starts (its main thread can stall then), short once it has
-// settled, since without a goodbye this wait is the whole lag on close.
-let blurTtl = BLUR_TIMEOUT_MS;
-// Debug builds: the previous open's blur log (src/panel/blur-probe.ts), traced
-// into this open's startup run.
-let blurProbeLog: string[] = [];
-function settleBlur(): void {
-  blurTtl = BLUR_QUIET_MS;
-}
-
-async function frostPage(): Promise<number | undefined> {
-  if (!wantsPageBlur(matchMedia("(pointer: coarse)").matches, screen.width)) return undefined;
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true }).catch(() => []);
-  const tabId = tab?.id;
-  if (tabId === undefined) return undefined;
-  // Owner diagnostics 2026-10-18: closed with no tap, the panel hears nothing
-  // until pagehide about half a second after the sheet has gone; after a tap
-  // its window has focus and its blur arrives at once. Ask for focus now.
-  window.focus();
-  let watchFrame: (() => void) | undefined;
-  if (__SCOUT_DEBUG__) {
-    blurProbeLog = await browser.scripting
-      .executeScript({ target: { tabId }, func: probeBlur, args: [BLUR_LAYER_ID, BLUR_PROBE_MAX] })
-      .then((r) => (Array.isArray(r?.[0]?.result) ? (r[0].result as string[]) : []), () => []);
-    const note = (what: string): void => {
-      const m: BlurProbeNote = { blurProbe: BLUR_LAYER_ID, note: what };
-      void browser.tabs.sendMessage?.(tabId, m)?.catch(() => undefined);
-    };
-    for (const type of ["focus", "blur", "pagehide", "pageshow", "pointerdown"]) window.addEventListener(type, () => note(type), { passive: true });
-    window.addEventListener("resize", () => note(`resize ${innerWidth}x${innerHeight}`));
-    document.addEventListener("visibilitychange", () => note("visibility " + document.visibilityState));
-    const vv = window.visualViewport;
-    vv?.addEventListener("resize", () => note(`viewport ${Math.round(vv.width)}x${Math.round(vv.height)} top ${Math.round(vv.offsetTop)}`));
-    vv?.addEventListener("scroll", () => note(`viewport scroll top ${Math.round(vv.offsetTop)} pageTop ${Math.round(vv.pageTop)}`));
-    note(`open, focus ${document.hasFocus() ? "yes" : "no"}`);
-    // Anything about the panel's frame that moves while the sheet slides away.
-    let seen = "";
-    watchFrame = () => {
-      const now = `screen ${Math.round(window.screenX)},${Math.round(window.screenY)} viewport ${vv ? `${Math.round(vv.height)} top ${Math.round(vv.offsetTop)}` : "none"} focus ${document.hasFocus() ? "yes" : "no"}`;
-      if (now !== seen) note("frame " + (seen = now));
-    };
-  }
-  const ok = await browser.scripting
-    .executeScript({ target: { tabId }, func: addPageBlur, args: [BLUR_LAYER_ID, BLUR_TIMEOUT_MS, BLUR_FADE_IN_MS] })
-    .then(() => true, () => false);
-  if (!ok) return undefined;
-  const ping = (alive: boolean): void => {
-    const m: BlurPing = { blur: BLUR_LAYER_ID, alive, ttl: blurTtl };
-    void browser.tabs.sendMessage?.(tabId, m)?.catch(() => undefined);
-  };
-  // Pinged from animation frames, which stop as soon as the panel is off
-  // screen even when Safari keeps its page alive (src/panel/blur.ts).
-  let last = 0;
-  let open = true;
-  const beat = (now: number): void => {
-    if (!open) return;
-    if (now - last >= BLUR_PING_MS) {
-      last = now;
-      ping(true);
-      watchFrame?.();
-    }
-    requestAnimationFrame(beat);
-  };
-  const resume = (): void => {
-    if (open) return;
-    open = true;
-    last = 0;
-    requestAnimationFrame(beat);
-  };
-  const bye = (): void => {
-    if (!open) return;
-    open = false;
-    ping(false);
-  };
-  requestAnimationFrame(beat);
-  window.addEventListener("pagehide", bye);
-  window.addEventListener("blur", bye);
-  window.addEventListener("focus", resume);
-  window.addEventListener("pageshow", resume);
-  document.addEventListener("visibilitychange", () => (document.visibilityState === "hidden" ? bye() : resume()));
-  return tabId;
-}
-
 async function main(): Promise<void> {
   const chatView = el("chat-view");
   const settingsView = el("settings-view");
@@ -563,8 +469,6 @@ async function main(): Promise<void> {
   const confirmDeny = el<HTMLButtonElement>("confirm-deny");
 
   const storage: StorageArea | undefined = browser.storage?.local;
-  // iPhone: frost the page above the sheet first, before anything else loads.
-  const frosting = frostPage();
   const keychain = createKeychain(nativeSend);
   // Started now so the Keychain reads run while the rest of the panel loads;
   // the first connect() uses them, later ones read again.
@@ -594,14 +498,12 @@ async function main(): Promise<void> {
   const store = new ConversationStore();
   let conv = storage ? await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "") : "";
   let port: PanelPort | null = null;
-  // The page blur started as the panel opened (frostPage, above).
-  const blurred = tab.id !== undefined && (await frosting) === tab.id;
   if (browser.runtime.connect && tab.id !== undefined) {
     const tabId = tab.id;
     try {
       port = connectPanelPort({
         connect: (info) => browser.runtime.connect!(info),
-        hello: () => envelope("panel.hello", { tabId, ...(tab.windowId !== undefined ? { windowId: tab.windowId } : {}), ...(blurred ? { blur: true } : {}) }),
+        hello: () => envelope("panel.hello", { tabId, ...(tab.windowId !== undefined ? { windowId: tab.windowId } : {}) }),
         onOpen: (post) => {
           for (const m of store.open()) post("chat.subscribe", { message_id: m.id, after_seq: m.lastSeq });
           // Part 3: this tab's task events (action log, state, confirmations).
@@ -3637,7 +3539,6 @@ async function main(): Promise<void> {
   }
   setMode("chat");
   await connect();
-  if (__SCOUT_DEBUG__) for (const line of blurProbeLog) trace("blur-probe: " + line);
   if (session) {
     await restoreConversation();
     await resumeActive();
@@ -3648,7 +3549,6 @@ async function main(): Promise<void> {
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
   }
   updateEmpty();
-  settleBlur();
 }
 
 void main();
