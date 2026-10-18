@@ -1737,3 +1737,9 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Request: a button next to New chat and Settings that opens the whole Scout chat as its own page in a new tab, to bookmark and use Scout like an AI chat site.
 - Change: new "Open Scout in a new tab" header button (Mac only; hidden on touch screens, owner 2026-10-18) opens `popup.html?view=page` (`src/panel/standalone.ts`). That page fills the tab in a 760 px column, shows the name, reads no current tab, and hides the page-only actions (starters, store suggestions, + menu, Chat/Scout switch). It shares the key, model and settings, and gets its own chat (per tab, like the panel). The address is the extension's own, so it opens only in Safari with Scout installed.
 - Evidence: new `tests/unit/standalone.test.ts` and e2e `Open in new tab…` (redesign spec). Unit 458/459 (known Take control failure), typecheck, lint, `check:release` clean; full Chromium e2e has the same failures as main. Device check pending.
+
+## 2026-10-18 — Scout page fills the whole window (owner request)
+
+- Request: the standalone Scout page should use the full window, not a centered column.
+- Change: removed the 760 px column; header, conversation and composer now span the tab.
+- Evidence: unit (known Take control failure only), typecheck, lint; redesign e2e pass in Chromium. Device check pending.
