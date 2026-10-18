@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PANEL_EVENTS, checkSchema } from "../../src/bridge/messages";
-import { addPageBlur, BLUR_FADE_IN_MS, BLUR_PING_MS, BLUR_TIMEOUT_MS, PAGE_BLUR_BOTTOM_GAP_PX, PAGE_BLUR_PX, PAGE_DIM, wantsPageBlur } from "../../src/panel/blur";
+import { addPageBlur, BLUR_FADE_IN_MS, BLUR_PING_MS, BLUR_QUIET_MS, BLUR_TIMEOUT_MS, PAGE_BLUR_BOTTOM_GAP_PX, PAGE_BLUR_PX, PAGE_DIM, wantsPageBlur } from "../../src/panel/blur";
 
 describe("page blur behind the panel (owner design 2026-10-17)", () => {
   it("only on a phone-sized touch screen", () => {
@@ -47,6 +47,7 @@ describe("page blur behind the panel (owner design 2026-10-17)", () => {
         getElementById: (id: string) => (layer && layer.id === id ? el : null),
         createElement: () => {
           el.removed = false;
+          el.style = { cssText: "", opacity: "", transition: "" };
           return el;
         },
         body: { appendChild: (x: typeof el) => (layer = x) },
@@ -120,6 +121,35 @@ describe("page blur behind the panel (owner design 2026-10-17)", () => {
       expect(layer).toBeNull();
       listener?.({ blur: ID, alive: true });
       expect(layer).not.toBeNull();
+    });
+
+    // Third report: closing right after opening, with no tap, still lagged a
+    // split second, because without a tap no goodbye comes.
+    it("once the panel has settled, goes within about a tenth of a second of the last ping", () => {
+      vi.useFakeTimers();
+      fakePage();
+      addPageBlur(ID, BLUR_TIMEOUT_MS);
+      expect(BLUR_QUIET_MS).toBeLessThanOrEqual(150);
+      expect(BLUR_QUIET_MS).toBeGreaterThanOrEqual(BLUR_PING_MS * 3);
+      for (let t = 0; t < 1000; t += BLUR_PING_MS) {
+        vi.advanceTimersByTime(BLUR_PING_MS);
+        listener?.({ blur: ID, alive: true, ttl: BLUR_QUIET_MS });
+      }
+      expect(layer).not.toBeNull();
+      vi.advanceTimersByTime(BLUR_QUIET_MS + 1);
+      expect(layer).toBeNull();
+    });
+
+    it("puts a dropped layer back without fading, so a stall never reads as a flicker", () => {
+      vi.useFakeTimers();
+      fakePage();
+      vi.stubGlobal("matchMedia", () => ({ matches: false }));
+      vi.stubGlobal("requestAnimationFrame", () => 0);
+      addPageBlur(ID, BLUR_TIMEOUT_MS, BLUR_FADE_IN_MS);
+      vi.advanceTimersByTime(BLUR_TIMEOUT_MS + 1);
+      expect(layer).toBeNull();
+      listener?.({ blur: ID, alive: true, ttl: BLUR_QUIET_MS });
+      expect(layer?.style.opacity).toBe("");
     });
 
     it("ignores messages that are not its own", () => {
