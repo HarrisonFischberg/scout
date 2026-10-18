@@ -1690,3 +1690,11 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Cause (inferred from the difference, not traced on device): Settings focuses its heading on open; the chat view focuses nothing on iPhone so the keyboard stays down. With nothing focused the panel's window never had focus, so its `blur` event (the goodbye from #31) never fired and the layer waited out its 350 ms timeout.
 - Fix: on iPhone the panel focuses the chat's visually hidden heading (`#chat-title`, `tabindex="-1"`) as it starts, which gives the window focus without raising the keyboard.
 - Evidence: new e2e `touch device › iPhone screen › focuses the chat heading on open…` fails without the fix and passes with it (Chromium). Unit 459/460 (known Take control failure), typecheck, lint, `check:release` clean; a11y Option+Tab and edge arrow-key e2e fail identically on main in Chromium.
+
+## 2026-10-18 — iPhone: blur still lags on a first open closed without a tap
+
+- Actual (owner, iPhone, build with #33): opening Scout and closing it (swipe down or Safari's checkmark) without tapping anything leaves the blur up a split second. After any tap (New chat, Settings) closing clears it at once.
+- Expected: the blur clears at once however the panel is closed.
+- Cause (inferred from the tap/no-tap difference): only a tap gives the panel's window focus, so only then does its `blur` event send the goodbye. Without one the layer waits out its 350 ms timeout. #33's programmatic focus did not count as a tap on the device, so it is reverted.
+- Fix: the panel pings every 33 ms (was 100) and, once its startup has finished, asks the layer to wait only 120 ms (`BLUR_QUIET_MS`) before clearing; the 350 ms wait stays only while the panel starts. A layer dropped by a stall comes back without the fade.
+- Evidence: two new unit tests fail without the fix and pass with it. Unit 461/462 (known Take control failure), typecheck, lint, `check:release` clean; chat, panel, redesign and settings e2e pass in Chromium.
