@@ -27,6 +27,11 @@ import {
 const FLAG = "__safariScoutEdge";
 const g = globalThis as unknown as Record<string, unknown>;
 
+// Wakes the worker, which gets the app's native handler running (src/panel/warm.ts).
+const warm = (): void => {
+  void request((m) => browser.runtime.sendMessage(m), "panel.warm", {}).catch(() => undefined);
+};
+
 const CANT_OPEN = "Couldn't open Scout for Safari here. Use the Scout button in Safari's page menu.";
 
 // Monochrome Scout truck (design/icons/scout-truck-solid.svg). Window and hubs are
@@ -160,6 +165,9 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, hidde
     if (!e.isTrusted || e.button !== 0) return;
     pointer = { x: e.clientX, y: e.clientY, id: e.pointerId };
     dragging = false;
+    // A finger on the tab is the earliest sign Scout is wanted: wake the
+    // worker and the app's handler now, before the tap ends.
+    warm();
     try {
       tab.setPointerCapture(e.pointerId);
     } catch {
@@ -264,6 +272,8 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, hidde
   });
   keep.observe(document, { childList: true });
   keep.observe(document.documentElement, { childList: true });
+  // Get Scout ready while the page loads, so the first tap opens it at once.
+  warm();
 
   return {
     reveal() {
