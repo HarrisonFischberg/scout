@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { clampY, coversAllSites, edgeMatches, isDrag, MAX_TAB_SCALE, pageButtonOffered, parsePageButton, reachText, sameMatches, snapSide, tabScale, topLayerTab, Y_MAX, Y_MIN } from "../../src/panel/edge";
+import { clampY, coversAllSites, edgeMatches, isDrag, MAX_TAB_SCALE, pageButtonOffered, parsePageButton, reachText, sameMatches, snapSide, TAB_SIZE, tabScale, topLayerTab, Y_MAX, Y_MIN } from "../../src/panel/edge";
 import { openPanel } from "../../src/panel/toolbar";
 
 describe("page button settings", () => {
@@ -21,6 +21,15 @@ describe("page button settings", () => {
     expect(parsePageButton({ on: false })).toEqual({ on: false, side: "right", y: 0.45 });
     expect(parsePageButton({ on: "yes", side: "top", y: "middle" })).toEqual({ on: true, side: "right", y: 0.45 });
     expect(parsePageButton({ on: true, side: "left", y: 0.3 })).toEqual({ on: true, side: "left", y: 0.3 });
+  });
+
+  // Owner request 2026-10-18: smaller, but the truck still clear and the tap
+  // target still at Apple's 44 pt minimum height.
+  it("is a small pill that still shows the truck and is easy to hit", () => {
+    expect(TAB_SIZE.width).toBeLessThan(56);
+    expect(TAB_SIZE.height).toBeLessThan(60);
+    expect(TAB_SIZE.height + 4).toBeGreaterThanOrEqual(44);
+    expect(TAB_SIZE.glyph / TAB_SIZE.width).toBeGreaterThan(0.6);
   });
 
   it("keeps the tab its own size when Safari zooms a wide page out", () => {
