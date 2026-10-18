@@ -96,25 +96,40 @@ function el<T extends HTMLElement>(id: string): T {
   return node as T;
 }
 
+type KeyRead = { key: string | null; error?: string };
+type SavedKeys = Record<Provider, KeyRead>;
+
+// Both providers' keys in one parallel round of Keychain reads. Each read wakes
+// the app's native handler, which is slow the first time after Safari starts,
+// so the panel reads them once, in parallel, as it opens (owner request
+// 2026-10-18), instead of one after another.
+async function readKeys(): Promise<SavedKeys> {
+  const keychain = createKeychain(nativeSend);
+  const read = async (p: Provider): Promise<KeyRead> => {
+    try {
+      return { key: await keychain.getKey(p) };
+    } catch (err) {
+      return { key: null, error: err instanceof Error ? err.message : "unknown" };
+    }
+  };
+  const [anthropic, openai] = await Promise.all([read("anthropic"), read("openai")]);
+  return { anthropic, openai };
+}
+
 // Prefers the provider chosen in settings, then any provider with a saved key.
 // A fallback provider uses its own default model, not the chosen model.
 // Uses the chosen provider's key. Falls back to the other provider only with
 // a note the popup shows, never silently (seen in T018: OpenAI chosen, Anthropic
 // used with no explanation).
-async function findKey(
+function findKey(
   chosen: Settings,
-): Promise<{ settings: Settings; apiKey: string; fellBackFrom?: Provider } | null> {
-  const keychain = createKeychain(nativeSend);
+  keys: SavedKeys,
+): { settings: Settings; apiKey: string; fellBackFrom?: Provider } | null {
   const order: Provider[] = chosen.provider === "openai" ? ["openai", "anthropic"] : ["anthropic", "openai"];
   for (const provider of order) {
-    let apiKey: string | null = null;
-    try {
-      apiKey = await keychain.getKey(provider);
-      trace("key:" + provider + (apiKey ? " found" : " missing"));
-    } catch (err) {
-      // Treat an unreadable item like a missing one.
-      trace("key:" + provider + " error " + (err instanceof Error ? err.message : "unknown"));
-    }
+    const { key: apiKey, error } = keys[provider];
+    // Treat an unreadable item like a missing one.
+    trace("key:" + provider + (error !== undefined ? " error " + error : apiKey ? " found" : " missing"));
     if (apiKey) {
       const same = provider === chosen.provider;
       const model = same ? chosen.model : DEFAULT_MODEL[provider];
@@ -129,18 +144,8 @@ async function findKey(
 }
 
 /** Providers with a key in the Keychain; the Models sheet lists only their models. */
-async function savedProviders(): Promise<Set<Provider>> {
-  const keychain = createKeychain(nativeSend);
-  const found = await Promise.all(
-    (["anthropic", "openai"] as const).map(async (p) => {
-      try {
-        return (await keychain.getKey(p)) ? p : null;
-      } catch {
-        return null;
-      }
-    }),
-  );
-  return new Set(found.filter((p): p is Provider => p !== null));
+function savedProviders(keys: SavedKeys): Set<Provider> {
+  return new Set((["anthropic", "openai"] as const).filter((p) => keys[p].key));
 }
 
 const PROVIDER_NAME: Record<Provider, string> = { anthropic: "Anthropic", openai: "OpenAI" };
@@ -465,6 +470,9 @@ async function main(): Promise<void> {
 
   const storage: StorageArea | undefined = browser.storage?.local;
   const keychain = createKeychain(nativeSend);
+  // Started now so the Keychain reads run while the rest of the panel loads;
+  // the first connect() uses them, later ones read again.
+  let firstKeys: Promise<SavedKeys> | null = readKeys();
   let settings = parseSettings(undefined);
   if (storage) settings = await loadSettings(storage).catch(() => settings);
   // Permission to share with each AI provider (src/settings/consent.ts). Every
@@ -953,8 +961,10 @@ async function main(): Promise<void> {
   async function connect(record = true): Promise<void> {
     if (record) startRun("startup", { provider: settings.provider, model: settings.model });
     else current = disabledRun;
-    const found = await findKey(settings);
-    keyed = await savedProviders();
+    const keys = await (firstKeys ?? readKeys());
+    firstKeys = null;
+    const found = findKey(settings, keys);
+    keyed = savedProviders(keys);
     fallbackNotice?.remove();
     fallbackNotice = null;
     if (!found) {

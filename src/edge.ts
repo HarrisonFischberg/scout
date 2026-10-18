@@ -319,14 +319,29 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, intro
   // Top layer when the browser has popovers, so page overlays do not cover the tab.
   const usePopover = typeof host.showPopover === "function";
   if (usePopover) host.setAttribute("popover", "manual");
-  document.documentElement.appendChild(host);
-  if (usePopover) {
-    try {
-      host.showPopover();
-    } catch {
-      // Stays a plain element with the top z-index.
+  const attach = (): void => {
+    document.documentElement.appendChild(host);
+    if (usePopover) {
+      try {
+        host.showPopover();
+      } catch {
+        // Stays a plain element with the top z-index.
+      }
     }
-  }
+  };
+  attach();
+  // The tab now arrives before the page's own scripts finish. A page that
+  // rebuilds its <html> while it loads (some frameworks do) gets the tab put
+  // back, a few times at most so it never fights the page.
+  let reattach = 3;
+  const keep = new MutationObserver(() => {
+    if (host.isConnected || reattach <= 0) return;
+    reattach -= 1;
+    attach();
+    keep.observe(document.documentElement, { childList: true });
+  });
+  keep.observe(document, { childList: true });
+  keep.observe(document.documentElement, { childList: true });
   follow();
   if (introduce) wake();
 
@@ -346,17 +361,38 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, intro
       window.visualViewport?.removeEventListener("scroll", follow);
       window.visualViewport?.removeEventListener("resize", follow);
       window.removeEventListener("resize", follow);
+      keep.disconnect();
       host.remove();
     },
   };
 }
 
+/**
+ * Resolves as soon as the page has a body. The script starts at document_start
+ * (src/background.ts), before the page has finished loading, so the tab shows
+ * while the rest of the page is still downloading instead of after it.
+ */
+function bodyReady(): Promise<void> {
+  if (document.body) return Promise.resolve();
+  return new Promise((resolve) => {
+    const done = (): void => {
+      if (!document.body) return;
+      observer.disconnect();
+      document.removeEventListener("DOMContentLoaded", done);
+      resolve();
+    };
+    const observer = new MutationObserver(done);
+    observer.observe(document, { childList: true, subtree: true });
+    document.addEventListener("DOMContentLoaded", done);
+  });
+}
+
 async function start(): Promise<void> {
   const storage = browser.storage?.local;
   if (!storage) return;
+  const none = {} as Record<string, unknown>;
   const read = async (): Promise<PageButton> =>
-    parsePageButton((await storage.get(PAGE_BUTTON_KEY).catch(() => ({}) as Record<string, unknown>))[PAGE_BUTTON_KEY]);
-  let pref = await read();
+    parsePageButton((await storage.get(PAGE_BUTTON_KEY).catch(() => none))[PAGE_BUTTON_KEY]);
   // Position changes keep whatever on/off state is stored now.
   const save = (side: Side, y: number): void => {
     void read()
@@ -364,14 +400,17 @@ async function start(): Promise<void> {
       .catch(() => undefined);
   };
   // Open on its own only once, ever: the first page after install shows the full
-  // tab, then it waits tucked until the user reaches for it.
-  const introduce = async (): Promise<boolean> => {
-    const got = await storage.get(PAGE_BUTTON_INTRO_KEY).catch(() => ({}) as Record<string, unknown>);
-    if (got[PAGE_BUTTON_INTRO_KEY] === true) return false;
-    await storage.set({ [PAGE_BUTTON_INTRO_KEY]: true }).catch(() => undefined);
+  // tab, then it waits tucked until the user reaches for it. The flag is saved
+  // without waiting, so the tab does not wait for the write either.
+  const introduce = (seen: unknown): boolean => {
+    if (seen === true) return false;
+    void storage.set({ [PAGE_BUTTON_INTRO_KEY]: true }).catch(() => undefined);
     return true;
   };
-  let ui: EdgeUi | null = pref.on ? mount(pref, save, await introduce()) : null;
+  // Both settings in one read, while the page is still arriving.
+  const [got] = await Promise.all([storage.get([PAGE_BUTTON_KEY, PAGE_BUTTON_INTRO_KEY]).catch(() => none), bodyReady()]);
+  let pref = parsePageButton(got[PAGE_BUTTON_KEY]);
+  let ui: EdgeUi | null = pref.on ? mount(pref, save, introduce(got[PAGE_BUTTON_INTRO_KEY])) : null;
   browser.storage?.onChanged?.addListener((changes, area) => {
     if (area !== "local" || !(PAGE_BUTTON_KEY in changes)) return;
     pref = parsePageButton(changes[PAGE_BUTTON_KEY]?.newValue);
@@ -380,9 +419,12 @@ async function start(): Promise<void> {
       ui = null;
     } else if (!ui) {
       // Turned on from Settings while this page is open.
-      void introduce().then((intro) => {
-        if (pref.on && !ui) ui = mount(pref, save, intro);
-      });
+      void storage
+        .get(PAGE_BUTTON_INTRO_KEY)
+        .catch(() => none)
+        .then((seen) => {
+          if (pref.on && !ui) ui = mount(pref, save, introduce(seen[PAGE_BUTTON_INTRO_KEY]));
+        });
     }
     else ui.place(pref);
   });

@@ -391,3 +391,84 @@ test.describe("iPhone", () => {
     await expect.poll(() => tabThere(page, to)).toBe(true);
   });
 });
+
+// Owner request 2026-10-18: after opening Safari from cold on iPhone, Scout's
+// tab took a few seconds to appear. The worker now starts the edge script at
+// document_start, and the tab shows as soon as the page has a body, while the
+// rest of the page is still loading.
+test.describe("starts with the page", () => {
+  const SLOW_MS = 1500;
+
+  /**
+   * A page whose body arrives at once but whose script at the end takes
+   * SLOW_MS, like a news site on a cold phone. `after` runs once it is loaded.
+   * Records when the tab appeared and when the page finished loading.
+   */
+  async function openSlowPage(page: Page, phone: boolean, after = ""): Promise<void> {
+    await stub(page, { on: true });
+    await page.addInitScript(() => {
+      ((window.top ?? window) as unknown as { __fake: Fake }).__fake.data.pageButtonIntroduced = true;
+      const t = window as unknown as { __tabAt?: number; __loadedAt?: number };
+      new MutationObserver(() => {
+        if (t.__tabAt === undefined && document.querySelector('[style*="2147483647"]')) t.__tabAt = performance.now();
+      }).observe(document, { childList: true, subtree: true });
+      document.addEventListener("DOMContentLoaded", () => (t.__loadedAt = performance.now()));
+    });
+    await page.addInitScript({ path: "apple/Extension/Resources/edge.js" });
+    await page.route("**/slow.js", async (r) => {
+      await new Promise((res) => setTimeout(res, SLOW_MS));
+      await r.fulfill({ contentType: "text/javascript", body: after });
+    });
+    await page.route("**/slow.html", (r) =>
+      r.fulfill({
+        contentType: "text/html",
+        body:
+          "<!doctype html><html><head>" + (phone ? '<meta name="viewport" content="width=device-width, initial-scale=1">' : "") +
+          "<title>Slow</title></head><body><h1>Slow fixture</h1><p>Synthetic text.</p>" +
+          '<script src="/slow.js"></script><div style="height: 3000px"></div></body></html>',
+      }),
+    );
+    await page.goto("/slow.html", { waitUntil: "commit" });
+  }
+
+  const times = (page: Page) =>
+    page.evaluate(() => {
+      const t = window as unknown as { __tabAt?: number; __loadedAt?: number };
+      return { __tabAt: t.__tabAt, __loadedAt: t.__loadedAt };
+    });
+
+  test("the tab shows while the page is still loading, not after", async ({ page }) => {
+    await openSlowPage(page, false);
+    const at = await tabPoint(page);
+    await expect.poll(() => tabThere(page, at), { timeout: 1000 }).toBe(true);
+    await expect.poll(async () => (await times(page)).__loadedAt, { timeout: 5000 }).toBeGreaterThan(0);
+    const t = await times(page);
+    expect(t.__tabAt).toBeDefined();
+    expect((t.__loadedAt ?? 0) - (t.__tabAt ?? 0)).toBeGreaterThan(SLOW_MS - 300);
+    // Still works once the page has loaded.
+    await page.mouse.click(at.x, at.y);
+    await page.mouse.click(at.x, at.y);
+    await expect.poll(() => panelOpens(page)).toBeGreaterThan(0);
+  });
+
+  test("a page that rebuilds itself while loading gets the tab back", async ({ page }) => {
+    await openSlowPage(page, false, 'document.documentElement.innerHTML = "<head><title>Rebuilt</title></head><body><p>Rebuilt.</p></body>";');
+    await expect.poll(async () => (await times(page)).__loadedAt, { timeout: 5000 }).toBeGreaterThan(0);
+    await expect.poll(() => page.title()).toBe("Rebuilt");
+    await expect.poll(async () => tabThere(page, await tabPoint(page))).toBe(true);
+  });
+
+  test.describe("iPhone", () => {
+    test.use({ viewport: { width: 390, height: 664 }, screen: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
+
+    test("the tab is on the screen edge before the page has loaded, and after a scroll", async ({ page }) => {
+      await openSlowPage(page, true);
+      const vp = page.viewportSize() ?? { width: 390, height: 664 };
+      const at = { x: vp.width - 8, y: Math.round(vp.height * 0.45) };
+      await expect.poll(() => tabThere(page, at), { timeout: 1000 }).toBe(true);
+      await expect.poll(async () => (await times(page)).__loadedAt, { timeout: 5000 }).toBeGreaterThan(0);
+      await page.evaluate(() => window.scrollTo(0, 1500));
+      await expect.poll(() => tabThere(page, at)).toBe(true);
+    });
+  });
+});
