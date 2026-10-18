@@ -8,7 +8,6 @@
 import { PANEL_EVENTS, PANEL_PORT, checkSchema, classifySender, createRouter, envelope, parseEnvelope, type MessageSender, type Self } from "./bridge/messages";
 import { createScoutWorker } from "./server/worker";
 import { edgeMatches, EDGE_RUN_AT, EDGE_SCRIPT_ID, PAGE_BUTTON_KEY, pageButtonOffered, parsePageButton, platformOs, sameMatches } from "./panel/edge";
-import { BLUR_LAYER_ID, removePageBlur } from "./panel/blur";
 import { clearTabStates, forgetTab, loadTabStates, setPanelOpen, tabKey } from "./panel/state";
 import { openPanel, toolbarIcon, TITLE_CLOSE, TITLE_OPEN } from "./panel/toolbar";
 
@@ -62,23 +61,18 @@ browser.runtime.onConnect?.addListener((port) => {
     return;
   }
   let tabId: number | undefined;
-  let blurred = false;
   const chat = scout.attachChatPort(port);
   port.onMessage.addListener((raw) => {
     const parsed = parseEnvelope(raw);
     if (parsed.ok && chat(parsed.env)) return;
     if (!parsed.ok || parsed.env.type !== "panel.hello" || checkSchema(PANEL_EVENTS["panel.hello"], parsed.env.payload)) return;
     tabId = (parsed.env.payload as { tabId: number }).tabId;
-    blurred = (parsed.env.payload as { blur?: boolean }).blur === true;
     void browser.action?.setTitle?.({ title: TITLE_CLOSE })?.catch(() => undefined);
     if (storage) void setPanelOpen(storage, tabId, true, Date.now()).catch(() => undefined);
     port.postMessage(envelope("panel.ack", { tabId }, parsed.env.request_id));
   });
   port.onDisconnect.addListener(() => {
     void browser.action?.setTitle?.({ title: TITLE_OPEN })?.catch(() => undefined);
-    if (blurred && tabId !== undefined) {
-      void browser.scripting.executeScript({ target: { tabId }, func: removePageBlur, args: [BLUR_LAYER_ID] }).catch(() => undefined);
-    }
     if (tabId === undefined || !storage) return;
     void setPanelOpen(storage, tabId, false, Date.now()).catch(() => undefined);
   });

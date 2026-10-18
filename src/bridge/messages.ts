@@ -226,8 +226,7 @@ export type RequestType = keyof typeof REQUESTS;
 /** Port events (panel to worker). Worker-to-panel events are listed in WORKER_EVENTS. */
 export const PANEL_EVENTS = {
   /** First message on the port: which tab and window the panel is showing. */
-  /** blur: the panel frosted the page behind it (iPhone); the worker clears it when the port closes. */
-  "panel.hello": { object: { tabId: "number", windowId: "number", blur: "boolean" }, optional: ["windowId", "blur"] },
+  "panel.hello": { object: { tabId: "number", windowId: "number" }, optional: ["windowId"] },
   /** Part 2: stream this answer's events after `after_seq` (0 = from the start). Sent again after a reconnect. */
   "chat.subscribe": { object: { message_id: "string", after_seq: "number" } },
   /** Part 3: send this port the task events of a tab. Sent again after a reconnect. */
