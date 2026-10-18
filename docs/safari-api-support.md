@@ -22,7 +22,7 @@ title to the fetch tool, so Apple is not a source here.
 | `contextMenus` | not in BCD | not in BCD | PRD permission; no feature yet | no. Remove from manifest if Safari rejects it |
 | `activeTab` | not in BCD (permission) | not in BCD | manifest permission | no |
 | `commands` / `_execute_action` (MV3) | 15.4 | 15.4 | "Toggle Scout for Safari" shortcut (Part 1) | no. MDN: changing a command's shortcut is not supported, so it is not user-configurable |
-| `action.openPopup` | 16 | 16 | reopen the panel when switching back to a tab where it was open (Part 1) | no |
+| `action.openPopup` | 16 | 16 | open the panel from the page button (src/edge.ts); no longer reopens it on tab switch (owner request 2026-10-18) | no |
 | `action.setTitle` | 15.4 | 15.4, partial | "Open / Close Scout for Safari" (Part 1) | no. MDN: on iOS the title is not shown |
 | `action.setIcon` | 15.4 | 15.4 | light/dark toolbar icon swap (Part 1) | no |
 | `action` `theme_icons` | not supported | not supported | not used; the worker swaps icons on `prefers-color-scheme` | n/a |
