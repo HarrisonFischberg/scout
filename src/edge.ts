@@ -2,10 +2,9 @@
 // it only on sites the user let Scout access, and only while Settings > Button
 // on webpages is on; it never runs in frames or Private Browsing, and it reads
 // nothing from the page. It draws a tab on the edge of the viewport in a closed
-// shadow root. The tab opens itself once, on the first page after install, and
-// otherwise stays tucked until the user reaches for it; on touch the first tap
-// brings it out and the next one opens Scout (owner requests 2026-10-17). It
-// can be dragged up and down or to the other side. Opening it asks the worker to open Scout's toolbar panel
+// shadow root. It stays out on every page and one tap opens Scout (owner
+// request 2026-10-18; it used to tuck into a sliver). It can be dragged up and
+// down or to the other side. Opening it asks the worker to open Scout's toolbar panel
 // (Safari's sheet over the page on iPhone). It never puts an extension page in
 // the website: Safari runs such a frame in the page's process and kills that
 // process when the frame uses extension APIs (owner bug report 2026-10-16).
@@ -14,14 +13,13 @@ import {
   clampY,
   isDrag,
   KEY_STEP,
-  PAGE_BUTTON_INTRO_KEY,
   PAGE_BUTTON_KEY,
   parsePageButton,
+  PLACE_WAIT_MS,
   snapSide,
+  TAB_SIZE,
   tabScale,
   topLayerTab,
-  tapOnlyWakes,
-  TUCK_AFTER_MS,
   type PageButton,
   type Side,
 } from "./panel/edge";
@@ -42,44 +40,39 @@ const GLYPH =
   '<circle class="lens" cx="46" cy="44" r="2.5"/></svg>';
 
 // Dark glass in both themes, like Safari's own controls: it stands out on
-// light pages, and the light border keeps it visible on dark ones. Awake: a
-// 56 x 60 pill in a 60 x 64 target. Tucked: a 16 px sliver in a 32 px target.
-// --k scales it back to that size on pages Safari zooms out (tabScale).
+// light pages, and the light border keeps it visible on dark ones. A
+// TAB_SIZE pill in a target 4 px larger each way. --k scales it back to that
+// size on pages Safari zooms out (tabScale).
+const { width: W, height: H, glyph: G } = TAB_SIZE;
 const CSS = `
 :host { all: initial; }
 .tab {
-  position: fixed; z-index: 1; top: 45%; right: 0; left: auto; width: 60px; height: 64px; margin: 0; padding: 0;
+  position: fixed; z-index: 1; top: 45%; right: 0; left: auto; width: ${W + 4}px; height: ${H + 4}px; margin: 0; padding: 0;
   border: 0; background: transparent; display: flex; align-items: center; justify-content: flex-end;
   transform: translateY(-50%) scale(var(--k, 1)); transform-origin: right center; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; outline: none;
 }
 .tab[data-side="left"] { right: auto; left: 0; justify-content: flex-start; transform-origin: left center; }
-.tab.tucked { width: 32px; }
 .pill {
-  box-sizing: border-box; display: flex; align-items: center; justify-content: center; width: 56px; height: 60px;
-  border-radius: 30px 0 0 30px; border: 1px solid rgb(255 255 255 / 22%); border-right: 0;
+  box-sizing: border-box; display: flex; align-items: center; justify-content: center; width: ${W}px; height: ${H}px;
+  border-radius: ${H / 2}px 0 0 ${H / 2}px; border: 1px solid rgb(255 255 255 / 22%); border-right: 0;
   background: rgb(44 44 46 / 94%); color: #f2f2f7; box-shadow: 0 2px 14px rgb(0 0 0 / 30%);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
 }
-.tab[data-side="left"] .pill { border-radius: 0 30px 30px 0; border-right: 1px solid rgb(255 255 255 / 22%); border-left: 0; }
-.tab.tucked .pill { width: 16px; }
-.pill svg { width: 30px; height: 30px; flex: none; }
+.tab[data-side="left"] .pill { border-radius: 0 ${H / 2}px ${H / 2}px 0; border-right: 1px solid rgb(255 255 255 / 22%); border-left: 0; }
+.pill svg { width: ${G}px; height: ${G}px; flex: none; }
 .pill .body { fill: currentColor; stroke: rgb(44 44 46); stroke-width: 3; stroke-linejoin: round; }
 .pill .lens { fill: rgb(44 44 46); }
-.tab.tucked svg { opacity: 0; }
 .tab:focus-visible .pill { outline: 2px solid #2997ff; outline-offset: 2px; }
-.tab.dragging { left: 0; right: auto; width: 64px; justify-content: center; transform: translate(-50%, -50%) scale(var(--k, 1)); transform-origin: center; }
-.tab.dragging .pill { width: 60px; border-radius: 30px; border: 1px solid rgb(255 255 255 / 22%); }
-@media (prefers-reduced-motion: no-preference) {
-  .tab:not(.dragging) .pill { transition: width 180ms ease; }
-  .pill svg { transition: opacity 150ms ease; }
-}
+.tab.dragging { left: 0; right: auto; width: ${H + 4}px; justify-content: center; transform: translate(-50%, -50%) scale(var(--k, 1)); transform-origin: center; }
+.tab.dragging .pill { width: ${H}px; border-radius: ${H / 2}px; border: 1px solid rgb(255 255 255 / 22%); }
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); box-sizing: border-box; margin: 0;
   width: max-content; max-width: calc(100vw - 32px); padding: 8px 12px; border-radius: 10px;
   font: 14px/1.4 -apple-system, system-ui, sans-serif; background: rgb(44 44 46); color: #f5f5f7;
 }
 .toast:empty { display: none; }
+.waiting { visibility: hidden; }
 `;
 
 // Inline !important on the host beats any page stylesheet.
@@ -110,6 +103,8 @@ const HOST_STYLE = [
 
 interface EdgeUi {
   place(p: PageButton): void;
+  /** Shows a tab mounted hidden while its saved place was still loading. */
+  reveal(): void;
   destroy(): void;
 }
 
@@ -127,7 +122,7 @@ function viewportInfo(): Parameters<typeof tabScale>[0] {
   };
 }
 
-function mount(initial: PageButton, save: (side: Side, y: number) => void, introduce: boolean): EdgeUi {
+function mount(initial: PageButton, save: (side: Side, y: number) => void, hidden = false): EdgeUi {
   const host = document.createElement("div");
   host.setAttribute("style", HOST_STYLE);
   const root = host.attachShadow({ mode: "closed" });
@@ -137,6 +132,7 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, intro
     '<p class="toast" role="status"></p>';
   const tab = root.querySelector("button") as HTMLButtonElement;
   const toastNode = root.querySelector("p") as HTMLParagraphElement;
+  if (hidden) tab.classList.add("waiting");
 
   let side = initial.side;
   let y = initial.y;
@@ -155,33 +151,15 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, intro
   window.visualViewport?.addEventListener("resize", rescale);
   window.addEventListener("resize", rescale);
 
-  // ---------- Small when not in use ----------
-  // Starts tucked except the very first time; only the user brings it out.
-  let tuckTimer = 0;
-  let pointer: { x: number; y: number; id: number; type: string; wasTucked: boolean } | null = null;
+  let pointer: { x: number; y: number; id: number } | null = null;
   let dragging = false;
   let suppressClick = false;
-  // The tap that brought a tucked tab out (touch): its click does not open Scout.
-  let wakeTap = false;
-  if (!introduce) tab.classList.add("tucked");
-  const scheduleTuck = (): void => {
-    window.clearTimeout(tuckTimer);
-    tuckTimer = window.setTimeout(() => {
-      if (root.activeElement !== tab && !pointer) tab.classList.add("tucked");
-    }, TUCK_AFTER_MS);
-  };
-  const wake = (): void => {
-    tab.classList.remove("tucked");
-    scheduleTuck();
-  };
 
   // ---------- Move: drag, or arrow keys when focused ----------
   tab.addEventListener("pointerdown", (e) => {
     if (!e.isTrusted || e.button !== 0) return;
-    pointer = { x: e.clientX, y: e.clientY, id: e.pointerId, type: e.pointerType, wasTucked: tab.classList.contains("tucked") };
+    pointer = { x: e.clientX, y: e.clientY, id: e.pointerId };
     dragging = false;
-    wakeTap = false;
-    wake();
     try {
       tab.setPointerCapture(e.pointerId);
     } catch {
@@ -198,9 +176,7 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, intro
   });
   const endPointer = (e: PointerEvent, cancelled: boolean): void => {
     if (!pointer || e.pointerId !== pointer.id) return;
-    const ended = pointer;
     pointer = null;
-    if (!dragging && !cancelled && tapOnlyWakes(ended.type, ended.wasTucked)) wakeTap = true;
     if (dragging) {
       dragging = false;
       suppressClick = true;
@@ -213,17 +189,9 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, intro
       }
       placeTab();
     }
-    wake();
   };
   tab.addEventListener("pointerup", (e) => endPointer(e, false));
   tab.addEventListener("pointercancel", (e) => endPointer(e, true));
-  // Hover wakes it for a mouse only: on touch, pointerenter comes with every tap.
-  tab.addEventListener("pointerenter", (e) => {
-    if (e.pointerType === "mouse") wake();
-  });
-  tab.addEventListener("focus", wake);
-  // Losing focus (the panel opening, the user moving on) only lets it tuck again.
-  tab.addEventListener("blur", scheduleTuck);
   tab.addEventListener("keydown", (e) => {
     if (!e.isTrusted) return;
     if (e.key === "ArrowUp") y = clampY(y - KEY_STEP);
@@ -250,10 +218,6 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, intro
   tab.addEventListener("click", (e) => {
     if (suppressClick) {
       suppressClick = false;
-      return;
-    }
-    if (wakeTap) {
-      wakeTap = false;
       return;
     }
     // Only a real tap or key press opens Scout; page scripts cannot.
@@ -300,9 +264,11 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, intro
   });
   keep.observe(document, { childList: true });
   keep.observe(document.documentElement, { childList: true });
-  if (introduce) wake();
 
   return {
+    reveal() {
+      tab.classList.remove("waiting");
+    },
     place(p) {
       if (pointer) return;
       side = p.side;
@@ -310,7 +276,6 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, intro
       placeTab();
     },
     destroy() {
-      window.clearTimeout(tuckTimer);
       window.clearTimeout(toastTimer);
       window.visualViewport?.removeEventListener("resize", rescale);
       window.removeEventListener("resize", rescale);
@@ -352,18 +317,31 @@ async function start(): Promise<void> {
       .then((latest) => storage.set({ [PAGE_BUTTON_KEY]: { ...latest, side, y } }))
       .catch(() => undefined);
   };
-  // Open on its own only once, ever: the first page after install shows the full
-  // tab, then it waits tucked until the user reaches for it. The flag is saved
-  // without waiting, so the tab does not wait for the write either.
-  const introduce = (seen: unknown): boolean => {
-    if (seen === true) return false;
-    void storage.set({ [PAGE_BUTTON_INTRO_KEY]: true }).catch(() => undefined);
-    return true;
-  };
-  // Both settings in one read, while the page is still arriving.
-  const [got] = await Promise.all([storage.get([PAGE_BUTTON_KEY, PAGE_BUTTON_INTRO_KEY]).catch(() => none), bodyReady()]);
-  let pref = parsePageButton(got[PAGE_BUTTON_KEY]);
-  let ui: EdgeUi | null = pref.on ? mount(pref, save, introduce(got[PAGE_BUTTON_INTRO_KEY])) : null;
+  // The worker registers this script only while the button is on, so the tab
+  // is drawn as soon as the page has a body, without waiting on storage, which
+  // can be slow right after Safari starts (owner request 2026-10-18). It stays
+  // hidden until the saved place arrives or PLACE_WAIT_MS passes, whichever is
+  // first; a stored "off" (turned off a moment ago) removes it again.
+  const stored = storage.get(PAGE_BUTTON_KEY).then(
+    (got) => parsePageButton(got[PAGE_BUTTON_KEY]),
+    () => parsePageButton({ on: true }),
+  );
+  await bodyReady();
+  let pref: PageButton = parsePageButton({ on: true });
+  let ui: EdgeUi | null = mount(pref, save, true);
+  const waitTimer = window.setTimeout(() => ui?.reveal(), PLACE_WAIT_MS);
+  void stored.then((p) => {
+    window.clearTimeout(waitTimer);
+    pref = p;
+    if (!ui) return;
+    if (!p.on) {
+      ui.destroy();
+      ui = null;
+      return;
+    }
+    ui.place(p);
+    ui.reveal();
+  });
   browser.storage?.onChanged?.addListener((changes, area) => {
     if (area !== "local" || !(PAGE_BUTTON_KEY in changes)) return;
     pref = parsePageButton(changes[PAGE_BUTTON_KEY]?.newValue);
@@ -372,14 +350,8 @@ async function start(): Promise<void> {
       ui = null;
     } else if (!ui) {
       // Turned on from Settings while this page is open.
-      void storage
-        .get(PAGE_BUTTON_INTRO_KEY)
-        .catch(() => none)
-        .then((seen) => {
-          if (pref.on && !ui) ui = mount(pref, save, introduce(seen[PAGE_BUTTON_INTRO_KEY]));
-        });
-    }
-    else ui.place(pref);
+      ui = mount(pref, save);
+    } else ui.place(pref);
   });
 }
 
