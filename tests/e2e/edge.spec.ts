@@ -283,9 +283,11 @@ test("Settings turns the button on: asks Safari for site access and shows it on 
   await expect(page.locator("#pagebutton-status")).toHaveText("Off.");
 });
 
-// Owner bug report 2026-10-18: on iPhone, Safari 26 paints a solid strip under
-// its bottom bar as soon as a page has any fixed or sticky element, so the page
-// looked different once Scout loaded. On a phone the tab lives in the page.
+// Owner bug report 2026-10-18: on iPhone, the page stopped showing through
+// Safari 26's bottom bar once Scout loaded. The tab was a popover, and every
+// top-layer element gets a full-screen fixed ::backdrop that Safari takes as a
+// dimming layer, painting the page background under the bar. A later attempt
+// moved the tab into the page and made pages zoom out. Now: a plain fixed tab.
 test.describe("iPhone", () => {
   test.use({ viewport: { width: 390, height: 664 }, screen: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
 
@@ -299,14 +301,17 @@ test.describe("iPhone", () => {
     });
   }
 
-  /** Every element on the page, shadow content included, whose position Safari treats as fixed to the screen. */
+  /** Every shown element on the page, shadow content included, that is fixed or sticky to the screen, with its box. */
   const pinned = (page: Page) =>
     page.evaluate(() => {
-      const out: string[] = [];
+      const out: Array<{ name: string; width: number; height: number; bottom: number }> = [];
       const walk = (root: Document | ShadowRoot): void => {
         for (const el of Array.from(root.querySelectorAll("*"))) {
-          const pos = getComputedStyle(el).position;
-          if (pos === "fixed" || pos === "sticky") out.push(el.tagName.toLowerCase() + "." + (el.getAttribute("class") ?? "") + " " + pos);
+          const cs = getComputedStyle(el);
+          if ((cs.position === "fixed" || cs.position === "sticky") && cs.display !== "none") {
+            const r = el.getBoundingClientRect();
+            out.push({ name: el.tagName.toLowerCase() + "." + (el.getAttribute("class") ?? ""), width: r.width, height: r.height, bottom: r.bottom });
+          }
           if (el.shadowRoot) walk(el.shadowRoot);
         }
       };
@@ -339,13 +344,21 @@ test.describe("iPhone", () => {
       document.body.appendChild(spacer);
     });
 
-  test("the tab adds nothing fixed or sticky to the page, so Safari's bottom bar stays see-through", async ({ page }) => {
+  test("the tab is not in the top layer and adds nothing fixed across the screen or along its bottom edge", async ({ page }) => {
     await openShadows(page);
     await openPhonePage(page);
     const vp = page.viewportSize() ?? { width: 390, height: 664 };
     const y = Math.round(vp.height * 0.45);
     await expect.poll(() => tabThere(page, { x: vp.width - 8, y })).toBe(true);
-    expect(await pinned(page)).toEqual([]);
+    // No top layer, so no ::backdrop over the whole screen.
+    expect(await page.evaluate(() => document.querySelectorAll(":popover-open, :modal").length)).toBe(0);
+    // Every fixed box Scout adds is small and away from the bottom edge.
+    const boxes = await pinned(page);
+    expect(boxes.length).toBeGreaterThan(0);
+    for (const b of boxes) {
+      expect(b.width < vp.width * 0.9 || b.height < vp.height * 0.9, b.name).toBe(true);
+      expect(b.bottom, b.name).toBeLessThan(vp.height - 8);
+    }
   });
 
   test("the tab stays on the screen edge while the page scrolls, without making the page longer", async ({ page }) => {
@@ -469,6 +482,24 @@ test.describe("starts with the page", () => {
       await expect.poll(async () => (await times(page)).__loadedAt, { timeout: 5000 }).toBeGreaterThan(0);
       await page.evaluate(() => window.scrollTo(0, 1500));
       await expect.poll(() => tabThere(page, at)).toBe(true);
+    });
+
+    // Owner bug report 2026-10-18: citizenfreepress.com and espn.com zoomed out
+    // when the tab arrived before the page had set its viewport.
+    test("the tab never makes the page wider, so Safari has no reason to zoom out", async ({ page }) => {
+      await openSlowPage(page, true);
+      await expect.poll(async () => (await times(page)).__loadedAt, { timeout: 5000 }).toBeGreaterThan(0);
+      await page.waitForTimeout(300);
+      const m = await page.evaluate(() => ({ scrollWidth: document.scrollingElement?.scrollWidth ?? 0, scale: visualViewport?.scale ?? 1, width: visualViewport?.width ?? 0 }));
+      expect(m).toEqual({ scrollWidth: 390, scale: 1, width: 390 });
+    });
+
+    test("on a page with no mobile viewport, the page is exactly as wide as without Scout", async ({ page }) => {
+      await openSlowPage(page, false);
+      await expect.poll(async () => (await times(page)).__loadedAt, { timeout: 5000 }).toBeGreaterThan(0);
+      await page.waitForTimeout(300);
+      const m = await page.evaluate(() => ({ scrollWidth: document.scrollingElement?.scrollWidth ?? 0, clientWidth: document.documentElement.clientWidth }));
+      expect(m.scrollWidth).toBe(m.clientWidth);
     });
   });
 });
