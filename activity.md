@@ -1690,3 +1690,10 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Cause (inferred from the difference, not traced on device): Settings focuses its heading on open; the chat view focuses nothing on iPhone so the keyboard stays down. With nothing focused the panel's window never had focus, so its `blur` event (the goodbye from #31) never fired and the layer waited out its 350 ms timeout.
 - Fix: on iPhone the panel focuses the chat's visually hidden heading (`#chat-title`, `tabindex="-1"`) as it starts, which gives the window focus without raising the keyboard.
 - Evidence: new e2e `touch device › iPhone screen › focuses the chat heading on open…` fails without the fix and passes with it (Chromium). Unit 459/460 (known Take control failure), typecheck, lint, `check:release` clean; a11y Option+Tab and edge arrow-key e2e fail identically on main in Chromium.
+
+## 2026-10-18: iPhone panel text size and starter spacing (owner request)
+
+- Asked: smaller text; "Summarize / Explain" starters closer to the "Ask anything..." box; panel about 20% smaller; panel should not grow to full height when the box is tapped.
+- Done (`src/popup.html`): on iPhone body text 15→14 px, starters 18→16 px, model pill 15→14 px, composer buttons 38→36 px; the question box stays 16 px because iOS zooms the page on smaller inputs. The empty conversation log and an empty status line no longer reserve space, so the gap between the starters and the composer drops from about 60 px to about 10 px (Mac too).
+- Not changeable from the extension: on iPhone the panel is Safari's own sheet (`action.openPopup`). Safari picks its height and grows it to full height when the keyboard opens; the popup page cannot set the sheet size. The earlier in-page panel was removed because Safari kills such frames (2026-10-16).
+- Evidence: Chromium render 393 px wide, touch, `/mnt/project-files/panel-size/before.png` and `after.png` (not Safari). Unit 459/460 (known Take control failure), typecheck, lint, `check:release` clean. Needs the real iPhone check.
