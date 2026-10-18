@@ -7,7 +7,7 @@
 // runs there, and a closed tab ends its task.
 import { PANEL_EVENTS, PANEL_PORT, checkSchema, classifySender, createRouter, envelope, parseEnvelope, type MessageSender, type Self } from "./bridge/messages";
 import { createScoutWorker } from "./server/worker";
-import { edgeMatches, EDGE_SCRIPT_ID, PAGE_BUTTON_KEY, pageButtonOffered, parsePageButton, platformOs, sameMatches } from "./panel/edge";
+import { edgeMatches, EDGE_RUN_AT, EDGE_SCRIPT_ID, PAGE_BUTTON_KEY, pageButtonOffered, parsePageButton, platformOs, sameMatches } from "./panel/edge";
 import { BLUR_LAYER_ID, removePageBlur } from "./panel/blur";
 import { clearTabStates, forgetTab, loadTabStates, setPanelOpen, tabKey } from "./panel/state";
 import { openPanel, toolbarIcon, TITLE_CLOSE, TITLE_OPEN } from "./panel/toolbar";
@@ -107,10 +107,11 @@ async function syncPageButton(): Promise<void> {
   const matches = pref.on && pageButtonOffered(await platformOs()) ? edgeMatches((await browser.permissions.getAll()).origins ?? []) : [];
   const existing = (await scripting.getRegisteredContentScripts?.({ ids: [EDGE_SCRIPT_ID] }).catch(() => [])) ?? [];
   const current = existing.find((s) => s.id === EDGE_SCRIPT_ID);
-  if (current ? sameMatches(current.matches ?? [], matches) : matches.length === 0) return;
+  // An older install registered it at document_idle; re-register so it starts early.
+  if (current ? current.runAt === EDGE_RUN_AT && sameMatches(current.matches ?? [], matches) : matches.length === 0) return;
   if (current) await scripting.unregisterContentScripts({ ids: [EDGE_SCRIPT_ID] });
   if (matches.length) {
-    await scripting.registerContentScripts([{ id: EDGE_SCRIPT_ID, js: ["edge.js"], matches, runAt: "document_idle", allFrames: false }]);
+    await scripting.registerContentScripts([{ id: EDGE_SCRIPT_ID, js: ["edge.js"], matches, runAt: EDGE_RUN_AT, allFrames: false }]);
   }
 }
 

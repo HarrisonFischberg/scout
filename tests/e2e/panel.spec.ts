@@ -135,3 +135,39 @@ test("the panel works in Private Browsing like in any other tab, and marks the c
   expect(conv).toBeTruthy();
   expect(stored.privateConversations).toEqual({ "3": [conv] });
 });
+
+// Owner request 2026-10-18: Scout should be usable sooner after Safari starts
+// from cold. Each Keychain read wakes the app's native handler, slow the first
+// time, so the panel reads both keys once, in parallel, as it opens.
+test("opening the panel reads the saved keys in one parallel round, not one after another", async ({ page }) => {
+  await page.addInitScript(() => {
+    const g = globalThis as unknown as Record<string, unknown>;
+    const reads: Array<{ start: number; end?: number }> = [];
+    g.__keyReads = reads;
+    let real: { runtime: { sendNativeMessage: (app: string, m: { type: string }) => Promise<unknown> } } | undefined;
+    Object.defineProperty(g, "browser", {
+      configurable: true,
+      get: () => real,
+      set: (v: typeof real) => {
+        real = v;
+        if (!v) return;
+        const send = v.runtime.sendNativeMessage;
+        v.runtime.sendNativeMessage = async (app, m) => {
+          if (m.type !== "keychain.get") return send(app, m);
+          const r: { start: number; end?: number } = { start: performance.now() };
+          reads.push(r);
+          await new Promise((res) => setTimeout(res, 400));
+          r.end = performance.now();
+          return send(app, m);
+        };
+      },
+    });
+  });
+  await openPanel(page, { id: 1 });
+  await expect(page.getByLabel("Ask about this page")).toBeVisible();
+  const reads = await page.evaluate(() => (globalThis as unknown as { __keyReads: Array<{ start: number; end?: number }> }).__keyReads);
+  expect(reads).toHaveLength(2);
+  // Both started before either finished.
+  const firstEnd = Math.min(...reads.map((r) => r.end ?? Infinity));
+  expect(reads.every((r) => r.start < firstEnd)).toBe(true);
+});

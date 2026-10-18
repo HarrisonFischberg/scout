@@ -139,6 +139,15 @@ export const KEY_STEP = 0.05;
 /** Id of the content script the worker registers (scripting.registerContentScripts). */
 export const EDGE_SCRIPT_ID = "scout-edge";
 
+/**
+ * When the edge script runs. document_start, not document_idle: the tab then
+ * shows as soon as the page has a body, instead of after the whole page and its
+ * scripts have loaded (owner request 2026-10-18: Scout took a few seconds to
+ * appear after opening Safari from cold on iPhone). The script waits for the
+ * body itself (src/edge.ts).
+ */
+export const EDGE_RUN_AT = "document_start";
+
 const PROVIDER_HOSTS = ["api.anthropic.com", "api.openai.com"];
 const MATCH = /^(\*|https?):\/\/(\*|(\*\.)?[^/*]+)\/.*$/;
 
