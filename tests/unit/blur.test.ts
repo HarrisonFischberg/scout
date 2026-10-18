@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PANEL_EVENTS, checkSchema } from "../../src/bridge/messages";
-import { addPageBlur, BLUR_PING_MS, BLUR_TIMEOUT_MS, PAGE_BLUR_BOTTOM_GAP_PX, PAGE_BLUR_PX, PAGE_DIM, wantsPageBlur } from "../../src/panel/blur";
+import { addPageBlur, BLUR_FADE_IN_MS, BLUR_PING_MS, BLUR_TIMEOUT_MS, PAGE_BLUR_BOTTOM_GAP_PX, PAGE_BLUR_PX, PAGE_DIM, wantsPageBlur } from "../../src/panel/blur";
 
 describe("page blur behind the panel (owner design 2026-10-17)", () => {
   it("only on a phone-sized touch screen", () => {
@@ -38,11 +38,11 @@ describe("page blur behind the panel (owner design 2026-10-17)", () => {
   describe("clears itself when the panel closes", () => {
     const ID = "__safari-scout-blur";
     let listener: ((m: unknown) => void) | null = null;
-    let layer: { id: string; removed: boolean } | null = null;
+    let layer: { id: string; removed: boolean; style: Record<string, string> } | null = null;
     const fakePage = (): void => {
       listener = null;
       layer = null;
-      const el = { id: "", removed: false, style: { cssText: "" }, setAttribute() {}, remove() { el.removed = true; layer = null; } };
+      const el = { id: "", removed: false, style: { cssText: "", opacity: "", transition: "" } as Record<string, string>, setAttribute() {}, remove() { el.removed = true; layer = null; } };
       vi.stubGlobal("document", {
         getElementById: (id: string) => (layer && layer.id === id ? el : null),
         createElement: () => {
@@ -83,6 +83,31 @@ describe("page blur behind the panel (owner design 2026-10-17)", () => {
       expect(layer).toBeNull();
       expect(BLUR_TIMEOUT_MS).toBeGreaterThanOrEqual(BLUR_PING_MS * 3);
       expect(BLUR_TIMEOUT_MS).toBeLessThanOrEqual(1000);
+    });
+
+    // Owner request 2026-10-18: the blur should come and go quickly.
+    it("fades in quickly, and goes at once on close", () => {
+      vi.useFakeTimers();
+      fakePage();
+      let frame: (() => void) | null = null;
+      vi.stubGlobal("matchMedia", () => ({ matches: false }));
+      vi.stubGlobal("requestAnimationFrame", (f: () => void) => (frame = f));
+      addPageBlur(ID, BLUR_TIMEOUT_MS, BLUR_FADE_IN_MS);
+      expect(BLUR_FADE_IN_MS).toBeLessThanOrEqual(150);
+      expect(layer?.style.transition).toBe(`opacity ${BLUR_FADE_IN_MS}ms ease-out`);
+      expect(layer?.style.opacity).toBe("0");
+      (frame as (() => void) | null)?.();
+      expect(layer?.style.opacity).toBe("1");
+      listener?.({ blur: ID, alive: false });
+      expect(layer).toBeNull();
+    });
+
+    it("skips the fade for people who ask for reduced motion", () => {
+      vi.useFakeTimers();
+      fakePage();
+      vi.stubGlobal("matchMedia", () => ({ matches: true }));
+      addPageBlur(ID, BLUR_TIMEOUT_MS, BLUR_FADE_IN_MS);
+      expect(layer?.style.opacity).toBe("");
     });
 
     it("ignores messages that are not its own", () => {
