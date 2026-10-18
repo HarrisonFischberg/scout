@@ -1808,3 +1808,7 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Cause: the + menu (and the @ tab list) are `position: absolute; bottom: 100%` of `#composer`. #49 moved Summarize / Explain into the composer on iPhone, so the composer grew and the menu opened above the starters.
 - Fix: both lists move inside `.composer-box` (now `position: relative`), so they anchor to the question box on Mac and iPhone alike. Docking from #49 is unchanged.
 - Evidence: new e2e (redesign spec, touch device) taps +, checks the menu sits 0–10 px above the question box at its left edge, and that tapping Find coupons starts the search; it failed before the fix (76 px gap) and passes after. Unit 468/469 (known Take control failure), typecheck, lint clean. Needs the iPhone check.
+
+## 2026-10-18 — iPhone quick ask removed (owner decision)
+
+- Owner tried the quick ask box from #51 on his iPhone and decided not to keep it. This reverts #51 exactly; the page tab opens Scout's sheet directly again. The pre-#51 state is also kept as branch `saved/before-quick-ask`.
