@@ -11,6 +11,7 @@ import { edgeMatches, EDGE_RUN_AT, EDGE_SCRIPT_ID, PAGE_BUTTON_KEY, pageButtonOf
 import { clearTabStates, forgetTab, loadTabStates, setPanelOpen, tabKey } from "./panel/state";
 import { openPanel, toolbarIcon, TITLE_CLOSE, TITLE_OPEN } from "./panel/toolbar";
 import { createWarmer } from "./panel/warm";
+import { createAskQueue, parseQuickAsk } from "./panel/quick-ask";
 import { nativeSend } from "./keychain";
 
 const self = (): Self => ({ id: browser.runtime.id ?? "", baseUrl: browser.runtime.getURL?.("") ?? "" });
@@ -29,6 +30,11 @@ dark?.addEventListener?.("change", syncIcon);
 // while a page loads means the panel's Keychain reads find it running.
 const warmNative = createWarmer(nativeSend);
 
+// ---------- Quick ask (src/quick-ask.ts) ----------
+// Held here between the tap on the page and Scout's panel opening; in memory
+// only, and taken once.
+const quickAsks = createAskQueue();
+
 // ---------- Request/response ----------
 const scout = createScoutWorker(storage, {
   setIcon: async (tabId, active) => {
@@ -46,6 +52,18 @@ const route = createRouter(
     },
     // Page button (src/edge.ts): Safari's own panel, never a frame in the page.
     "panel.open": () => openPanel(browser.action),
+    // Quick ask: keep the question for this tab, then open the panel (still
+    // inside the tap, which Safari needs to open it).
+    "panel.ask": async (p: unknown, sender) => {
+      const tabId = sender.raw.tab?.id;
+      const asked = parseQuickAsk(p);
+      if (tabId === undefined || !asked) return { opened: false };
+      quickAsks.put(tabId, asked, Date.now());
+      const r = await openPanel(browser.action);
+      if (!r.opened) quickAsks.drop(tabId);
+      return r;
+    },
+    "panel.take_ask": (p: { tabId: number }) => quickAsks.take(p.tabId, Date.now()) ?? {},
     // Page button loaded or touched: answer at once, warm in the background.
     "panel.warm": () => {
       void warmNative();

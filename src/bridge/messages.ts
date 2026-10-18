@@ -127,6 +127,10 @@ export const REQUESTS = {
   "panel.state": { senders: ["panel"], payload: { object: { tabId: "number" } } },
   /** Page button (src/edge.ts): the user tapped it; open the toolbar panel. */
   "panel.open": { senders: ["content"], payload: { object: {} } },
+  /** Quick ask on a phone (src/quick-ask.ts): open the toolbar panel and have it run this. */
+  "panel.ask": { senders: ["content"], payload: { object: { kind: { enum: ["ask", "summarize"] }, question: "string" } } },
+  /** The panel, as it opens: the quick ask waiting for its tab, if any (one time). */
+  "panel.take_ask": { senders: ["panel"], payload: { object: { tabId: "number" } } },
   /** Page button: a page with the button loaded, or a finger on it. The worker gets the app's handler ready (src/panel/warm.ts). */
   "panel.warm": { senders: ["content"], payload: { object: {} } },
   // ---------- Part 2: conversation, context and tools ----------
