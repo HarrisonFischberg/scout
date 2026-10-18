@@ -10,7 +10,7 @@ import type { Action, ActionResult } from "./actions/executor";
 import type { Snapshot } from "./snapshot/snapshot";
 import { CONTENT_HANDLER, OVERLAY_HANDLER, type ContentRequest, type OverlayRequest } from "./content-api";
 import { callInjected } from "./content-call";
-import { addPageBlur, BLUR_LAYER_ID, BLUR_PING_MS, BLUR_TIMEOUT_MS, wantsPageBlur, type BlurPing } from "./panel/blur";
+import { addPageBlur, BLUR_FADE_IN_MS, BLUR_LAYER_ID, BLUR_PING_MS, BLUR_TIMEOUT_MS, wantsPageBlur, type BlurPing } from "./panel/blur";
 import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { chipSources, renderMarkdown } from "./chat/markdown";
 import { answerText, fillSourceCard, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
@@ -439,6 +439,39 @@ const CONTEXT_TURNS = 10;
 /** The moving "processing" indicator: coupon milestones, a Working card's head, and an answer before its first words. */
 const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></span>';
 
+/**
+ * iPhone: frost the page above the sheet (src/panel/blur.ts) as soon as the
+ * panel starts, without waiting for settings or the chat (owner request
+ * 2026-10-18: the blur should come and go quickly). Keeps the layer alive
+ * while the panel is open and clears it the moment the panel closes. Best
+ * effort: pages Scout cannot script stay as they are. Resolves to the blurred
+ * tab's id.
+ */
+async function frostPage(): Promise<number | undefined> {
+  if (!wantsPageBlur(matchMedia("(pointer: coarse)").matches, screen.width)) return undefined;
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true }).catch(() => []);
+  const tabId = tab?.id;
+  if (tabId === undefined) return undefined;
+  const ok = await browser.scripting
+    .executeScript({ target: { tabId }, func: addPageBlur, args: [BLUR_LAYER_ID, BLUR_TIMEOUT_MS, BLUR_FADE_IN_MS] })
+    .then(() => true, () => false);
+  if (!ok) return undefined;
+  const ping = (alive: boolean): void => {
+    const m: BlurPing = { blur: BLUR_LAYER_ID, alive };
+    void browser.tabs.sendMessage?.(tabId, m)?.catch(() => undefined);
+  };
+  const pinger = window.setInterval(() => ping(true), BLUR_PING_MS);
+  const bye = (): void => {
+    window.clearInterval(pinger);
+    ping(false);
+  };
+  window.addEventListener("pagehide", bye);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") bye();
+  });
+  return tabId;
+}
+
 async function main(): Promise<void> {
   const chatView = el("chat-view");
   const settingsView = el("settings-view");
@@ -469,6 +502,8 @@ async function main(): Promise<void> {
   const confirmDeny = el<HTMLButtonElement>("confirm-deny");
 
   const storage: StorageArea | undefined = browser.storage?.local;
+  // iPhone: frost the page above the sheet first, before anything else loads.
+  const frosting = frostPage();
   const keychain = createKeychain(nativeSend);
   // Started now so the Keychain reads run while the rest of the panel loads;
   // the first connect() uses them, later ones read again.
@@ -498,31 +533,8 @@ async function main(): Promise<void> {
   const store = new ConversationStore();
   let conv = storage ? await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "") : "";
   let port: PanelPort | null = null;
-  // iPhone: frost the page above the sheet (src/panel/blur.ts). Best effort:
-  // pages Scout cannot script stay as they are.
-  let blurred = false;
-  if (tab.id !== undefined && wantsPageBlur(matchMedia("(pointer: coarse)").matches, screen.width)) {
-    blurred = await browser.scripting
-      .executeScript({ target: { tabId: tab.id }, func: addPageBlur, args: [BLUR_LAYER_ID, BLUR_TIMEOUT_MS] })
-      .then(() => true, () => false);
-  }
-  if (blurred && tab.id !== undefined) {
-    // Keep the layer alive while this panel is open; clear it the moment it closes.
-    const tabId = tab.id;
-    const ping = (alive: boolean): void => {
-      const m: BlurPing = { blur: BLUR_LAYER_ID, alive };
-      void browser.tabs.sendMessage?.(tabId, m)?.catch(() => undefined);
-    };
-    const pinger = window.setInterval(() => ping(true), BLUR_PING_MS);
-    const bye = (): void => {
-      window.clearInterval(pinger);
-      ping(false);
-    };
-    window.addEventListener("pagehide", bye);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") bye();
-    });
-  }
+  // The page blur started as the panel opened (frostPage, above).
+  const blurred = tab.id !== undefined && (await frosting) === tab.id;
   if (browser.runtime.connect && tab.id !== undefined) {
     const tabId = tab.id;
     try {
