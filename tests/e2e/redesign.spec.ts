@@ -18,7 +18,7 @@ function sse(text: string): string {
   return ev.map((e) => "event: " + e.type + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
 }
 
-async function openPopup(page: Page, opts: { keys?: Record<string, string>; data?: Record<string, unknown>; pageData?: typeof PAGE & { favIconUrl?: string } } = {}): Promise<void> {
+async function openPopup(page: Page, opts: { keys?: Record<string, string>; data?: Record<string, unknown>; pageData?: typeof PAGE & { favIconUrl?: string }; path?: string } = {}): Promise<void> {
   await page.addInitScript(
     ({ keys, data, pageData }) => {
       const g = globalThis as unknown as Record<string, unknown>;
@@ -39,9 +39,15 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
           },
           onMessage: { addListener() {} },
         },
-        tabs: { query: async () => [{ id: 1, url: pageData.url, title: pageData.title, active: true, favIconUrl: (pageData as { favIconUrl?: string }).favIconUrl }] },
+        tabs: {
+          query: async () => [{ id: 1, url: pageData.url, title: pageData.title, active: true, favIconUrl: (pageData as { favIconUrl?: string }).favIconUrl }],
+          create: async (p: { url: string }) => {
+            g.__created = [...((g.__created as string[] | undefined) ?? []), p.url];
+            return { id: 2, url: p.url };
+          },
+        },
         permissions: { request: async () => true, getAll: async () => ({ origins: [] }), remove: async () => true },
-        scripting: { executeScript: async () => [{ result: pageData }] },
+        scripting: { executeScript: async () => { g.__reads = ((g.__reads as number | undefined) ?? 0) + 1; return [{ result: pageData }]; } },
         storage: {
           local: {
             get: async (k: string | string[]) => {
@@ -57,7 +63,7 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
     // Sharing with the providers already allowed (consent.spec.ts covers asking).
     { keys: opts.keys ?? {}, data: { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } }, ...(opts.data ?? {}) }, pageData: opts.pageData ?? PAGE },
   );
-  await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
+  await page.route("**/popup.html*", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
   await page.route("**/icons/**", (r) => r.fulfill({ status: 200, contentType: "image/png", body: "" }));
   await page.route("https://api.anthropic.com/v1/models**", (r) =>
@@ -67,7 +73,7 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
     r.fulfill({ status: 200, contentType: "text/event-stream", body: sse("The widget costs **$10**.") }),
   );
   await withWorker(page);
-  await page.goto("/popup.html");
+  await page.goto(opts.path ?? "/popup.html");
 }
 
 test("no key: Add API key opens Settings at the key field; a bad key is explained; a good key is saved to the Keychain only", async ({ page }) => {
@@ -354,4 +360,29 @@ test("scrolling up to read is respected while the composer grows", async ({ page
   });
   await page.getByLabel("Ask about this page").fill("one\ntwo\nthree\nfour");
   await expect(page.getByRole("log").getByText("Question number 0")).toBeInViewport();
+});
+
+test("Open in new tab: the header button opens Scout as its own page, which hides page-only actions and reads no page", async ({ page }) => {
+  await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+  const header = page.locator("#chat-view > header");
+  const open = header.getByRole("button", { name: "Open Scout in a new tab" });
+  await expect(open).toBeVisible();
+  await page.evaluate(() => ((globalThis as unknown as { close: () => void }).close = () => undefined));
+  await open.click();
+  await expect.poll(() => page.evaluate(() => (globalThis as unknown as { __created?: string[] }).__created)).toEqual([new URL("/popup.html?view=page", page.url()).href]);
+
+  await openPopup(page, { keys: { anthropic: GOOD_KEY }, path: "/popup.html?view=page" });
+  await expect(page.getByRole("heading", { name: "Scout for Safari" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open Scout in a new tab" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "New chat" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Summarize this page" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "More actions" })).toBeHidden();
+  await expect(page.getByRole("radio", { name: "Scout" })).toBeHidden();
+
+  await page.getByRole("textbox").fill("What is 2 + 2?");
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("The widget costs")).toBeVisible();
+  await expect(page.getByText("Could not read this page")).toHaveCount(0);
+  expect(await page.evaluate(() => (globalThis as unknown as { __reads?: number }).__reads ?? 0)).toBe(0);
 });

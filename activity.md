@@ -1731,3 +1731,9 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Probe with #38 on the phone, close with no tap: `focus no` before and after `window.focus()`, nothing in the panel's frame, viewport or focus changes while the sheet slides away, pings continue to the end, and the first signal is pagehide. So a panel that was never tapped cannot know it has closed until about half a second after its sheet has gone, and no change in Scout can clear the blur sooner.
 - Owner decision (card, 2026-10-18): no page blur on iPhone. Removed the panel's blur, its heartbeat, the worker's cleanup, the `blur` field of `panel.hello`, and the debug probe. `wantsPageBlur` is now `isPhoneScreen` (the coupon overlay still uses its lighter phone wash).
 - Evidence: new e2e `touch device › iPhone screen › never blurs the page…` fails on main and passes here (Chromium). Unit 455/456 (known Take control failure), typecheck, lint, `check:release` clean; chat, panel, redesign, settings, overlay and diagnostics e2e pass.
+
+## 2026-10-18 — Scout as its own page in a tab (owner request)
+
+- Request: a button next to New chat and Settings that opens the whole Scout chat as its own page in a new tab, to bookmark and use Scout like an AI chat site.
+- Change: new "Open Scout in a new tab" header button opens `popup.html?view=page` (`src/panel/standalone.ts`). That page fills the tab in a 760 px column, shows the name, reads no current tab, and hides the page-only actions (starters, store suggestions, + menu, Chat/Scout switch). It shares the key, model and settings, and gets its own chat (per tab, like the panel). The address is the extension's own, so it opens only in Safari with Scout installed.
+- Evidence: new `tests/unit/standalone.test.ts` and e2e `Open in new tab…` (redesign spec). Unit 458/459 (known Take control failure), typecheck, lint, `check:release` clean; full Chromium e2e has the same failures as main. Device check pending.
