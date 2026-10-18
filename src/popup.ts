@@ -61,6 +61,7 @@ import { checkKey, looksLikeKey } from "./providers/keytest";
 import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
 import { joinDictation, Listener, micErrorText, recognitionCtor } from "./panel/voice";
 import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
+import { probeDrag } from "./panel/drag-probe";
 import { hintedProvider, KEY_HINT_KEY, parseKeyHint, sameHint, type KeyHint } from "./panel/warm";
 import { isStandalone, openStandalone } from "./panel/standalone";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
@@ -3600,6 +3601,8 @@ async function main(): Promise<void> {
   // iPhone and iPad: keep the composer above the on-screen keyboard (src/panel/keyboard.ts).
   if (matchMedia("(pointer: coarse)").matches && window.visualViewport) {
     fitAboveKeyboard(window, window.visualViewport, document.body, () => editableFocused(document.activeElement));
+    // Debug builds: log how Safari resizes the panel mid-drag (src/panel/drag-probe.ts).
+    if (__SCOUT_DEBUG__) probeDrag(window, () => document.getElementById("starters"), trace);
   }
   setMode("chat");
   // A key was saved last time: show the question box and this tab's chat now,
