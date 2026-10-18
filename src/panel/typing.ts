@@ -1,11 +1,12 @@
 // The pace at which a streamed answer is revealed in the chat. Providers send
 // text in bursts; showing it at a steady typing pace reads calmer than the
-// bursts themselves (owner, 2026-10-18: "slow and steady and nice").
+// bursts themselves (owner, 2026-10-18: "slow and steady and nice"; later
+// the same day: "about 50% slower", so both the pace and the catch-up halved).
 
 /** Characters per second while the reveal is close behind the stream. */
-export const TYPING_CPS = 50;
+export const TYPING_CPS = 25;
 /** The reveal speeds up so it is never more than about this far behind. */
-export const MAX_LAG_MS = 3000;
+export const MAX_LAG_MS = 6000;
 /** A longer gap between frames (a hidden or throttled panel) catches up at once. */
 const MAX_FRAME_MS = 1000;
 
