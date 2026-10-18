@@ -47,6 +47,7 @@ import { BridgeError, envelope, newRequestId, request, type Envelope } from "./b
 import { connectPanelPort, type PanelPort } from "./bridge/port";
 import type { ReadStatus, SharedTab } from "./context/gather";
 import { dropMention, mentionAt, sharedLabel, suggestTabs, toolLabel } from "./panel/attach";
+import { cutAt, nextShown } from "./panel/typing";
 import { hostOf, loadPageAccess, normalizeSite, parsePolicy, savePageAccess, screenshotDecision, withoutAlwaysAllow, type PageAccess } from "./permissions/gate";
 import { KIND_LABEL, type SensitiveKind } from "./safety/classifier";
 import type { TaskView } from "./server/task-host";
@@ -988,7 +989,6 @@ async function main(): Promise<void> {
       addMessage("user", isSummary ? "Summarize page" : e.question, mode ? { mode } : {});
       const chat = !e.kind || e.kind === "chat";
       const answer = addMessage("assistant", e.answer, chat ? { sources: e.sources ?? [] } : {});
-      if (chat && e.shared) answer.appendChild(sharedLine(e.shared));
       if (chat) {
         history.push({ role: "user", content: e.question }, { role: "assistant", content: e.answer });
         answer.appendChild(answerActions(answer, e));
@@ -1558,6 +1558,11 @@ async function main(): Promise<void> {
     handled: Set<string>;
     queue: Promise<void>;
     closed: boolean;
+    /** Characters of prefix + text on screen; the reveal types toward the full text. */
+    shown: number;
+    /** The pending animation frame of the reveal, if any. */
+    typing: number | null;
+    typedAt: number;
     done: () => void;
     finished: Promise<void>;
   }
@@ -1566,29 +1571,10 @@ async function main(): Promise<void> {
   function newView(id: string, bubble: HTMLElement, q: string, model: string, prefix = ""): MessageView {
     let done: () => void = () => undefined;
     const finished = new Promise<void>((resolve) => (done = resolve));
-    const v: MessageView = { bubble, question: q, model, scope: [], sources: [], shared: [], prefix, handled: new Set(), queue: Promise.resolve(), closed: false, done, finished };
+    const v: MessageView = { bubble, question: q, model, scope: [], sources: [], shared: [], prefix, handled: new Set(), queue: Promise.resolve(), closed: false, shown: prefix.length, typing: null, typedAt: 0, done, finished };
     store.create(id);
     views.set(id, v);
     return v;
-  }
-
-  /** "Shared: Test shop (shop.test) · Screenshot (shop.test)" under an answer. */
-  function sharedLine(items: Array<{ title: string; host: string; status: string }>): HTMLElement {
-    const p = document.createElement("p");
-    p.className = "shared";
-    if (!items.length) {
-      p.textContent = "No pages shared.";
-      return p;
-    }
-    const ul = document.createElement("ul");
-    ul.setAttribute("aria-label", "Shared with this answer");
-    for (const item of items) {
-      const li = document.createElement("li");
-      li.textContent = sharedLabel(item);
-      ul.appendChild(li);
-    }
-    p.append("Shared: ", ul);
-    return p;
   }
 
   function renderView(id: string): void {
@@ -1596,14 +1582,33 @@ async function main(): Promise<void> {
     const m = store.get(id);
     if (!v || !m) return;
     const text = v.prefix + m.text;
-    if (text) renderMarkdown(document, v.bubble, text, { sources: allSources(v, m) });
+    // A stopped or failed answer shows what arrived at once.
+    if (m.stopped || m.status === "error") v.shown = text.length;
+    const cut = cutAt(text, v.shown);
+    if (cut < text.length && v.typing === null) {
+      v.typedAt = performance.now();
+      v.typing = requestAnimationFrame((t) => typeOn(id, t));
+    }
+    const visible = text.slice(0, cut);
+    if (visible) renderMarkdown(document, v.bubble, visible, { sources: allSources(v, m) });
     else if (m.status === "error" || m.status === "complete") v.bubble.textContent = "";
     else v.bubble.innerHTML = '<span class="thinking">' + PULSE + "<span>Thinking…</span></span>";
-    v.bubble.appendChild(sharedLine(v.shared));
-    if (v.closed && m.status === "complete" && !m.stopped && text) {
+    if (v.closed && m.status === "complete" && !m.stopped && text && cut >= text.length) {
       v.bubble.appendChild(answerActions(v.bubble, { question: v.question, answer: text, sources: allSources(v, m) }));
     }
     scrollToEnd();
+  }
+
+  /** One frame of the steady reveal of a streamed answer. */
+  function typeOn(id: string, now: number): void {
+    const v = views.get(id);
+    const m = store.get(id);
+    if (!v || !m) return;
+    v.typing = null;
+    const full = (v.prefix + m.text).length;
+    v.shown = nextShown(v.shown, full, now - v.typedAt);
+    v.typedAt = now;
+    renderView(id);
   }
 
   /** The start of a shared page's text, for its source card. Shown only, never saved. */
@@ -3333,7 +3338,6 @@ async function main(): Promise<void> {
                 if (!storage) return;
                 void clearShared(storage, g.conv).then(async () => {
                   sharedStatus.textContent = "Cleared.";
-                  if (g.conv === conv) for (const n of log.querySelectorAll(".shared")) n.remove();
                   await renderShared();
                 });
               },
@@ -3346,7 +3350,6 @@ async function main(): Promise<void> {
     if (!storage) return;
     void clearShared(storage).then(async () => {
       sharedStatus.textContent = "Cleared every shared record.";
-      for (const n of log.querySelectorAll(".shared")) n.remove();
       await renderShared();
     });
   });

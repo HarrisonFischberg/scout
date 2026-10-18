@@ -332,7 +332,8 @@ test("the Scout server can ask for a task mid-answer (run_task): the task runs a
   await expect(taskLog(page)).toContainText("Did: click “Apply”");
   await expect(page.getByRole("log", { name: "Conversation" }).locator(".msg.assistant").last()).toContainText("Done: the code is applied.");
   expect(await acts(page)).toEqual(["click"]);
-  await expect(page.getByRole("log", { name: "Conversation" })).toContainText("Scout mode task (shop.test)");
+  // What was shared is not listed under the answer (owner, 2026-10-18).
+  await expect(page.getByRole("log", { name: "Conversation" })).not.toContainText("Scout mode task (shop.test)");
 });
 
 test("Scout mode is off when turned off in Settings, and the Permissions screen shows every control", async ({ page }) => {
