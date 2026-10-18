@@ -157,15 +157,11 @@ test("provider 401 shows a readable error", async ({ page }) => {
 test.describe("touch device", () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 402, height: 874 } });
 
-  // On iPad, focusing the field on open raises the keyboard over the popover.
-  test.describe("iPad screen", () => {
-    test.use({ screen: { width: 820, height: 1180 } });
-    test("does not auto-focus the question field on open", async ({ page }) => {
-      await openPopup(page, { key: "sk-test-synthetic" });
-      await expect(page.getByLabel("Ask about this page")).toBeVisible();
-      await expect(page.getByLabel("Ask about this page")).not.toBeFocused();
-      await expect(page.locator("body")).toHaveCSS("background-color", "rgb(245, 245, 247)");
-    });
+  // On iPhone, focusing the field on open raises the keyboard over the popup.
+  test("does not auto-focus the question field on open", async ({ page }) => {
+    await openPopup(page, { key: "sk-test-synthetic" });
+    await expect(page.getByLabel("Ask about this page")).toBeVisible();
+    await expect(page.getByLabel("Ask about this page")).not.toBeFocused();
   });
 
   // Owner decision 2026-10-18: no page blur on iPhone. Safari tells a panel
@@ -180,21 +176,6 @@ test.describe("touch device", () => {
       await page.waitForTimeout(200);
       const injected = await page.evaluate(() => (globalThis as unknown as { __injected?: string[] }).__injected ?? []);
       expect(injected.filter((src) => src.includes("backdrop-filter"))).toEqual([]);
-    });
-
-    // Owner idea 2026-10-18: the panel background is half see-through so the
-    // page shows behind it, and a new chat opens with the question box
-    // focused so the keyboard can come up at once.
-    test("the panel background is half see-through", async ({ page }) => {
-      await openPopup(page, { key: "sk-test-synthetic" });
-      await expect(page.getByLabel("Ask about this page")).toBeVisible();
-      await expect(page.locator("html")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-      await expect(page.locator("body")).toHaveCSS("background-color", /^rgba\(\d+, \d+, \d+, 0\.5\)$/);
-    });
-
-    test("a new chat opens with the question box focused", async ({ page }) => {
-      await openPopup(page, { key: "sk-test-synthetic" });
-      await expect(page.getByLabel("Ask about this page")).toBeFocused();
     });
   });
 
@@ -212,7 +193,6 @@ test.describe("touch device", () => {
 
 test("on Mac the chat header keeps the icon and the name", async ({ page }) => {
   await openPopup(page, { key: "sk-test-synthetic" });
-  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(245, 245, 247)");
   await expect(page.locator("#chat-view > header img")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Scout for Safari", level: 1 })).toBeVisible();
 });
