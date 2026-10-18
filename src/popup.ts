@@ -10,7 +10,7 @@ import type { Action, ActionResult } from "./actions/executor";
 import type { Snapshot } from "./snapshot/snapshot";
 import { CONTENT_HANDLER, OVERLAY_HANDLER, type ContentRequest, type OverlayRequest } from "./content-api";
 import { callInjected } from "./content-call";
-import { addPageBlur, BLUR_LAYER_ID, wantsPageBlur } from "./panel/blur";
+import { addPageBlur, BLUR_LAYER_ID, BLUR_PING_MS, BLUR_TIMEOUT_MS, wantsPageBlur, type BlurPing } from "./panel/blur";
 import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { chipSources, renderMarkdown } from "./chat/markdown";
 import { answerText, fillSourceCard, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
@@ -503,8 +503,25 @@ async function main(): Promise<void> {
   let blurred = false;
   if (tab.id !== undefined && wantsPageBlur(matchMedia("(pointer: coarse)").matches, screen.width)) {
     blurred = await browser.scripting
-      .executeScript({ target: { tabId: tab.id }, func: addPageBlur, args: [BLUR_LAYER_ID] })
+      .executeScript({ target: { tabId: tab.id }, func: addPageBlur, args: [BLUR_LAYER_ID, BLUR_TIMEOUT_MS] })
       .then(() => true, () => false);
+  }
+  if (blurred && tab.id !== undefined) {
+    // Keep the layer alive while this panel is open; clear it the moment it closes.
+    const tabId = tab.id;
+    const ping = (alive: boolean): void => {
+      const m: BlurPing = { blur: BLUR_LAYER_ID, alive };
+      void browser.tabs.sendMessage?.(tabId, m)?.catch(() => undefined);
+    };
+    const pinger = window.setInterval(() => ping(true), BLUR_PING_MS);
+    const bye = (): void => {
+      window.clearInterval(pinger);
+      ping(false);
+    };
+    window.addEventListener("pagehide", bye);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") bye();
+    });
   }
   if (browser.runtime.connect && tab.id !== undefined) {
     const tabId = tab.id;
