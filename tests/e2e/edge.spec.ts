@@ -13,6 +13,8 @@ const PAGE = { url: "http://127.0.0.1/index.html", title: "Fixture index", text:
 interface Fake {
   data: Record<string, unknown>;
   panelOpens: number;
+  /** panel.warm requests: the tab getting Scout ready (src/panel/warm.ts). */
+  warms: number;
   permissionRequests: string[][];
   injected: string[][];
 }
@@ -23,7 +25,7 @@ async function stub(page: Page, pageButton: unknown): Promise<void> {
       const g = globalThis as unknown as Record<string, unknown>;
       const top = (window.top ?? window) as unknown as Record<string, unknown>;
       if (!top.__fake) {
-        top.__fake = { data: { aiConsent: { anthropic: { at: 1, version: 2 } }, pageButton }, panelOpens: 0, permissionRequests: [], injected: [] };
+        top.__fake = { data: { aiConsent: { anthropic: { at: 1, version: 2 } }, pageButton }, panelOpens: 0, warms: 0, permissionRequests: [], injected: [] };
         top.__listeners = [];
       }
       const fake = top.__fake as Fake;
@@ -37,6 +39,10 @@ async function stub(page: Page, pageButton: unknown): Promise<void> {
             if (m.type === "panel.open") {
               fake.panelOpens += 1;
               return { type: m.type + ".result", request_id: m.request_id, payload: { opened: true } };
+            }
+            if (m.type === "panel.warm") {
+              fake.warms += 1;
+              return { type: m.type + ".result", request_id: m.request_id, payload: {} };
             }
             return { ok: true };
           },
@@ -238,6 +244,22 @@ test.describe("touch", () => {
     await page.touchscreen.tap(vp.width - 8, y);
     await expect.poll(() => panelOpens(page)).toBe(1);
   });
+});
+
+// Owner request 2026-10-18: Scout should open at once. The tab asks the worker
+// to get ready as soon as it is on the page, and again when a finger lands on
+// it, before the tap ends.
+test("the tab gets Scout ready when the page loads and again on touch", async ({ page }) => {
+  await openPage(page);
+  const at = await tabPoint(page);
+  await expect.poll(() => tabThere(page, at)).toBe(true);
+  await expect.poll(async () => (await fake(page)).warms).toBe(1);
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  await expect.poll(async () => (await fake(page)).warms).toBe(2);
+  expect(await panelOpens(page)).toBe(0);
+  await page.mouse.up();
+  await expect.poll(() => panelOpens(page)).toBe(1);
 });
 
 test("Settings turns the button on: asks Safari for site access and shows it on this page", async ({ page }) => {

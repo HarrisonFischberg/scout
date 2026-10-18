@@ -127,6 +127,8 @@ export const REQUESTS = {
   "panel.state": { senders: ["panel"], payload: { object: { tabId: "number" } } },
   /** Page button (src/edge.ts): the user tapped it; open the toolbar panel. */
   "panel.open": { senders: ["content"], payload: { object: {} } },
+  /** Page button: a page with the button loaded, or a finger on it. The worker gets the app's handler ready (src/panel/warm.ts). */
+  "panel.warm": { senders: ["content"], payload: { object: {} } },
   // ---------- Part 2: conversation, context and tools ----------
   /** Reads the current tab (when allowed) and the attached tabs as cleaned Markdown (src/context). */
   "context.read": {
