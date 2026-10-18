@@ -284,7 +284,7 @@ test("the Models sheet works by keyboard: arrows move, Enter picks, Escape close
 test("the mode switch stays on one line beside the model pill when the popup first opens", async ({ page }) => {
   await openPopup(page, {
     keys: { anthropic: GOOD_KEY },
-    data: { settings: { provider: "anthropic", model: "claude-opus-5-5", effort: "medium", retention: "7" } },
+    data: { settings: { provider: "anthropic", model: "claude-opus-5-5", effort: "medium", retention: "7" }, modelMigration: "haiku-5-5-high" },
   });
   await expect(page.locator("#model-pill")).toHaveText("Opus 5.5");
   await expect(page.locator("#model-pill")).toHaveAttribute("aria-label", "Opus 5.5, Medium effort, change model or effort");
