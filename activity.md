@@ -1612,3 +1612,11 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Cause: the panel's body is `height: 100%` of the page, and on iPhone WebKit does not shrink the page for the keyboard; only the visual viewport shrinks, so the bottom of the panel sat under the keyboard.
 - Fix: `src/panel/keyboard.ts` (touch devices only, so the Mac popover is unchanged) sizes the body to `visualViewport.height` while the keyboard is up and scrolls the page back to the top if WebKit scrolled it; it returns to the stylesheet's height when the keyboard closes.
 - Evidence: new `tests/unit/keyboard.test.ts` (keyboard up → body 430 px, scroll reset, keyboard down → full height; small differences ignored). Unit 446/447 (known Take control failure), typecheck, lint, `check:release` clean; `tests/e2e/panel.spec.ts` WebKit has the same 3 failures with and without the change. No keyboard in Playwright or this container: needs the real iPhone check.
+
+## 2026-10-18 — Scout reopened itself after a tab switch (owner bug)
+
+- Actual (owner): use Scout on a tab, switch to another tab, come back, and Scout opens on its own with the old chat.
+- Expected (owner): each tab keeps its own chat (tab 1 context A, tab 2 context B), but Scout stays closed when you return to a tab until you click it; then it shows that tab's chat.
+- Cause: Part 1 behaviour in `src/background.ts`. When Safari closed the panel because of a tab switch, the worker kept the tab marked open for 400 ms, and `tabs.onActivated` called `action.openPopup()` on returning to a tab marked open. Same worker on Mac and iPhone, so both were affected.
+- Fix: removed the `tabs.onActivated` reopen and the grace timer; a closed panel is always marked closed. Per-tab conversations (`conversationForTab`) are unchanged.
+- Evidence: new `tests/unit/tab-switch.test.ts` loads the real worker with a Safari stub (fails on `main`: `openPopup` called once; passes with the fix). Unit 448/449 (known Take control failure), typecheck, lint, `check:release` clean. e2e on Chromium (no WebKit in this container): `panel` + `redesign` 19/19, full suite the same 20 failures as `main`. Needs the Mac and iPhone check.
