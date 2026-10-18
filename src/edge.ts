@@ -1,10 +1,10 @@
 // Page button content script (owner request 2026-10-16). The worker registers
 // it only on sites the user let Scout access, and only while Settings > Button
 // on webpages is on; it never runs in frames or Private Browsing, and it reads
-// nothing from the page. It draws a small tab on the edge of the viewport in a
-// closed shadow root, always showing the truck, and one tap opens Scout (owner
-// request 2026-10-18, replacing the tucked tab of 2026-10-17). It
-// can be dragged up and down or to the other side. Opening it asks the worker to open Scout's toolbar panel
+// nothing from the page. It draws a tab on the edge of the viewport in a closed
+// shadow root. It stays out on every page and one tap opens Scout (owner
+// request 2026-10-18; it used to tuck into a sliver). It can be dragged up and
+// down or to the other side. Opening it asks the worker to open Scout's toolbar panel
 // (Safari's sheet over the page on iPhone). It never puts an extension page in
 // the website: Safari runs such a frame in the page's process and kills that
 // process when the frame uses extension APIs (owner bug report 2026-10-16).
@@ -15,7 +15,9 @@ import {
   KEY_STEP,
   PAGE_BUTTON_KEY,
   parsePageButton,
+  PLACE_WAIT_MS,
   snapSide,
+  TAB_SIZE,
   tabScale,
   topLayerTab,
   type PageButton,
@@ -43,37 +45,39 @@ const GLYPH =
   '<circle class="lens" cx="46" cy="44" r="2.5"/></svg>';
 
 // Dark glass in both themes, like Safari's own controls: it stands out on
-// light pages, and the light border keeps it visible on dark ones. A 40 x 44
-// pill with a 24 px truck in a 44 x 48 target (owner request 2026-10-18:
-// smaller, never hidden). --k scales it back to that size on pages Safari zooms out (tabScale).
+// light pages, and the light border keeps it visible on dark ones. A
+// TAB_SIZE pill in a target 4 px larger each way. --k scales it back to that
+// size on pages Safari zooms out (tabScale).
+const { width: W, height: H, glyph: G } = TAB_SIZE;
 const CSS = `
 :host { all: initial; }
 .tab {
-  position: fixed; z-index: 1; top: 45%; right: 0; left: auto; width: 44px; height: 48px; margin: 0; padding: 0;
+  position: fixed; z-index: 1; top: 45%; right: 0; left: auto; width: ${W + 4}px; height: ${H + 4}px; margin: 0; padding: 0;
   border: 0; background: transparent; display: flex; align-items: center; justify-content: flex-end;
   transform: translateY(-50%) scale(var(--k, 1)); transform-origin: right center; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; outline: none;
 }
 .tab[data-side="left"] { right: auto; left: 0; justify-content: flex-start; transform-origin: left center; }
 .pill {
-  box-sizing: border-box; display: flex; align-items: center; justify-content: center; width: 40px; height: 44px;
-  border-radius: 22px 0 0 22px; border: 1px solid rgb(255 255 255 / 22%); border-right: 0;
+  box-sizing: border-box; display: flex; align-items: center; justify-content: center; width: ${W}px; height: ${H}px;
+  border-radius: ${H / 2}px 0 0 ${H / 2}px; border: 1px solid rgb(255 255 255 / 22%); border-right: 0;
   background: rgb(44 44 46 / 94%); color: #f2f2f7; box-shadow: 0 2px 14px rgb(0 0 0 / 30%);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
 }
-.tab[data-side="left"] .pill { border-radius: 0 22px 22px 0; border-right: 1px solid rgb(255 255 255 / 22%); border-left: 0; }
-.pill svg { width: 24px; height: 24px; flex: none; }
+.tab[data-side="left"] .pill { border-radius: 0 ${H / 2}px ${H / 2}px 0; border-right: 1px solid rgb(255 255 255 / 22%); border-left: 0; }
+.pill svg { width: ${G}px; height: ${G}px; flex: none; }
 .pill .body { fill: currentColor; stroke: rgb(44 44 46); stroke-width: 3; stroke-linejoin: round; }
 .pill .lens { fill: rgb(44 44 46); }
 .tab:focus-visible .pill { outline: 2px solid #2997ff; outline-offset: 2px; }
-.tab.dragging { left: 0; right: auto; width: 48px; justify-content: center; transform: translate(-50%, -50%) scale(var(--k, 1)); transform-origin: center; }
-.tab.dragging .pill { width: 44px; border-radius: 22px; border: 1px solid rgb(255 255 255 / 22%); }
+.tab.dragging { left: 0; right: auto; width: ${H + 4}px; justify-content: center; transform: translate(-50%, -50%) scale(var(--k, 1)); transform-origin: center; }
+.tab.dragging .pill { width: ${H}px; border-radius: ${H / 2}px; border: 1px solid rgb(255 255 255 / 22%); }
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); box-sizing: border-box; margin: 0;
   width: max-content; max-width: calc(100vw - 32px); padding: 8px 12px; border-radius: 10px;
   font: 14px/1.4 -apple-system, system-ui, sans-serif; background: rgb(44 44 46); color: #f5f5f7;
 }
 .toast:empty { display: none; }
+.waiting { visibility: hidden; }
 `;
 
 // Inline !important on the host beats any page stylesheet.
@@ -104,6 +108,8 @@ const HOST_STYLE = [
 
 interface EdgeUi {
   place(p: PageButton): void;
+  /** Shows a tab mounted hidden while its saved place was still loading. */
+  reveal(): void;
   destroy(): void;
 }
 
@@ -121,7 +127,7 @@ function viewportInfo(): Parameters<typeof tabScale>[0] {
   };
 }
 
-function mount(initial: PageButton, save: (side: Side, y: number) => void): EdgeUi {
+function mount(initial: PageButton, save: (side: Side, y: number) => void, hidden = false): EdgeUi {
   const host = document.createElement("div");
   host.setAttribute("style", HOST_STYLE);
   const root = host.attachShadow({ mode: "closed" });
@@ -131,6 +137,7 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void): Edge
     '<p class="toast" role="status"></p>';
   const tab = root.querySelector("button") as HTMLButtonElement;
   const toastNode = root.querySelector("p") as HTMLParagraphElement;
+  if (hidden) tab.classList.add("waiting");
 
   let side = initial.side;
   let y = initial.y;
@@ -269,6 +276,9 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void): Edge
   warm();
 
   return {
+    reveal() {
+      tab.classList.remove("waiting");
+    },
     place(p) {
       if (pointer) return;
       side = p.side;
@@ -317,10 +327,31 @@ async function start(): Promise<void> {
       .then((latest) => storage.set({ [PAGE_BUTTON_KEY]: { ...latest, side, y } }))
       .catch(() => undefined);
   };
-  // The setting is read while the page is still arriving.
-  const [got] = await Promise.all([storage.get(PAGE_BUTTON_KEY).catch(() => none), bodyReady()]);
-  let pref = parsePageButton(got[PAGE_BUTTON_KEY]);
-  let ui: EdgeUi | null = pref.on ? mount(pref, save) : null;
+  // The worker registers this script only while the button is on, so the tab
+  // is drawn as soon as the page has a body, without waiting on storage, which
+  // can be slow right after Safari starts (owner request 2026-10-18). It stays
+  // hidden until the saved place arrives or PLACE_WAIT_MS passes, whichever is
+  // first; a stored "off" (turned off a moment ago) removes it again.
+  const stored = storage.get(PAGE_BUTTON_KEY).then(
+    (got) => parsePageButton(got[PAGE_BUTTON_KEY]),
+    () => parsePageButton({ on: true }),
+  );
+  await bodyReady();
+  let pref: PageButton = parsePageButton({ on: true });
+  let ui: EdgeUi | null = mount(pref, save, true);
+  const waitTimer = window.setTimeout(() => ui?.reveal(), PLACE_WAIT_MS);
+  void stored.then((p) => {
+    window.clearTimeout(waitTimer);
+    pref = p;
+    if (!ui) return;
+    if (!p.on) {
+      ui.destroy();
+      ui = null;
+      return;
+    }
+    ui.place(p);
+    ui.reveal();
+  });
   browser.storage?.onChanged?.addListener((changes, area) => {
     if (area !== "local" || !(PAGE_BUTTON_KEY in changes)) return;
     pref = parsePageButton(changes[PAGE_BUTTON_KEY]?.newValue);

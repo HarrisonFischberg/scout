@@ -49,6 +49,21 @@ export function isDrag(dx: number, dy: number): boolean {
   return Math.hypot(dx, dy) >= DRAG_SLOP;
 }
 
+/**
+ * The tab's size in CSS px (owner request 2026-10-18: smaller than the first
+ * 56 x 60 pill, still clearly showing the truck, and always out instead of
+ * tucking away). The tap target adds a few transparent px around the pill.
+ */
+export const TAB_SIZE = { width: 42, height: 44, glyph: 28 } as const;
+
+/**
+ * How long a new page waits for the saved side and height before it draws the
+ * tab at the default spot (owner request 2026-10-18: the button should be
+ * there at once). Settings normally arrive well inside this, so a tab the user
+ * moved does not jump.
+ */
+export const PLACE_WAIT_MS = 150;
+
 export interface ViewportInfo {
   /** Touch-first device (iPhone, iPad): Safari may zoom the whole page out. */
   coarse: boolean;
