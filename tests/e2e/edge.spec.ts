@@ -13,6 +13,8 @@ const PAGE = { url: "http://127.0.0.1/index.html", title: "Fixture index", text:
 interface Fake {
   data: Record<string, unknown>;
   panelOpens: number;
+  /** panel.warm requests: the tab getting Scout ready (src/panel/warm.ts). */
+  warms: number;
   permissionRequests: string[][];
   injected: string[][];
 }
@@ -23,7 +25,7 @@ async function stub(page: Page, pageButton: unknown): Promise<void> {
       const g = globalThis as unknown as Record<string, unknown>;
       const top = (window.top ?? window) as unknown as Record<string, unknown>;
       if (!top.__fake) {
-        top.__fake = { data: { aiConsent: { anthropic: { at: 1, version: 2 } }, pageButton }, panelOpens: 0, permissionRequests: [], injected: [] };
+        top.__fake = { data: { aiConsent: { anthropic: { at: 1, version: 2 } }, pageButton }, panelOpens: 0, warms: 0, permissionRequests: [], injected: [] };
         top.__listeners = [];
       }
       const fake = top.__fake as Fake;
@@ -37,6 +39,10 @@ async function stub(page: Page, pageButton: unknown): Promise<void> {
             if (m.type === "panel.open") {
               fake.panelOpens += 1;
               return { type: m.type + ".result", request_id: m.request_id, payload: { opened: true } };
+            }
+            if (m.type === "panel.warm") {
+              fake.warms += 1;
+              return { type: m.type + ".result", request_id: m.request_id, payload: {} };
             }
             return { ok: true };
           },
@@ -127,18 +133,22 @@ test("tapping the tab opens Scout's own panel and puts no extension page in the 
   await expect.poll(() => panelOpens(page)).toBe(2);
 });
 
-test("the tab is big enough to see and hit, and stays a usable target when tucked", async ({ page }) => {
+// Owner request 2026-10-18: smaller, but always showing the truck, never
+// tucked away. The pill is 40 x 44; the target around it is 44 x 48.
+test("the tab is small but always shows, and is still a full-size target", async ({ page }) => {
   await openPage(page);
   const vp = page.viewportSize() ?? { width: 1280, height: 720 };
   const y = Math.round(vp.height * 0.45);
-  // Awake: 60 px wide, 64 px tall around its center.
-  await expect.poll(() => tabThere(page, { x: vp.width - 56, y })).toBe(true);
-  expect(await tabThere(page, { x: vp.width - 8, y: y - 30 })).toBe(true);
-  expect(await tabThere(page, { x: vp.width - 8, y: y + 30 })).toBe(true);
-  // Tucked after a few idle seconds: still a 32 px wide target on the edge.
+  await expect.poll(() => tabThere(page, { x: vp.width - 40, y })).toBe(true);
+  expect(await tabThere(page, { x: vp.width - 8, y: y - 22 })).toBe(true);
+  expect(await tabThere(page, { x: vp.width - 8, y: y + 22 })).toBe(true);
+  // No bigger than that.
+  expect(await tabThere(page, { x: vp.width - 50, y })).toBe(false);
+  expect(await tabThere(page, { x: vp.width - 8, y: y - 30 })).toBe(false);
+  // Still all there after sitting idle (it used to tuck after 2.5 s).
   await page.mouse.move(10, 10);
-  await expect.poll(() => tabThere(page, { x: vp.width - 56, y }), { timeout: 6000 }).toBe(false);
-  expect(await tabThere(page, { x: vp.width - 28, y })).toBe(true);
+  await page.waitForTimeout(3500);
+  expect(await tabThere(page, { x: vp.width - 40, y })).toBe(true);
 });
 
 test("dragging moves the tab to the other side and remembers where it was dropped", async ({ page }) => {
@@ -210,52 +220,32 @@ test("a page cannot open Scout with a synthetic click", async ({ page }) => {
   expect(await panelOpens(page)).toBe(0);
 });
 
-/** A later page: the tab already showed itself open once. */
-async function openLaterPage(page: Page): Promise<void> {
-  await stub(page, { on: true });
-  await page.addInitScript(() => {
-    ((window.top ?? window) as unknown as { __fake: Fake }).__fake.data.pageButtonIntroduced = true;
-  });
-  await page.goto("/index.html");
-  await page.addScriptTag({ path: "apple/Extension/Resources/edge.js" });
-}
-
-test("the tab shows itself open once, then starts tucked and a mouse still opens Scout in one click", async ({ page }) => {
-  await openPage(page);
-  const vp = page.viewportSize() ?? { width: 1280, height: 720 };
-  const y = Math.round(vp.height * 0.45);
-  // The very first page shows the full tab and remembers that it did.
-  await expect.poll(() => tabThere(page, { x: vp.width - 56, y })).toBe(true);
-  await expect.poll(async () => (await fake(page)).data.pageButtonIntroduced).toBe(true);
-
-  // Every later page: tucked from the start, never popping open by itself.
-  const later = await page.context().newPage();
-  await openLaterPage(later);
-  await expect.poll(() => tabThere(later, { x: vp.width - 28, y })).toBe(true);
-  expect(await tabThere(later, { x: vp.width - 56, y })).toBe(false);
-  await later.waitForTimeout(500);
-  expect(await tabThere(later, { x: vp.width - 56, y })).toBe(false);
-  await later.mouse.click(vp.width - 8, y);
-  await expect.poll(() => panelOpens(later)).toBe(1);
-});
-
 test.describe("touch", () => {
   test.use({ hasTouch: true });
-  test("a tap on the tucked tab brings it out; the next tap opens Scout", async ({ page }) => {
-    await openLaterPage(page);
+  test("one tap on the tab opens Scout", async ({ page }) => {
+    await openPage(page);
     const vp = page.viewportSize() ?? { width: 1280, height: 720 };
     const y = Math.round(vp.height * 0.45);
     await expect.poll(() => tabThere(page, { x: vp.width - 8, y })).toBe(true);
-    expect(await tabThere(page, { x: vp.width - 56, y })).toBe(false);
-
-    await page.touchscreen.tap(vp.width - 8, y);
-    await expect.poll(() => tabThere(page, { x: vp.width - 56, y })).toBe(true);
-    await page.waitForTimeout(300);
-    expect(await panelOpens(page)).toBe(0);
-
-    await page.touchscreen.tap(vp.width - 30, y);
+    await page.touchscreen.tap(vp.width - 20, y);
     await expect.poll(() => panelOpens(page)).toBe(1);
   });
+});
+
+// Owner request 2026-10-18: Scout should open at once. The tab asks the worker
+// to get ready as soon as it is on the page, and again when a finger lands on
+// it, before the tap ends.
+test("the tab gets Scout ready when the page loads and again on touch", async ({ page }) => {
+  await openPage(page);
+  const at = await tabPoint(page);
+  await expect.poll(() => tabThere(page, at)).toBe(true);
+  await expect.poll(async () => (await fake(page)).warms).toBe(1);
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  await expect.poll(async () => (await fake(page)).warms).toBe(2);
+  expect(await panelOpens(page)).toBe(0);
+  await page.mouse.up();
+  await expect.poll(() => panelOpens(page)).toBe(1);
 });
 
 test("Settings turns the button on: asks Safari for site access and shows it on this page", async ({ page }) => {
@@ -319,14 +309,9 @@ test.describe("iPhone", () => {
       return out;
     });
 
-  /** A phone-ready page (width=device-width), with the edge script loaded; tucked unless `intro`. */
-  async function openPhonePage(page: Page, intro = false): Promise<void> {
+  /** A phone-ready page (width=device-width), with the edge script loaded. */
+  async function openPhonePage(page: Page): Promise<void> {
     await stub(page, { on: true });
-    if (!intro) {
-      await page.addInitScript(() => {
-        ((window.top ?? window) as unknown as { __fake: Fake }).__fake.data.pageButtonIntroduced = true;
-      });
-    }
     await page.route("**/phone.html", (r) =>
       r.fulfill({
         contentType: "text/html",
@@ -378,15 +363,13 @@ test.describe("iPhone", () => {
     // The rest of the screen still belongs to the page.
     expect(await tabThere(page, { x: Math.round(vp.width / 2), y })).toBe(false);
 
-    // Tucked: one tap brings it out, the next opens Scout.
-    await page.touchscreen.tap(vp.width - 8, y);
-    await expect.poll(() => tabThere(page, { x: vp.width - 56, y })).toBe(true);
-    await page.touchscreen.tap(vp.width - 30, y);
+    // One tap opens Scout.
+    await page.touchscreen.tap(vp.width - 20, y);
     await expect.poll(() => panelOpens(page)).toBe(1);
   });
 
   test("dragging after a scroll drops the tab where the finger lets go", async ({ page }) => {
-    await openPhonePage(page, true);
+    await openPhonePage(page);
     await tallPage(page);
     await page.evaluate(() => window.scrollTo(0, 1200));
     const vp = page.viewportSize() ?? { width: 390, height: 664 };
@@ -420,7 +403,6 @@ test.describe("starts with the page", () => {
   async function openSlowPage(page: Page, phone: boolean, after = ""): Promise<void> {
     await stub(page, { on: true });
     await page.addInitScript(() => {
-      ((window.top ?? window) as unknown as { __fake: Fake }).__fake.data.pageButtonIntroduced = true;
       const t = window as unknown as { __tabAt?: number; __loadedAt?: number };
       new MutationObserver(() => {
         if (t.__tabAt === undefined && document.querySelector('[style*="2147483647"]')) t.__tabAt = performance.now();

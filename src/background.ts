@@ -10,6 +10,8 @@ import { createScoutWorker } from "./server/worker";
 import { edgeMatches, EDGE_RUN_AT, EDGE_SCRIPT_ID, PAGE_BUTTON_KEY, pageButtonOffered, parsePageButton, platformOs, sameMatches } from "./panel/edge";
 import { clearTabStates, forgetTab, loadTabStates, setPanelOpen, tabKey } from "./panel/state";
 import { openPanel, toolbarIcon, TITLE_CLOSE, TITLE_OPEN } from "./panel/toolbar";
+import { createWarmer } from "./panel/warm";
+import { nativeSend } from "./keychain";
 
 const self = (): Self => ({ id: browser.runtime.id ?? "", baseUrl: browser.runtime.getURL?.("") ?? "" });
 const storage = browser.storage?.local;
@@ -21,6 +23,11 @@ const syncIcon = (): void => {
 };
 syncIcon();
 dark?.addEventListener?.("change", syncIcon);
+
+// ---------- Ready before the panel opens (src/panel/warm.ts) ----------
+// The app's native handler is slow to start after Safari launches; waking it
+// while a page loads means the panel's Keychain reads find it running.
+const warmNative = createWarmer(nativeSend);
 
 // ---------- Request/response ----------
 const scout = createScoutWorker(storage, {
@@ -39,6 +46,11 @@ const route = createRouter(
     },
     // Page button (src/edge.ts): Safari's own panel, never a frame in the page.
     "panel.open": () => openPanel(browser.action),
+    // Page button loaded or touched: answer at once, warm in the background.
+    "panel.warm": () => {
+      void warmNative();
+      return {};
+    },
   },
   self,
 );
@@ -87,6 +99,7 @@ browser.runtime.onStartup?.addListener(() => {
   if (storage) void clearTabStates(storage).catch(() => undefined);
   syncIcon();
   queuePageButtonSync();
+  void warmNative();
 });
 
 // ---------- Page button: the edge script runs only where Scout has site access ----------

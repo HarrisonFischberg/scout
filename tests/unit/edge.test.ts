@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { clampY, coversAllSites, edgeMatches, isDrag, MAX_TAB_SCALE, pageButtonOffered, parsePageButton, reachText, sameMatches, snapSide, tabScale, tapOnlyWakes, topLayerTab, Y_MAX, Y_MIN } from "../../src/panel/edge";
+import { clampY, coversAllSites, edgeMatches, isDrag, MAX_TAB_SCALE, pageButtonOffered, parsePageButton, reachText, sameMatches, snapSide, tabScale, topLayerTab, Y_MAX, Y_MIN } from "../../src/panel/edge";
 import { openPanel } from "../../src/panel/toolbar";
 
 describe("page button settings", () => {
@@ -21,13 +21,6 @@ describe("page button settings", () => {
     expect(parsePageButton({ on: false })).toEqual({ on: false, side: "right", y: 0.45 });
     expect(parsePageButton({ on: "yes", side: "top", y: "middle" })).toEqual({ on: true, side: "right", y: 0.45 });
     expect(parsePageButton({ on: true, side: "left", y: 0.3 })).toEqual({ on: true, side: "left", y: 0.3 });
-  });
-
-  it("on touch, a tap on a tucked tab only brings it out; mouse and awake taps open Scout", () => {
-    expect(tapOnlyWakes("touch", true)).toBe(true);
-    expect(tapOnlyWakes("pen", true)).toBe(true);
-    expect(tapOnlyWakes("touch", false)).toBe(false);
-    expect(tapOnlyWakes("mouse", true)).toBe(false);
   });
 
   it("keeps the tab its own size when Safari zooms a wide page out", () => {

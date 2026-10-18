@@ -49,25 +49,6 @@ export function isDrag(dx: number, dy: number): boolean {
   return Math.hypot(dx, dy) >= DRAG_SLOP;
 }
 
-/** The tab shrinks to a sliver after this long without use. */
-export const TUCK_AFTER_MS = 2500;
-
-/**
- * Set once the tab has shown itself open on a page. After that it starts
- * tucked on every page and opens only when the user reaches for it (owner
- * request 2026-10-17: popping open while browsing was annoying).
- */
-export const PAGE_BUTTON_INTRO_KEY = "pageButtonIntroduced";
-
-/**
- * A tap on a tucked tab (touch or pen) only brings it out; the next tap opens
- * Scout (owner request 2026-10-17). A mouse wakes it on hover, and a key press
- * on a focused tab, so both open at once.
- */
-export function tapOnlyWakes(pointerType: string, wasTucked: boolean): boolean {
-  return wasTucked && (pointerType === "touch" || pointerType === "pen");
-}
-
 export interface ViewportInfo {
   /** Touch-first device (iPhone, iPad): Safari may zoom the whole page out. */
   coarse: boolean;
