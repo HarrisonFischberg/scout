@@ -136,7 +136,8 @@ test("a question about the current page uses only that tab; read_page of another
   await ask(page, 'Compare [mock:tool=read_page {"tab_id":2}]');
   await expect(lastAnswer(page)).toContainText("The read_page tool answered with status blocked-by-user.");
   expect((await calls(page)).scripts).toEqual([1]);
-  await expect(lastAnswer(page).getByRole("list", { name: "Shared with this answer" }).getByRole("listitem")).toHaveText(["Test shop (shop.test)"]);
+  // The answer does not list what was shared (owner, 2026-10-18).
+  await expect(lastAnswer(page)).not.toContainText("Shared:");
 });
 
 test("a blocked site is never read or screenshotted", async ({ page }) => {
@@ -146,7 +147,6 @@ test("a blocked site is never read or screenshotted", async ({ page }) => {
   const c = await calls(page);
   expect(c.scripts).toEqual([]);
   expect(c.captures).toBe(0);
-  await expect(lastAnswer(page).getByRole("list", { name: "Shared with this answer" })).toContainText("Test shop (shop.test), blocked");
   // No permission question was shown for a blocked site.
   await expect(page.getByRole("alertdialog", { name: "Allow a screenshot?" })).toBeHidden();
 });
@@ -181,7 +181,7 @@ test("a screenshot needs the user's permission on a site set to ask", async ({ p
   await dialog.getByRole("button", { name: "Allow once" }).click();
   await expect(lastAnswer(page)).toContainText("The screenshot_visible tool answered with status ok.");
   expect((await calls(page)).captures).toBe(1);
-  await expect(lastAnswer(page).getByRole("list", { name: "Shared with this answer" })).toContainText("Screenshot (shop.test)");
+  await expect(lastAnswer(page)).not.toContainText("Shared:");
 });
 
 test("history search does nothing until it is turned on", async ({ page }) => {
@@ -364,7 +364,7 @@ for (const scheme of ["light", "dark"] as const) {
       let r = await new AxeBuilder({ page }).withTags(WCAG).analyze();
       expect(r.violations.map((v) => v.id + ": " + v.nodes.map((n) => n.target.join(" ")).join(", "))).toEqual([]);
       await page.getByRole("button", { name: "Don't allow" }).click();
-      await expect(lastAnswer(page).getByRole("list", { name: "Shared with this answer" })).toBeVisible();
+      await expect(lastAnswer(page)).toContainText("The screenshot_visible tool answered");
       await page.getByRole("button", { name: "Settings" }).click();
       await page.getByRole("button", { name: "Block shop.test" }).click();
       await expect(page.getByRole("list", { name: "Blocked sites" })).toContainText("shop.test");

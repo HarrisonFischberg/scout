@@ -1690,3 +1690,9 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Cause (inferred from the difference, not traced on device): Settings focuses its heading on open; the chat view focuses nothing on iPhone so the keyboard stays down. With nothing focused the panel's window never had focus, so its `blur` event (the goodbye from #31) never fired and the layer waited out its 350 ms timeout.
 - Fix: on iPhone the panel focuses the chat's visually hidden heading (`#chat-title`, `tabindex="-1"`) as it starts, which gives the window focus without raising the keyboard.
 - Evidence: new e2e `touch device › iPhone screen › focuses the chat heading on open…` fails without the fix and passes with it (Chromium). Unit 459/460 (known Take control failure), typecheck, lint, `check:release` clean; a11y Option+Tab and edge arrow-key e2e fail identically on main in Chromium.
+
+## 2026-10-18 — No "Shared:" line under answers; answers type out steadily
+
+- Ask (owner): remove the "Shared: <page title> (<site>)" line under every answer, everywhere; and make Scout's reply text flow slower and smoother instead of spewing out.
+- Change: the panel no longer renders the Shared line (live or restored answers). What is shared is still sent to the model, saved with history, and listed in Settings > Permissions > Shared in conversations. Streamed text is revealed by `src/panel/typing.ts` at a steady 50 characters a second, speeding up only so it is never more than about 3 s behind; Stop or an error shows what arrived at once, and the answer buttons appear when the reveal finishes.
+- Evidence: new unit `typing.test.ts`; unit 463/464 (known Take control failure), typecheck, lint, build, `check:release`. Chromium e2e: same failures as main (20, the part2 mock-stream set and keyboard focus); tabs, scout, panel and redesign specs pass. WebKit is not installed in the cloud sandbox. Needs the Mac and iPhone check.
