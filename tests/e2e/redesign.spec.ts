@@ -394,4 +394,25 @@ test.describe("touch device", () => {
     await expect(page.getByRole("button", { name: "New chat" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Open Scout in a new tab" })).toBeHidden();
   });
+
+  test("Summarize, Explain and the question box stay pinned to the bottom as the sheet changes height (owner 2026-10-18)", async ({ page }) => {
+    await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+    const starters = page.locator("#composer > #starters");
+    await expect(starters).toBeVisible();
+    await expect(page.locator("#composer")).toHaveCSS("position", "fixed");
+    const fromBottom = async (): Promise<number> =>
+      page.evaluate(() => innerHeight - document.querySelector("#starters")!.getBoundingClientRect().bottom);
+    const before = await fromBottom();
+    for (const height of [420, 700, 520]) {
+      await page.setViewportSize({ width: 393, height });
+      expect(await fromBottom()).toBe(before);
+    }
+    // Typing: back in the page flow, where the keyboard fit sizes the panel.
+    await page.getByRole("textbox", { name: /Ask about this page/ }).focus();
+    await expect(page.locator("#composer")).toHaveCSS("position", "relative");
+    await page.getByRole("textbox", { name: /Ask about this page/ }).fill("What does it cost?");
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("The widget costs")).toBeVisible();
+    await expect(starters).toBeHidden();
+  });
 });
