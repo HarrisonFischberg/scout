@@ -10,6 +10,7 @@ import type { Action, ActionResult } from "./actions/executor";
 import type { Snapshot } from "./snapshot/snapshot";
 import { CONTENT_HANDLER, OVERLAY_HANDLER, type ContentRequest, type OverlayRequest } from "./content-api";
 import { callInjected } from "./content-call";
+import { BLUR_PROBE_MAX, probeBlur, type BlurProbeNote } from "./panel/blur-probe";
 import { addPageBlur, BLUR_FADE_IN_MS, BLUR_LAYER_ID, BLUR_PING_MS, BLUR_QUIET_MS, BLUR_TIMEOUT_MS, wantsPageBlur, type BlurPing } from "./panel/blur";
 import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { chipSources, renderMarkdown } from "./chat/markdown";
@@ -452,6 +453,9 @@ const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></spa
 // while the panel starts (its main thread can stall then), short once it has
 // settled, since without a goodbye this wait is the whole lag on close.
 let blurTtl = BLUR_TIMEOUT_MS;
+// Debug builds: the previous open's blur log (src/panel/blur-probe.ts), traced
+// into this open's startup run.
+let blurProbeLog: string[] = [];
 function settleBlur(): void {
   blurTtl = BLUR_QUIET_MS;
 }
@@ -461,6 +465,21 @@ async function frostPage(): Promise<number | undefined> {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true }).catch(() => []);
   const tabId = tab?.id;
   if (tabId === undefined) return undefined;
+  if (__SCOUT_DEBUG__) {
+    blurProbeLog = await browser.scripting
+      .executeScript({ target: { tabId }, func: probeBlur, args: [BLUR_LAYER_ID, BLUR_PROBE_MAX] })
+      .then((r) => (Array.isArray(r?.[0]?.result) ? (r[0].result as string[]) : []), () => []);
+    const note = (what: string): void => {
+      const m: BlurProbeNote = { blurProbe: BLUR_LAYER_ID, note: what };
+      void browser.tabs.sendMessage?.(tabId, m)?.catch(() => undefined);
+    };
+    for (const type of ["focus", "blur", "pagehide", "pageshow", "pointerdown"]) window.addEventListener(type, () => note(type), { passive: true });
+    window.addEventListener("resize", () => note(`resize ${innerWidth}x${innerHeight}`));
+    document.addEventListener("visibilitychange", () => note("visibility " + document.visibilityState));
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", () => note(`viewport ${Math.round(vv.width)}x${Math.round(vv.height)} top ${Math.round(vv.offsetTop)}`));
+    note(`open, focus ${document.hasFocus() ? "yes" : "no"}`);
+  }
   const ok = await browser.scripting
     .executeScript({ target: { tabId }, func: addPageBlur, args: [BLUR_LAYER_ID, BLUR_TIMEOUT_MS, BLUR_FADE_IN_MS] })
     .then(() => true, () => false);
@@ -3605,6 +3624,7 @@ async function main(): Promise<void> {
   }
   setMode("chat");
   await connect();
+  if (__SCOUT_DEBUG__) for (const line of blurProbeLog) trace("blur-probe: " + line);
   if (session) {
     await restoreConversation();
     await resumeActive();
