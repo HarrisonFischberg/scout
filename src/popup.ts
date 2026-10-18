@@ -55,6 +55,7 @@ import { fromWire } from "./server/protocol";
 import type { ToolDecision, ToolResult } from "./tools/host";
 import { ALL_SITES, PAGE_BUTTON_KEY, pageButtonOffered, parsePageButton, platformOs, reachText, type PageButton } from "./panel/edge";
 import { conversationForTab, startNewConversation } from "./panel/state";
+import { parseQuickAsk } from "./panel/quick-ask";
 import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/consent";
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
@@ -3645,6 +3646,19 @@ async function main(): Promise<void> {
     // On touch devices focusing the field on open raises the keyboard over the
     // small popup; let the user tap into it instead.
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
+  }
+  // Quick ask from the page tab (src/quick-ask.ts): run what was asked there.
+  // If something else is running, or there is no key yet, leave it in the box.
+  if (tab.id !== undefined && !STANDALONE) {
+    const asked = parseQuickAsk(await request(toWorker, "panel.take_ask", { tabId: tab.id }, { timeoutMs: 3_000 }).catch(() => null));
+    if (asked) {
+      const text = asked.kind === "summarize" ? SUMMARIZE_QUESTION : asked.question;
+      if (session && !activeChat && !control && !task) void ask(text);
+      else if (asked.kind === "ask") {
+        question.value = asked.question;
+        autosize();
+      }
+    }
   }
   updateEmpty();
 }

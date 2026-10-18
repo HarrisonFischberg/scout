@@ -5,10 +5,13 @@
 // shadow root. It stays out on every page and one tap opens Scout (owner
 // request 2026-10-18; it used to tuck into a sliver). It can be dragged up and
 // down or to the other side. Opening it asks the worker to open Scout's toolbar panel
-// (Safari's sheet over the page on iPhone). It never puts an extension page in
+// (Safari's sheet over the page on iPhone); on a phone it first shows the quick
+// ask box (src/quick-ask.ts, owner request 2026-10-18). It never puts an extension page in
 // the website: Safari runs such a frame in the page's process and kills that
 // process when the frame uses extension APIs (owner bug report 2026-10-16).
 import { request } from "./bridge/messages";
+import { mountQuickAsk, QUICK_ASK_CSS, type QuickAskUi } from "./quick-ask";
+import { quickAskOffered, type QuickAsk } from "./panel/quick-ask";
 import {
   clampY,
   isDrag,
@@ -132,7 +135,7 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, hidde
   host.setAttribute("style", HOST_STYLE);
   const root = host.attachShadow({ mode: "closed" });
   root.innerHTML =
-    "<style>" + CSS + "</style>" +
+    "<style>" + CSS + QUICK_ASK_CSS + "</style>" +
     '<button class="tab" type="button" aria-label="Open Scout for Safari"><span class="pill">' + GLYPH + "</span></button>" +
     '<p class="toast" role="status"></p>';
   const tab = root.querySelector("button") as HTMLButtonElement;
@@ -222,6 +225,24 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, hidde
   };
 
   // ---------- Open Scout ----------
+  const ask = (type: "panel.open" | "panel.ask", payload: object): Promise<boolean> =>
+    request<{ opened?: boolean }>((m) => browser.runtime.sendMessage(m), type, payload).then(
+      (r) => r.opened === true,
+      () => false,
+    );
+  // On a phone the tab opens the quick ask box (src/quick-ask.ts); elsewhere
+  // it opens Scout's panel straight away.
+  const vp = viewportInfo();
+  const quick: QuickAskUi | null = quickAskOffered(vp.coarse, Math.min(screen.width, screen.height))
+    ? mountQuickAsk({
+        root,
+        tab,
+        scale: () => tabScale(viewportInfo()),
+        send: (a: QuickAsk) => ask("panel.ask", a),
+        openPanel: () => ask("panel.open", {}),
+        failed: () => toast(CANT_OPEN),
+      })
+    : null;
   let opening = false;
   tab.addEventListener("click", (e) => {
     if (suppressClick) {
@@ -230,16 +251,15 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, hidde
     }
     // Only a real tap or key press opens Scout; page scripts cannot.
     if (!e.isTrusted || opening) return;
+    if (quick) {
+      quick.open();
+      return;
+    }
     opening = true;
-    void request<{ opened?: boolean }>((m) => browser.runtime.sendMessage(m), "panel.open", {})
-      .then(
-        (r) => r.opened === true,
-        () => false,
-      )
-      .then((opened) => {
-        opening = false;
-        if (!opened) toast(CANT_OPEN);
-      });
+    void ask("panel.open", {}).then((opened) => {
+      opening = false;
+      if (!opened) toast(CANT_OPEN);
+    });
   });
 
   // ---------- Attach ----------
@@ -286,6 +306,7 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, hidde
       placeTab();
     },
     destroy() {
+      quick?.destroy();
       window.clearTimeout(toastTimer);
       window.visualViewport?.removeEventListener("resize", rescale);
       window.removeEventListener("resize", rescale);

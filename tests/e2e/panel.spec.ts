@@ -22,7 +22,7 @@ function sse(text: string): string {
 
 // The tab the popup opens on and whether it is private come from
 // sessionStorage, so a test can "switch tabs" and reload (reopen the panel).
-async function openPanel(page: Page, tab: { id: number; incognito?: boolean }): Promise<void> {
+async function openPanel(page: Page, tab: { id: number; incognito?: boolean }, afterWorker?: () => Promise<unknown>): Promise<void> {
   await page.addInitScript(
     ({ key, pageData, firstTab }) => {
       const g = globalThis as unknown as Record<string, unknown>;
@@ -68,6 +68,7 @@ async function openPanel(page: Page, tab: { id: number; incognito?: boolean }): 
   await page.route("**/icons/**", (r) => r.fulfill({ status: 200, contentType: "image/png", body: "" }));
   await page.route("https://api.anthropic.com/v1/models**", (r) => r.fulfill({ status: 401, body: "{}" }));
   await withWorker(page);
+  await afterWorker?.();
   await page.goto("/popup.html");
 }
 
@@ -266,4 +267,46 @@ test("a key hint that is out of date falls back to the no-key screen", async ({ 
     anthropic: false,
     openai: false,
   });
+});
+
+// Quick ask (owner request 2026-10-18): on iPhone the page tab's box hands the
+// question to the worker, which opens this panel; the panel then runs it.
+async function openPanelWithQuickAsk(page: Page, tabId: number, ask: { kind: string; question: string }): Promise<void> {
+  // Runs after the spec's stub and the worker harness: the page asks
+  // as soon as the worker listens, as the tab's content script would.
+  await openPanel(page, { id: tabId }, () => page.addInitScript(
+    ({ tabId, ask }) => {
+      const b = (globalThis as unknown as { browser: Record<string, Record<string, unknown>> }).browser;
+      b.action = { openPopup: async () => undefined, setTitle: async () => undefined, setIcon: async () => undefined };
+      const runtime = b.runtime!;
+      const add = (runtime.onMessage as { addListener(f: (m: unknown, s: unknown) => unknown): void }).addListener;
+      runtime.onMessage = {
+        addListener: (f: (m: unknown, s: unknown) => unknown) => {
+          void f({ type: "panel.ask", request_id: "qa1", payload: ask }, { id: "scout-test", url: "https://stocks.test/markets", tab: { id: tabId } });
+          add(f);
+        },
+      };
+    },
+    { tabId, ask },
+  ));
+}
+
+test("a question asked in the page's quick ask box runs as soon as the panel opens, once", async ({ page }) => {
+  await page.route("https://api.anthropic.com/v1/messages", (r) =>
+    r.fulfill({ status: 200, contentType: "text/event-stream", body: sse("Markets rose on tech earnings.") }),
+  );
+  await openPanelWithQuickAsk(page, 3, { kind: "ask", question: "What moved the market today?" });
+  const log = page.getByRole("log");
+  await expect(log.getByText("Markets rose on tech earnings.")).toBeVisible();
+  await expect(log.getByText("What moved the market today?")).toHaveCount(1);
+});
+
+test("Summarize this page from the quick ask box summarizes in the panel", async ({ page }) => {
+  await page.route("https://api.anthropic.com/v1/messages", (r) =>
+    r.fulfill({ status: 200, contentType: "text/event-stream", body: sse("The page lists today's index moves.") }),
+  );
+  await openPanelWithQuickAsk(page, 4, { kind: "summarize", question: "" });
+  const log = page.getByRole("log");
+  await expect(log.getByText("Summarize page")).toBeVisible();
+  await expect(log.getByText("The page lists today's index moves.")).toBeVisible();
 });
