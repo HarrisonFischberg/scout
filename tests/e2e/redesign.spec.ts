@@ -399,6 +399,9 @@ test.describe("touch device", () => {
     await openPopup(page, { keys: { anthropic: GOOD_KEY } });
     const starters = page.locator("#composer > #starters");
     await expect(starters).toBeVisible();
+    // A new chat opens with the question box focused (owner idea 2026-10-18);
+    // the sheet is dragged with no field focused.
+    await page.getByRole("textbox", { name: /Ask about this page/ }).blur();
     await expect(page.locator("#composer")).toHaveCSS("position", "fixed");
     const fromBottom = async (): Promise<number> =>
       page.evaluate(() => innerHeight - document.querySelector("#starters")!.getBoundingClientRect().bottom);

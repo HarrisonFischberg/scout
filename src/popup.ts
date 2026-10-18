@@ -59,6 +59,7 @@ import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/cons
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
+import { isPhoneScreen } from "./panel/blur";
 import { joinDictation, Listener, micErrorText, recognitionCtor } from "./panel/voice";
 import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
 import { probeDrag } from "./panel/drag-probe";
@@ -445,6 +446,12 @@ const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></spa
 
 /** Scout as its own page in a tab (src/panel/standalone.ts), not the toolbar panel. */
 const STANDALONE = isStandalone(location.search);
+// iPhone (owner idea 2026-10-18): the panel background is half see-through so
+// the page shows behind Scout. Set before the first await so the first frame
+// already has it. Mac and iPad popovers keep the solid background.
+if (!STANDALONE && isPhoneScreen(matchMedia("(pointer: coarse)").matches, screen.width)) {
+  document.documentElement.classList.add("see-through");
+}
 if (STANDALONE) document.documentElement.dataset.standalone = "";
 
 async function main(): Promise<void> {
@@ -3642,9 +3649,15 @@ async function main(): Promise<void> {
     await resumeActive();
     await resumeTask();
     await loadTabs();
-    // On touch devices focusing the field on open raises the keyboard over the
-    // small popup; let the user tap into it instead.
+    // iPhone (owner idea 2026-10-18): a new chat opens with the question box
+    // focused so the keyboard can come up at once. Safari decides whether a
+    // focus without a tap raises the keyboard. iPad keeps the earlier rule:
+    // let the user tap into the field.
     if (!matchMedia("(pointer: coarse)").matches) question.focus();
+    else if (document.documentElement.classList.contains("see-through") && !empty.hidden && !question.disabled) {
+      question.focus();
+      if (__SCOUT_DEBUG__) trace("open:focus " + (document.activeElement === question ? "field" : "refused"));
+    }
   }
   updateEmpty();
 }
