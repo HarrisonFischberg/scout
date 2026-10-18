@@ -29,11 +29,17 @@ export function wantsPageBlur(coarsePointer: boolean, screenWidth: number): bool
 // a while. Removal waited on the worker, which only hears that the panel
 // closed once its port drops, and a suspended worker can take long to wake
 // for that. So the layer also clears itself: the open panel pings it every
-// BLUR_PING_MS, says goodbye as it closes (pagehide), and a layer that hears
-// nothing for BLUR_TIMEOUT_MS takes itself off. The worker's removal stays as
-// a last resort.
-export const BLUR_PING_MS = 250;
-export const BLUR_TIMEOUT_MS = 900;
+// BLUR_PING_MS, says goodbye as it closes, and a layer that hears nothing for
+// BLUR_TIMEOUT_MS takes itself off. The worker's removal stays as a last resort.
+//
+// Second report the same night: still frosted after closing. iPhone Safari can
+// keep a closed panel's page alive without pagehide or a hidden state, so its
+// timers kept pinging. The panel now pings from animation frames, which stop
+// as soon as it is off screen, and also says goodbye when its window loses
+// focus. A ping to a layer that has gone puts it back, so a short timeout can
+// never leave an open panel without its blur for more than a moment.
+export const BLUR_PING_MS = 100;
+export const BLUR_TIMEOUT_MS = 350;
 // Owner request 2026-10-18: the blur should come and go quickly. It fades in
 // over this long once the panel starts (it used to wait for the panel's
 // settings and chat to load, then appear at once) and goes at once on close.
@@ -56,16 +62,8 @@ export function addPageBlur(id: string, timeoutMs: number, fadeInMs = 0): boolea
     clearTimeout(state.timer);
     state.timer = setTimeout(drop, timeoutMs);
   };
-  if (!state.listening) {
-    state.listening = true;
-    browser.runtime.onMessage.addListener((m: unknown) => {
-      const ping = m as Partial<BlurPing> | null;
-      if (!ping || ping.blur !== id) return;
-      if (ping.alive === true) arm();
-      else drop();
-    });
-  }
-  if (!document.getElementById(id)) {
+  const show = (): void => {
+    if (document.getElementById(id)) return;
     const layer = document.createElement("div");
     layer.id = id;
     layer.setAttribute("aria-hidden", "true");
@@ -79,7 +77,19 @@ export function addPageBlur(id: string, timeoutMs: number, fadeInMs = 0): boolea
     }
     (document.body ?? document.documentElement).appendChild(layer);
     if (fade) requestAnimationFrame(() => (layer.style.opacity = "1"));
+  };
+  if (!state.listening) {
+    state.listening = true;
+    browser.runtime.onMessage.addListener((m: unknown) => {
+      const ping = m as Partial<BlurPing> | null;
+      if (!ping || ping.blur !== id) return;
+      if (ping.alive === true) {
+        show();
+        arm();
+      } else drop();
+    });
   }
+  show();
   arm();
   return true;
 }

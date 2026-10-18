@@ -460,15 +460,35 @@ async function frostPage(): Promise<number | undefined> {
     const m: BlurPing = { blur: BLUR_LAYER_ID, alive };
     void browser.tabs.sendMessage?.(tabId, m)?.catch(() => undefined);
   };
-  const pinger = window.setInterval(() => ping(true), BLUR_PING_MS);
+  // Pinged from animation frames, which stop as soon as the panel is off
+  // screen even when Safari keeps its page alive (src/panel/blur.ts).
+  let last = 0;
+  let open = true;
+  const beat = (now: number): void => {
+    if (!open) return;
+    if (now - last >= BLUR_PING_MS) {
+      last = now;
+      ping(true);
+    }
+    requestAnimationFrame(beat);
+  };
+  const resume = (): void => {
+    if (open) return;
+    open = true;
+    last = 0;
+    requestAnimationFrame(beat);
+  };
   const bye = (): void => {
-    window.clearInterval(pinger);
+    if (!open) return;
+    open = false;
     ping(false);
   };
+  requestAnimationFrame(beat);
   window.addEventListener("pagehide", bye);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") bye();
-  });
+  window.addEventListener("blur", bye);
+  window.addEventListener("focus", resume);
+  window.addEventListener("pageshow", resume);
+  document.addEventListener("visibilitychange", () => (document.visibilityState === "hidden" ? bye() : resume()));
   return tabId;
 }
 
