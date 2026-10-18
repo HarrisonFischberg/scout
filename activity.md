@@ -1743,6 +1743,7 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Request: the standalone Scout page should use the full window, not a centered column.
 - Change: removed the 760 px column; header, conversation and composer now span the tab.
 - Evidence: unit (known Take control failure only), typecheck, lint; redesign e2e pass in Chromium. Device check pending.
+
 ## 2026-10-18 — Scroll up while an answer types; slower typing (owner request)
 
 - Request: while an answer types out (Summarize this page, Explain the key points), let the user scroll up smoothly to read from the top; and show the text about 50% slower.
