@@ -443,11 +443,14 @@
       /* Text one step smaller than before (owner 2026-10-18); the question box stays at
          16px, below which iOS zooms the page when the box is tapped. */
       @media (pointer: coarse) {
-        /* While Safari's sheet is dragged it draws the panel a frame behind, and the
-           starters just above the composer wobble; fade them until the sheet settles
-           (owner choice 2026-10-18, src/panel/sheet-drag.ts). */
-        #starters, #site-suggestions { transition: opacity 140ms ease; }
-        html.sheet-dragging #starters, html.sheet-dragging #site-suggestions { opacity: 0; transition-duration: 90ms; }
+        /* Docked composer (owner request 2026-10-18, src/panel/dock.ts): Summarize /
+           Explain and the question box are fixed to the bottom of the sheet, so they
+           stay put while the sheet is dragged and the conversation grows above them.
+           While typing they go back into the page flow, which the keyboard fit sizes. */
+        html.docked #composer { position: fixed; left: 0; right: 0; bottom: 0; margin: 0; padding: 0 10px 10px; background: var(--bg-canvas); }
+        html.docked #thread { padding-bottom: calc(var(--dock-h, 0px) + 4px); }
+        #composer > #starters { padding: 0 4px 6px; }
+        html:not([data-chat-empty]) #composer > #starters { display: none; }
         /* No rubber-band bounce of the panel page itself: a drag on the panel
            moves Safari's sheet instead of first stretching the page and then
            handing over mid-gesture (owner 2026-10-18, smooth sheet drag). */

@@ -11,8 +11,8 @@
 // (documentElement.clientHeight) and the composer's bottom edge. A debug
 // switch (#47) tried three height sources (the stylesheet's 100%,
 // innerHeight, visualViewport.height) and the owner felt no difference, so
-// the lag is Safari drawing the panel behind its sheet; src/panel/sheet-drag.ts
-// hides the starters while it moves instead. Sizes and times only.
+// the lag is Safari drawing the panel behind its sheet; src/panel/dock.ts
+// pins the bottom of the panel instead. Sizes and times only.
 
 /** Quiet time after the last resize that ends a drag. */
 export const DRAG_QUIET_MS = 400;

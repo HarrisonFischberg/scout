@@ -62,7 +62,7 @@ import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
 import { joinDictation, Listener, micErrorText, recognitionCtor } from "./panel/voice";
 import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
 import { probeDrag } from "./panel/drag-probe";
-import { watchSheetDrag } from "./panel/sheet-drag";
+import { dockComposer } from "./panel/dock";
 import { hintedProvider, KEY_HINT_KEY, parseKeyHint, sameHint, type KeyHint } from "./panel/warm";
 import { isStandalone, openStandalone } from "./panel/standalone";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
@@ -937,6 +937,8 @@ async function main(): Promise<void> {
   function updateEmpty(): void {
     const busyCards = !!task || !!couponRun || !confirmBox.hidden;
     empty.hidden = !(session || connecting) || log.childElementCount > 0 || busyCards;
+    // On iPhone the starters live in the docked composer (src/panel/dock.ts).
+    document.documentElement.toggleAttribute("data-chat-empty", !empty.hidden);
     siteSuggestions.hidden = empty.hidden || !siteSuggestions.childElementCount;
   }
 
@@ -3603,9 +3605,9 @@ async function main(): Promise<void> {
   if (matchMedia("(pointer: coarse)").matches && window.visualViewport) {
     const typing = (): boolean => editableFocused(document.activeElement);
     fitAboveKeyboard(window, window.visualViewport, document.body, typing);
-    // While Safari's sheet is dragged, fade the starters it draws behind the
-    // sheet (src/panel/sheet-drag.ts).
-    watchSheetDrag(window, typing, (on) => document.documentElement.classList.toggle("sheet-dragging", on));
+    // Summarize / Explain and the question box stay pinned to the bottom of
+    // the sheet while it is dragged (src/panel/dock.ts).
+    dockComposer(document, composer, el("starters"), typing);
     // Debug builds: log each drag (src/panel/drag-probe.ts).
     if (__SCOUT_DEBUG__) {
       probeDrag(window, {
