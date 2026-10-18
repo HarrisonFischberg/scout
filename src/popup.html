@@ -779,6 +779,13 @@
           </p>
           <label><input id="diag-question" type="checkbox" /> Also record the question I type</label>
           <label><input id="diag-mock" type="checkbox" /> Answer from the local mock server (scripts/mock-scout-server.mjs, Anthropic only)</label>
+          <label>Panel height while dragging (iPhone test)
+            <select id="diag-sheet-height">
+              <option value="page">A: Page (today)</option>
+              <option value="window">B: Window</option>
+              <option value="visible">C: Visible area</option>
+            </select>
+          </label>
           <div class="row">
             <button id="diag-copy" class="btn" type="button">Copy diagnostics</button>
             <button id="diag-clear" class="btn" type="button">Clear diagnostics</button>
