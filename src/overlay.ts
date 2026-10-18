@@ -13,6 +13,7 @@
 // buttons: only trusted events count, and the layer never reads the page.
 import { request } from "./bridge/messages";
 import { OVERLAY_HANDLER, type OverlayRequest } from "./content-api";
+import { wantsPageBlur } from "./panel/blur";
 
 const FLAG = "__safariScoutOverlayLoaded";
 const g = globalThis as unknown as Record<string, unknown>;
@@ -27,6 +28,9 @@ export const GLOW_CENTER = "28%";
 export const GLOW_MID = "36%";
 export const GLOW_EDGE = "78%";
 export const GLOW_CORNER = "95%";
+// iPhone shows the glow at three quarters strength (owner, 2026-10-18: on top
+// of the panel's page blur the full wash was too heavy). Mac stays at full.
+export const PHONE_GLOW_SCALE = 0.75;
 // Many close stops, so the fade is smooth rather than banded.
 const MASK_STOPS = [
   "rgb(0 0 0 / " + GLOW_CENTER + ") 0%",
@@ -85,6 +89,8 @@ const STYLE_TEXT = `
   filter: blur(26px); animation: scout-sweep ${SWEEP_MS}ms linear infinite;
 }
 .layer.paused .glow { opacity: 0.5; }
+.layer.phone .glow { opacity: ${PHONE_GLOW_SCALE}; }
+.layer.phone.paused .glow { opacity: ${PHONE_GLOW_SCALE * 0.5}; }
 .layer.hidden-tab .glow { animation-play-state: paused; }
 @keyframes scout-sweep { to { --scout-angle: 360deg; } }
 .ripple {
@@ -188,7 +194,7 @@ if (!g[FLAG]) {
     const style = document.createElement("style");
     style.textContent = STYLE_TEXT;
     layer = document.createElement("div");
-    layer.className = "layer";
+    layer.className = wantsPageBlur(matchMedia("(pointer: coarse)").matches, screen.width) ? "layer phone" : "layer";
     layer.setAttribute("role", "group");
     layer.setAttribute("aria-label", "Scout for Safari is controlling this page");
     const glow = document.createElement("div");
