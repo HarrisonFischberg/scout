@@ -8,32 +8,16 @@
 // starters sat anywhere from 0 to 173 px above the window's bottom edge
 // (136 px at rest), so the page was laid out at a different height from the
 // window on many frames. This log now also records the page's own height
-// (documentElement.clientHeight) and the composer's bottom edge, and the
-// panel can try three height sources (`SheetHeightMode`) so the owner can
-// feel which one follows the sheet. Sizes and times only.
+// (documentElement.clientHeight) and the composer's bottom edge. A debug
+// switch (#47) tried three height sources (the stylesheet's 100%,
+// innerHeight, visualViewport.height) and the owner felt no difference, so
+// the lag is Safari drawing the panel behind its sheet; src/panel/sheet-drag.ts
+// hides the starters while it moves instead. Sizes and times only.
 
 /** Quiet time after the last resize that ends a drag. */
 export const DRAG_QUIET_MS = 400;
 /** A frame slower than this missed at least one 60 Hz refresh. */
 export const SLOW_FRAME_MS = 25;
-
-/** Where the panel takes its height from while the sheet moves (debug experiment).
- *  page: the stylesheet's 100% (what ships today); window: innerHeight;
- *  visible: visualViewport.height. */
-export type SheetHeightMode = "page" | "window" | "visible";
-export const SHEET_HEIGHT_KEY = "scout.debug.sheetHeight";
-export const SHEET_HEIGHT_MODES: readonly SheetHeightMode[] = ["page", "window", "visible"];
-
-export function parseSheetHeightMode(v: unknown): SheetHeightMode {
-  return SHEET_HEIGHT_MODES.includes(v as SheetHeightMode) ? (v as SheetHeightMode) : "page";
-}
-
-/** The body height for a mode, or "" for the stylesheet's own. */
-export function sheetBodyHeight(mode: SheetHeightMode, innerHeight: number, visible: number): string {
-  if (mode === "window") return `${Math.round(innerHeight)}px`;
-  if (mode === "visible") return `${Math.round(visible)}px`;
-  return "";
-}
 
 export interface DragSample {
   /** performance.now() of the resize event. */
@@ -57,7 +41,7 @@ const range = (xs: readonly number[]): string => {
 };
 
 /** One Diagnostics line for a finished drag (kept under the 300-character stage limit). */
-export function summarizeDrag(samples: readonly DragSample[], frames: readonly number[], mode: SheetHeightMode = "page"): string {
+export function summarizeDrag(samples: readonly DragSample[], frames: readonly number[]): string {
   const n = samples.length;
   const first = samples[0];
   const last = samples[n - 1];
@@ -67,7 +51,7 @@ export function summarizeDrag(samples: readonly DragSample[], frames: readonly n
   const avg = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : 0;
   const maxOf = (xs: readonly number[]): number => (xs.length ? Math.max(...xs) : 0);
   return [
-    `drag[${mode}]: ${n} resizes/${Math.round(last.at - first.at)} ms`,
+    `drag: ${n} resizes/${Math.round(last.at - first.at)} ms`,
     `h ${first.height}->${last.height}`,
     `gap ${Math.round(avg)}/${Math.round(maxOf(gaps))} ms`,
     `frames ${frames.length} slow ${frames.filter((f) => f > SLOW_FRAME_MS).length} max ${Math.round(maxOf(frames))}`,
@@ -81,7 +65,6 @@ export function summarizeDrag(samples: readonly DragSample[], frames: readonly n
 export interface DragProbeTargets {
   starters(): Element | null;
   composer(): Element | null;
-  mode(): SheetHeightMode;
 }
 
 /** Starts logging drags. `note` receives one line per drag. */
@@ -101,7 +84,7 @@ export function probeDrag(win: Window, targets: DragProbeTargets, note: (line: s
     looping = false;
     lastFrame = 0;
     // One resize per drag is a finding too: Safari then resized only when the sheet settled.
-    if (samples.length) note(summarizeDrag(samples, frames, targets.mode()));
+    if (samples.length) note(summarizeDrag(samples, frames));
     samples = [];
     frames = [];
   };
@@ -125,19 +108,4 @@ export function probeDrag(win: Window, targets: DragProbeTargets, note: (line: s
       win.requestAnimationFrame(frame);
     }
   });
-}
-
-/** Debug experiment: keeps the body at the chosen mode's height on every
- *  resize, unless `skip()` (a text field has focus; the keyboard fit owns
- *  the height then). Registered before the probe so the probe measures it. */
-export function followSheetHeight(win: Window, body: { style: { height: string } }, mode: () => SheetHeightMode, skip: () => boolean): () => void {
-  const apply = (): void => {
-    if (skip()) return;
-    const next = sheetBodyHeight(mode(), win.innerHeight, win.visualViewport?.height ?? win.innerHeight);
-    if (body.style.height !== next) body.style.height = next;
-  };
-  win.addEventListener("resize", apply);
-  win.visualViewport?.addEventListener("resize", apply);
-  apply();
-  return apply;
 }

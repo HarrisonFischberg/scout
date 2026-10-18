@@ -443,6 +443,11 @@
       /* Text one step smaller than before (owner 2026-10-18); the question box stays at
          16px, below which iOS zooms the page when the box is tapped. */
       @media (pointer: coarse) {
+        /* While Safari's sheet is dragged it draws the panel a frame behind, and the
+           starters just above the composer wobble; fade them until the sheet settles
+           (owner choice 2026-10-18, src/panel/sheet-drag.ts). */
+        #starters, #site-suggestions { transition: opacity 140ms ease; }
+        html.sheet-dragging #starters, html.sheet-dragging #site-suggestions { opacity: 0; transition-duration: 90ms; }
         /* No rubber-band bounce of the panel page itself: a drag on the panel
            moves Safari's sheet instead of first stretching the page and then
            handing over mid-gesture (owner 2026-10-18, smooth sheet drag). */
@@ -779,13 +784,6 @@
           </p>
           <label><input id="diag-question" type="checkbox" /> Also record the question I type</label>
           <label><input id="diag-mock" type="checkbox" /> Answer from the local mock server (scripts/mock-scout-server.mjs, Anthropic only)</label>
-          <label>Panel height while dragging (iPhone test)
-            <select id="diag-sheet-height">
-              <option value="page">A: Page (today)</option>
-              <option value="window">B: Window</option>
-              <option value="visible">C: Visible area</option>
-            </select>
-          </label>
           <div class="row">
             <button id="diag-copy" class="btn" type="button">Copy diagnostics</button>
             <button id="diag-clear" class="btn" type="button">Clear diagnostics</button>
