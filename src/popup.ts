@@ -61,7 +61,8 @@ import { checkKey, looksLikeKey } from "./providers/keytest";
 import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
 import { joinDictation, Listener, micErrorText, recognitionCtor } from "./panel/voice";
 import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
-import { followSheetHeight, parseSheetHeightMode, probeDrag, SHEET_HEIGHT_KEY, sheetBodyHeight, type SheetHeightMode } from "./panel/drag-probe";
+import { probeDrag } from "./panel/drag-probe";
+import { watchSheetDrag } from "./panel/sheet-drag";
 import { hintedProvider, KEY_HINT_KEY, parseKeyHint, sameHint, type KeyHint } from "./panel/warm";
 import { isStandalone, openStandalone } from "./panel/standalone";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
@@ -195,8 +196,6 @@ async function activeTab(): Promise<ActiveTab> {
 // never content.
 let diag: Diagnostics | null = null;
 let current: RunHandle = disabledRun;
-// Debug builds: the panel height experiment for the iPhone sheet drag (src/panel/drag-probe.ts).
-let sheetHeightMode: SheetHeightMode = "page";
 
 function startRun(kind: RunKind, meta: { provider?: string; model?: string; question?: string; mock?: boolean } = {}): RunHandle {
   current = diag ? diag.start(kind, meta) : disabledRun;
@@ -582,15 +581,6 @@ async function main(): Promise<void> {
         await connect();
         diagStatus.textContent = diagMock.checked ? "Answers now come from the local mock server." : "Answers come from your provider again.";
       });
-    });
-    // iPhone sheet drag experiment: which height the panel follows while dragged.
-    const diagHeight = el<HTMLSelectElement>("diag-sheet-height");
-    diagHeight.value = sheetHeightMode;
-    diagHeight.addEventListener("change", () => {
-      sheetHeightMode = parseSheetHeightMode(diagHeight.value);
-      void storage?.set({ [SHEET_HEIGHT_KEY]: sheetHeightMode }).catch(() => undefined);
-      window.dispatchEvent(new Event("resize"));
-      diagStatus.textContent = `Panel height now follows: ${diagHeight.selectedOptions[0]?.textContent ?? sheetHeightMode}.`;
     });
     el("diag-clear").addEventListener("click", () => {
       void diag?.clear().then(() => (diagStatus.textContent = "Diagnostics cleared."));
@@ -3611,26 +3601,16 @@ async function main(): Promise<void> {
   // ---------- Start ----------
   // iPhone and iPad: keep the composer above the on-screen keyboard (src/panel/keyboard.ts).
   if (matchMedia("(pointer: coarse)").matches && window.visualViewport) {
-    const vv = window.visualViewport;
     const typing = (): boolean => editableFocused(document.activeElement);
-    // Debug builds: try other height sources while the sheet is dragged, and
-    // log each drag (src/panel/drag-probe.ts). Release builds keep the stylesheet's.
-    const base = (): string => (__SCOUT_DEBUG__ ? sheetBodyHeight(sheetHeightMode, innerHeight, vv.height) : "");
-    if (__SCOUT_DEBUG__) {
-      const follow = followSheetHeight(window, document.body, () => sheetHeightMode, typing);
-      void storage?.get(SHEET_HEIGHT_KEY).then((got) => {
-        sheetHeightMode = parseSheetHeightMode(got[SHEET_HEIGHT_KEY]);
-        const pick = document.getElementById("diag-sheet-height") as HTMLSelectElement | null;
-        if (pick) pick.value = sheetHeightMode;
-        follow();
-      }, () => undefined);
-    }
-    fitAboveKeyboard(window, vv, document.body, typing, base);
+    fitAboveKeyboard(window, window.visualViewport, document.body, typing);
+    // While Safari's sheet is dragged, fade the starters it draws behind the
+    // sheet (src/panel/sheet-drag.ts).
+    watchSheetDrag(window, typing, (on) => document.documentElement.classList.toggle("sheet-dragging", on));
+    // Debug builds: log each drag (src/panel/drag-probe.ts).
     if (__SCOUT_DEBUG__) {
       probeDrag(window, {
         starters: () => document.getElementById("starters"),
         composer: () => document.querySelector(".composer-box"),
-        mode: () => sheetHeightMode,
       }, trace);
     }
   }

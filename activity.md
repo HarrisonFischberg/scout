@@ -1787,3 +1787,10 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Reading: Scout is not too slow; on many frames the page is laid out at a different height from the window, so everything anchored to the bottom (starters, composer) moves against the sheet. Which of the three heights matches what is on screen is not known yet.
 - Step: debug builds can now pick the panel's height source under Settings → Diagnostics → "Panel height while dragging": A Page (today's stylesheet 100%), B Window (`innerHeight`, set on every resize), C Visible area (`visualViewport.height`). The keyboard fit returns to the chosen height. The drag log line now names the mode and records page-vs-window and composer positions too. Stored in extension storage (`scout.debug.sheetHeight`), debug builds only.
 - Evidence: `tests/unit/drag-probe.test.ts`; unit 471/472 (known Take control failure), typecheck, lint, build, `check:release` clean. Needs the owner to try A, B and C on the iPhone and paste diagnostics.
+
+## 2026-10-18 — iPhone sheet drag: fade the starters while it moves (owner choice)
+
+- Result of the #47 test: the owner felt no difference between the three panel height sources (A, today's, closest), so the wobble is Safari drawing the panel a frame or two behind its sheet, not Scout's layout.
+- Owner choice (decision card): fade Summarize / Explain while dragging.
+- Change: `src/panel/sheet-drag.ts` treats two panel resizes less than 100 ms apart as a drag (a single resize, such as the panel opening or a detent snap, is not) and adds `sheet-dragging` to `<html>` until no resize has come for 180 ms; on iPhone the starters and store suggestions fade out in 90 ms and back in 140 ms. Not while a text field has focus. The #47 height switch is removed; the debug drag log stays.
+- Evidence: `tests/unit/sheet-drag.test.ts`; unit 471/472 (known Take control failure), typecheck, lint, build, `check:release` clean. Needs the iPhone check.
