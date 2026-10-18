@@ -282,3 +282,112 @@ test("Settings turns the button on: asks Safari for site access and shows it on 
   await expect.poll(async () => ((await fake(page)).data.pageButton as { on: boolean }).on).toBe(false);
   await expect(page.locator("#pagebutton-status")).toHaveText("Off.");
 });
+
+// Owner bug report 2026-10-18: on iPhone, Safari 26 paints a solid strip under
+// its bottom bar as soon as a page has any fixed or sticky element, so the page
+// looked different once Scout loaded. On a phone the tab lives in the page.
+test.describe("iPhone", () => {
+  test.use({ viewport: { width: 390, height: 664 }, screen: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
+
+  /** Opens closed shadow roots for the test only, so it can look inside the tab. */
+  async function openShadows(page: Page): Promise<void> {
+    await page.addInitScript(() => {
+      const attach = Element.prototype.attachShadow;
+      Element.prototype.attachShadow = function (init: ShadowRootInit) {
+        return attach.call(this, { ...init, mode: "open" });
+      };
+    });
+  }
+
+  /** Every element on the page, shadow content included, whose position Safari treats as fixed to the screen. */
+  const pinned = (page: Page) =>
+    page.evaluate(() => {
+      const out: string[] = [];
+      const walk = (root: Document | ShadowRoot): void => {
+        for (const el of Array.from(root.querySelectorAll("*"))) {
+          const pos = getComputedStyle(el).position;
+          if (pos === "fixed" || pos === "sticky") out.push(el.tagName.toLowerCase() + "." + (el.getAttribute("class") ?? "") + " " + pos);
+          if (el.shadowRoot) walk(el.shadowRoot);
+        }
+      };
+      walk(document);
+      return out;
+    });
+
+  /** A phone-ready page (width=device-width), with the edge script loaded; tucked unless `intro`. */
+  async function openPhonePage(page: Page, intro = false): Promise<void> {
+    await stub(page, { on: true });
+    if (!intro) {
+      await page.addInitScript(() => {
+        ((window.top ?? window) as unknown as { __fake: Fake }).__fake.data.pageButtonIntroduced = true;
+      });
+    }
+    await page.route("**/phone.html", (r) =>
+      r.fulfill({
+        contentType: "text/html",
+        body: '<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Phone</title></head><body><h1>Phone fixture</h1><p>Synthetic text.</p></body></html>',
+      }),
+    );
+    await page.goto("/phone.html");
+    await page.addScriptTag({ path: "apple/Extension/Resources/edge.js" });
+  }
+
+  const tallPage = (page: Page) =>
+    page.evaluate(() => {
+      const spacer = document.createElement("div");
+      spacer.style.height = "4000px";
+      document.body.appendChild(spacer);
+    });
+
+  test("the tab adds nothing fixed or sticky to the page, so Safari's bottom bar stays see-through", async ({ page }) => {
+    await openShadows(page);
+    await openPhonePage(page);
+    const vp = page.viewportSize() ?? { width: 390, height: 664 };
+    const y = Math.round(vp.height * 0.45);
+    await expect.poll(() => tabThere(page, { x: vp.width - 8, y })).toBe(true);
+    expect(await pinned(page)).toEqual([]);
+  });
+
+  test("the tab stays on the screen edge while the page scrolls, without making the page longer", async ({ page }) => {
+    await openPhonePage(page);
+    await tallPage(page);
+    const vp = page.viewportSize() ?? { width: 390, height: 664 };
+    const y = Math.round(vp.height * 0.45);
+    await expect.poll(() => tabThere(page, { x: vp.width - 8, y })).toBe(true);
+    const length = await page.evaluate(() => document.scrollingElement?.scrollHeight ?? 0);
+
+    await page.evaluate(() => window.scrollTo(0, 1500));
+    await expect.poll(() => tabThere(page, { x: vp.width - 8, y })).toBe(true);
+    // Scrolled to the very end: still on screen, and the page did not grow.
+    await page.evaluate(() => window.scrollTo(0, document.scrollingElement?.scrollHeight ?? 0));
+    await expect.poll(() => tabThere(page, { x: vp.width - 8, y })).toBe(true);
+    expect(await page.evaluate(() => document.scrollingElement?.scrollHeight ?? 0)).toBe(length);
+    // The rest of the screen still belongs to the page.
+    expect(await tabThere(page, { x: Math.round(vp.width / 2), y })).toBe(false);
+
+    // Tucked: one tap brings it out, the next opens Scout.
+    await page.touchscreen.tap(vp.width - 8, y);
+    await expect.poll(() => tabThere(page, { x: vp.width - 56, y })).toBe(true);
+    await page.touchscreen.tap(vp.width - 30, y);
+    await expect.poll(() => panelOpens(page)).toBe(1);
+  });
+
+  test("dragging after a scroll drops the tab where the finger lets go", async ({ page }) => {
+    await openPhonePage(page, true);
+    await tallPage(page);
+    await page.evaluate(() => window.scrollTo(0, 1200));
+    const vp = page.viewportSize() ?? { width: 390, height: 664 };
+    const from = await tabPoint(page);
+    await expect.poll(() => tabThere(page, from)).toBe(true);
+    // A pointer drag (Playwright's touchscreen has no drag).
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(vp.width / 2, vp.height * 0.6, { steps: 5 });
+    await page.mouse.move(30, Math.round(vp.height * 0.7), { steps: 5 });
+    await page.mouse.up();
+    await expect.poll(async () => ((await fake(page)).data.pageButton as { side?: string }).side).toBe("left");
+    expect(((await fake(page)).data.pageButton as { y: number }).y).toBeCloseTo(0.7, 1);
+    const to = await tabPoint(page, "left", ((await fake(page)).data.pageButton as { y: number }).y);
+    await expect.poll(() => tabThere(page, to)).toBe(true);
+  });
+});
