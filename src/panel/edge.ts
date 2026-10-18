@@ -94,42 +94,16 @@ export function tabScale(v: ViewportInfo): number {
 export const MAX_TAB_SCALE = 4;
 
 /**
- * iPhone: the tab lives in the page instead of being a fixed element. Owner
- * bug report 2026-10-18: Safari 26 on iPhone looks for fixed or sticky
- * elements, and once a page has any it stops showing the page through its
- * bottom bar and paints a solid strip of the page background behind it. So the
- * page looked different as soon as Scout loaded. In the page the tab follows
- * the screen as it scrolls. Mac and iPad keep the fixed tab: their bars do not
- * change for a small element in the middle of the edge.
+ * Whether the tab goes in the top layer (a popover). Not on a phone (owner bug
+ * report 2026-10-18): WebKit gives every top-layer element a ::backdrop, a
+ * transparent fixed box over the whole screen. iPhone Safari 26 treats a
+ * viewport-sized fixed box as a dimming layer and fills the strip under its
+ * bottom bar with the page background, so the page stopped showing through the
+ * bar once Scout loaded. The plain fixed tab with the top z-index is a small box
+ * mid-edge, which Safari ignores. Mac and iPad keep the top layer.
  */
-export function tabInPage(coarsePointer: boolean, screenWidth: number): boolean {
-  return coarsePointer && screenWidth > 0 && screenWidth < 600;
-}
-
-export interface PageArea {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-}
-
-/**
- * Where to put the screen-sized box that holds the in-page tab, in page
- * coordinates: over what is on screen now (visualViewport pageLeft, pageTop,
- * width, height), kept inside the page so it never makes the page longer or
- * wider than it is (a rubber-band scroll past the end just bounces it along).
- */
-export function tabArea(view: PageArea, pageWidth: number, pageHeight: number): PageArea {
-  const n = (x: number): number => (Number.isFinite(x) ? x : 0);
-  const width = Math.max(0, Math.min(n(view.width), n(pageWidth) || n(view.width)));
-  const height = Math.max(0, Math.min(n(view.height), n(pageHeight) || n(view.height)));
-  const clamp = (x: number, max: number): number => Math.min(Math.max(0, n(x)), Math.max(0, max));
-  return {
-    left: clamp(view.left, n(pageWidth) - width),
-    top: clamp(view.top, n(pageHeight) - height),
-    width,
-    height,
-  };
+export function topLayerTab(coarsePointer: boolean, screenWidth: number): boolean {
+  return !(coarsePointer && screenWidth > 0 && screenWidth < 600);
 }
 
 /** Arrow keys move a focused tab by this fraction of the viewport height. */
