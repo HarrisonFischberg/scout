@@ -1668,3 +1668,11 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Before: the panel first loaded settings, AI-sharing consent, the active tab and the tab's chat (four sequential storage or tab calls), then injected the blur, which appeared at once with no fade. On close it went at once since #29 (before that, whenever the worker woke up).
 - After: `frostPage()` in `src/popup.ts` starts the blur as the panel's first step, in parallel with loading settings, and it fades in over `BLUR_FADE_IN_MS` (120 ms; no fade with reduced motion). Close is unchanged from #29: removed at once, or by itself after 900 ms if the goodbye is missed. Layer geometry (bottom gap) unchanged.
 - Evidence: new unit tests in `tests/unit/blur.test.ts` (fade in over 120 ms then removed at once; reduced motion skips the fade). Unit 458/459 (known Take control failure), typecheck, lint, `check:release` clean; Chromium e2e `panel` + `redesign` 20/20. Needs the real iPhone check.
+
+## 2026-10-18 — Page still frosted after closing Scout, on a build with #29/#30 (owner bug)
+
+- Actual (owner, iPhone, new build): the blur is still there after closing Scout.
+- Expected (owner): it goes as soon as Scout closes.
+- Cause (inferred, no iPhone here): #29 relied on the closed panel sending a goodbye on `pagehide`/hidden, or going quiet. iPhone Safari can keep a dismissed panel's page alive without either, so its `setInterval` kept pinging and the layer never timed out.
+- Fix: the panel pings from `requestAnimationFrame`, which WebKit stops for a page that is off screen, every 100 ms; it also says goodbye on window `blur` and resumes on `focus`/`pageshow`/visible. The layer clears itself after 350 ms without a ping (was 900 ms), and a ping to a cleared layer puts it back, so a stall never leaves an open panel without its blur for long.
+- Evidence: new unit test (gone within 350 ms of silence; a late ping restores it). Unit 459/460 (known Take control failure), lint, `check:release` clean; Chromium e2e `panel` + `redesign` 20/20. Needs the real iPhone check.
