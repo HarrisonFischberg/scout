@@ -58,10 +58,12 @@ export function fitAboveKeyboard(
   view: ViewportLike,
   body: { style: { height: string } },
   typing: () => boolean = () => true,
+  /** The height to keep without a keyboard ("" = the stylesheet's). */
+  base: () => string = () => "",
 ): () => void {
   const update = (): void => {
     const height = typing() ? keyboardHeight(win.innerHeight, view) : null;
-    const next = height === null ? "" : `${height}px`;
+    const next = height === null ? base() : `${height}px`;
     if (body.style.height !== next) body.style.height = next;
     // WebKit may scroll the page to reveal the focused field; with the body
     // now the visible size that scroll would push the header off the top.
