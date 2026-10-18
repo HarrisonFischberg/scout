@@ -127,6 +127,8 @@ export const REQUESTS = {
   "panel.state": { senders: ["panel"], payload: { object: { tabId: "number" } } },
   /** Page button (src/edge.ts): the user tapped it; open the toolbar panel. */
   "panel.open": { senders: ["content"], payload: { object: {} } },
+  /** Page button: a page with the button loaded, or a finger on it. The worker gets the app's handler ready (src/panel/warm.ts). */
+  "panel.warm": { senders: ["content"], payload: { object: {} } },
   // ---------- Part 2: conversation, context and tools ----------
   /** Reads the current tab (when allowed) and the attached tabs as cleaned Markdown (src/context). */
   "context.read": {
@@ -152,8 +154,10 @@ export const REQUESTS = {
         /** Continue after a drop: history shows this question and the answer starts with this text. */
         display_question: "string",
         answer_prefix: "string",
+        /** Sources numbered in answer_prefix, so the saved answer keeps them. */
+        prefix_sources: { array: { object: { url: "string", title: "string" } } },
       },
-      optional: ["effort", "shared", "display_question", "answer_prefix"],
+      optional: ["effort", "shared", "display_question", "answer_prefix", "prefix_sources"],
     },
   },
   "chat.stop": { senders: ["panel"], payload: { object: { message_id: "string" } } },
@@ -193,7 +197,7 @@ export const REQUESTS = {
       optional: ["current_tab", "decision"],
     },
   },
-  /** Recent tool calls for Settings > Activity. */
+  /** Recent tool calls (the tool log; not shown in Settings since 2026-10-17). */
   "tools.log": { senders: ["panel"], payload: { object: {} } },
   // ---------- Part 3: Scout mode ----------
   /** Starts a task on a tab (src/agent/task.ts in the worker). Events follow on the port after task.watch. */

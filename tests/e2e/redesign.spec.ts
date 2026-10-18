@@ -18,7 +18,7 @@ function sse(text: string): string {
   return ev.map((e) => "event: " + e.type + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
 }
 
-async function openPopup(page: Page, opts: { keys?: Record<string, string>; data?: Record<string, unknown> } = {}): Promise<void> {
+async function openPopup(page: Page, opts: { keys?: Record<string, string>; data?: Record<string, unknown>; pageData?: typeof PAGE & { favIconUrl?: string }; path?: string } = {}): Promise<void> {
   await page.addInitScript(
     ({ keys, data, pageData }) => {
       const g = globalThis as unknown as Record<string, unknown>;
@@ -39,9 +39,15 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
           },
           onMessage: { addListener() {} },
         },
-        tabs: { query: async () => [{ id: 1, url: pageData.url, title: pageData.title, active: true }] },
+        tabs: {
+          query: async () => [{ id: 1, url: pageData.url, title: pageData.title, active: true, favIconUrl: (pageData as { favIconUrl?: string }).favIconUrl }],
+          create: async (p: { url: string }) => {
+            g.__created = [...((g.__created as string[] | undefined) ?? []), p.url];
+            return { id: 2, url: p.url };
+          },
+        },
         permissions: { request: async () => true, getAll: async () => ({ origins: [] }), remove: async () => true },
-        scripting: { executeScript: async () => [{ result: pageData }] },
+        scripting: { executeScript: async () => { g.__reads = ((g.__reads as number | undefined) ?? 0) + 1; return [{ result: pageData }]; } },
         storage: {
           local: {
             get: async (k: string | string[]) => {
@@ -55,9 +61,9 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
       };
     },
     // Sharing with the providers already allowed (consent.spec.ts covers asking).
-    { keys: opts.keys ?? {}, data: { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } }, ...(opts.data ?? {}) }, pageData: PAGE },
+    { keys: opts.keys ?? {}, data: { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } }, ...(opts.data ?? {}) }, pageData: opts.pageData ?? PAGE },
   );
-  await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
+  await page.route("**/popup.html*", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
   await page.route("**/icons/**", (r) => r.fulfill({ status: 200, contentType: "image/png", body: "" }));
   await page.route("https://api.anthropic.com/v1/models**", (r) =>
@@ -67,7 +73,7 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
     r.fulfill({ status: 200, contentType: "text/event-stream", body: sse("The widget costs **$10**.") }),
   );
   await withWorker(page);
-  await page.goto("/popup.html");
+  await page.goto(opts.path ?? "/popup.html");
 }
 
 test("no key: Add API key opens Settings at the key field; a bad key is explained; a good key is saved to the Keychain only", async ({ page }) => {
@@ -95,7 +101,7 @@ test("no key: Add API key opens Settings at the key field; a bad key is explaine
 
   await page.getByRole("button", { name: "Back to chat" }).click();
   await expect(page.getByLabel("Ask about this page")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "How can I help?" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Suggestions" })).toBeVisible();
   // No "Ready. Using …" line: the line under the conversation is only for cost.
   await expect(page.locator("#status")).toHaveText("");
 });
@@ -107,6 +113,10 @@ test("Scout mode shows a bold chip and switches the send action", async ({ page 
   await expect(page.locator("#mode-chip")).toBeVisible();
   await expect(page.locator("#mode-chip span")).toHaveText("Scout mode");
   expect(await page.locator("#mode-chip").evaluate((n) => getComputedStyle(n).fontWeight)).toBe("700");
+  // No color, like the mode switch icons (owner item 11): the chip and its icon use the plain text color.
+  const colors = await page.locator("#mode-chip").evaluate((n) => [getComputedStyle(n).color, getComputedStyle(document.body).color, getComputedStyle(n.querySelector("svg")!).stroke]);
+  expect(colors[0]).toBe(colors[1]);
+  expect(colors[2]).toBe(colors[0]);
   await expect(page.getByRole("button", { name: "Start task" })).toBeVisible();
   await expect(page.getByLabel("Ask about this page")).toHaveAttribute("placeholder", "Tell Scout for Safari what to do on this page…");
   await page.getByRole("button", { name: "Back to Chat mode" }).click();
@@ -130,9 +140,52 @@ test("the conversation is saved and comes back when the popup reopens; New chat 
 
   await page.getByRole("button", { name: "New chat" }).click();
   await expect(log.getByText("How much is the widget?")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "How can I help?" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Suggestions" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("log").getByText("How much is the widget?")).toHaveCount(0);
+});
+
+test("on a shopping site the composer lists store actions with the store's icon above the field, until the chat starts", async ({ page }) => {
+  await openPopup(page, {
+    keys: { anthropic: GOOD_KEY },
+    pageData: { url: "https://www.amazon.com/dp/B000TEST", title: "Synthetic widget", text: "Widget costs $10. 4.5 stars from 12 reviews." },
+  });
+  const list = page.getByRole("list", { name: "Suggestions for Amazon" });
+  await expect(list).toBeVisible();
+  await expect(list.getByRole("button")).toHaveText(["Compare prices across sites", "Find similar products", "Summarize product reviews"]);
+  // Inside the composer box, above the question field.
+  await expect(page.locator(".composer-box > #site-suggestions")).toHaveCount(1);
+  const listBox = await list.boundingBox();
+  const fieldBox = await page.getByLabel("Ask about this page").boundingBox();
+  expect(listBox!.y + listBox!.height).toBeLessThanOrEqual(fieldBox!.y);
+  // The icon stub serves an empty image, so each row falls back to the letter tile.
+  await expect(list.locator(".site-icon.tile")).toHaveCount(3);
+  await expect(list.locator(".site-icon.tile").first()).toHaveAttribute("data-letter", "A");
+  await expect(page.getByRole("button", { name: "Explain the key points" })).toBeHidden();
+
+  await list.getByRole("button", { name: "Summarize product reviews" }).click();
+  await expect(page.getByRole("log").getByText("Summarize the customer reviews for the product on this page")).toBeVisible();
+  await expect(page.getByRole("log").getByText("The widget costs")).toBeVisible();
+  await expect(list).toBeHidden();
+});
+
+test("the store's own icon shows when it loads", async ({ page }) => {
+  // Safari's favicon for the tab (this sandbox's browser cannot reach real store hosts, even routed).
+  await page.route("https://icons.test/target.png", (r) => r.fulfill({ status: 200, contentType: "image/png", path: "src/icons/icon-128.png" }));
+  await openPopup(page, {
+    keys: { anthropic: GOOD_KEY },
+    pageData: { url: "https://www.target.com/p/widget", title: "Widget", text: "Widget $10.", favIconUrl: "https://icons.test/target.png" },
+  });
+  const list = page.getByRole("list", { name: "Suggestions for Target" });
+  await expect(list.locator("img.site-icon")).toHaveCount(3);
+  await expect(list.locator("img.site-icon").first()).toHaveAttribute("src", "https://icons.test/target.png");
+  await expect(list.locator(".site-icon.tile")).toHaveCount(0);
+});
+
+test("a page that is not a known store keeps the starters", async ({ page }) => {
+  await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+  await expect(page.getByRole("button", { name: "Explain the key points" })).toBeVisible();
+  await expect(page.locator("#site-suggestions")).toBeHidden();
 });
 
 test("the + menu opens by keyboard, Escape closes it and returns focus", async ({ page }) => {
@@ -141,9 +194,9 @@ test("the + menu opens by keyboard, Escape closes it and returns focus", async (
   await plus.focus();
   await page.keyboard.press("Enter");
   await expect(plus).toHaveAttribute("aria-expanded", "true");
-  await expect(page.getByRole("button", { name: "Summarize page" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Find coupons" })).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Summarize page" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Find coupons" })).toBeHidden();
   await expect(plus).toBeFocused();
   await expect(plus).toHaveAttribute("aria-expanded", "false");
 });
@@ -151,75 +204,96 @@ test("the + menu opens by keyboard, Escape closes it and returns focus", async (
 const savedSettings = (page: Page) =>
   page.evaluate(() => (globalThis as unknown as { __fake: { data: { settings: unknown } } }).__fake.data.settings);
 
-test("the model pill opens a menu in place: picking a model or effort saves it and Settings stays closed", async ({ page }) => {
+test("the model pill opens the Models sheet: picking a model or effort saves it and Settings stays closed", async ({ page }) => {
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
   const pill = page.locator("#model-pill");
-  await expect(pill).toHaveText("Sonnet 5.5");
-  await expect(pill).toHaveAttribute("aria-haspopup", "menu");
+  // Default for a new install: Haiku 5.5 at High.
+  await expect(pill).toHaveText("Haiku 5.5");
+  await expect(pill).toHaveAttribute("aria-label", "Haiku 5.5, High effort, change model or effort");
+  await expect(pill).toHaveAttribute("aria-haspopup", "dialog");
   await pill.click();
-  const menu = page.getByRole("menu", { name: "Model and effort" });
-  await expect(menu).toBeVisible();
+  const sheet = page.getByRole("dialog", { name: "Models" });
+  await expect(sheet).toBeVisible();
   await expect(pill).toHaveAttribute("aria-expanded", "true");
-  const sonnet = menu.getByRole("menuitemradio", { name: "Claude Sonnet 5.5" });
-  await expect(sonnet).toHaveAttribute("aria-checked", "true");
-  await expect(sonnet).toBeFocused();
-  // The menu opens above the composer, inside the popup.
-  const menuBox = (await menu.boundingBox())!;
-  expect(menuBox.y).toBeGreaterThanOrEqual(0);
-  expect(menuBox.y + menuBox.height).toBeLessThanOrEqual((await page.locator(".composer-box").boundingBox())!.y);
+  const models = sheet.getByRole("radiogroup", { name: "Models" });
+  const haiku = models.getByRole("radio", { name: "Claude Haiku 5.5" });
+  await expect(haiku).toHaveAttribute("aria-checked", "true");
+  await expect(haiku).toBeFocused();
+  // Only the provider with a saved key is listed.
+  await expect(models.getByRole("radio", { name: "GPT-5" })).toHaveCount(0);
+  await expect(sheet.locator("#model-menu-note")).toHaveText("Showing models for your Anthropic API key. Add keys in Settings.");
+  // The sheet covers the panel.
+  const box = (await sheet.boundingBox())!;
+  expect(box.y).toBe(0);
+  expect(box.height).toBeGreaterThan(500);
 
-  await menu.getByRole("menuitemradio", { name: "Claude Opus 5.5" }).click();
-  await expect(menu).toBeHidden();
+  await models.getByRole("radio", { name: "Claude Opus 5.5" }).click();
+  await expect(sheet).toBeHidden();
   await expect(page.locator("#settings-view")).toBeHidden();
   await expect(pill).toBeFocused();
   await expect(pill).toHaveText("Opus 5.5");
+  await expect(pill).toHaveAttribute("aria-label", "Opus 5.5, High effort, change model or effort");
   await expect(page.locator("#status")).toHaveText("");
-  await expect.poll(() => savedSettings(page)).toMatchObject({ provider: "anthropic", model: "claude-opus-5-5", effort: "default" });
+  await expect.poll(() => savedSettings(page)).toMatchObject({ provider: "anthropic", model: "claude-opus-5-5", effort: "high" });
 
   await pill.click();
-  await menu.getByRole("menuitemradio", { name: "High", exact: true }).click();
-  await expect(pill).toHaveText("Opus 5.5 · High");
-  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-opus-5-5", effort: "high" });
+  await sheet.getByRole("radiogroup", { name: "Effort levels" }).getByRole("radio", { name: "Low", exact: true }).click();
+  await expect(pill).toHaveText("Opus 5.5");
+  await expect(pill).toHaveAttribute("aria-label", "Opus 5.5, Low effort, change model or effort");
+  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-opus-5-5", effort: "low" });
 
-  // A click outside closes it without changing anything.
+  // Close changes nothing.
   await pill.click();
-  await expect(menu).toBeVisible();
-  await page.getByLabel("Ask about this page").click();
-  await expect(menu).toBeHidden();
+  await sheet.getByRole("button", { name: "Close" }).click();
+  await expect(sheet).toBeHidden();
   await expect(pill).toHaveAttribute("aria-expanded", "false");
-  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-opus-5-5", effort: "high" });
+  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-opus-5-5", effort: "low" });
 });
 
-test("the model menu works by keyboard: arrows move, Enter picks, Escape closes and returns focus", async ({ page }) => {
+test("the Models sheet lists every provider with a saved key, and picking another provider's model switches to it", async ({ page }) => {
+  await openPopup(page, { keys: { anthropic: GOOD_KEY, openai: "sk-test-synthetic-openai" } });
+  await page.locator("#model-pill").click();
+  const models = page.getByRole("dialog", { name: "Models" }).getByRole("radiogroup", { name: "Models" });
+  await expect(models.getByRole("radio", { name: "Claude Haiku 5.5" })).toBeVisible();
+  await expect(page.locator("#model-menu-note")).toHaveText("Showing models for your Anthropic and OpenAI API keys. Add keys in Settings.");
+  await models.getByRole("radio", { name: "GPT-5" }).click();
+  await expect(page.locator("#model-pill")).toHaveText("GPT-5");
+  await expect(page.locator("#model-pill")).toHaveAttribute("aria-label", "GPT-5, High effort, change model or effort");
+  await expect.poll(() => savedSettings(page)).toMatchObject({ provider: "openai", model: "gpt-5", effort: "high" });
+});
+
+test("the Models sheet works by keyboard: arrows move, Enter picks, Escape closes and returns focus", async ({ page }) => {
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
   const pill = page.locator("#model-pill");
-  const menu = page.getByRole("menu", { name: "Model and effort" });
+  const sheet = page.getByRole("dialog", { name: "Models" });
   await pill.focus();
   await page.keyboard.press("ArrowDown");
-  await expect(menu.getByRole("menuitemradio", { name: "Claude Sonnet 5.5" })).toBeFocused();
+  await expect(sheet.getByRole("radio", { name: "Claude Haiku 5.5" })).toBeFocused();
   await page.keyboard.press("ArrowDown");
-  await expect(menu.getByRole("menuitemradio", { name: "Claude Opus 5.5" })).toBeFocused();
+  await expect(sheet.getByRole("radio", { name: "Claude Fable 5.1" })).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(menu).toBeHidden();
+  await expect(sheet).toBeHidden();
   await expect(pill).toBeFocused();
   await expect.poll(() => savedSettings(page)).toBeUndefined();
 
   await page.keyboard.press("Enter");
-  await expect(menu).toBeVisible();
+  await expect(sheet).toBeVisible();
   await page.keyboard.press("End");
-  await expect(menu.getByRole("menuitemradio", { name: "Max" })).toBeFocused();
+  await expect(sheet.getByRole("radio", { name: "Max" })).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(menu).toBeHidden();
-  await expect(pill).toHaveText("Sonnet 5.5 · Max");
-  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-sonnet-5-5", effort: "max" });
+  await expect(sheet).toBeHidden();
+  await expect(pill).toHaveText("Haiku 5.5");
+  await expect(pill).toHaveAttribute("aria-label", "Haiku 5.5, Max effort, change model or effort");
+  await expect.poll(() => savedSettings(page)).toMatchObject({ model: "claude-haiku-5-5", effort: "max" });
 });
 
 test("the mode switch stays on one line beside the model pill when the popup first opens", async ({ page }) => {
   await openPopup(page, {
     keys: { anthropic: GOOD_KEY },
-    data: { settings: { provider: "anthropic", model: "claude-opus-5-5", effort: "medium", retention: "7" } },
+    data: { settings: { provider: "anthropic", model: "claude-opus-5-5", effort: "medium", retention: "7" }, modelMigration: "haiku-5-5-high" },
   });
-  await expect(page.locator("#model-pill")).toHaveText("Opus 5.5 · Medium");
+  await expect(page.locator("#model-pill")).toHaveText("Opus 5.5");
+  await expect(page.locator("#model-pill")).toHaveAttribute("aria-label", "Opus 5.5, Medium effort, change model or effort");
   for (const label of await page.locator(".composer-foot fieldset.segmented label").all()) {
     expect((await label.boundingBox())!.height).toBeLessThanOrEqual(30);
   }
@@ -233,7 +307,7 @@ test("Settings and Back keep focus where the user expects", async ({ page }) => 
   await expect(page.locator("#key-status")).toHaveText("Anthropic key saved in your Keychain.");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Settings" })).toBeFocused();
-  await expect(page.getByRole("heading", { name: "How can I help?" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Suggestions" })).toBeVisible();
 });
 
 test("only the selected mode is highlighted", async ({ page }) => {
@@ -286,4 +360,38 @@ test("scrolling up to read is respected while the composer grows", async ({ page
   });
   await page.getByLabel("Ask about this page").fill("one\ntwo\nthree\nfour");
   await expect(page.getByRole("log").getByText("Question number 0")).toBeInViewport();
+});
+
+test("Open in new tab: the header button opens Scout as its own page, which hides page-only actions and reads no page", async ({ page }) => {
+  await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+  const header = page.locator("#chat-view > header");
+  const open = header.getByRole("button", { name: "Open Scout in a new tab" });
+  await expect(open).toBeVisible();
+  await page.evaluate(() => ((globalThis as unknown as { close: () => void }).close = () => undefined));
+  await open.click();
+  await expect.poll(() => page.evaluate(() => (globalThis as unknown as { __created?: string[] }).__created)).toEqual([new URL("/popup.html?view=page", page.url()).href]);
+
+  await openPopup(page, { keys: { anthropic: GOOD_KEY }, path: "/popup.html?view=page" });
+  await expect(page.getByRole("heading", { name: "Scout for Safari" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open Scout in a new tab" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "New chat" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Summarize this page" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "More actions" })).toBeHidden();
+  await expect(page.getByRole("radio", { name: "Scout" })).toBeHidden();
+
+  await page.getByRole("textbox").fill("What is 2 + 2?");
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("The widget costs")).toBeVisible();
+  await expect(page.getByText("Could not read this page")).toHaveCount(0);
+  expect(await page.evaluate(() => (globalThis as unknown as { __reads?: number }).__reads ?? 0)).toBe(0);
+});
+
+test.describe("touch device", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 393, height: 760 } });
+  test("Open in new tab is Mac only: no button on iPhone", async ({ page }) => {
+    await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+    await expect(page.getByRole("button", { name: "New chat" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open Scout in a new tab" })).toBeHidden();
+  });
 });

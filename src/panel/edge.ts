@@ -1,7 +1,8 @@
 // Page button (owner request 2026-10-16): a small Scout tab on the edge of the
 // page, for iPhone and iPad, where Safari keeps extension buttons in the page
-// menu. Off until the user turns it on; runs only on sites Scout can access and
-// never in Private Browsing. Tapping it opens the toolbar panel. Pure helpers
+// menu. On from a fresh install (owner request 2026-10-17); the user can turn
+// it off in Settings. Runs only on sites Scout can access and never in Private
+// Browsing. Tapping it opens the toolbar panel. Pure helpers
 // shared by the content script (src/edge.ts), the worker, Settings, and tests.
 
 export const PAGE_BUTTON_KEY = "pageButton";
@@ -15,7 +16,7 @@ export interface PageButton {
   y: number;
 }
 
-export const DEFAULT_PAGE_BUTTON: PageButton = { on: false, side: "right", y: 0.45 };
+export const DEFAULT_PAGE_BUTTON: PageButton = { on: true, side: "right", y: 0.45 };
 
 /** Keeps the tab clear of the page's own header and of Safari's bottom bar. */
 export const Y_MIN = 0.12;
@@ -30,7 +31,7 @@ export function clampY(y: number): number {
 export function parsePageButton(raw: unknown): PageButton {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   return {
-    on: r.on === true,
+    on: typeof r.on === "boolean" ? r.on : DEFAULT_PAGE_BUTTON.on,
     side: r.side === "left" ? "left" : "right",
     y: typeof r.y === "number" ? clampY(r.y) : DEFAULT_PAGE_BUTTON.y,
   };
@@ -48,8 +49,58 @@ export function isDrag(dx: number, dy: number): boolean {
   return Math.hypot(dx, dy) >= DRAG_SLOP;
 }
 
-/** The tab shrinks to a sliver after this long without use. */
-export const TUCK_AFTER_MS = 2500;
+/**
+ * The tab's size in CSS px (owner request 2026-10-18: smaller than the first
+ * 56 x 60 pill, still clearly showing the truck, and always out instead of
+ * tucking away). The tap target adds a few transparent px around the pill.
+ */
+export const TAB_SIZE = { width: 42, height: 44, glyph: 28 } as const;
+
+/**
+ * How long a new page waits for the saved side and height before it draws the
+ * tab at the default spot (owner request 2026-10-18: the button should be
+ * there at once). Settings normally arrive well inside this, so a tab the user
+ * moved does not jump.
+ */
+export const PLACE_WAIT_MS = 150;
+
+export interface ViewportInfo {
+  /** Touch-first device (iPhone, iPad): Safari may zoom the whole page out. */
+  coarse: boolean;
+  /** Width in CSS px the device shows at 100% (iOS: the screen width in the current orientation). */
+  idealWidth: number;
+  /** visualViewport.width: CSS px currently on screen. */
+  visualWidth: number;
+  /** CSS zoom on the root element, which the tab inherits. */
+  pageZoom: number;
+}
+
+/**
+ * How much to scale the tab so it stays its intended size on screen. On iPhone
+ * Safari zooms a page with wide content out to fit (citizenfreepress.com,
+ * owner report 2026-10-17), and fixed elements shrink with it; a root `zoom`
+ * shrinks it everywhere. Never scaled down for a pinch-zoom in, and capped.
+ */
+export function tabScale(v: ViewportInfo): number {
+  const shown = v.coarse && v.idealWidth > 0 && v.visualWidth > 0 ? Math.min(1, v.idealWidth / v.visualWidth) : 1;
+  const zoom = Number.isFinite(v.pageZoom) && v.pageZoom > 0 ? v.pageZoom : 1;
+  const k = 1 / (shown * zoom);
+  return Math.round(Math.min(MAX_TAB_SCALE, Math.max(1 / MAX_TAB_SCALE, k)) * 1000) / 1000;
+}
+export const MAX_TAB_SCALE = 4;
+
+/**
+ * Whether the tab goes in the top layer (a popover). Not on a phone (owner bug
+ * report 2026-10-18): WebKit gives every top-layer element a ::backdrop, a
+ * transparent fixed box over the whole screen. iPhone Safari 26 treats a
+ * viewport-sized fixed box as a dimming layer and fills the strip under its
+ * bottom bar with the page background, so the page stopped showing through the
+ * bar once Scout loaded. The plain fixed tab with the top z-index is a small box
+ * mid-edge, which Safari ignores. Mac and iPad keep the top layer.
+ */
+export function topLayerTab(coarsePointer: boolean, screenWidth: number): boolean {
+  return !(coarsePointer && screenWidth > 0 && screenWidth < 600);
+}
 
 /** Arrow keys move a focused tab by this fraction of the viewport height. */
 export const KEY_STEP = 0.05;
@@ -57,6 +108,15 @@ export const KEY_STEP = 0.05;
 // ---------- Where the content script runs ----------
 /** Id of the content script the worker registers (scripting.registerContentScripts). */
 export const EDGE_SCRIPT_ID = "scout-edge";
+
+/**
+ * When the edge script runs. document_start, not document_idle: the tab then
+ * shows as soon as the page has a body, instead of after the whole page and its
+ * scripts have loaded (owner request 2026-10-18: Scout took a few seconds to
+ * appear after opening Safari from cold on iPhone). The script waits for the
+ * body itself (src/edge.ts).
+ */
+export const EDGE_RUN_AT = "document_start";
 
 const PROVIDER_HOSTS = ["api.anthropic.com", "api.openai.com"];
 const MATCH = /^(\*|https?):\/\/(\*|(\*\.)?[^/*]+)\/.*$/;
@@ -100,6 +160,20 @@ export function reachText(on: boolean, origins: readonly string[]): string {
   const n = edgeMatches(origins).length;
   if (n === 0) return "On. It appears on a site after you let Scout for Safari access it.";
   return "On for " + n + (n === 1 ? " site" : " sites") + " Scout for Safari can access (listed under Site access).";
+}
+
+/**
+ * The button is for iPhone and iPad only (owner request 2026-10-17): Mac Safari
+ * has Scout in the toolbar, so the button and its setting are not offered
+ * there. Safari reports "mac" or "ios" (iPadOS too); unknown counts as offered.
+ */
+export function pageButtonOffered(os: string | undefined): boolean {
+  return os !== "mac";
+}
+
+/** The platform Safari reports, or undefined where it cannot be read. */
+export async function platformOs(): Promise<string | undefined> {
+  return (await browser.runtime.getPlatformInfo?.().catch(() => undefined))?.os;
 }
 
 /** Permission asked for when the user turns the button on. Safari lets them pick a narrower grant. */

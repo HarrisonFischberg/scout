@@ -63,30 +63,14 @@ final class HostAppAccessibilityUITests: XCTestCase {
         try audit(app, "setup-dark")
     }
 
-    // App Store Review Guideline 5.1.2(i): "Test key" first shows the consent
-    // sheet. Only "Not now" is tapped, so nothing is sent (no network here).
-    private func consentSheet(_ scheme: Scheme) throws {
-        let app = launch(scheme)
-        let field = app.secureTextFields["API key"]
-        XCTAssertTrue(field.waitForExistence(timeout: 5))
-        field.tap()
-        field.typeText("sk-ant-test-synthetic-ui-0000")
-        app.buttons["Test key"].tap()
-        XCTAssertTrue(app.staticTexts["Share with Anthropic?"].waitForExistence(timeout: 5))
-        // SwiftUI may expose Link as a link or a button.
-        for name in ["Anthropic privacy policy", "How Anthropic handles API data"] {
-            XCTAssertTrue(app.links[name].exists || app.buttons[name].exists, name)
-        }
-        attachScreenshot("consent-sheet-\(scheme.rawValue)")
-        try audit(app, "consent-\(scheme.rawValue)")
-        app.buttons["Not now"].tap()
-        XCTAssertTrue(app.staticTexts["Set up Scout for Safari"].waitForExistence(timeout: 5))
-        let status = app.staticTexts["Key status: Nothing was sent. Scout for Safari tests the key with Anthropic only after you allow sharing."]
-        XCTAssertTrue(status.waitForExistence(timeout: 5))
+    // The key is added in the extension's own Settings, so the setup screen
+    // has no key field and sends nothing.
+    func testSetupScreenPointsToSafariForTheKey() throws {
+        let app = launch(.light)
+        XCTAssertTrue(app.staticTexts["Add your key in Safari: open Scout for Safari from the menu in the address bar, then tap Settings."].exists)
+        XCTAssertFalse(app.secureTextFields["API key"].exists)
+        XCTAssertFalse(app.buttons["Test key"].exists)
     }
-
-    func testConsentSheetAuditLight() throws { try consentSheet(.light) }
-    func testConsentSheetAuditDark() throws { try consentSheet(.dark) }
 
     func testLegalSheetOpensAndCloses() throws {
         let app = launch(.light)

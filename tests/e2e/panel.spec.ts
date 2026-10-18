@@ -93,7 +93,7 @@ test("each tab keeps its own conversation, restored when the panel reopens on it
   await expect(log.getByText("Answer for this tab.")).toBeVisible();
 
   await switchTab(page, { id: 2 });
-  await expect(page.getByRole("heading", { name: "How can I help?" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Suggestions" })).toBeVisible();
   await expect(log.getByText("What moved the market today?")).toHaveCount(0);
 
   await switchTab(page, { id: 1 });
@@ -122,11 +122,148 @@ test("an off-page question goes out as a normal chat message, with the page only
   expect(body.messages?.[body.messages.length - 1]?.content).toContain("User message: hey, I want to take vitamin D");
 });
 
-test("the panel is off in Private Browsing, with a short explanation", async ({ page }) => {
+test("the panel works in Private Browsing like in any other tab, and marks the chat as private", async ({ page }) => {
   await openPanel(page, { id: 3, incognito: true });
-  await expect(page.getByRole("heading", { name: "Off in Private Browsing" })).toBeVisible();
-  await expect(page.locator("#status")).toHaveText("Scout for Safari is off in Private Browsing.");
+  await expect(page.getByRole("list", { name: "Suggestions" })).toBeVisible();
+  await expect(page.locator("#composer")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
+  const hellos = await portHellos(page);
+  expect(hellos.map((h) => [h.name, h.type, h.payload.tabId])).toEqual([["scout-panel", "panel.hello", 3]]);
+  // Its conversation is listed for deletion when the tab closes (src/panel/state.ts).
+  const stored = await page.evaluate(() => (globalThis as unknown as { __fake: { data: Record<string, unknown> } }).__fake.data);
+  const conv = (stored.tabState as Record<string, { conv: string }>)["3"]?.conv;
+  expect(conv).toBeTruthy();
+  expect(stored.privateConversations).toEqual({ "3": [conv] });
+});
+
+// Owner request 2026-10-18: Scout should be usable sooner after Safari starts
+// from cold. Each Keychain read wakes the app's native handler, slow the first
+// time, so the panel reads both keys once, in parallel, as it opens.
+test("opening the panel reads the saved keys in one parallel round, not one after another", async ({ page }) => {
+  await page.addInitScript(() => {
+    const g = globalThis as unknown as Record<string, unknown>;
+    const reads: Array<{ start: number; end?: number }> = [];
+    g.__keyReads = reads;
+    let real: { runtime: { sendNativeMessage: (app: string, m: { type: string }) => Promise<unknown> } } | undefined;
+    Object.defineProperty(g, "browser", {
+      configurable: true,
+      get: () => real,
+      set: (v: typeof real) => {
+        real = v;
+        if (!v) return;
+        const send = v.runtime.sendNativeMessage;
+        v.runtime.sendNativeMessage = async (app, m) => {
+          if (m.type !== "keychain.get") return send(app, m);
+          const r: { start: number; end?: number } = { start: performance.now() };
+          reads.push(r);
+          await new Promise((res) => setTimeout(res, 400));
+          r.end = performance.now();
+          return send(app, m);
+        };
+      },
+    });
+  });
+  await openPanel(page, { id: 1 });
+  await expect(page.getByLabel("Ask about this page")).toBeVisible();
+  const reads = await page.evaluate(() => (globalThis as unknown as { __keyReads: Array<{ start: number; end?: number }> }).__keyReads);
+  expect(reads).toHaveLength(2);
+  // Both started before either finished.
+  const firstEnd = Math.min(...reads.map((r) => r.end ?? Infinity));
+  expect(reads.every((r) => r.start < firstEnd)).toBe(true);
+});
+
+// Owner request 2026-10-18: from Safari not running to Scout open took 2-5 s
+// on iPhone; it should be immediate. A cold phone answers every storage call
+// slowly and the Keychain read even more slowly (it starts the app's native
+// handler). The question box must not wait for the Keychain.
+test("on a slow cold start the question box shows before the Keychain answers", async ({ page }) => {
+  const STORAGE_MS = 30;
+  const KEYCHAIN_MS = 800;
+  await page.addInitScript(
+    ({ storageMs, keychainMs }) => {
+      const g = globalThis as unknown as Record<string, unknown>;
+      const marks: Record<string, number> = {};
+      g.__marks = marks;
+      const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+      type B = {
+        runtime: { sendNativeMessage: (app: string, m: { type: string }) => Promise<unknown> };
+        storage: { local: { get: (k: unknown) => Promise<unknown>; set: (i: unknown) => Promise<void> } };
+      };
+      let real: B | undefined;
+      Object.defineProperty(g, "browser", {
+        configurable: true,
+        get: () => real,
+        set: (v: B) => {
+          real = v;
+          if (!v) return;
+          const send = v.runtime.sendNativeMessage;
+          v.runtime.sendNativeMessage = async (app, m) => {
+            if (m.type === "keychain.get") {
+              await wait(keychainMs);
+              marks.keys = performance.now();
+            }
+            return send(app, m);
+          };
+          const { get, set } = v.storage.local;
+          v.storage.local.get = async (k) => (await wait(storageMs), get(k));
+          v.storage.local.set = async (i) => (await wait(storageMs), set(i));
+        },
+      });
+      new MutationObserver(() => {
+        const c = document.getElementById("composer");
+        if (c && !c.hidden && marks.composer === undefined) marks.composer = performance.now();
+      }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden"] });
+    },
+    { storageMs: STORAGE_MS, keychainMs: KEYCHAIN_MS },
+  );
+  const marks = () => page.evaluate(() => (globalThis as unknown as { __marks: Record<string, number> }).__marks);
+  // First open: nothing is known yet, so the panel waits for the Keychain once.
+  await openPanel(page, { id: 1 });
+  await expect(page.getByLabel("Ask about this page")).toBeVisible();
+  const first = await marks();
+  // Every later open (Safari restarted, panel opened again).
+  await page.reload();
+  await expect(page.getByLabel("Ask about this page")).toBeVisible();
+  await expect.poll(async () => (await marks()).keys).toBeGreaterThan(0);
+  const later = await marks();
+  console.log(`question box shown after ${Math.round(first.composer ?? -1)} ms (first open), ${Math.round(later.composer ?? -1)} ms (later open); Keychain answered at ${Math.round(later.keys ?? -1)} ms`);
+  expect(later.composer).toBeLessThan(later.keys ?? 0);
+  expect(later.composer).toBeLessThan(KEYCHAIN_MS);
+
+  // A question sent before the Keychain answers goes out once it does.
+  await page.route("https://api.anthropic.com/v1/messages", (r) =>
+    r.fulfill({ status: 200, contentType: "text/event-stream", body: sse("Answered after the key arrived.") }),
+  );
+  await page.reload();
+  await page.getByLabel("Ask about this page").fill("What moved the market today?");
+  await page.getByLabel("Ask about this page").press("Enter");
+  await expect(page.getByRole("log").getByText("Answered after the key arrived.")).toBeVisible();
+  const sent = await marks();
+  expect(sent.composer).toBeLessThan(sent.keys ?? 0);
+});
+
+test("a key hint that is out of date falls back to the no-key screen", async ({ page }) => {
+  await page.addInitScript(() => {
+    const g = globalThis as unknown as Record<string, unknown>;
+    let real: { runtime: { sendNativeMessage: (app: string, m: { type: string }) => Promise<unknown> } } | undefined;
+    Object.defineProperty(g, "browser", {
+      configurable: true,
+      get: () => real,
+      set: (v: typeof real) => {
+        real = v;
+        if (!v) return;
+        // The key was removed outside Scout; the hint still says it is there.
+        v.runtime.sendNativeMessage = async () => ({ ok: true });
+        const fake = g.__fake as { data: Record<string, unknown> };
+        fake.data.keyHint = { anthropic: true, openai: false };
+      },
+    });
+  });
+  await openPanel(page, { id: 1 });
+  await expect(page.getByText("No API key saved.").first()).toBeVisible();
   await expect(page.locator("#composer")).toBeHidden();
-  await expect(page.getByRole("button", { name: "Settings" })).toBeHidden();
-  expect(await portHellos(page)).toEqual([]);
+  await expect.poll(() => page.evaluate(() => (globalThis as unknown as { __fake: { data: Record<string, unknown> } }).__fake.data.keyHint)).toEqual({
+    anthropic: false,
+    openai: false,
+  });
 });

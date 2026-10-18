@@ -15,7 +15,9 @@ export const FORMAT_RULES = [
   "Do not write a title line, do not repeat the page title, and do not write labels such as 'Summary (from ...)' or 'Answer:'.",
   "Do not use emoji or decorative symbols. Keep the whole answer under about 200 words unless the user asks for more detail.",
   "For news and other reported events, state facts as the page reports them, attribute claims to their source in plain words (for example 'police said'), use neutral language, and do not speculate.",
-  "When several pages are given, say in plain words which page each fact comes from, for example 'According to the review page, ...'. Pages are numbered as sources; you may also mark a fact with its source number, like [2].",
+  "When several pages are given, say in plain words which page each fact comes from, for example 'According to the review page, ...'.",
+  // Owner item 12 (2026-10-17): the panel shows each [n] as a site chip at the end of its paragraph.
+  "Pages are numbered as sources. When a paragraph or bullet uses a page, end it with that page's number in brackets, like [1] or [1, 2]. Do not number facts from your own knowledge.",
   "Write math in LaTeX: $...$ inline and $$...$$ on its own line. Put code in fenced code blocks with the language name.",
 ].join(" ");
 

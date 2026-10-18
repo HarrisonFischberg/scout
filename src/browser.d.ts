@@ -33,6 +33,7 @@ declare const browser: {
     sendMessage(message: unknown): Promise<unknown>;
     sendNativeMessage(application: string, message: unknown): Promise<unknown>;
     connect?(info: { name: string }): BrowserPort;
+    getPlatformInfo?(): Promise<{ os: string }>;
     onMessage: {
       addListener(
         listener: (message: unknown, sender?: BrowserMessageSender) => Promise<unknown> | unknown,
@@ -44,11 +45,11 @@ declare const browser: {
   };
   tabs: {
     query(info: { active?: boolean; currentWindow?: boolean }): Promise<
-      Array<{ id?: number; windowId?: number; title?: string; url?: string; active?: boolean; incognito?: boolean }>
+      Array<{ id?: number; windowId?: number; title?: string; url?: string; active?: boolean; incognito?: boolean; favIconUrl?: string }>
     >;
     // Part 2 tool host. Optional where the e2e stubs leave them out.
     get?(tabId: number): Promise<{ id?: number; windowId?: number; title?: string; url?: string; active?: boolean; incognito?: boolean }>;
-    create?(props: { url: string; active?: boolean }): Promise<{ id?: number; windowId?: number; title?: string; url?: string }>;
+    create?(props: { url: string; active?: boolean; windowId?: number }): Promise<{ id?: number; windowId?: number; title?: string; url?: string }>;
     remove?(tabIds: number | number[]): Promise<void>;
     captureVisibleTab?(windowId?: number, options?: { format?: "jpeg" | "png"; quality?: number }): Promise<string>;
     // Not in Safari (MDN browser-compat-data); kept so the host can use them where they exist.
@@ -57,6 +58,11 @@ declare const browser: {
     sendMessage?(tabId: number, message: unknown): Promise<unknown>;
     onActivated?: { addListener(fn: (info: { tabId: number; windowId?: number }) => void): void };
     onRemoved?: { addListener(fn: (tabId: number) => void): void };
+    // Coupon browser fallback: tabs a background coupon page opens are closed with it.
+    onCreated?: {
+      addListener(fn: (tab: { id?: number; openerTabId?: number }) => void): void;
+      removeListener?(fn: (tab: { id?: number; openerTabId?: number }) => void): void;
+    };
   };
   // Not in Safari (MDN browser-compat-data); search_tabs uses them where they exist.
   history?: {
@@ -74,6 +80,7 @@ declare const browser: {
   permissions: {
     request(perms: { origins: string[] }): Promise<boolean>;
     getAll(): Promise<{ origins?: string[] }>;
+    contains?(perms: { origins: string[] }): Promise<boolean>;
     remove(perms: { origins: string[] }): Promise<boolean>;
     onAdded?: { addListener(fn: () => void): void };
     onRemoved?: { addListener(fn: () => void): void };

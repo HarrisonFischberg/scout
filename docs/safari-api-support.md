@@ -22,14 +22,15 @@ title to the fetch tool, so Apple is not a source here.
 | `contextMenus` | not in BCD | not in BCD | PRD permission; no feature yet | no. Remove from manifest if Safari rejects it |
 | `activeTab` | not in BCD (permission) | not in BCD | manifest permission | no |
 | `commands` / `_execute_action` (MV3) | 15.4 | 15.4 | "Toggle Scout for Safari" shortcut (Part 1) | no. MDN: changing a command's shortcut is not supported, so it is not user-configurable |
-| `action.openPopup` | 16 | 16 | reopen the panel when switching back to a tab where it was open (Part 1) | no |
+| `action.openPopup` | 16 | 16 | open the panel from the page button (src/edge.ts); no longer reopens it on tab switch (owner request 2026-10-18) | no |
 | `action.setTitle` | 15.4 | 15.4, partial | "Open / Close Scout for Safari" (Part 1) | no. MDN: on iOS the title is not shown |
 | `action.setIcon` | 15.4 | 15.4 | light/dark toolbar icon swap (Part 1) | no |
 | `action` `theme_icons` | not supported | not supported | not used; the worker swaps icons on `prefers-color-scheme` | n/a |
 | `runtime.connect` / `Port` | 14 | 15 | `scout-panel` port (Part 1) | no |
-| `tabs.Tab.incognito` | 14 | 15 | panel off in Private Browsing (Part 1) | no |
-| `extension.inIncognitoContext` | 18 | 18 | second Private Browsing signal (Part 1) | no |
+| `tabs.Tab.incognito` | 14 | 15 | marks a private tab, whose chats are deleted when it closes (since 2026-10-17; before that the panel was off there) | no |
+| `extension.inIncognitoContext` | 18 | 18 | second Private Browsing signal (Part 1); the page button no longer checks it | no |
 | `tabs.onActivated`, `tabs.onRemoved`, `runtime.onStartup` | 14 | 15 | per-tab panel state (Part 1) | no |
+| `runtime.getPlatformInfo` | 14 | 15 | "mac" hides Button on webpages and its setting (since 2026-10-17) | no |
 | `manifest.incognito` | 17, partial | 17, partial | not set: Safari controls it with a user setting | n/a |
 
 ## What this changes

@@ -52,8 +52,13 @@ async function open(page: Page, opts: { shopify: boolean; codes: string[]; fixtu
   }
   await shop.goto(opts.fixture ?? "/shopify-checkout.html");
   await page.exposeFunction("__injectContent", async () => {
+    await shop.waitForLoadState("domcontentloaded");
     await shop.addScriptTag({ path: "apple/Extension/Resources/content.js" });
   });
+  // Like Safari after a navigation: the new page has no handler until the script is injected again.
+  await page.exposeFunction("__hasContent", () =>
+    shop.evaluate(() => typeof (window as unknown as { __safariScoutHandle?: unknown }).__safariScoutHandle === "function").catch(() => false),
+  );
   await page.exposeFunction("__callContent", (req: unknown) =>
     shop.evaluate((r) => (window as unknown as { __safariScoutHandle: Handler }).__safariScoutHandle(r), req),
   );
@@ -61,6 +66,7 @@ async function open(page: Page, opts: { shopify: boolean; codes: string[]; fixtu
     const w = window as unknown as Record<string, unknown> & {
       __injectContent: () => Promise<void>;
       __callContent: (r: unknown) => Promise<unknown>;
+      __hasContent: () => Promise<boolean>;
     };
     (globalThis as unknown as { browser: unknown }).browser = {
       runtime: {
@@ -80,7 +86,8 @@ async function open(page: Page, opts: { shopify: boolean; codes: string[]; fixtu
             return [{ result: true }];
           }
           if (!inj.func || !inj.args) return [{ result: null }];
-          w.__safariScoutHandle = (r: unknown) => w.__callContent(r);
+          if (await w.__hasContent()) w.__safariScoutHandle = (r: unknown) => w.__callContent(r);
+          else delete w.__safariScoutHandle;
           return [{ result: await inj.func(...inj.args) }];
         },
       },
@@ -100,14 +107,15 @@ const RUN_WAIT = { timeout: 60_000 };
 test("checkout page without a cart API: types codes only into the discount box, reads the split total, applies the best", async ({ page }) => {
   test.setTimeout(120_000);
   const shop = await open(page, { shopify: false, codes: ["WELCOME5", "SAVE10", "SAVE20", "BOGUS99"] });
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   await expect(answer).toContainText(
-    "I tested 5 codes. SAVE20 is the best: your total drops from $170.00 to $136.00 (you save $34.00, 20% off).",
+    /I tested 5 codes found online for .+?\. SAVE20 is the best: your total drops from \$170\.00 to \$136\.00 \(you save \$34\.00, 20% off\)\./,
     RUN_WAIT,
   );
   await expect(answer).toContainText("It's applied to your cart, and I didn't go to checkout.");
-  // A batch with a saving ends the search: no prompt for more.
+  // A run with a saving ends the search: no prompt for more.
   await expect(page.locator("#coupons-more")).toBeHidden();
   // The trace is folded by default: open it to read the code lines.
   await page.locator("#task .trace-head").click();
@@ -129,10 +137,11 @@ test("checkout page on a Shopify store: tests codes through the cart API and app
   test.setTimeout(120_000);
   // The fake store answers /cart.js as text/javascript, like real Shopify stores.
   const shop = await open(page, { shopify: true, codes: ["KETO10", "BEEFY15", "NOPE1"] });
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   await expect(answer).toContainText(
-    "I tested 3 codes. BEEFY15 is the best: your total drops from $151.79 to $135.81 (you save $15.98, 11% off).",
+    /I tested 3 codes found online for .+?\. BEEFY15 is the best: your total drops from \$151\.79 to \$135\.81 \(you save \$15\.98, 11% off\)\./,
     RUN_WAIT,
   );
   await expect(answer).toContainText("It's applied to your cart");
@@ -153,6 +162,7 @@ test("checkout page on a Shopify store: tests codes through the cart API and app
 test("a WooCommerce store: tests codes through its Store API and applies the best", async ({ page }) => {
   test.setTimeout(120_000);
   const shop = await open(page, { shopify: false, fixture: "/woo-cart.html", codes: ["SAVE10", "SAVE20", "NOPE1"] });
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   // Codes stack in WooCommerce: each one is tested alone (the previous one removed
@@ -172,6 +182,7 @@ test("a WooCommerce store: tests codes through its Store API and applies the bes
 test("a checkout with a hidden promo box, a slow total in euros, errors, and remove buttons", async ({ page }) => {
   test.setTimeout(150_000);
   const shop = await open(page, { shopify: false, fixture: "/promo-checkout.html", codes: ["NOPE1", "RABATT10", "RABATT25"] });
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   await expect(answer).toContainText("RABATT25 is the best: your total drops from €200.00 to €150.00 (you save €50.00, 25% off).", { timeout: 120_000 });
@@ -192,5 +203,19 @@ test("a checkout with a hidden promo box, a slow total in euros, errors, and rem
   await expect(shop.locator("#applied li")).toHaveCount(1);
   await expect(shop.locator("#applied")).toContainText("RABATT25");
   await expect(shop.locator("#status")).toHaveText("");
+  await expect(shop.locator("#zip")).toHaveValue("");
+});
+
+test("a cart with no coupon box: presses Check out (not the wallet), tests codes on the checkout page, types nothing else", async ({ page }) => {
+  test.setTimeout(120_000);
+  const shop = await open(page, { shopify: false, codes: ["WELCOME5", "SAVE10", "SAVE20", "BOGUS99"], fixture: "/cart-checkout-only.html" });
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("button", { name: "Find coupons" }).click();
+  const answer = page.getByRole("log").locator(".msg.assistant").last();
+  await expect(answer).toContainText(/SAVE20 is the best: your total drops from \$170\.00 to \$136\.00/, RUN_WAIT);
+  await expect(answer).toContainText("It's applied on the checkout page. Nothing was bought, and none of your details were filled in.");
+  expect(shop.url()).toContain("/shopify-checkout.html");
+  await expect(shop.locator("#message")).toHaveText("SAVE20 applied.");
+  await expect(shop.locator("#email")).toHaveValue("");
   await expect(shop.locator("#zip")).toHaveValue("");
 });

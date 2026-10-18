@@ -7,8 +7,10 @@
 // its language and a Copy button), inline code, **bold**, *italic* / _italic_,
 // ***bold italic***, ~~strike~~, http(s) links, math ($...$, \(...\),
 // $$...$$, \[...\] as MathML, src/chat/math.ts), and numbered citations [n]
-// linked to the message's sources.
+// shown as site chips at the end of the paragraph, list item, quote, or table
+// cell that cites them (src/chat/sources.ts).
 import { texToMathML } from "./math";
+import { siteName, type Source } from "./sources";
 
 export type Inline =
   | { type: "text"; text: string }
@@ -48,7 +50,7 @@ const INLINE = new RegExp(
     // so prices like "$10 and $20" stay text.
     "(^|[^\\\\\\w$])\\$([^\\s$](?:[^$\\n]*?[^\\s$\\\\])?)\\$(?![\\d\\w])",
     "\\[([^\\]]+)\\]\\(((?:[^()\\s]|\\([^()\\s]*\\))+)\\)", // 5,6 link (URL may hold one level of parentheses)
-    "\\[(\\d{1,2})\\](?!\\()", // 7 citation [n]
+    "\\[(\\d{1,2}(?:\\s*,\\s*\\d{1,2})*)\\](?!\\()", // 7 citation [n] or [n, m]
     "\\*\\*\\*([^*\\s](?:[^*]*[^*\\s])?)\\*\\*\\*", // 8 bold italic
     "\\*\\*([^*\\s](?:[^*]*[^*\\s])?)\\*\\*", // 9 bold
     "__([^_\\s](?:[^_]*[^_\\s])?)__", // 10 bold (underscores)
@@ -76,7 +78,7 @@ export function parseInline(src: string): Inline[] {
     } else if (m[5] !== undefined && m[6] !== undefined) {
       if (SAFE_URL.test(m[6])) out.push({ type: "link", href: m[6], children: parseInline(m[5]) });
       else pushText(m[5]);
-    } else if (m[7] !== undefined) out.push({ type: "cite", n: Number(m[7]) });
+    } else if (m[7] !== undefined) for (const n of m[7].split(",")) out.push({ type: "cite", n: Number(n) });
     else if (m[8] !== undefined) out.push({ type: "strong", children: [{ type: "em", children: parseInline(m[8]) }] });
     else if (m[9] !== undefined) out.push({ type: "strong", children: parseInline(m[9]) });
     else if (m[10] !== undefined) out.push({ type: "strong", children: parseInline(m[10]) });
@@ -231,25 +233,27 @@ export function parseMarkdown(src: string): Block[] {
 
 export interface RenderOptions {
   /** Sources the answer may cite as [n]: the shared pages, then web citations. */
-  sources?: Array<{ url: string; title?: string }>;
+  sources?: Source[];
 }
 
-function mountInline(doc: Document, parent: Node, nodes: Inline[], opts: RenderOptions = {}): void {
-  for (const n of nodes) {
+/** The source behind each citation chip, for the panel's hover card. */
+export const chipSources = new WeakMap<Element, Source>();
+
+// Citations go to the end of their block as chips, so text around a removed
+// marker loses the space before it: "rated 4.5 [2]." reads "rated 4.5." .
+function mountInline(doc: Document, parent: Node, nodes: Inline[], opts: RenderOptions, cites: number[]): void {
+  for (const [i, n] of nodes.entries()) {
     if (n.type === "text") parent.appendChild(doc.createTextNode(n.text));
     else if (n.type === "math") parent.appendChild(texToMathML(doc, n.tex, false));
     else if (n.type === "cite") {
       const src = opts.sources?.[n.n - 1];
       if (src && SAFE_URL.test(src.url)) {
-        const sup = doc.createElement("sup");
-        const a = doc.createElement("a");
-        a.setAttribute("href", src.url);
-        a.setAttribute("target", "_blank");
-        a.setAttribute("rel", "noopener noreferrer");
-        a.setAttribute("aria-label", "Source " + n.n + (src.title ? ": " + src.title : ""));
-        a.textContent = "[" + n.n + "]";
-        sup.appendChild(a);
-        parent.appendChild(sup);
+        if (!cites.includes(n.n)) cites.push(n.n);
+        const next = nodes[i + 1];
+        const before = parent.lastChild;
+        if (before?.nodeType === 3 && (!next || next.type === "cite" || (next.type === "text" && /^[\s.,;:!?)]/.test(next.text)))) {
+          before.textContent = (before.textContent ?? "").replace(/\s+$/, "");
+        }
       } else parent.appendChild(doc.createTextNode("[" + n.n + "]"));
     } else if (n.type === "code") {
       const el = doc.createElement("code");
@@ -260,13 +264,32 @@ function mountInline(doc: Document, parent: Node, nodes: Inline[], opts: RenderO
       el.setAttribute("href", n.href);
       el.setAttribute("target", "_blank");
       el.setAttribute("rel", "noopener noreferrer");
-      mountInline(doc, el, n.children, opts);
+      mountInline(doc, el, n.children, opts, cites);
       parent.appendChild(el);
     } else {
       const el = doc.createElement(n.type);
-      mountInline(doc, el, n.children, opts);
+      mountInline(doc, el, n.children, opts, cites);
       parent.appendChild(el);
     }
+  }
+}
+
+/** A block's inline content, then a chip for each source it cites. */
+function mountBlock(doc: Document, el: HTMLElement, nodes: Inline[], opts: RenderOptions): void {
+  const cites: number[] = [];
+  mountInline(doc, el, nodes, opts, cites);
+  for (const n of cites) {
+    const src = opts.sources![n - 1]!;
+    const a = doc.createElement("a");
+    a.className = "cite";
+    a.setAttribute("href", src.url);
+    a.setAttribute("target", "_blank");
+    a.setAttribute("rel", "noopener noreferrer");
+    a.setAttribute("aria-label", "Source " + n + ": " + (src.title ? src.title + ", " : "") + siteName(src.url));
+    a.dataset.cite = String(n);
+    a.textContent = siteName(src.url);
+    chipSources.set(a, src);
+    el.append(" ", a);
   }
 }
 
@@ -274,7 +297,7 @@ function mountList(doc: Document, ordered: boolean, items: ListItem[], opts: Ren
   const el = doc.createElement(ordered ? "ol" : "ul");
   for (const item of items) {
     const li = doc.createElement("li");
-    mountInline(doc, li, item.children, opts);
+    mountBlock(doc, li, item.children, opts);
     if (item.sub) li.appendChild(mountList(doc, item.sub.ordered, item.sub.items, opts));
     el.appendChild(li);
   }
@@ -286,17 +309,17 @@ export function renderMarkdown(doc: Document, target: HTMLElement, src: string, 
   for (const b of parseMarkdown(src)) {
     if (b.type === "paragraph") {
       const el = doc.createElement("p");
-      mountInline(doc, el, b.children, opts);
+      mountBlock(doc, el, b.children, opts);
       target.appendChild(el);
     } else if (b.type === "heading") {
       const el = doc.createElement("h" + String(b.level + 2));
-      mountInline(doc, el, b.children, opts);
+      mountBlock(doc, el, b.children, opts);
       target.appendChild(el);
     } else if (b.type === "list") {
       target.appendChild(mountList(doc, b.ordered, b.items, opts));
     } else if (b.type === "quote") {
       const el = doc.createElement("blockquote");
-      mountInline(doc, el, b.children, opts);
+      mountBlock(doc, el, b.children, opts);
       target.appendChild(el);
     } else if (b.type === "table") {
       const wrap = doc.createElement("div");
@@ -307,7 +330,7 @@ export function renderMarkdown(doc: Document, target: HTMLElement, src: string, 
       for (const cell of b.header) {
         const th = doc.createElement("th");
         th.setAttribute("scope", "col");
-        mountInline(doc, th, cell, opts);
+        mountBlock(doc, th, cell, opts);
         hr.appendChild(th);
       }
       head.appendChild(hr);
@@ -316,7 +339,7 @@ export function renderMarkdown(doc: Document, target: HTMLElement, src: string, 
         const tr = doc.createElement("tr");
         for (const cell of row) {
           const td = doc.createElement("td");
-          mountInline(doc, td, cell, opts);
+          mountBlock(doc, td, cell, opts);
           tr.appendChild(td);
         }
         body.appendChild(tr);

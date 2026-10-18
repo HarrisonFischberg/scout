@@ -5,7 +5,7 @@
 // conic-gradient wash over the whole page (strongest at the edges, lighter in
 // the middle; owner changed this from the spec's thin border on 2026-10-17;
 // CSS @property angle, 2.5 s sweep, soft blur), a ripple at the point of each
-// click, and a small "Working…" toast with the binoculars and a Stop square. Static border under prefers-reduced-motion; the
+// click, and a small "Working…" toast with the Scout truck and a Stop square. Static border under prefers-reduced-motion; the
 // animation pauses while the tab is hidden; the glow renders at half
 // resolution and is scaled up. The worker drives it through one handler
 // global; the pill's buttons ask the worker to pause or stop the task.
@@ -13,6 +13,7 @@
 // buttons: only trusted events count, and the layer never reads the page.
 import { request } from "./bridge/messages";
 import { OVERLAY_HANDLER, type OverlayRequest } from "./content-api";
+import { isPhoneScreen } from "./panel/blur";
 
 const FLAG = "__safariScoutOverlayLoaded";
 const g = globalThis as unknown as Record<string, unknown>;
@@ -27,6 +28,9 @@ export const GLOW_CENTER = "28%";
 export const GLOW_MID = "36%";
 export const GLOW_EDGE = "78%";
 export const GLOW_CORNER = "95%";
+// iPhone shows the glow at three quarters strength (owner, 2026-10-18: on top
+// of the panel's page blur the full wash was too heavy). Mac stays at full.
+export const PHONE_GLOW_SCALE = 0.75;
 // Many close stops, so the fade is smooth rather than banded.
 const MASK_STOPS = [
   "rgb(0 0 0 / " + GLOW_CENTER + ") 0%",
@@ -85,6 +89,8 @@ const STYLE_TEXT = `
   filter: blur(26px); animation: scout-sweep ${SWEEP_MS}ms linear infinite;
 }
 .layer.paused .glow { opacity: 0.5; }
+.layer.phone .glow { opacity: ${PHONE_GLOW_SCALE}; }
+.layer.phone.paused .glow { opacity: ${PHONE_GLOW_SCALE * 0.5}; }
 .layer.hidden-tab .glow { animation-play-state: paused; }
 @keyframes scout-sweep { to { --scout-angle: 360deg; } }
 .ripple {
@@ -102,7 +108,7 @@ const STYLE_TEXT = `
   -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); white-space: nowrap; max-width: calc(100vw - 24px);
 }
 .pill .glyph { width: 18px; height: 18px; flex: none; color: #8fe3ff; filter: drop-shadow(0 0 4px rgb(51 204 240 / 70%)); }
-.pill .glyph .body { fill: currentColor; }
+.pill .glyph .body { fill: currentColor; stroke: rgb(18 44 54); stroke-width: 3; stroke-linejoin: round; }
 .pill .glyph .lens { fill: rgb(18 44 54); }
 .label { flex: 1; font-weight: 500; letter-spacing: 0.01em; text-shadow: 0 0 8px rgb(51 204 240 / 75%), 0 0 2px rgb(214 244 255 / 60%); }
 .pill .sep { width: 1px; height: 20px; background: rgb(51 204 240 / 25%); flex: none; }
@@ -153,13 +159,13 @@ type State = "running" | "paused" | "waiting";
 
 const LABEL: Record<State, string> = { running: "Working…", paused: "Paused", waiting: "Waiting for you" };
 
-// Binoculars (design/icons/safari-scout-binoculars.svg), lenses in the toast color.
+// Scout truck (design/icons/scout-truck-solid.svg), window, hubs and cut lines in the toast color.
 const GLYPH =
   '<svg class="glyph" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><g class="body">' +
-  '<rect x="11.5" y="5" width="11" height="11" rx="2.5"/><rect x="41.5" y="5" width="11" height="11" rx="2.5"/>' +
-  '<rect x="26" y="17" width="12" height="11" rx="3"/><rect x="5" y="14" width="24" height="28" rx="7"/>' +
-  '<rect x="35" y="14" width="24" height="28" rx="7"/><circle cx="17" cy="44" r="14"/><circle cx="47" cy="44" r="14"/></g>' +
-  '<circle class="lens" cx="17" cy="44" r="8"/><circle class="lens" cx="47" cy="44" r="8"/></svg>';
+  '<polygon points="13,26 16.5,11 36,11 40.5,26"/><rect x="5" y="26" width="54" height="17" rx="4"/>' +
+  '<circle cx="18" cy="44" r="9"/><circle cx="46" cy="44" r="9"/></g>' +
+  '<polygon class="lens" points="21,16 32.5,16 34.5,23 21,23"/><circle class="lens" cx="18" cy="44" r="2.5"/>' +
+  '<circle class="lens" cx="46" cy="44" r="2.5"/></svg>';
 
 if (!g[FLAG]) {
   g[FLAG] = true;
@@ -188,7 +194,7 @@ if (!g[FLAG]) {
     const style = document.createElement("style");
     style.textContent = STYLE_TEXT;
     layer = document.createElement("div");
-    layer.className = "layer";
+    layer.className = isPhoneScreen(matchMedia("(pointer: coarse)").matches, screen.width) ? "layer phone" : "layer";
     layer.setAttribute("role", "group");
     layer.setAttribute("aria-label", "Scout for Safari is controlling this page");
     const glow = document.createElement("div");

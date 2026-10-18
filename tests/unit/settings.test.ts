@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   clearHistory,
+  loadRatings,
+  ratingKey,
+  saveRating,
   loadConversation,
   appendHistory,
   deleteAllData,
   deleteReportText,
   loadHistory,
   loadSettings,
+  MODEL_MIGRATION_KEY,
   parseSettings,
   pruneHistory,
   saveSettings,
@@ -37,11 +41,11 @@ const entry = (daysAgo: number, q = "q"): HistoryEntry => ({ at: NOW - daysAgo *
 
 describe("settings", () => {
   it("defaults when storage is empty or malformed", async () => {
-    expect(parseSettings(undefined)).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5", effort: "default", retention: "7" });
+    expect(parseSettings(undefined)).toEqual({ provider: "anthropic", model: "claude-haiku-5-5", effort: "high", retention: "7" });
     expect(parseSettings({ provider: "evil", model: 5, effort: "turbo", retention: "999" })).toEqual({
       provider: "anthropic",
-      model: "claude-sonnet-5-5",
-      effort: "default",
+      model: "claude-haiku-5-5",
+      effort: "high",
       retention: "7",
     });
     expect(await loadSettings(fakeStorage())).toEqual(parseSettings({}));
@@ -49,12 +53,46 @@ describe("settings", () => {
 
   it("uses the provider's default model when the model is blank", () => {
     expect(parseSettings({ provider: "openai", model: "  " }).model).toBe("gpt-5");
+    expect(parseSettings({ provider: "openai" }).effort).toBe("default");
+  });
+
+  it("keeps a model saved before efforts existed at its own default effort", () => {
+    expect(parseSettings({ provider: "anthropic", model: "claude-sonnet-5-5" })).toMatchObject({ model: "claude-sonnet-5-5", effort: "default" });
   });
 
   it("round-trips a saved choice", async () => {
     const s = fakeStorage();
     await saveSettings(s, { provider: "openai", model: "gpt-5", effort: "high", retention: "30" });
     expect(await loadSettings(s)).toEqual({ provider: "openai", model: "gpt-5", effort: "high", retention: "30" });
+  });
+});
+
+describe("one-time switch to Haiku 5.5 High", () => {
+  it("moves an existing Anthropic choice to Haiku 5.5 High once, keeping retention", async () => {
+    const s = fakeStorage({ settings: { provider: "anthropic", model: "claude-sonnet-5-5", effort: "low", retention: "30" } });
+    const want = { provider: "anthropic", model: "claude-haiku-5-5", effort: "high", retention: "30" };
+    expect(await loadSettings(s)).toEqual(want);
+    expect(s.data.settings).toEqual(want);
+  });
+
+  it("keeps a model chosen after the switch", async () => {
+    const s = fakeStorage({ settings: { provider: "anthropic", model: "claude-opus-5-5", effort: "low", retention: "7" } });
+    await loadSettings(s);
+    await saveSettings(s, { provider: "anthropic", model: "claude-sonnet-5-5", effort: "medium", retention: "7" });
+    expect(await loadSettings(s)).toMatchObject({ model: "claude-sonnet-5-5", effort: "medium" });
+  });
+
+  it("leaves OpenAI users on their own model", async () => {
+    const s = fakeStorage({ settings: { provider: "openai", model: "gpt-5", effort: "high", retention: "7" } });
+    expect(await loadSettings(s)).toMatchObject({ provider: "openai", model: "gpt-5" });
+    expect(s.data[MODEL_MIGRATION_KEY]).toBeDefined();
+  });
+
+  it("marks a fresh install as done, so its first saved choice sticks", async () => {
+    const s = fakeStorage();
+    await loadSettings(s);
+    await saveSettings(s, { provider: "anthropic", model: "claude-opus-5-5", effort: "low", retention: "7" });
+    expect(await loadSettings(s)).toMatchObject({ model: "claude-opus-5-5", effort: "low" });
   });
 });
 
@@ -159,5 +197,39 @@ describe("conversation", () => {
     expect(conv).toEqual([{ at: 3000, question: "Fill the form", answer: "Done", kind: "agent", conv: "c-b" }]);
     await clearHistory(s);
     expect(await loadConversation(s, "7", 4000, "c-b")).toEqual([]);
+  });
+
+  it("keeps an answer's numbered sources and drops malformed ones", async () => {
+    const s = fakeStorage({
+      history: [
+        {
+          at: 1000,
+          question: "q",
+          answer: "a [1]",
+          conv: "c",
+          sources: [{ url: "https://shop.test/a", title: "Shop", kind: "page" }, { url: "javascript:alert(1)" }, { url: "https://w.test/", kind: "evil" }],
+        },
+      ],
+    });
+    const [e] = await loadConversation(s, "7", 2000, "c");
+    expect(e?.sources).toEqual([{ url: "https://shop.test/a", title: "Shop", kind: "page" }, { url: "https://w.test/" }]);
+  });
+});
+
+describe("answer ratings (owner item 10)", () => {
+  it("sets, toggles off, ignores junk, and is cleared with history", async () => {
+    const s = fakeStorage({ ratings: { old: "meh" } });
+    const k = ratingKey("q", "a");
+    expect(k).toBe(ratingKey("q", "a"));
+    expect(k).not.toBe(ratingKey("q", "b"));
+    await saveRating(s, k, "up");
+    expect(await loadRatings(s)).toEqual({ [k]: "up" });
+    await saveRating(s, k, "down");
+    expect(await loadRatings(s)).toEqual({ [k]: "down" });
+    await saveRating(s, k, null);
+    expect(await loadRatings(s)).toEqual({});
+    await saveRating(s, k, "up");
+    await clearHistory(s);
+    expect(await loadRatings(s)).toEqual({});
   });
 });

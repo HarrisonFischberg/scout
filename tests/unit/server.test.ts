@@ -39,7 +39,7 @@ const text = (delta: string): StreamEvent => ({ type: "text", delta });
 const usage = (i: number, o: number): StreamEvent => ({ type: "usage", usage: { inputTokens: i, outputTokens: o } });
 
 function server(provider: ProviderClient, over: Partial<EngineDeps> = {}) {
-  const saved: Array<{ question: string; answer: string; shared: unknown[] }> = [];
+  const saved: Array<{ question: string; answer: string; shared: unknown[]; sources: unknown[] }> = [];
   const s = new ScoutServer({
     provider: async () => provider,
     tools: async () => [{ name: "read_page", description: "Read", parameters: { type: "object" } }],
@@ -80,7 +80,29 @@ describe("ScoutServer", () => {
     expect(events.map((e) => e.seq)).toEqual([1, 2, 3, 4, 5]);
     expect(events.map((e) => e.event.kind)).toEqual(["start", "text", "text", "usage", "done"]);
     expect(last(events)?.event).toEqual({ kind: "done", text: "It costs $10." });
-    expect(saved).toEqual([{ at: 1, conv: "c1", question: REQ.question, answer: "It costs $10.", shared: REQ.shared }]);
+    expect(saved).toEqual([
+      {
+        at: 1,
+        conv: "c1",
+        question: REQ.question,
+        answer: "It costs $10.",
+        shared: REQ.shared,
+        sources: [{ url: "https://shop.test/a", title: "Test shop", kind: "page" }],
+      },
+    ]);
+  });
+
+  it("saves numbered sources as the panel numbers them: earlier part, pages, then web citations", async () => {
+    const { s, saved } = server(
+      scripted([[text("Rated 4.5 [2]."), { type: "source", url: "https://reviews.test/w", title: "Reviews" }, { type: "source", url: "https://reviews.test/w" }, { type: "done" }]]),
+    );
+    s.start({ ...REQ, prefix_sources: [{ url: "https://old.test/", title: "" }] });
+    await collect(s, "m1");
+    expect(saved[0]?.sources).toEqual([
+      { url: "https://old.test/" },
+      { url: "https://shop.test/a", title: "Test shop", kind: "page" },
+      { url: "https://reviews.test/w", title: "Reviews", kind: "web" },
+    ]);
   });
 
   it("refuses a reused message id", () => {
@@ -257,5 +279,18 @@ describe("ConversationStore", () => {
     expect(st.pendingTools("m").map((t) => t.request_id)).toEqual(["r1"]);
     st.apply("m", 2, { kind: "tool_done", request_id: "r1", status: "declined" });
     expect(st.pendingTools("m")).toEqual([]);
+  });
+
+  it("a Stop the worker never answered ends the answer as stopped, not as an error", () => {
+    const st = new ConversationStore();
+    st.create("m");
+    st.apply("m", 1, { kind: "start" });
+    st.apply("m", 2, { kind: "text", delta: "One two" });
+    st.stopLocally("m");
+    const m = st.get("m")!;
+    expect(m.status).toBe("complete");
+    expect(m.stopped).toBe(true);
+    expect(m.error).toBeUndefined();
+    expect(m.text).toBe("One two");
   });
 });

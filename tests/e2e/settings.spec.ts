@@ -4,10 +4,12 @@ import { withWorker } from "./worker";
 // Loads the built popup (run `npm run build` first) with a stubbed `browser`
 // namespace. Storage, Keychain, and permissions are in-memory fakes exposed on
 // `window.__fake` so the test can assert what was deleted. No live API call.
-async function openPopup(page: Page): Promise<void> {
-  await page.addInitScript(() => {
+async function openPopup(page: Page, os?: string): Promise<void> {
+  await page.addInitScript((os) => {
     const data: Record<string, unknown> = {
       settings: { provider: "anthropic", model: "claude-sonnet-5-5", retention: "7" },
+      // A choice made after the one-time switch to Haiku 5.5 High, so it is kept.
+      modelMigration: "haiku-5-5-high",
       history: [{ at: Date.now(), question: "hi", answer: "hello" }],
       // Sharing with the providers already allowed (consent.spec.ts covers asking).
       aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } },
@@ -27,6 +29,7 @@ async function openPopup(page: Page): Promise<void> {
           return { ok: true };
         },
         onMessage: { addListener() {} },
+        ...(os ? { getPlatformInfo: async () => ({ os }) } : {}),
       },
       tabs: { query: async () => [] },
       permissions: {
@@ -53,7 +56,7 @@ async function openPopup(page: Page): Promise<void> {
     };
     (globalThis as unknown as { browser: unknown; __fake: unknown }).browser = stub;
     (globalThis as unknown as { __fake: unknown }).__fake = fake;
-  });
+  }, os);
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
   // No live provider calls. A test can register its own model list after this.
@@ -114,7 +117,8 @@ test("model and effort dropdowns list the key's models and save the effort", asy
   await effort.selectOption("max");
   await expect.poll(() => savedSettings(page)).toEqual({ provider: "anthropic", model: "claude-opus-5-5", effort: "max", retention: "7" });
   await page.getByRole("button", { name: "Back to chat" }).click();
-  await expect(page.locator("#model-pill")).toHaveText("Opus 5.5 · Max");
+  await expect(page.locator("#model-pill")).toHaveText("Opus 5.5");
+  await expect(page.locator("#model-pill")).toHaveAttribute("aria-label", "Opus 5.5, Max effort, change model or effort");
   // A model without effort control resets the effort to Default.
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByLabel("Model", { exact: true }).selectOption("claude-old-4");
@@ -184,4 +188,46 @@ test("opening Settings focuses its heading, not a provider control", async ({ pa
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page.getByRole("heading", { name: "Settings", level: 2 })).toBeFocused();
   for (const name of ["Anthropic", "OpenAI"]) await expect(page.getByRole("radio", { name })).not.toBeFocused();
+});
+
+test("Settings ends at Delete all data: neither the panel nor the page scrolls on into empty space", async ({ page }) => {
+  await page.setViewportSize({ width: 400, height: 600 });
+  await openPopup(page);
+  await page.getByRole("button", { name: "Settings" }).click();
+  const sizes = await page.evaluate(() => {
+    const body = document.querySelector("#settings-view .body") as HTMLElement;
+    const last = body.lastElementChild as HTMLElement;
+    const style = getComputedStyle(body);
+    return {
+      page: document.documentElement.scrollHeight,
+      viewport: innerHeight,
+      scroll: body.scrollHeight,
+      end: last.offsetTop + last.offsetHeight + parseFloat(style.paddingBottom),
+    };
+  });
+  expect(sizes.page).toBeLessThanOrEqual(sizes.viewport);
+  expect(sizes.scroll).toBeLessThanOrEqual(Math.ceil(sizes.end) + 1);
+});
+
+test("Button on webpages is offered on iPhone and iPad, and not on Mac", async ({ page }) => {
+  await openPopup(page, "mac");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("heading", { name: "Toolbar button" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Button on webpages" })).toBeHidden();
+  await expect(page.getByText("turn on Button on webpages")).toBeHidden();
+  await expect(page.getByText("Control-Shift-S on Mac opens and closes Scout for Safari")).toBeVisible();
+});
+
+test("Button on webpages shows on iPhone and iPad", async ({ page }) => {
+  await openPopup(page, "ios");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("heading", { name: "Button on webpages" })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Show a Scout button on the edge of webpages" })).toBeVisible();
+});
+
+test("Settings has no Activity section", async ({ page }) => {
+  await openPopup(page);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("heading", { name: "Permissions" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Activity" })).toHaveCount(0);
 });

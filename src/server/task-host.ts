@@ -1,6 +1,6 @@
 // Scout mode host (Part 3, spec 8 and 10), run by the background worker. One
 // task per tab. It starts the runner (src/agent/task.ts) after the gate
-// agrees (Scout mode not off, site not blocked, not Private Browsing), keeps
+// agrees (Scout mode not off, site not blocked), keeps
 // its action log and any pending confirmation so a reopened panel catches up,
 // relays Take control / Resume / Stop from the panel or the overlay's pill,
 // and saves the outcome to the conversation. The runner's page calls go
@@ -134,8 +134,6 @@ export class TaskHost {
     if (this.running(p.tab_id)) throw new BridgeError("blocked-by-user", "A task is already running on this tab. Stop it first.");
     const tab = await this.deps.tab(p.tab_id);
     if (!tab || !tab.url) throw new BridgeError("unhandled", "That tab is not open.");
-    // Spec 10: Scout mode is disabled in Private Browsing, on the device.
-    if (tab.incognito) throw new BridgeError("blocked-by-user", "Scout mode is off in Private Browsing.");
     if (!hostOf(tab.url)) throw new BridgeError("blocked-by-user", "Scout mode works on web pages only (http and https).");
     const access = await this.deps.access();
     const admin = await this.deps.admin();
@@ -223,7 +221,7 @@ export class TaskHost {
         overlay: async (cmd) => void (await deps.overlay(tabId, overlayReq(cmd))),
         screenshot: async () => {
           const now = await deps.tab(tabId);
-          if (!now || now.active === false || now.incognito) return null;
+          if (!now || now.active === false) return null;
           const img = await deps.capture(now);
           return img.width && img.height ? { image: { mediaType: img.mediaType, data: img.data }, width: img.width, height: img.height } : null;
         },

@@ -72,7 +72,7 @@ export async function readTab(id: number, deps: GatherDeps, pageMs = PAGE_TIMEOU
     status,
   });
   // No URL means the site cannot be checked against the blocklists: not read.
-  if (!info || !info.url || info.incognito) return { shared: shared("failed") };
+  if (!info || !info.url) return { shared: shared("failed") };
   if (blockedBy(info.url, deps.access, deps.admin)) return { shared: shared("blocked") };
   let raw: unknown;
   try {
