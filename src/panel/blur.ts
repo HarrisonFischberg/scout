@@ -38,17 +38,29 @@ export function wantsPageBlur(coarsePointer: boolean, screenWidth: number): bool
 // as soon as it is off screen, and also says goodbye when its window loses
 // focus. A ping to a layer that has gone puts it back, so a short timeout can
 // never leave an open panel without its blur for more than a moment.
-export const BLUR_PING_MS = 100;
+//
+// Third report: closing right after Scout opened, without tapping anything,
+// still left the blur up a split second, while closing after any tap was
+// instant. The panel's window only gets focus from a tap, so without one no
+// goodbye comes and the layer waits out its timeout. The panel now pings
+// every couple of frames and, once it has finished starting, asks the layer
+// to wait only BLUR_QUIET_MS, which keeps that lag below what reads as a lag.
+// BLUR_TIMEOUT_MS stays as the wait while the panel starts, when its main
+// thread can stall long enough for a short wait to drop the blur early.
+export const BLUR_PING_MS = 33;
 export const BLUR_TIMEOUT_MS = 350;
+export const BLUR_QUIET_MS = 120;
 // Owner request 2026-10-18: the blur should come and go quickly. It fades in
 // over this long once the panel starts (it used to wait for the panel's
 // settings and chat to load, then appear at once) and goes at once on close.
 export const BLUR_FADE_IN_MS = 120;
 
-/** Message from the panel to the layer: `alive: false` clears it now. */
+/** Message from the panel to the layer: `alive: false` clears it now; `ttl`
+ *  is how long to wait for the next ping (default: addPageBlur's timeout). */
 export interface BlurPing {
   blur: string;
   alive: boolean;
+  ttl?: number;
 }
 
 export function addPageBlur(id: string, timeoutMs: number, fadeInMs = 0): boolean {
@@ -58,11 +70,11 @@ export function addPageBlur(id: string, timeoutMs: number, fadeInMs = 0): boolea
     clearTimeout(state.timer);
     document.getElementById(id)?.remove();
   };
-  const arm = (): void => {
+  const arm = (ttl = timeoutMs): void => {
     clearTimeout(state.timer);
-    state.timer = setTimeout(drop, timeoutMs);
+    state.timer = setTimeout(drop, ttl);
   };
-  const show = (): void => {
+  const show = (fadeMs = 0): void => {
     if (document.getElementById(id)) return;
     const layer = document.createElement("div");
     layer.id = id;
@@ -70,10 +82,10 @@ export function addPageBlur(id: string, timeoutMs: number, fadeInMs = 0): boolea
     layer.style.cssText =
       "all: initial; position: fixed; top: 0; left: 0; right: 0; bottom: 96px; z-index: 2147483646; pointer-events: none;" +
       "background: rgb(0 0 0 / 5.5%); -webkit-backdrop-filter: blur(4.5px) saturate(120%); backdrop-filter: blur(4.5px) saturate(120%);";
-    const fade = fadeInMs > 0 && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const fade = fadeMs > 0 && !matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (fade) {
       layer.style.opacity = "0";
-      layer.style.transition = `opacity ${fadeInMs}ms ease-out`;
+      layer.style.transition = `opacity ${fadeMs}ms ease-out`;
     }
     (document.body ?? document.documentElement).appendChild(layer);
     if (fade) requestAnimationFrame(() => (layer.style.opacity = "1"));
@@ -84,12 +96,13 @@ export function addPageBlur(id: string, timeoutMs: number, fadeInMs = 0): boolea
       const ping = m as Partial<BlurPing> | null;
       if (!ping || ping.blur !== id) return;
       if (ping.alive === true) {
+        // Put back at once: a fade here would read as a flicker.
         show();
-        arm();
+        arm(typeof ping.ttl === "number" && ping.ttl > 0 ? ping.ttl : timeoutMs);
       } else drop();
     });
   }
-  show();
+  show(fadeInMs);
   arm();
   return true;
 }
