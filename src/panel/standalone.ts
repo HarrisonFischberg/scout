@@ -1,6 +1,6 @@
-// Scout as its own page (owner request 2026-10-18): the panel's "Open in new tab"
-// button opens popup.html?view=page in a Safari tab the owner can bookmark. That
-// page is not attached to a web page, so it reads no current tab and hides the
+// Scout as its own page (owner request 2026-10-18, Mac Safari only): the panel's
+// "Open in new tab" button opens popup.html?view=page in a Safari tab the owner
+// can bookmark. That page is not attached to a web page, so it reads no current tab and hides the
 // page-only actions (Summarize, Explain, Find coupons, Scout mode).
 export const STANDALONE_PATH = "popup.html?view=page";
 

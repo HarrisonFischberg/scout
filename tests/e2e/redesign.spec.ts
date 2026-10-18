@@ -386,3 +386,12 @@ test("Open in new tab: the header button opens Scout as its own page, which hide
   await expect(page.getByText("Could not read this page")).toHaveCount(0);
   expect(await page.evaluate(() => (globalThis as unknown as { __reads?: number }).__reads ?? 0)).toBe(0);
 });
+
+test.describe("touch device", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 393, height: 760 } });
+  test("Open in new tab is Mac only: no button on iPhone", async ({ page }) => {
+    await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+    await expect(page.getByRole("button", { name: "New chat" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open Scout in a new tab" })).toBeHidden();
+  });
+});
