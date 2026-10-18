@@ -1676,3 +1676,9 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Cause (inferred, no iPhone here): #29 relied on the closed panel sending a goodbye on `pagehide`/hidden, or going quiet. iPhone Safari can keep a dismissed panel's page alive without either, so its `setInterval` kept pinging and the layer never timed out.
 - Fix: the panel pings from `requestAnimationFrame`, which WebKit stops for a page that is off screen, every 100 ms; it also says goodbye on window `blur` and resumes on `focus`/`pageshow`/visible. The layer clears itself after 350 ms without a ping (was 900 ms), and a ping to a cleared layer puts it back, so a stall never leaves an open panel without its blur for long.
 - Evidence: new unit test (gone within 350 ms of silence; a late ping restores it). Unit 459/460 (known Take control failure), lint, `check:release` clean; Chromium e2e `panel` + `redesign` 20/20. Needs the real iPhone check.
+
+## 2026-10-18 — Scout truck replaces the binoculars (owner request)
+
+- Ask (owner): the binoculars look too close to his Sunglasses at Night extension. He picked option 1, a safari truck in side view, from a preview of a truck and a pith helmet.
+- Change: new original artwork in `design/icons/` (`scout-truck-outline[-active].svg` toolbar, `scout-truck-solid.svg` edge tab and overlay toast, `truck-icon.svg` extension tile, `truck-appicon-{mac,ios}.svg`); the binoculars SVGs are removed. The panel's new-chat mark, the Scout mode switch and the Scout mode chip use the truck. `scripts/render-toolbar-icons.mjs` now supports `<polygon>`. Active toolbar state: large filled hubs.
+- Evidence: unit 459/460 (known Take control failure), typecheck, lint, build, `check:release`; screenshots of the panel, toolbar PNGs and app icon checked by eye. App icons were rendered with Chromium in the cloud sandbox (`scripts/render-icons.mjs` needs macOS `sips`). Needs the Mac and iPhone check.

@@ -1,0 +1,13 @@
+<!-- Scout for Safari toolbar icon, active state (agent working): the outline truck with large filled hubs.
+     Same drawing as scout-truck-outline.svg; only the hub discs are bigger. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <g fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round">
+    <polygon points="13,26 16.5,11 36,11 40.5,26"/>
+    <polygon points="21,16 32.5,16 34.5,23 21,23"/>
+    <rect x="5" y="26" width="54" height="17" rx="4"/>
+    <circle cx="18" cy="44" r="9"/>
+    <circle cx="46" cy="44" r="9"/>
+    <circle cx="18" cy="44" r="5" fill="currentColor"/>
+    <circle cx="46" cy="44" r="5" fill="currentColor"/>
+  </g>
+</svg>
