@@ -569,22 +569,38 @@ async function main(): Promise<void> {
   // ---------- Thread ----------
   // Stay pinned to the newest message when the thread grows or shrinks (the
   // composer grows as you type or when Scout mode adds its chip), unless
-  // the user has scrolled up to read. Scrolls the app makes always count as
-  // "at the bottom"; only later scroll events can unpin it.
+  // the user has scrolled up to read. scrollToEnd pins it (a new question,
+  // a prompt to answer); followEnd only keeps an already pinned thread at
+  // the bottom, so an answer typing out never pulls the user back down
+  // while they read from its top (owner, 2026-10-18).
   let atBottom = true;
-  let programmaticAt = 0;
+  let pinnedTop = -1;
   const scrollToEnd = (): void => {
     atBottom = true;
-    programmaticAt = performance.now();
     thread.scrollTop = thread.scrollHeight;
+    pinnedTop = thread.scrollTop;
+  };
+  const followEnd = (): void => {
+    if (atBottom) scrollToEnd();
   };
   thread.addEventListener("scroll", () => {
-    if (performance.now() - programmaticAt < 150) return;
+    // Our own scroll, before the content grew under it, is not the user's.
+    if (Math.abs(thread.scrollTop - pinnedTop) < 2) return;
     atBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 24;
   });
-  new ResizeObserver(() => {
-    if (atBottom) scrollToEnd();
-  }).observe(thread);
+  // Unpin as soon as the user starts scrolling up, before the next typed
+  // frame can scroll the thread back down under their finger or wheel.
+  thread.addEventListener("wheel", (e) => {
+    if (e.deltaY < 0) atBottom = false;
+  }, { passive: true });
+  let touchY = 0;
+  thread.addEventListener("touchstart", (e) => {
+    touchY = e.touches[0]?.clientY ?? 0;
+  }, { passive: true });
+  thread.addEventListener("touchmove", (e) => {
+    if ((e.touches[0]?.clientY ?? 0) > touchY + 4) atBottom = false;
+  }, { passive: true });
+  new ResizeObserver(followEnd).observe(thread);
 
   // ---------- Answer actions and sources (owner items 10 and 12) ----------
   // Under each finished answer: Copy, Share, Good / Bad answer, Branch, and
@@ -1536,7 +1552,7 @@ async function main(): Promise<void> {
     if (v.closed && m.status === "complete" && !m.stopped && text && cut >= text.length) {
       v.bubble.appendChild(answerActions(v.bubble, { question: v.question, answer: text, sources: allSources(v, m) }));
     }
-    scrollToEnd();
+    followEnd();
   }
 
   /** One frame of the steady reveal of a streamed answer. */
@@ -2050,7 +2066,7 @@ async function main(): Promise<void> {
     const e = { text, status: statusOf };
     task.entries.push(e);
     renderEntry(task, e);
-    scrollToEnd();
+    followEnd();
   }
 
   /** Builds the inline trace under the user's message and returns it. */
@@ -2400,7 +2416,7 @@ async function main(): Promise<void> {
       row.appendChild(link);
     } else row.append(label);
     t.body.appendChild(row);
-    scrollToEnd();
+    followEnd();
   }
 
   /** The question after a search whose codes saved nothing; the composer's Stop (or the overlay's) answers it "no". */
@@ -2501,7 +2517,7 @@ async function main(): Promise<void> {
         line.appendChild(words);
         log.appendChild(line);
         last = line;
-        scrollToEnd();
+        followEnd();
         return line;
       },
       edit(line, text) {
@@ -2539,7 +2555,7 @@ async function main(): Promise<void> {
       p.className = "say";
       p.textContent = text;
       t.body.appendChild(p);
-      scrollToEnd();
+      followEnd();
     };
     const steps = couponSteps();
     const timer = setInterval(() => (t.headText.textContent = "Working " + elapsedText(Date.now() - t.startedAt)), 1000);
