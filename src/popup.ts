@@ -61,6 +61,7 @@ import { checkKey, looksLikeKey } from "./providers/keytest";
 import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
 import { joinDictation, Listener, micErrorText, recognitionCtor } from "./panel/voice";
 import { fitAboveKeyboard } from "./panel/keyboard";
+import { isStandalone, openStandalone } from "./panel/standalone";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
   appendHistory,
@@ -439,6 +440,10 @@ const CONTEXT_TURNS = 10;
 /** The moving "processing" indicator: coupon milestones, a Working card's head, and an answer before its first words. */
 const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></span>';
 
+/** Scout as its own page in a tab (src/panel/standalone.ts), not the toolbar panel. */
+const STANDALONE = isStandalone(location.search);
+if (STANDALONE) document.documentElement.dataset.standalone = "";
+
 async function main(): Promise<void> {
   const chatView = el("chat-view");
   const settingsView = el("settings-view");
@@ -481,7 +486,7 @@ async function main(): Promise<void> {
   const providerFetch = gatedFetch((p) => consent.has(p), (i, init) => fetch(i, init));
 
   document.addEventListener("keydown", (e) => {
-    if (isToggleShortcut(e)) {
+    if (isToggleShortcut(e) && !STANDALONE) {
       e.preventDefault();
       window.close();
     }
@@ -1846,7 +1851,7 @@ async function main(): Promise<void> {
     }
     const v = newView(id, bubble, cont ? cont.question : trimmed, s.settings.model, cont ? cont.partial + (/\s$/.test(cont.partial) ? "" : " ") : "");
     renderView(id);
-    status.textContent = cont ? "Finishing the answer." : "Reading the page and waiting for the answer.";
+    status.textContent = cont ? "Finishing the answer." : STANDALONE ? "Waiting for the answer." : "Reading the page and waiting for the answer.";
     setBusy(true);
     if (!storage) conv = conv || "";
     else if (!conv) conv = await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "");
@@ -1861,7 +1866,7 @@ async function main(): Promise<void> {
       const ctx = await request<ContextReply>(
         toWorker,
         "context.read",
-        { ...(tab.id !== undefined ? { current_tab: tab.id } : {}), attached: granted ? extra.map((t) => t.id) : [], include_current: true },
+        { ...(tab.id !== undefined ? { current_tab: tab.id } : {}), attached: granted ? extra.map((t) => t.id) : [], include_current: !STANDALONE },
         { timeoutMs: 15_000 },
       ).catch(() => null);
       pages = ctx?.pages ?? [];
@@ -1870,8 +1875,8 @@ async function main(): Promise<void> {
       const cur = shared.find((t) => t.tab_id === tab.id);
       current.page(readOk(cur?.status) ? pages[0]?.url : undefined);
       trace(readOk(cur?.status) ? "page:read ok" : "page:read failed");
-      if (ctx?.read_current !== false && !readOk(cur?.status)) status.textContent = "Could not read this page. Answering without it.";
-      v.scope = [...(ctx?.read_current !== false && tab.id !== undefined ? [tab.id] : []), ...extra.map((t) => t.id)];
+      if (!STANDALONE && ctx?.read_current !== false && !readOk(cur?.status)) status.textContent = "Could not read this page. Answering without it.";
+      v.scope = [...(!STANDALONE && ctx?.read_current !== false && tab.id !== undefined ? [tab.id] : []), ...extra.map((t) => t.id)];
       v.sources = pages.map((p) => ({ url: p.url, title: p.title, kind: "page", snippet: snippetOf(p.text) }));
       v.shared = shared.map((t) => ({ title: attached.get(t.tab_id)?.title || t.title, host: t.host, status: t.status }));
       for (const t of extra) if (!shared.some((x) => x.tab_id === t.id)) v.shared.push({ title: t.title, host: hostOf(t.url) ?? "", status: "failed" });
@@ -2932,6 +2937,14 @@ async function main(): Promise<void> {
       // The worker is gone: end it here with what arrived.
       store.stopLocally(id);
       finalize(id);
+    });
+  });
+  // Opens Scout as its own page in a new tab, to bookmark (owner request 2026-10-18).
+  el("open-page").addEventListener("click", () => {
+    trace("ui:open-page");
+    void openStandalone(browser).then((ok) => {
+      if (ok) window.close();
+      else status.textContent = "Safari did not open a new tab. Try again.";
     });
   });
   el("new-chat").addEventListener("click", () => {
