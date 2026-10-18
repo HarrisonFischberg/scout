@@ -120,6 +120,18 @@ test.describe("touch device", () => {
     await expect(page.getByLabel("Ask about this page")).not.toBeFocused();
   });
 
+  // Owner report 2026-10-18: closing from the chat left the page blur up a
+  // split second longer than closing from Settings, whose heading has focus.
+  // The chat's heading takes focus so the panel's window hears it is closing.
+  test.describe("iPhone screen", () => {
+    test.use({ screen: { width: 402, height: 874 } });
+    test("focuses the chat heading on open so closing clears the page blur at once", async ({ page }) => {
+      await openPopup(page, { key: "sk-test-synthetic" });
+      await expect(page.getByRole("heading", { name: "Scout for Safari", level: 1 })).toBeFocused();
+      await expect(page.getByLabel("Ask about this page")).not.toBeFocused();
+    });
+  });
+
   // Owner item 6 (2026-10-17): Safari's sheet bar already names Scout, so the
   // chat header drops its own icon and title but keeps New chat and Settings.
   test("the chat header shows no repeated name, only New chat and Settings", async ({ page }) => {

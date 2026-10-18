@@ -449,6 +449,13 @@ const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></spa
  */
 async function frostPage(): Promise<number | undefined> {
   if (!wantsPageBlur(matchMedia("(pointer: coarse)").matches, screen.width)) return undefined;
+  // Owner report 2026-10-18: closing from Settings cleared the blur at once,
+  // closing from the chat lagged a split second. Settings focuses its heading;
+  // the chat focused nothing on iPhone (no keyboard on open), so the panel's
+  // window never had focus and never got the blur that says goodbye, leaving
+  // the layer to time out. Focusing the chat's heading (not the question box)
+  // gives the window focus without raising the keyboard.
+  document.getElementById("chat-title")?.focus({ preventScroll: true });
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true }).catch(() => []);
   const tabId = tab?.id;
   if (tabId === undefined) return undefined;
