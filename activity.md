@@ -1711,3 +1711,10 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Ask (owner): remove the "Shared: <page title> (<site>)" line under every answer, everywhere; and make Scout's reply text flow slower and smoother instead of spewing out.
 - Change: the panel no longer renders the Shared line (live or restored answers). What is shared is still sent to the model, saved with history, and listed in Settings > Permissions > Shared in conversations. Streamed text is revealed by `src/panel/typing.ts` at a steady 50 characters a second, speeding up only so it is never more than about 3 s behind; Stop or an error shows what arrived at once, and the answer buttons appear when the reveal finishes.
 - Evidence: new unit `typing.test.ts`; unit 463/464 (known Take control failure), typecheck, lint, build, `check:release`. Chromium e2e: same failures as main (20, the part2 mock-stream set and keyboard focus); tabs, scout, panel and redesign specs pass. WebKit is not installed in the cloud sandbox. Needs the Mac and iPhone check.
+
+## 2026-10-18 — iPhone: first-open blur lag, debug probe
+
+- Actual (owner, iPhone, build with #34): on a first open closed without a tap the page blur still lingers; after any tap it clears at once. #33 (focus the heading) and #34 (shorter wait) did not fix it, so the cause is not what they assumed.
+- Expected: the blur clears at once however the panel is closed.
+- Step: instead of a third guess, debug builds now log how the blur goes away (`src/panel/blur-probe.ts`): the panel's focus, blur, pagehide, visibility, resize and taps; the page's own focus, resize and visibility; ping gaps; the goodbye; and when the layer is removed. The next open on the same page writes the previous log into Diagnostics as `blur-probe:` stages. Times and event names only. Release builds carry none of it (`check:release` now also checks for it).
+- Evidence: new unit tests in `tests/unit/blur-probe.test.ts`; unit 467/468 (known Take control failure), typecheck, lint, `check:release` clean; chat, panel, diagnostics and settings e2e pass in Chromium.
