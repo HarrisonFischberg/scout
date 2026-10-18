@@ -248,10 +248,9 @@
       .round.mic:hover { color: var(--text-primary); }
       .round.mic[aria-pressed="true"] { background: var(--accent); color: var(--accent-on); }
       .round.mic:disabled { opacity: 0.45; cursor: default; }
-      /* Scout as its own page in a tab (src/panel/standalone.ts): full window, a readable
-         column, the name shown, and only what works without a web page. */
+      /* Scout as its own page in a tab (src/panel/standalone.ts): the whole window
+         (owner 2026-10-18), the name shown, and only what works without a web page. */
       html[data-standalone] body { width: auto; height: 100%; }
-      html[data-standalone] .view { max-width: 760px; margin: 0 auto; }
       html[data-standalone] #chat-view > header { justify-content: flex-start; padding: 10px 12px; border-bottom: 1px solid var(--hairline); }
       html[data-standalone] #chat-view > header picture { display: flex; }
       html[data-standalone] #chat-view > header h1 { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
