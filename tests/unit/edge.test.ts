@@ -1,9 +1,31 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { clampY, coversAllSites, edgeMatches, isDrag, MAX_TAB_SCALE, pageButtonOffered, parsePageButton, reachText, sameMatches, snapSide, tabScale, tapOnlyWakes, Y_MAX, Y_MIN } from "../../src/panel/edge";
+import { clampY, coversAllSites, edgeMatches, isDrag, MAX_TAB_SCALE, pageButtonOffered, parsePageButton, reachText, sameMatches, snapSide, tabArea, tabInPage, tabScale, tapOnlyWakes, Y_MAX, Y_MIN } from "../../src/panel/edge";
 import { openPanel } from "../../src/panel/toolbar";
 
 describe("page button settings", () => {
+  // Owner bug report 2026-10-18: a fixed tab made iPhone Safari paint a solid
+  // strip under its bottom bar, so on a phone the tab lives in the page.
+  it("lives in the page on a phone, and stays fixed to the screen on Mac and iPad", () => {
+    expect(tabInPage(true, 390)).toBe(true);
+    expect(tabInPage(true, 440)).toBe(true);
+    expect(tabInPage(true, 820)).toBe(false);
+    expect(tabInPage(false, 390)).toBe(false);
+    expect(tabInPage(true, 0)).toBe(false);
+  });
+
+  it("covers what is on screen and never reaches past the end of the page", () => {
+    const view = { left: 0, top: 1500, width: 390, height: 664 };
+    expect(tabArea(view, 390, 5000)).toEqual(view);
+    // Rubber-band past the end, or above the top: held inside the page.
+    expect(tabArea({ ...view, top: 4500 }, 390, 5000)).toEqual({ ...view, top: 5000 - 664 });
+    expect(tabArea({ ...view, top: -40 }, 390, 5000)).toEqual({ ...view, top: 0 });
+    // A page shorter than the screen: the box is no taller than the page.
+    expect(tabArea({ ...view, top: 0 }, 390, 500)).toEqual({ left: 0, top: 0, width: 390, height: 500 });
+    // Unknown page size or broken numbers fall back to the screen at the top.
+    expect(tabArea({ left: Number.NaN, top: 10, width: 390, height: 664 }, 0, 0)).toEqual({ left: 0, top: 0, width: 390, height: 664 });
+  });
+
   it("is on from a fresh install, keeps a stored choice, and drops malformed stored values", () => {
     // Owner request 2026-10-17: a fresh install starts with the floating icon.
     expect(parsePageButton(undefined)).toEqual({ on: true, side: "right", y: 0.45 });
