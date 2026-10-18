@@ -3,7 +3,7 @@
 // 403), Scout opens it in a background tab, presses "Show code", and reads
 // the codes there. Synthetic stores, pages and codes only; the tab is a fake.
 import { describe, expect, it } from "vitest";
-import { browserRead, browserTrace, codeAlone, couponControls, revealedCodes, type PageBrowser } from "../../src/coupons/browser-read";
+import { BROWSER_MAX_PAGES, browserRead, browserTrace, codeAlone, couponControls, revealedCodes, type PageBrowser } from "../../src/coupons/browser-read";
 import { suggestCodes } from "../../src/coupons/codes";
 import type { ProviderClient, StreamEvent, ChatRequest } from "../../src/providers";
 import type { SnapElement, Snapshot } from "../../src/snapshot/snapshot";
@@ -138,9 +138,9 @@ describe("browserRead", () => {
 
   it("reports a page it could not open, and keeps to the page and time limits", async () => {
     const none: PageBrowser = { open: async () => null, read: async () => null, click: async () => false, close: async () => undefined, wait: async () => undefined };
-    const urls = ["a", "b", "c", "d", "e", "f", "g"].map((x) => ({ url: "https://c.test/" + x, reason: "failed" as const }));
+    const urls = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"].map((x) => ({ url: "https://c.test/" + x, reason: "failed" as const }));
     const r = await browserRead(urls, none);
-    expect(r.pages.length).toBe(5);
+    expect(r.pages.length).toBe(BROWSER_MAX_PAGES);
     expect(r.pages.every((p) => p.outcome === "no_access")).toBe(true);
     let t = 0;
     const slow: PageBrowser = { open: async () => 1, read: async () => snap("https://c.test/a", "loading"), click: async () => false, close: async () => undefined, wait: async (ms) => void (t += ms) };
@@ -225,5 +225,77 @@ describe("suggestCodes with the browser fallback", () => {
     const r = await suggestCodes(refusingProvider([]), "m", "www.synthshop.test", undefined, { readPages: false });
     expect(r.browserSkipped).toEqual({ count: 1, why: "unavailable" });
     expect(r.browserPages).toEqual([]);
+  });
+});
+
+describe("sites that keep refusing the reader go to the browser first", () => {
+  const quiet: PageBrowser = { open: async () => 1, read: async () => snap("https://x.test/", FILLER), click: async () => false, close: async () => undefined, wait: async () => undefined };
+
+  it("listed pages on those sites skip the reader and open in the browser; the model is told not to fetch them", async () => {
+    const seen: ChatRequest[] = [];
+    const opened: string[] = [];
+    const p: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        seen.push(req);
+        yield { type: "text", delta: "NONE\n" };
+      },
+    };
+    await suggestCodes(p, "m", "www.synthshop.test", undefined, {
+      browser: { tabs: { ...quiet, open: async (u) => (opened.push(u), 1) }, allow: async () => true, firstHosts: ["dealhack.com"] },
+    });
+    const request = String(seen[0]?.messages[0]?.content);
+    const readNote = request.slice(request.indexOf("Pages:"));
+    expect(readNote).not.toMatch(/coupert\.com|hotdeals\.com|dealhack\.com/);
+    expect(readNote).toMatch(/wethrift\.com\/synthshop/);
+    expect(request).toMatch(/Do not open pages on these sites with web_fetch.*coupert\.com, hotdeals\.com, dealhack\.com/);
+    expect(opened.sort()).toEqual(["https://dealhack.com/coupons/synthshop", "https://us.hotdeals.com/store/synthshop-coupon", "https://usa.coupert.com/coupons/synthshop-test-discount-code"].sort());
+  });
+
+  it("a search result on such a site, about this store, opens in the browser without a fetch", async () => {
+    const opened: string[] = [];
+    const p: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        if (!req.webSearch) return;
+        yield { type: "source", url: "https://usa.coupert.com/coupons/synthshop-discount-code", title: "Synthetic Shop codes" };
+        yield { type: "source", url: "https://usa.coupert.com/coupons/othershop", title: "Other shop" };
+        yield { type: "text", delta: "NONE\n" };
+      },
+    };
+    const r = await suggestCodes(p, "m", "www.synthshop.test", undefined, { readPages: false, browser: { tabs: { ...quiet, open: async (u) => (opened.push(u), 1) }, allow: async () => true } });
+    expect(opened).toEqual(["https://usa.coupert.com/coupons/synthshop-discount-code"]);
+    expect(r.browserPages[0]?.reason).toBe("blocked");
+  });
+
+  it("opens two pages at a time, and tells the popup which sites refused the reader", async () => {
+    let open = 0;
+    let most = 0;
+    const tabs: PageBrowser = {
+      ...quiet,
+      open: async () => {
+        most = Math.max(most, ++open);
+        await new Promise((r) => setTimeout(r, 5));
+        return 1;
+      },
+      close: async () => void open--,
+    };
+    const learned: string[] = [];
+    const p: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        if (!req.webSearch) return;
+        for (const x of ["a", "b", "c"]) yield { type: "fetch", url: "https://deals.test/synthshop-" + x, ok: false, error: "url_not_accessible" };
+        yield { type: "fetch", url: "https://ok.test/synthshop", ok: true, chars: 5000 };
+        yield { type: "text", delta: "NONE\n" };
+      },
+    };
+    const r = await suggestCodes(p, "m", "www.synthshop.test", undefined, {
+      readPages: false,
+      browser: { tabs, allow: async () => true, onReader: (u, ok) => learned.push(u + " " + ok) },
+    });
+    expect(r.browserPages).toHaveLength(3);
+    expect(most).toBe(2);
+    expect(learned).toEqual(["https://deals.test/synthshop-a false", "https://deals.test/synthshop-b false", "https://deals.test/synthshop-c false", "https://ok.test/synthshop true"]);
   });
 });

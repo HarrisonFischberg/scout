@@ -384,16 +384,43 @@ const readShopifyCart = (shop) =>
 /** The popup page wired to `shop` as the active tab, like tests/e2e/checkout.spec.ts. */
 async function openPopup(context, shop, shopUrl, stages) {
   const popup = await context.newPage();
-  await popup.exposeFunction("__injectContent", async (file) => {
-    await shop.addScriptTag({ path: join(RES, file || "content.js") });
+  // Tab 1 is the shop; background tabs Find coupons opens for coupon pages the
+  // reader could not load (src/coupons/browser-read.ts) are pages 2, 3, ...
+  const tabs = new Map([[1, shop]]);
+  let nextTab = 2;
+  const pageOf = (id) => tabs.get(id ?? 1) ?? shop;
+  await popup.exposeFunction("__injectContent", async (file, tabId) => {
+    const p = pageOf(tabId);
+    await p.waitForLoadState("domcontentloaded").catch(() => undefined);
+    await p.addScriptTag({ path: join(RES, file || "content.js") });
   });
-  await popup.exposeFunction("__callContent", (handler, req) =>
-    shop.evaluate(([h, r]) => {
+  // Like Safari after a navigation: a new page has no handler until the script is injected again.
+  await popup.exposeFunction("__hasContent", (handler, tabId) =>
+    pageOf(tabId).evaluate((h) => typeof globalThis[h] === "function", handler).catch(() => false),
+  );
+  await popup.exposeFunction("__callContent", (handler, req, tabId) =>
+    pageOf(tabId).evaluate(([h, r]) => {
       const fn = globalThis[h];
       if (typeof fn !== "function") throw new Error("no handler " + h);
       return fn(r);
     }, [handler, req]),
   );
+  await popup.exposeFunction("__openTab", async (url) => {
+    const p = await context.newPage();
+    const id = nextTab++;
+    tabs.set(id, p);
+    stages.push("runner:tab-open " + new URL(url).hostname);
+    await p.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 }).catch(() => undefined);
+    return id;
+  });
+  await popup.exposeFunction("__closeTabs", async (ids) => {
+    for (const id of [].concat(ids)) {
+      const p = tabs.get(id);
+      if (!p || p === shop) continue;
+      tabs.delete(id);
+      await p.close().catch(() => undefined);
+    }
+  });
   await popup.exposeFunction("__stage", (s) => stages.push(s));
   await popup.addInitScript(
     ({ url, key, model, effort }) => {
@@ -433,17 +460,24 @@ async function openPopup(context, shop, shopUrl, stages) {
             },
           },
         },
-        tabs: { query: async () => [{ id: 1, windowId: 1, active: true, url }] },
-        permissions: { getAll: async () => ({ origins: [] }), request: async () => true, remove: async () => true },
+        tabs: {
+          query: async () => [{ id: 1, windowId: 1, active: true, url }],
+          create: async ({ url: u }) => ({ id: await w.__openTab(u), windowId: 1 }),
+          remove: async (ids) => w.__closeTabs(ids),
+        },
+        // As if the owner allowed Scout on every site (asked once on the first Find coupons press).
+        permissions: { getAll: async () => ({ origins: [] }), contains: async () => true, request: async () => true, remove: async () => true },
         scripting: {
           executeScript: async (inj) => {
+            const tabId = inj.target?.tabId;
             if (inj.files) {
-              for (const f of inj.files) await w.__injectContent(f);
+              for (const f of inj.files) await w.__injectContent(f, tabId);
               return [{ result: true }];
             }
             if (!inj.func || !inj.args) return [{ result: null }];
             const handler = inj.args[1];
-            w[handler] = (r) => w.__callContent(handler, r);
+            if (await w.__hasContent(handler, tabId)) w[handler] = (r) => w.__callContent(handler, r, tabId);
+            else delete w[handler];
             return [{ result: await inj.func(...inj.args) }];
           },
         },
@@ -464,7 +498,7 @@ async function openPopup(context, shop, shopUrl, stages) {
 
 function classify(summary, verify) {
   const s = summary;
-  if (/is the best:/.test(s) && /It's applied to your cart/.test(s)) return verify === false ? "applied (summary) but cart did not confirm" : "applied";
+  if (/is the best:/.test(s) && /It's applied (?:to your cart|on the checkout page)/.test(s)) return verify === false ? "applied (summary) but cart did not confirm" : "applied";
   if (/is the best:/.test(s)) return "found a saving but could not re-apply";
   if (/none lowered your total/.test(s)) return "no working code";
   if (/No code posted for .* could be found/.test(s) && /ended early/.test(s)) return "discovery failed";
@@ -645,7 +679,7 @@ async function runMerchant(browser, m) {
     const after = await readShopifyCart(shop);
     if (after) result.cartAfter = after;
     let verified = null;
-    if (after && /It's applied to your cart/.test(summary)) {
+    if (after && /It's applied (?:to your cart|on the checkout page)/.test(summary)) {
       const m2 = /is the best: your total drops from \*?\*?([^*]+?)\*?\*? to \*?\*?([^*\s]+)/.exec(summary);
       const claimed = m2 ? Number(m2[2].replace(/[^0-9.]/g, "")) : NaN;
       const codeOn = after.codes.some((c) => c.applicable);
