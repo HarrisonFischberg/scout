@@ -455,14 +455,6 @@
            moves Safari's sheet instead of first stretching the page and then
            handing over mid-gesture (owner 2026-10-18, smooth sheet drag). */
         html, body { overscroll-behavior: none; }
-        /* See-through panel on iPhone (owner idea 2026-10-18): the background is
-           half as solid so the page behind Scout shows through, if Safari's sheet
-           lets it. Cards, bubbles and the question box stay solid. */
-        html.see-through { --bg-panel: rgb(245 245 247 / 50%); background: transparent; }
-        html.see-through body { background: var(--bg-panel); }
-        html.see-through.docked #composer { background: transparent; }
-        html.see-through.docked:not([data-chat-empty]) #composer { background: var(--bg-panel); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
-        @media (prefers-color-scheme: dark) { html.see-through { --bg-panel: rgb(28 28 30 / 50%); } }
         body { font-size: 14px; }
         #starters button { font-size: 16px; min-height: 32px; padding: 2px 4px; }
         .composer-box { border-radius: 22px; padding: 10px 10px 8px 14px; }
