@@ -129,6 +129,9 @@ export function parseTotal(text: string): number | null {
   return readTotal(text)?.amount ?? null;
 }
 
+/** Savings under this are rounding or a free item, not a coupon: 10 cents, or 0.25% of the total if more. */
+export const tinySaving = (baseline: number): number => Math.max(0.1, baseline * 0.0025);
+
 /** Largest positive saving among accepted (or not rejected) codes; the earliest wins ties. */
 export function bestOf(attempts: CouponAttempt[]): CouponAttempt | undefined {
   let best: CouponAttempt | undefined;
@@ -715,8 +718,12 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
         haltNote = r.note ?? "";
         break outer;
       }
-      const saving = savingOf(r.total);
-      const attempt = attemptOf(cand, r, saving, noteOf(r, saving));
+      const measured = savingOf(r.total);
+      // A cent or two off is not a coupon worth applying (live run 2026-10-19:
+      // WELCOME10 took $0.01 off $177.10 and was then tried with the real winner).
+      const tiny = measured !== null && measured > 0 && measured < tinySaving(baseline);
+      const saving = tiny ? 0 : measured;
+      const attempt = attemptOf(cand, r, saving, tiny ? "Takes off only " + formatMoney(measured, tester.currency) + ", too little to count." : noteOf(r, saving));
       attempts.push(attempt);
       input.onAttempt?.(attempt, attempts.length, codes.length, tester.currency);
       if (input.delayMs) await new Promise((res) => setTimeout(res, input.delayMs));

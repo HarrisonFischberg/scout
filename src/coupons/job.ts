@@ -310,7 +310,10 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         trace("coupons:angles " + sug.angles + (sug.anglesFailed ? " failed=" + sug.anglesFailed : "") + " hints=" + sug.percents.length);
         for (const c of sug.codes) known.add(c.code);
         say(discoveryLine(discovery));
-        if (sug.offers.length) say("Code-free offers the pages mention (not tested): " + sug.offers.slice(0, 3).join("; ") + ".");
+        if (sug.offers.length) {
+          const list = sug.offers.slice(0, 3).join("; ");
+          say("Code-free offers the pages mention (not tested): " + list + (/[.…!?]$/.test(list) ? "" : "."));
+        }
         // A search the provider refused (key, credit) says so on its own; a timeout still leads to guesses.
         if (!run.isStopped && (!sug.error || sug.error.code === "timeout")) {
           const guesses = guessCodes({ merchant, percents: sug.percents, known });

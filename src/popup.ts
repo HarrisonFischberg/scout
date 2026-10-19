@@ -2576,14 +2576,14 @@ async function main(): Promise<void> {
   /** Shows a run in the chat and replays its events so far (a finished run ends with its summary). */
   function replayCouponRun(r: CouponRunView, buffered: Array<Record<string, unknown>>): void {
     // Its own diagnostics run, so the outcome is not filed under this panel's
-    // startup (owner report 2026-10-19 showed a "startup → no_form").
+    // startup (owner report 2026-10-19 showed a "startup → no_form") and a
+    // report copied now shows it, not the panel opening. One run: two merged
+    // changes each started one, and the empty first pushed an older run out.
     const s = session;
     startRun("coupons", s ? { provider: s.settings.provider, model: s.settings.model, ...(s.mock ? { mock: true } : {}) } : {});
     current.page(tab.url);
     addMessage("user", COUPON_QUESTION, { mode: "Find coupons" });
     showCouponRun(r.started_at);
-    // The caught-up run gets a diagnostics run of its own, so a report copied now shows it, not the panel opening.
-    startRun("coupons", { provider: session?.settings.provider, model: session?.settings.model });
     trace("coupons:resumed");
     for (const e of r.events) onCouponEvent({ ...e, tab_id: tab.id }, true);
     for (const e of buffered) onCouponEvent({ ...e, tab_id: tab.id });

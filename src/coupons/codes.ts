@@ -11,7 +11,7 @@ import type { Effort, ProviderClient } from "../providers/types";
 import { isMasked, mergeCandidates, normalizeCode, rankCandidates, type CouponCandidate } from "./candidates";
 import { identifyMerchant, type Merchant } from "./merchant";
 import { codesWithContext } from "./store";
-import { hintedPercents } from "./guesses";
+import { brandTokens, hintedPercents } from "./guesses";
 import { BROWSER_MAX_PAGES, BROWSER_TABS, BROWSER_TIME_MS, browserRead, type BrowserPage, type BrowserReason, type BrowserTarget, type PageBrowser } from "./browser-read";
 
 export const MAX_FOUND = 40;
@@ -171,10 +171,17 @@ const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "Ju
 /** "October 2026", for searches about current promotions. */
 export const monthYear = (now: Date): string => (MONTH_NAMES[now.getMonth()] ?? "") + " " + now.getFullYear();
 
+/** The store as an angle names it in searches written out word for word. */
+export interface AngleStore {
+  brand: string;
+  domain: string;
+}
 /** One part of a search: what this request looks at. Others cover the rest at the same time. */
 export interface SearchAngle {
   id: string;
-  focus: (when: string) => string;
+  focus: (when: string, store: AngleStore) => string;
+  /** Web searches this angle may run, when not ANGLE_SEARCH_USES. */
+  searches?: number;
 }
 /** A short store name ("Beefy") matches many other things: search it with what the store sells too. */
 const SELLS_NOTE = "Search the store's name together with a word or two for what it sells (for example 'Beefy meat chips code'), as well as on its own: creators often name the product, not the store.";
@@ -183,9 +190,15 @@ const ANGLE_LEAD = "Your part of a larger search (other searches cover the rest 
 export const SEARCH_ANGLES: SearchAngle[] = [
   { id: "coupon-sites", focus: () => "coupon and deal sites. Search the store's name with the names of coupon sites (" + COUPON_SITES + ") and open the pages that print codes in full." },
   {
+    // Owner report 2026-10-19: another assistant found getbeefy.co's working
+    // creator code on a creator's Linktree; Scout's creator search, told only
+    // the kinds of pages, found none. These searches are written out in full.
     id: "creators",
-    focus: () =>
-      "creators, influencers and affiliates. Search for the store's name with 'code', 'discount code', 'my code', 'use code', 'linktree', 'podcast', 'YouTube', 'Instagram', 'TikTok', 'review', 'ambassador'; open creators' Linktree and 'discount codes' pages, influencer code directories, podcast show notes, and review blogs that print a code for this store.",
+    searches: 9,
+    focus: (_when, st) =>
+      "creators, influencers and affiliates. Run these searches first, word for word: " +
+      ['"' + st.domain + '" code', "site:linktr.ee " + st.brand, st.brand + " code linktree", '"' + st.brand + '" "use code"', st.brand + " discount code instagram", st.brand + " code tiktok", st.brand + " ambassador code"].map((q) => "'" + q + "'").join(", ") +
+      ". Open the creator pages they return (Linktree, Beacons, Stan Store, Instagram, TikTok, YouTube descriptions, podcast show notes, review blogs). Creators print codes built from their own name or niche (for example JANEDOE15 or KETOMOM) next to the store's name: list each one with its page, even when it looks like a person's name.",
   },
   {
     id: "store",
@@ -202,7 +215,11 @@ export const SEARCH_ANGLES: SearchAngle[] = [
 export const MORE_ANGLES: SearchAngle[] = [
   { id: "more-coupon-sites", focus: () => "coupon, cashback and voucher sites not tried before, including international ones (VoucherCodes, HotUKDeals, OzBargain, RedFlagDeals, Cuponation) and smaller ones that print codes in full." },
   { id: "fresh", focus: (when) => "promotions running now. Search the store's name with '" + when + "', 'promo', 'sale', 'limited time', 'new customers', 'launch', 'holiday'; open the newest pages first." },
-  { id: "more-creators", focus: () => "more creators: Instagram, TikTok and YouTube posts and descriptions, podcast sponsor reads, newsletters and Substack posts, and influencer code sites, for codes not tried before." },
+  {
+    id: "more-creators",
+    focus: (_when, st) =>
+      "more creators, for codes not tried before. Search 'site:beacons.ai " + st.brand + "', 'site:stan.store " + st.brand + "', 'site:instagram.com " + st.brand + " code', 'site:youtube.com " + st.brand + " code', '" + st.brand + " podcast code', '" + st.brand + " creator code'; open Instagram, TikTok and YouTube posts and descriptions, podcast sponsor reads, newsletters and Substack posts, and influencer code sites.",
+  },
   { id: "programs", focus: () => "the store's programs and archived emails: student, military, nurse, teacher and first responder discounts (ID.me, GovX, UNiDAYS, Student Beans), app-only offers, and archived promotional emails (for example milled.com)." },
 ];
 
@@ -333,6 +350,25 @@ function maskedToken(raw: string): boolean {
   return isMasked(bare);
 }
 const unquote = (s: string): string => s.trim().replace(/^["“”'‘’]+|["“”'‘’]+$/g, "").replace(/\s+/g, " ").trim();
+const MAX_OFFER = 120;
+const ENTITIES: Record<string, string> = { amp: "&", quot: '"', apos: "'", lt: "<", gt: ">", nbsp: " " };
+/** "&#34;" and "&quot;" as the characters they stand for: page text the model copied as written. */
+const decodeEntities = (s: string): string =>
+  s.replace(/&(#\d{1,5}|#x[0-9a-f]{1,4}|[a-z]{2,6});/gi, (m, e: string) =>
+    e[0] === "#" ? String.fromCodePoint(e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : Number(e.slice(1))) : (ENTITIES[e.toLowerCase()] ?? m),
+  );
+/**
+ * One offer in a few plain words: the first field after the page that says
+ * something, cut at a word. Live run 2026-10-19 showed the quote and the note
+ * run together, an "&#34;" and a cut word ("no co").
+ */
+function offerNote(rest: string): string {
+  const fields = rest.split("|").map((f) => unquote(decodeEntities(f.replace(/https?:\/\/\S+/g, ""))).replace(/^[-–—]+$/, ""));
+  const note = fields.slice(1).find((f) => f.length >= 4) ?? (fields[0] && fields[0].length >= 4 ? fields[0] : "");
+  if (note.length <= MAX_OFFER) return note;
+  const cut = note.slice(0, MAX_OFFER);
+  return cut.slice(0, Math.max(cut.lastIndexOf(" "), 40)).replace(/[\s,;:.\-–—]+$/, "") + "…";
+}
 const MAX_CONTEXT = 220;
 const MAX_CONDITIONS = 120;
 
@@ -380,8 +416,8 @@ export function parseFindings(text: string, retrieved: Retrieved): Findings {
       const kind = (special[1] ?? "").toUpperCase();
       const rest = special[2] ?? "";
       if (kind === "OFFER") {
-        const note = unquote(rest.split("|").slice(1).join(" ").replace(/https?:\/\/\S+/g, "")).slice(0, MAX_CONDITIONS);
-        if (note) offers.push(note);
+        const note = offerNote(rest);
+        if (note && !offers.includes(note)) offers.push(note);
       } else {
         masked++;
         maskedAt(rest);
@@ -534,8 +570,22 @@ export async function suggestCodes(
     const lines = page.split("\n");
     return lines.some((line, i) => textHasCode(line, code) && (namesStore(line) || (line.trim().length <= code.length + 20 && i > 0 && namesStore(lines[i - 1] ?? ""))));
   };
+  // A page whose address was built from the store's name (`likelyCodePages`)
+  // may not be about the store at all: a coupon site answers an unknown store
+  // with a page of other stores' codes. Live run 2026-10-19 (getbeefy.co):
+  // STUDENT701, EXTRA10 and ETSC came from such a page. Such a page counts as
+  // about the store only when it names the store a few times.
+  const nameWords = [...new Set([brandWord, label.length >= 4 ? label : "", merchant.domain, ...brandTokens(merchant).map((t) => t.toLowerCase()).filter((t) => t.length >= 4)])].filter(Boolean);
+  const mentions = (text: string): number => {
+    const t = text.toLowerCase();
+    return Math.max(0, ...nameWords.map((w) => t.split(w).length - 1));
+  };
+  const builtPage = (url: string): boolean => listedKeys.has(urlKey(url)) && !storeHost(url);
+  const namesStoreOften = (text: string): boolean => mentions(text) >= 3;
+  /** A code on a built page that is not about the store, and not next to the store's name. */
+  const offStore = (url: string, text: string, code: string): boolean => builtPage(url) && !namesStoreOften(text) && !nearStore(text, code);
   const readPage = (url: string, page: string): void => {
-    const about = aboutStore(url);
+    const about = aboutStore(url) && (!builtPage(url) || namesStoreOften(page));
     const origin: CouponCandidate["origin"] = storeHost(url) ? "store" : "verified";
     for (const c of codesWithContext(page, MAX_PAGE_CODES)) {
       if (PAGE_WORDS.has(c.code) || storeWords.has(c.code)) continue;
@@ -627,6 +677,7 @@ export async function suggestCodes(
         addRetrieved(retrieved, url, pageText);
       }
       for (const c of r.codes) {
+        if (offStore(c.url, r.texts.get(c.url) ?? "", c.code)) continue;
         fromBrowser.add(c.code);
         if (read.some((x) => x.code === c.code && x.sourceUrl === c.url)) continue;
         read.push({ code: c.code, origin: storeHost(c.url) ? "store" : "verified", sourceUrl: c.url, context: c.context });
@@ -660,7 +711,12 @@ export async function suggestCodes(
   const collect = (whole: boolean): { findings: Findings; codes: CouponCandidate[] } => {
     // Mid-stream, the last line may still be growing ("SAVE1" of "SAVE10").
     const findings = parseFindings(whole ? text : text.slice(0, text.lastIndexOf("\n") + 1), retrieved);
-    const codes = rankCandidates(mergeCandidates(findings.found, cited, read), merchant).filter((c) => !known.has(c.code));
+    // The model's lines about a built page pass the same check as codes read there.
+    const found = findings.found.filter((c) => {
+      const page = retrievedText(retrieved, urlKey(c.sourceUrl));
+      return !page || !offStore(c.sourceUrl, page, c.code);
+    });
+    const codes = rankCandidates(mergeCandidates(found, cited, read), merchant).filter((c) => !known.has(c.code));
     return { findings, codes };
   };
   const reported = new Set<string>();
@@ -782,7 +838,7 @@ export async function suggestCodes(
         // Every angle at once. The search failed only when none finished; a
         // refusal (key, quota) is reported over a timeout.
         const ends = await Promise.all(
-          angles.map((a) => pass({ search: true, fetch: true, timeoutMs: budget, searches: ANGLE_SEARCH_USES, fetches: ANGLE_FETCH_USES, focus: a.focus(when), ...(note ? { note } : {}) })),
+          angles.map((a) => pass({ search: true, fetch: true, timeoutMs: budget, searches: a.searches ?? ANGLE_SEARCH_USES, fetches: ANGLE_FETCH_USES, focus: a.focus(when, { brand: merchant.brand, domain: merchant.domain }), ...(note ? { note } : {}) })),
         );
         anglesFailed = ends.filter((e) => e && e.code !== "timeout").length;
         const errs = ends.filter((e): e is SearchError => !!e);
@@ -833,8 +889,8 @@ export async function suggestCodes(
     browserPages,
     browserCodes: codes.filter((c) => fromBrowser.has(c.code) || browserKeys.has(urlKey(c.sourceUrl))).length,
     percents: hintedPercents([
+      // Code-free offers ("5% off 3+ bags automatically") say nothing about a code's percentage.
       ...text.split("\n").filter((l) => /^\W*MASKED\b/i.test(l) || maskedToken(l)),
-      ...findings.offers,
       ...[...retrieved.titles].filter(([key, title]) => aboutStore(key) || title.toLowerCase().includes(merchant.brand.toLowerCase())).map(([, title]) => title),
     ]),
     angles: anglesRun,
