@@ -1,0 +1,84 @@
+/* Option 5 · Ink & Paper. Prototype only. Editorial and calm: answers set like a
+   good article in a serif (New York on Apple; Charter stands in here), the UI
+   chrome in small sans caps, ink-black controls, one oxblood accent for links and
+   wins, hairline rules instead of boxes, no chat bubbles. */
+:root {
+  --bg-canvas: #fbfaf7; --bg-surface: #ffffff; --bg-subtle: #f0eee8;
+  --text-primary: #141414; --text-secondary: #3d3d3d; --text-muted: #696964;
+  --accent: #141414; --accent-on: #fbfaf7; --accent-text: #8a2c0d;
+  --selected: #ebe8e0; --bubble-user: transparent; --bubble-user-text: #141414;
+  --danger: #a3200b; --focus-ring: #8a2c0d; --border-control: #8a8780; --hairline: #e3e0d8;
+  --shadow: none;
+  --serif: "New York", ui-serif, "Bitstream Charter", Charter, Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-canvas: #131211; --bg-surface: #1b1a18; --bg-subtle: #24221f;
+    --text-primary: #eeebe4; --text-secondary: #cfcbc2; --text-muted: #9c978d;
+    --accent: #eeebe4; --accent-on: #131211; --accent-text: #eba286;
+    --selected: #2b2925; --bubble-user: transparent; --bubble-user-text: #eeebe4;
+    --danger: #ff9c86; --focus-ring: #eba286; --border-control: #77736b; --hairline: #2d2b27;
+  }
+}
+header { border-bottom: 1px solid var(--hairline) !important; }
+header picture { display: none !important; }
+header h1 { font: 600 20px var(--serif) !important; letter-spacing: -0.01em; }
+.icon-btn { color: var(--text-primary); }
+
+/* New chat: a masthead-style greeting and an index of starters. */
+#empty .scout-mark { display: none; }
+.rev-mast { margin: auto 2px 18px; }
+.rev-mast small { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+.rev-mast b { display: block; font: 400 30px/1.12 var(--serif); letter-spacing: -0.02em; }
+.rev-mast b i { color: var(--accent-text); }
+#starters { border-top: 1px solid var(--text-primary); margin-bottom: 12px !important; padding: 0 !important; }
+#starters li { border-bottom: 1px solid var(--hairline); }
+#starters button { min-height: 46px !important; padding: 8px 2px !important; border-radius: 0 !important; color: var(--text-primary) !important; font: 400 17px var(--serif) !important; }
+#starters button::before { content: attr(data-n); font: 600 11px -apple-system, Inter, sans-serif; color: var(--text-muted); width: 22px; }
+#starters button svg.i { color: var(--text-muted) !important; width: 16px !important; height: 16px !important; }
+
+/* Composer: hairline box, ink send. */
+.composer-box { border-radius: 4px; border: 1px solid var(--text-primary); box-shadow: none; background: var(--bg-surface); }
+.composer-box:has(#question:focus-visible) { border-color: var(--text-primary); box-shadow: 0 0 0 1px var(--text-primary); }
+#question { font: 400 16px var(--serif); }
+#question::placeholder { font-style: italic; }
+.round { border-radius: 4px; border-color: var(--hairline); color: var(--text-primary); }
+.round.mic { border-radius: 4px; background: transparent; border: 1px solid var(--hairline); color: var(--text-primary); }
+.round.send { border-radius: 4px; }
+fieldset.segmented { border-radius: 4px; border-color: var(--hairline); }
+.segmented label { border-radius: 2px; }
+.segmented label.on { background: var(--text-primary); color: var(--bg-canvas); }
+#model-pill { background: transparent; border-radius: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+
+/* Messages: no bubbles. Question as a small-caps kicker, answer as prose. */
+.msg.user { align-self: stretch; max-width: none; padding: 0 0 8px; border-radius: 0; border-bottom: 1px solid var(--hairline); font: italic 400 19px/1.35 var(--serif); }
+.msg.user::before { content: "You asked"; display: block; font: 600 10.5px -apple-system, Inter, sans-serif; font-style: normal; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; }
+.msg.assistant { font: 400 16.5px/1.6 var(--serif); }
+.msg.assistant strong { font-weight: 700; }
+.msg li::marker { color: var(--accent-text); }
+.msg th { font: 600 10.5px -apple-system, Inter, sans-serif; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); border-bottom: 1px solid var(--text-primary) !important; }
+.msg td { font-variant-numeric: oldstyle-nums tabular-nums; }
+.answer-actions .icon-btn { color: var(--text-muted); }
+#status { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+
+/* Find coupons: a ledger. */
+.coupon-step { font: 400 15px var(--serif); color: var(--text-secondary); }
+.coupon-step.busy { font-style: italic; color: var(--text-primary); }
+.coupon-step .done-mark { color: var(--text-primary); }
+.trace-head { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+.trace-body { border-left: 0 !important; padding-left: 0 !important; gap: 0 !important; border-top: 1px solid var(--text-primary); }
+.trace .attempt { padding: 9px 0; border-bottom: 1px solid var(--hairline); font: 400 14px var(--serif); }
+.trace .attempt .code { font: 600 12px ui-monospace, "DejaVu Sans Mono", monospace; letter-spacing: 0.08em; }
+.trace .attempt.good { color: var(--text-primary); }
+.trace .attempt.good .code { color: var(--accent-text); }
+.trace .attempt.good::after { content: "Best"; margin-left: auto; font: 600 10px -apple-system, Inter, sans-serif; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-text); border: 1px solid var(--accent-text); padding: 1px 5px; border-radius: 2px; }
+.trace .controls { padding-top: 10px; }
+.btn { border-radius: 3px; border-color: var(--text-primary); background: transparent; font-weight: 600; font-size: 13px; }
+.btn.primary { background: var(--accent); color: var(--accent-on); }
+
+/* Settings: a table of contents. */
+#settings-view h2 { font: 600 20px var(--serif) !important; }
+#settings-view section { border-bottom: 1px solid var(--hairline) !important; padding: 18px 0 !important; }
+#settings-view h3 { font: 400 21px var(--serif); text-transform: none; letter-spacing: -0.01em; color: var(--text-primary); }
+#settings-view input[type="password"], #settings-view input[type="text"], #settings-view select { border-radius: 0; border: 0; border-bottom: 1px solid var(--text-primary); background: transparent; padding: 6px 0; }
+#empty .rev-mast { order: 1; } #empty #starters { order: 2; }

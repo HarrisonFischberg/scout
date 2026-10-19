@@ -1,0 +1,93 @@
+/* Option 1 · Trailhead. Prototype only (injected over popup.html for screenshots).
+   Warm outdoors brand taken from the app icon: sand paper, forest green, rounded type.
+   Nunito stands in for SF Pro Rounded (ui-rounded) in these captures. */
+@font-face { font-family: "RevRound"; font-weight: 400; src: url("/rf/nunito-latin-400-normal.woff2"); }
+@font-face { font-family: "RevRound"; font-weight: 600; src: url("/rf/nunito-latin-600-normal.woff2"); }
+@font-face { font-family: "RevRound"; font-weight: 700; src: url("/rf/nunito-latin-700-normal.woff2"); }
+@font-face { font-family: "RevRound"; font-weight: 800; src: url("/rf/nunito-latin-800-normal.woff2"); }
+:root {
+  --bg-canvas: #f6f1e7; --bg-surface: #fffdf8; --bg-subtle: #ece4d3;
+  --text-primary: #1f2a1f; --text-secondary: #485245; --text-muted: #636b5f;
+  --accent: #2f6b3a; --accent-on: #ffffff; --accent-text: #2a6034;
+  --selected: #e2ead6; --bubble-user: #2f6b3a; --bubble-user-text: #ffffff;
+  --danger: #a63a1c; --focus-ring: #2f6b3a; --border-control: #8c8471; --hairline: #e3d9c5;
+  --shadow: 0 1px 0 rgb(80 60 20 / 6%), 0 6px 20px rgb(80 60 20 / 8%);
+  --sun: #f2c14e; --rev-display: "RevRound", ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-canvas: #131913; --bg-surface: #1b231c; --bg-subtle: #263026;
+    --text-primary: #eef1e8; --text-secondary: #c9d0c1; --text-muted: #9ea797;
+    --accent: #8fd19b; --accent-on: #0f1f11; --accent-text: #9bd6a5;
+    --selected: #2b3a2c; --bubble-user: #2b4a31; --bubble-user-text: #eef1e8;
+    --danger: #ff9a7a; --focus-ring: #8fd19b; --border-control: #7d8a78; --hairline: #2b352b;
+    --shadow: 0 1px 0 rgb(0 0 0 / 30%), 0 6px 20px rgb(0 0 0 / 35%);
+    --sun: #e9b949;
+  }
+}
+html body { font-family: var(--rev-display) !important; }
+header { border-bottom: 0 !important; padding: 10px 12px 4px !important; }
+header h1 { font-weight: 800; font-size: 16px; letter-spacing: -0.01em; }
+header img { border-radius: 7px; }
+.icon-btn { border-radius: 12px; color: var(--text-secondary); }
+
+/* New chat: a sunrise badge with the truck, a greeting, starters as trail-marker cards. */
+#empty .scout-mark {
+  width: 104px; height: 104px; padding: 18px; margin: auto auto 10px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 120%, var(--sun) 0 38%, transparent 39%), var(--accent);
+  fill: var(--accent); stroke: var(--accent-on); stroke-width: 3.6;
+  box-shadow: 0 0 0 6px var(--bg-canvas), 0 0 0 7px var(--hairline);
+}
+#empty .scout-mark .hub { fill: var(--accent-on); }
+.rev-greet { text-align: center; margin: 0 0 auto; }
+.rev-greet b { display: block; font: 800 22px/1.2 var(--rev-display); letter-spacing: -0.02em; }
+.rev-greet span { color: var(--text-muted); font-size: 14px; }
+#starters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 0 10px !important; }
+#starters li { display: flex; }
+#starters button {
+  flex-direction: column; align-items: flex-start !important; gap: 8px !important; min-height: 76px !important; padding: 12px !important;
+  border: 1px solid var(--hairline) !important; border-radius: 16px !important; background: var(--bg-surface) !important;
+  color: var(--text-primary) !important; font-weight: 700; font-size: 14px !important; box-shadow: var(--shadow);
+}
+#starters button svg.i { order: -1; width: 26px !important; height: 26px !important; padding: 5px; border-radius: 9px; background: var(--selected); color: var(--accent-text) !important; }
+
+/* Composer: a soft sand capsule, quiet focus. */
+.composer-box { border-radius: 22px; border-color: var(--hairline); padding: 10px 10px 8px 14px; }
+.composer-box:has(#question:focus-visible) { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), var(--shadow); }
+#question { font-size: 15px; }
+#model-pill { background: var(--selected); color: var(--accent-text); font-weight: 700; }
+.round { border-color: var(--hairline); }
+.round.mic { background: var(--selected); color: var(--accent-text); }
+.segmented label.on { background: var(--accent); color: var(--accent-on); }
+fieldset.segmented { border-color: var(--hairline); }
+
+/* Messages */
+.msg.user { border-radius: 18px 18px 6px 18px; font-weight: 600; }
+.msg.assistant { font-size: 15px; }
+.msg.assistant strong { color: var(--accent-text); }
+.msg th { font: 800 12px var(--rev-display); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.msg .table-wrap { background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 14px; padding: 4px 12px; }
+.msg tr:last-child td { border-bottom: 0; }
+.answer-actions .icon-btn { color: var(--text-muted); }
+#status { font-weight: 600; color: var(--text-muted); }
+
+/* Find coupons as a trail: each step a marker on one line. */
+.coupon-step { position: relative; padding-left: 4px; font-weight: 600; }
+.coupon-step .done-mark { color: var(--accent-text); }
+.trace-body { border-left: 2px dashed var(--accent) !important; }
+.trace .attempt { padding: 6px 10px; border-radius: 12px; background: var(--bg-surface); border: 1px solid var(--hairline); }
+.trace .attempt .code { font: 800 13px var(--rev-display); letter-spacing: 0.04em; }
+.trace .attempt.good { background: var(--selected); border-color: var(--accent); }
+.trace .attempt.good .code { color: var(--accent-text); }
+.trace .attempt a { color: var(--text-muted); }
+.btn { border-radius: 999px; border-color: var(--hairline); background: var(--bg-surface); font-weight: 700; padding: 4px 16px; }
+.btn.primary { background: var(--accent); color: var(--accent-on); }
+#stop { background: var(--accent); }
+
+/* Settings: rounded section cards on sand. */
+#settings-view .body { padding: 6px 12px 16px; }
+#settings-view section { background: var(--bg-surface); border: 1px solid var(--hairline) !important; border-radius: 18px; padding: 14px; margin-bottom: 10px; }
+#settings-view h3 { font: 800 15px var(--rev-display); text-transform: none; letter-spacing: 0; color: var(--text-primary); }
+#settings-view h2 { font-weight: 800; }
+#settings-view input[type="password"], #settings-view input[type="text"], #settings-view select { border-radius: 12px; border-color: var(--hairline); background: var(--bg-canvas); padding: 8px 10px; }
+.segmented label.on { background: var(--accent); color: var(--accent-on); }

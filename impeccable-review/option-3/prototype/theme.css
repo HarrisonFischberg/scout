@@ -1,0 +1,96 @@
+/* Option 3 · Night Ops. Prototype only. Scout as a capable agent console:
+   dark-first, ink and signal lime, grotesk UI type, monospace for machine facts
+   (model, cost, codes, steps), the agent run drawn as a timeline.
+   Space Grotesk + JetBrains Mono would be bundled in the extension (no web request). */
+@font-face { font-family: "RevGro"; font-weight: 400; src: url("/rf/space-grotesk-latin-400-normal.woff2"); }
+@font-face { font-family: "RevGro"; font-weight: 500; src: url("/rf/space-grotesk-latin-500-normal.woff2"); }
+@font-face { font-family: "RevGro"; font-weight: 600; src: url("/rf/space-grotesk-latin-600-normal.woff2"); }
+@font-face { font-family: "RevGro"; font-weight: 700; src: url("/rf/space-grotesk-latin-700-normal.woff2"); }
+@font-face { font-family: "RevMono"; font-weight: 400; src: url("/rf/jetbrains-mono-latin-400-normal.woff2"); }
+@font-face { font-family: "RevMono"; font-weight: 600; src: url("/rf/jetbrains-mono-latin-600-normal.woff2"); }
+:root {
+  --bg-canvas: #f3f5f2; --bg-surface: #ffffff; --bg-subtle: #e6eae4;
+  --text-primary: #0e1210; --text-secondary: #39433d; --text-muted: #5c6860;
+  --accent: #0e1210; --accent-on: #c6f77a; --accent-text: #2d6a10;
+  --selected: #0e1210; --bubble-user: #0e1210; --bubble-user-text: #f3f5f2;
+  --danger: #b3261e; --focus-ring: #2d6a10; --border-control: #7b867f; --hairline: #d9dfd8;
+  --signal: #4f9a12; --shadow: none;
+  --mono: "RevMono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-canvas: #0b0d0c; --bg-surface: #121614; --bg-subtle: #1b201d;
+    --text-primary: #e8f0ea; --text-secondary: #b3c2b8; --text-muted: #85958b;
+    --accent: #b8f35a; --accent-on: #0b0d0c; --accent-text: #c6f77a;
+    --selected: #b8f35a; --bubble-user: #1b201d; --bubble-user-text: #e8f0ea;
+    --danger: #ff8a7a; --focus-ring: #c6f77a; --border-control: #5d6a62; --hairline: #232a26;
+    --signal: #b8f35a;
+  }
+}
+html body { font-family: "RevGro", system-ui, sans-serif !important; }
+header { border-bottom: 1px solid var(--hairline) !important; }
+header picture { display: none !important; }
+header h1 { font: 600 13px var(--mono) !important; letter-spacing: 0.14em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+header h1::after { content: "● READY"; font: 600 10px var(--mono); letter-spacing: 0.1em; color: var(--signal); padding: 2px 6px; border: 1px solid var(--hairline); border-radius: 4px; }
+.icon-btn { border-radius: 6px; }
+
+/* New chat: a command list instead of a mascot. */
+#empty .scout-mark { width: 40px; height: 40px; margin: auto 0 8px; fill: none; stroke: var(--signal); stroke-width: 3; }
+#empty .scout-mark .hub { fill: var(--signal); }
+.rev-cmd-title { margin: 0 0 12px; font: 600 22px/1.2 "RevGro"; letter-spacing: -0.02em; }
+.rev-cmd-title span { display: block; font: 400 12px var(--mono); color: var(--text-muted); letter-spacing: 0.02em; margin-top: 4px; }
+#starters { border: 1px solid var(--hairline); border-radius: 8px; overflow: hidden; margin-bottom: 10px !important; padding: 0 !important; }
+#starters li + li { border-top: 1px solid var(--hairline); }
+#starters button { min-height: 42px !important; padding: 8px 12px !important; border-radius: 0 !important; color: var(--text-primary) !important; font-size: 14px !important; font-weight: 500; }
+#starters button::before { content: attr(data-cmd); font: 600 12px var(--mono); color: var(--signal); min-width: 84px; }
+#starters button svg.i { display: none; }
+#starters button::after { content: attr(data-key); font: 400 11px var(--mono); color: var(--text-muted); border: 1px solid var(--hairline); border-radius: 4px; padding: 1px 5px; }
+
+/* Composer: squared terminal box, mono meta. */
+.composer-box { border-radius: 10px; border-color: var(--hairline); box-shadow: none; background: var(--bg-surface); }
+.composer-box:has(#question:focus-visible) { border-color: var(--signal); box-shadow: 0 0 0 1px var(--signal); }
+#question::placeholder { font-family: var(--mono); font-size: 13px; }
+.round { border-radius: 7px; border-color: var(--hairline); }
+.round.mic { border-radius: 7px; background: var(--bg-subtle); }
+.round.send { border-radius: 7px; }
+fieldset.segmented { border-radius: 7px; border-color: var(--hairline); }
+.segmented label { border-radius: 5px; }
+.segmented label.on { color: var(--accent-on); background: var(--selected); }
+#model-pill { font: 600 11px var(--mono); letter-spacing: 0.04em; text-transform: uppercase; border-radius: 6px; background: var(--bg-subtle); }
+#status { font: 400 11px var(--mono); letter-spacing: 0.04em; color: var(--text-muted); }
+
+/* Messages */
+.msg.user { border-radius: 10px 10px 2px 10px; font-weight: 500; }
+.msg.assistant { font-size: 14.5px; line-height: 1.6; }
+.msg.assistant strong { color: var(--text-primary); background: color-mix(in srgb, var(--signal) 18%, transparent); padding: 0 3px; border-radius: 3px; }
+.msg th { font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+.msg td { font-variant-numeric: tabular-nums; }
+.msg .table-wrap { border: 1px solid var(--hairline); border-radius: 8px; padding: 2px 10px; }
+.msg tr:last-child td { border-bottom: 0; }
+.answer-actions .icon-btn { border-radius: 6px; }
+
+/* Find coupons as a run timeline. */
+.coupon-step { position: relative; font: 400 12.5px var(--mono); color: var(--text-secondary); padding-left: 2px; }
+.coupon-step.busy { color: var(--signal); }
+.coupon-step .done-mark { color: var(--signal); }
+.pulse { border-color: var(--signal); }
+.trace-head { font: 600 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.trace-body { border-left: 1px solid var(--signal) !important; gap: 6px !important; }
+.trace .attempt { font: 400 12px var(--mono); padding: 6px 8px; background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 6px; }
+.trace .attempt .code { font: 600 12px var(--mono); }
+.trace .attempt.good { border-color: var(--signal); }
+.trace .attempt.good .code { color: var(--signal); }
+.trace .attempt a { color: var(--text-muted); }
+.btn { border-radius: 6px; border-color: var(--hairline); font: 600 12px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 12px; }
+.btn.primary { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+
+/* Settings: dense, labelled like a config file. */
+#settings-view h2 { font: 600 13px var(--mono) !important; letter-spacing: 0.14em; text-transform: uppercase; }
+#settings-view section { border-bottom: 1px solid var(--hairline) !important; }
+#settings-view h3 { font: 600 11px var(--mono); letter-spacing: 0.12em; color: var(--signal); }
+#settings-view h3::before { content: "// "; color: var(--text-muted); }
+#settings-view input[type="password"], #settings-view input[type="text"], #settings-view select { border-radius: 6px; border-color: var(--hairline); background: var(--bg-canvas); font-family: var(--mono); font-size: 12px; padding: 8px; }
+.segmented label { font-family: var(--mono); font-size: 12px; }
+@media (pointer: coarse) { #starters button::after { display: none; } }
+#empty { justify-content: flex-end; }
+#empty .rev-cmd-title { order: 1; } #empty #starters { order: 2; }

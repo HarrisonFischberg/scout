@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-look="trailhead">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -518,6 +518,356 @@
       @media (prefers-reduced-motion: no-preference) {
         .icon-btn, .chip, .segmented label, #plus-menu button, .sheet-list button { transition: background-color 150ms, color 150ms, border-color 150ms; }
       }
+
+      /* ---------- Looks (owner choice 2026-10-19, impeccable-review/) ----------
+         Everything above is the Classic look. Each other look re-sets the tokens
+         and restyles a few components under html[data-look]; src/panel/look.ts sets
+         the attribute (Trailhead by default) and the new-chat greeting. Contrast:
+         every text/background pair is AA (4.5:1) in both appearances. Fonts are
+         system fonts only: SF Pro Rounded (ui-rounded), New York (ui-serif), SF Mono. */
+      :root { --font-round: "SF Pro Rounded", ui-rounded, -apple-system, system-ui, sans-serif; --font-serif: "New York", ui-serif, Charter, Georgia, serif; --font-mono: "SF Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+      /* Shared by every look except Classic: the short name, the greeting, a calmer composer focus. */
+      :root:not([data-look="classic"]) .name-rest { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      .greeting { margin: 0; text-align: center; }
+      .greeting b { display: block; font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
+      .greeting span { display: block; margin-top: 2px; color: var(--text-muted); font-size: 14px; }
+      :root[data-look="classic"] .greeting { display: none; }
+      #starters .starter-extra { display: none; }
+      /* Trailhead shows all four starters as cards: coupons and Scout mode no longer hide behind + and an icon. */
+      :root[data-look="trailhead"] #starters .starter-extra { display: flex; }
+      :root:not([data-look="classic"]) .composer-box:has(#question:focus-visible) { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), var(--shadow); }
+      /* A heading focused from script (dialog title) is not a control: no ring around it. */
+      #consent-title:focus, #settings-title:focus, #sharing-title:focus, #tool-ask-title:focus { outline: none; }
+      /* Settings links reach the 24 px target size (WCAG 2.5.8). */
+      #settings-view a { display: inline-block; min-height: 24px; padding: 2px 0; }
+
+      /* Settings > Look */
+      .look-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; padding: 0; border: 0; }
+      .look-list label {
+        position: relative; display: flex; flex-direction: column; gap: 2px; min-height: 64px; padding: 10px 12px; cursor: pointer;
+        border: 1px solid var(--hairline); border-radius: 12px; background: var(--bg-surface); font-size: 14px; font-weight: 600;
+      }
+      .look-list label .blurb { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+      .look-list label .sw { display: flex; gap: 3px; margin-bottom: 4px; }
+      .look-list label .sw i { width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 18%); }
+      .look-list input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+      .look-list label:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+      .look-list label:has(input:checked)::after { content: "✓"; position: absolute; top: 8px; right: 10px; color: var(--accent-text); font-weight: 700; }
+      .look-list label:has(input:focus-visible) { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+      @media (pointer: coarse) { .look-list label { min-height: 72px; } }
+
+      /* ===== Trailhead (default): sand, forest green, a sunrise badge, rounded type ===== */
+      :root[data-look="trailhead"] {
+        --bg-canvas: #f6f1e7; --bg-surface: #fffdf8; --bg-subtle: #ece4d3;
+        --text-primary: #1f2a1f; --text-secondary: #485245; --text-muted: #5c6458;
+        --accent: #2f6b3a; --accent-on: #ffffff; --accent-text: #2a6034;
+        --selected: #e2ead6; --bubble-user: #2f6b3a; --bubble-user-text: #ffffff;
+        --danger: #a63a1c; --focus-ring: #2f6b3a; --border-control: #8c8471; --hairline: #e3d9c5;
+        --shadow: 0 1px 0 rgb(80 60 20 / 6%), 0 6px 20px rgb(80 60 20 / 8%); --sun: #f2c14e;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root[data-look="trailhead"] {
+          --bg-canvas: #131913; --bg-surface: #1b231c; --bg-subtle: #263026;
+          --text-primary: #eef1e8; --text-secondary: #c9d0c1; --text-muted: #9ea797;
+          --accent: #8fd19b; --accent-on: #0f1f11; --accent-text: #9bd6a5;
+          --selected: #2b3a2c; --bubble-user: #2b4a31; --bubble-user-text: #eef1e8;
+          --danger: #ff9a7a; --focus-ring: #8fd19b; --border-control: #7d8a78; --hairline: #2b352b;
+          --shadow: 0 1px 0 rgb(0 0 0 / 30%), 0 6px 20px rgb(0 0 0 / 35%); --sun: #e9b949;
+        }
+      }
+      :root[data-look="trailhead"] body { font-family: var(--font-round) !important; }
+      :root[data-look="trailhead"] #chat-view > header, :root[data-look="trailhead"] #settings-view > header { border-bottom: 0; }
+      :root[data-look="trailhead"] header h1, :root[data-look="trailhead"] header h2 { font-weight: 800; letter-spacing: -0.01em; }
+      :root[data-look="trailhead"] header img { border-radius: 7px; }
+      :root[data-look="trailhead"] .icon-btn { border-radius: 12px; }
+      :root[data-look="trailhead"] #empty .scout-mark {
+        width: 104px; height: 104px; padding: 18px; margin: auto auto 12px; border-radius: 50%;
+        background: radial-gradient(circle at 50% 120%, var(--sun) 0 38%, transparent 39%), var(--accent);
+        fill: var(--accent); stroke: var(--accent-on); stroke-width: 3.6;
+        box-shadow: 0 0 0 6px var(--bg-canvas), 0 0 0 7px var(--hairline);
+      }
+      :root[data-look="trailhead"] #empty .scout-mark .hub { fill: var(--accent-on); }
+      :root[data-look="trailhead"] .greeting { margin-bottom: auto; }
+      :root[data-look="trailhead"] .greeting b { font-weight: 800; }
+      :root[data-look="trailhead"] #starters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-bottom: 10px; }
+      :root[data-look="trailhead"] #starters li { display: flex; }
+      :root[data-look="trailhead"] #starters button {
+        flex-direction: column; align-items: flex-start; gap: 8px; min-height: 76px; padding: 12px;
+        border: 1px solid var(--hairline); border-radius: 16px; background: var(--bg-surface);
+        color: var(--text-primary); font-weight: 700; font-size: 14px; box-shadow: var(--shadow);
+      }
+      :root[data-look="trailhead"] #starters button svg.i { order: -1; width: 28px; height: 28px; padding: 5px; border-radius: 9px; background: var(--selected); color: var(--accent-text); }
+      :root[data-look="trailhead"] .composer-box { border-radius: 22px; padding: 10px 10px 8px 14px; }
+      :root[data-look="trailhead"] #model-pill { background: var(--selected); color: var(--accent-text); font-weight: 700; }
+      :root[data-look="trailhead"] .round.mic { background: var(--selected); color: var(--accent-text); }
+      :root[data-look="trailhead"] .segmented label.on { background: var(--accent); color: var(--accent-on); }
+      :root[data-look="trailhead"] .msg.user { border-radius: 18px 18px 6px 18px; font-weight: 600; }
+      :root[data-look="trailhead"] .msg.assistant strong { color: var(--accent-text); }
+      :root[data-look="trailhead"] .msg th { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+      :root[data-look="trailhead"] .msg .table-wrap { background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 14px; padding: 4px 12px; }
+      :root[data-look="trailhead"] .msg tr:last-child td { border-bottom: 0; }
+      :root[data-look="trailhead"] #status { font-weight: 600; }
+      :root[data-look="trailhead"] .coupon-step { font-weight: 600; }
+      :root[data-look="trailhead"] .trace-body { border-left: 2px dashed var(--accent); }
+      :root[data-look="trailhead"] .trace .attempt { padding: 6px 10px; border-radius: 12px; background: var(--bg-surface); border: 1px solid var(--hairline); }
+      :root[data-look="trailhead"] .trace .attempt .code { font-family: var(--font-round); font-weight: 800; letter-spacing: 0.04em; }
+      :root[data-look="trailhead"] .trace .attempt.good { background: var(--selected); border-color: var(--accent); }
+      :root[data-look="trailhead"] .btn { border-radius: 999px; border-color: var(--hairline); font-weight: 700; padding: 4px 16px; }
+      :root[data-look="trailhead"] .btn.primary { border-color: var(--accent); }
+      :root[data-look="trailhead"] .btn.danger { border-color: var(--danger); }
+      :root[data-look="trailhead"] .card { border-radius: 18px; }
+      :root[data-look="trailhead"] #settings-view .body { padding: 6px 12px 16px; }
+      :root[data-look="trailhead"] #settings-view section { background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 18px; padding: 14px; margin-bottom: 10px; }
+      :root[data-look="trailhead"] #settings-view section:last-child { border-bottom: 1px solid var(--hairline); margin-bottom: 0; }
+      :root[data-look="trailhead"] #settings-view h3 { font-size: 15px; font-weight: 800; text-transform: none; letter-spacing: 0; color: var(--text-primary); }
+      :root[data-look="trailhead"] #settings-view input[type="text"], :root[data-look="trailhead"] #settings-view input[type="password"], :root[data-look="trailhead"] #settings-view select { border-radius: 12px; background: var(--bg-canvas); padding: 8px 10px; }
+      :root[data-look="trailhead"] .look-list label { background: var(--bg-canvas); border-radius: 14px; }
+
+      /* ===== Pure Apple: grouped lists, blue question bubbles, true black dark ===== */
+      :root[data-look="apple"] {
+        --bg-canvas: #f2f2f7; --bg-surface: #ffffff; --bg-subtle: #e5e5ea;
+        --text-primary: #000000; --text-secondary: #3c3c43; --text-muted: #5f5f64;
+        --accent: #0a6cff; --accent-on: #ffffff; --accent-text: #005bd1;
+        --selected: #e5e5ea; --bubble-user: #0a6cff; --bubble-user-text: #ffffff;
+        --danger: #d70015; --focus-ring: #0a6cff; --border-control: #8e8e93; --hairline: #d1d1d6; --shadow: none; --ok: #248a3d;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root[data-look="apple"] {
+          --bg-canvas: #000000; --bg-surface: #1c1c1e; --bg-subtle: #2c2c2e;
+          --text-primary: #ffffff; --text-secondary: #ebebf5; --text-muted: #98989f;
+          --accent: #0a6cff; --accent-on: #ffffff; --accent-text: #3d9bff;
+          --selected: #2c2c2e; --bubble-user: #0a6cff; --bubble-user-text: #ffffff;
+          --danger: #ff6961; --focus-ring: #3d9bff; --border-control: #8e8e93; --hairline: #38383a; --ok: #30d158;
+        }
+      }
+      :root[data-look="apple"] #chat-view > header, :root[data-look="apple"] #settings-view > header { position: relative; border-bottom: 0; }
+      :root[data-look="apple"] #chat-view > header h1, :root[data-look="apple"] #settings-view > header h2 { position: absolute; left: 0; right: 0; text-align: center; pointer-events: none; font-size: 17px; font-weight: 600; }
+      :root[data-look="apple"] #chat-view > header picture { display: none; }
+      :root[data-look="apple"] header .icon-btn { position: relative; z-index: 1; color: var(--accent-text); }
+      :root[data-look="apple"] #chats-open { margin-right: auto; }
+      :root[data-look="apple"] #empty .scout-mark { display: none; }
+      :root[data-look="apple"] .greeting { margin: auto 4px 14px; text-align: left; }
+      :root[data-look="apple"] .greeting b { font-size: 28px; }
+      :root[data-look="apple"] .greeting span { font-size: 15px; }
+      :root[data-look="apple"] #starters { background: var(--bg-surface); border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+      :root[data-look="apple"] #starters li + li button { border-top: 0.5px solid var(--hairline); }
+      :root[data-look="apple"] #starters button { min-height: 48px; padding: 10px 14px; border-radius: 0; color: var(--text-primary); font-size: 16px; }
+      :root[data-look="apple"] #starters button svg.i { width: 16px; height: 16px; stroke-width: 2.2; }
+      :root[data-look="apple"] .composer-box { border-radius: 20px; border-width: 0.5px; box-shadow: none; }
+      :root[data-look="apple"] .round { border: 0; color: var(--accent-text); }
+      :root[data-look="apple"] .round.mic { background: transparent; color: var(--accent-text); }
+            :root[data-look="apple"] fieldset.segmented { border: 0; background: var(--bg-subtle); }
+      :root[data-look="apple"] .segmented label.on { background: var(--bg-surface); box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
+      :root[data-look="apple"] #model-pill { background: transparent; color: var(--accent-text); font-weight: 500; }
+      :root[data-look="apple"] .msg.user { border-radius: 18px; padding: 7px 13px; }
+      :root[data-look="apple"] .msg .table-wrap { background: var(--bg-surface); border-radius: 10px; padding: 2px 12px; }
+      :root[data-look="apple"] .msg tr:last-child td { border-bottom: 0; }
+      :root[data-look="apple"] .answer-actions .icon-btn { color: var(--accent-text); }
+      :root[data-look="apple"] #status { text-align: center; font-size: 12px; }
+      :root[data-look="apple"] .coupon-step .done-mark { color: var(--ok); }
+      :root[data-look="apple"] .trace-body { border-left: 0; padding-left: 0; gap: 0; background: var(--bg-surface); border-radius: 12px; overflow: hidden; }
+      :root[data-look="apple"] .trace .attempt { padding: 10px 14px; border-top: 0.5px solid var(--hairline); }
+      :root[data-look="apple"] .trace .attempt:first-child { border-top: 0; }
+      :root[data-look="apple"] .trace .attempt .code { font-family: inherit; }
+      :root[data-look="apple"] .trace .attempt.good .code { color: var(--ok); }
+      :root[data-look="apple"] .trace .controls { margin: 0; padding: 10px 14px; border-top: 0.5px solid var(--hairline); }
+      :root[data-look="apple"] .btn { border: 0; border-radius: 999px; background: var(--bg-subtle); color: var(--accent-text); font-weight: 600; padding: 4px 14px; }
+      :root[data-look="apple"] .btn.primary { background: var(--accent); color: #ffffff; }
+      :root[data-look="apple"] .btn.danger { color: var(--danger); background: var(--bg-surface); }
+      :root[data-look="apple"] #settings-view section { border-bottom: 0; margin-top: 6px; }
+      :root[data-look="apple"] #settings-view section > h3 { padding: 0 4px; font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--text-muted); }
+      :root[data-look="apple"] #settings-view input[type="text"], :root[data-look="apple"] #settings-view input[type="password"], :root[data-look="apple"] #settings-view select { border: 0; background: var(--bg-surface); border-radius: 10px; padding: 9px 12px; }
+      :root[data-look="apple"] .look-list label { border: 0; }
+
+      /* ===== Night Ops: dark console, signal lime, mono for machine facts ===== */
+      :root[data-look="nightops"] {
+        --bg-canvas: #f3f5f2; --bg-surface: #ffffff; --bg-subtle: #e6eae4;
+        --text-primary: #0e1210; --text-secondary: #39433d; --text-muted: #5c6860;
+        --accent: #0e1210; --accent-on: #c6f77a; --accent-text: #2d6a10;
+        --selected: #e6eae4; --bubble-user: #0e1210; --bubble-user-text: #f3f5f2;
+        --danger: #b3261e; --focus-ring: #2d6a10; --border-control: #7b867f; --hairline: #d9dfd8; --shadow: none; --signal: #2d6a10;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root[data-look="nightops"] {
+          --bg-canvas: #0b0d0c; --bg-surface: #121614; --bg-subtle: #1b201d;
+          --text-primary: #e8f0ea; --text-secondary: #b3c2b8; --text-muted: #85958b;
+          --accent: #b8f35a; --accent-on: #0b0d0c; --accent-text: #c6f77a;
+          --selected: #232a26; --bubble-user: #1b201d; --bubble-user-text: #e8f0ea;
+          --danger: #ff8a7a; --focus-ring: #c6f77a; --border-control: #5d6a62; --hairline: #232a26; --signal: #b8f35a;
+        }
+      }
+      :root[data-look="nightops"] #chat-view > header picture { display: none; }
+      :root[data-look="nightops"] header h1, :root[data-look="nightops"] #settings-view header h2 { font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+      :root[data-look="nightops"] .icon-btn { border-radius: 6px; }
+      :root[data-look="nightops"] #empty { justify-content: flex-end; }
+      :root[data-look="nightops"] #empty .scout-mark { width: 40px; height: 40px; margin: 0 0 8px; fill: none; stroke: var(--signal); stroke-width: 3; }
+      :root[data-look="nightops"] #empty .scout-mark .hub { fill: var(--signal); }
+      :root[data-look="nightops"] .greeting { margin: 0 0 12px; text-align: left; }
+      :root[data-look="nightops"] .greeting b { font-weight: 600; }
+      :root[data-look="nightops"] .greeting span { font-family: var(--font-mono); font-size: 12px; }
+      :root[data-look="nightops"] #starters .starter-extra { display: block; }
+      :root[data-look="nightops"] #starters { border: 1px solid var(--hairline); border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+      :root[data-look="nightops"] #starters li + li { border-top: 1px solid var(--hairline); }
+      :root[data-look="nightops"] #starters button { min-height: 42px; padding: 8px 12px; border-radius: 0; color: var(--text-primary); font-size: 14px; font-weight: 500; }
+      :root[data-look="nightops"] #starters button svg.i { color: var(--signal); width: 18px; height: 18px; }
+      :root[data-look="nightops"] .composer-box { border-radius: 10px; box-shadow: none; }
+      :root[data-look="nightops"] #question::placeholder { font-family: var(--font-mono); font-size: 13px; }
+      :root[data-look="nightops"] .round, :root[data-look="nightops"] .round.mic, :root[data-look="nightops"] .round.send { border-radius: 7px; }
+      :root[data-look="nightops"] fieldset.segmented { border-radius: 7px; }
+      :root[data-look="nightops"] .segmented label { border-radius: 5px; }
+      :root[data-look="nightops"] .segmented label.on { background: var(--accent); color: var(--accent-on); }
+      :root[data-look="nightops"] #model-pill { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 6px; }
+      :root[data-look="nightops"] #status { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; }
+      :root[data-look="nightops"] .msg.user { border-radius: 10px 10px 2px 10px; font-weight: 500; }
+      :root[data-look="nightops"] .msg.assistant strong { background: color-mix(in srgb, var(--signal) 18%, transparent); padding: 0 3px; border-radius: 3px; }
+      :root[data-look="nightops"] .msg th { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+      :root[data-look="nightops"] .msg td { font-variant-numeric: tabular-nums; }
+      :root[data-look="nightops"] .msg .table-wrap { border: 1px solid var(--hairline); border-radius: 8px; padding: 2px 10px; }
+      :root[data-look="nightops"] .msg tr:last-child td { border-bottom: 0; }
+      :root[data-look="nightops"] .coupon-step { font-family: var(--font-mono); font-size: 12.5px; }
+      :root[data-look="nightops"] .coupon-step.busy, :root[data-look="nightops"] .coupon-step .done-mark { color: var(--signal); }
+      :root[data-look="nightops"] .trace-head { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+      :root[data-look="nightops"] .trace-body { border-left: 1px solid var(--signal); gap: 6px; }
+      :root[data-look="nightops"] .trace .attempt { font-family: var(--font-mono); font-size: 12px; padding: 6px 8px; background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 6px; }
+      :root[data-look="nightops"] .trace .attempt .code { font-family: var(--font-mono); }
+      :root[data-look="nightops"] .trace .attempt.good { border-color: var(--signal); }
+      :root[data-look="nightops"] .trace .attempt.good .code { color: var(--signal); }
+      :root[data-look="nightops"] .btn { border-radius: 6px; font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+      :root[data-look="nightops"] #settings-view h3 { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; color: var(--signal); }
+      :root[data-look="nightops"] #settings-view input[type="text"], :root[data-look="nightops"] #settings-view input[type="password"], :root[data-look="nightops"] #settings-view select { border-radius: 6px; background: var(--bg-canvas); font-family: var(--font-mono); font-size: 12px; padding: 8px; }
+      :root[data-look="nightops"] .look-list label { border-radius: 8px; }
+
+      /* ===== Deal Hunter: cream, tangerine and marigold, sticker cards, coupon tickets ===== */
+      :root[data-look="dealhunter"] {
+        --bg-canvas: #fff6e5; --bg-surface: #ffffff; --bg-subtle: #ffe9c2;
+        --text-primary: #1b1712; --text-secondary: #3f372c; --text-muted: #6a5f50;
+        --accent: #c2410c; --accent-on: #ffffff; --accent-text: #b13a0a;
+        --selected: #ffe9c2; --bubble-user: #ffd34d; --bubble-user-text: #1b1712;
+        --danger: #b42318; --focus-ring: #c2410c; --border-control: #1b1712; --hairline: #1b1712;
+        --ink: #1b1712; --gold: #ffd34d; --pop: 3px 3px 0 var(--ink); --shadow: var(--pop);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root[data-look="dealhunter"] {
+          --bg-canvas: #17130e; --bg-surface: #231c14; --bg-subtle: #33281b;
+          --text-primary: #fbefd9; --text-secondary: #e3d3b6; --text-muted: #bba98a;
+          --accent: #ff8a3d; --accent-on: #1b1712; --accent-text: #ffa465;
+          --selected: #3d3020; --bubble-user: #ffcf40; --bubble-user-text: #1b1712;
+          --danger: #ff9b8a; --focus-ring: #ffa465; --border-control: #fbefd9; --hairline: #fbefd9;
+          --ink: #fbefd9; --gold: #ffcf40;
+        }
+      }
+      :root[data-look="dealhunter"] body { font-family: var(--font-round) !important; font-weight: 600; }
+      :root[data-look="dealhunter"] #chat-view > header, :root[data-look="dealhunter"] #settings-view > header { border-bottom: 2px solid var(--ink); }
+      :root[data-look="dealhunter"] header h1, :root[data-look="dealhunter"] header h2 { font-size: 18px; font-weight: 900; letter-spacing: -0.02em; }
+      :root[data-look="dealhunter"] .icon-btn { color: var(--text-primary); }
+      :root[data-look="dealhunter"] #empty .scout-mark { width: 64px; height: 64px; margin: auto auto 6px; fill: var(--gold); stroke: var(--ink); stroke-width: 3.5; transform: rotate(-6deg); }
+      :root[data-look="dealhunter"] #empty .scout-mark .hub { fill: var(--ink); }
+      :root[data-look="dealhunter"] .greeting { margin-bottom: auto; }
+      :root[data-look="dealhunter"] .greeting b { font-size: 26px; font-weight: 900; letter-spacing: -0.03em; }
+      :root[data-look="dealhunter"] #starters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-bottom: 12px; }
+      :root[data-look="dealhunter"] #starters .starter-extra[data-extra="coupons"] { display: block; order: -1; grid-column: 1 / -1; }
+      :root[data-look="dealhunter"] #starters button {
+        min-height: 56px; padding: 10px 14px; border: 2px solid var(--ink); border-radius: 16px;
+        background: var(--bg-surface); color: var(--text-primary); font-weight: 800; font-size: 15px; box-shadow: var(--pop);
+      }
+      :root[data-look="dealhunter"] #starters button svg.i { color: var(--text-primary); }
+      :root[data-look="dealhunter"] #starters .starter-extra button { background: var(--accent); color: var(--accent-on); font-size: 17px; }
+      :root[data-look="dealhunter"] #starters .starter-extra button svg.i { color: var(--accent-on); }
+      :root[data-look="dealhunter"] .composer-box { border: 2px solid var(--ink); border-radius: 18px; }
+      :root[data-look="dealhunter"] .composer-box:has(#question:focus-visible) { border-color: var(--ink); box-shadow: var(--pop), 0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent); }
+      :root[data-look="dealhunter"] .round, :root[data-look="dealhunter"] .round.mic, :root[data-look="dealhunter"] .round.send { border: 2px solid var(--ink); }
+      :root[data-look="dealhunter"] .round { color: var(--text-primary); }
+      :root[data-look="dealhunter"] .round.mic { color: var(--text-primary); }
+      :root[data-look="dealhunter"] fieldset.segmented { border: 2px solid var(--ink); }
+      :root[data-look="dealhunter"] .segmented label.on { background: var(--gold); color: #1b1712; }
+      :root[data-look="dealhunter"] #model-pill { border: 2px solid var(--ink); background: var(--bg-surface); color: var(--text-primary); font-weight: 800; }
+      :root[data-look="dealhunter"] .msg.user { border: 2px solid var(--ink); border-radius: 18px 18px 4px 18px; box-shadow: var(--pop); font-weight: 800; }
+      :root[data-look="dealhunter"] .msg.assistant strong { font-weight: 900; background: linear-gradient(transparent 55%, color-mix(in srgb, var(--gold) 70%, transparent) 55%); }
+      :root[data-look="dealhunter"] .msg .table-wrap { border: 2px solid var(--ink); border-radius: 14px; padding: 2px 12px; background: var(--bg-surface); box-shadow: var(--pop); }
+      :root[data-look="dealhunter"] .msg th { font-weight: 900; color: var(--text-primary); }
+      :root[data-look="dealhunter"] .msg th, :root[data-look="dealhunter"] .msg td { border-color: color-mix(in srgb, var(--ink) 25%, transparent); }
+      :root[data-look="dealhunter"] .msg tr:last-child td { border-bottom: 0; }
+      :root[data-look="dealhunter"] .coupon-step { font-weight: 800; }
+      :root[data-look="dealhunter"] .trace-body { border-left: 0; padding-left: 0; gap: 10px; }
+      :root[data-look="dealhunter"] .trace .attempt { padding: 10px 14px; border: 2px solid var(--ink); border-radius: 12px; background: var(--bg-surface); font-weight: 700; font-size: 13px; }
+      :root[data-look="dealhunter"] .trace .attempt .code { padding-right: 10px; margin-right: 4px; border-right: 2px dashed var(--ink); font-family: var(--font-round); font-size: 15px; font-weight: 900; letter-spacing: 0.04em; }
+      :root[data-look="dealhunter"] .trace .attempt.good { background: var(--gold); color: #1b1712; box-shadow: var(--pop); }
+      :root[data-look="dealhunter"] .trace .attempt.good .code, :root[data-look="dealhunter"] .trace .attempt.good a { color: #1b1712; border-color: #1b1712; }
+      :root[data-look="dealhunter"] .btn { border: 2px solid var(--ink); border-radius: 999px; font-weight: 800; box-shadow: 2px 2px 0 var(--ink); }
+      :root[data-look="dealhunter"] .card { border: 2px solid var(--ink); border-radius: 16px; }
+      :root[data-look="dealhunter"] #settings-view .body { padding: 8px 12px 16px; }
+      :root[data-look="dealhunter"] #settings-view section { border: 2px solid var(--ink); border-radius: 16px; padding: 14px; margin-bottom: 12px; background: var(--bg-surface); box-shadow: var(--pop); }
+      :root[data-look="dealhunter"] #settings-view section:last-child { border-bottom: 2px solid var(--ink); margin-bottom: 0; }
+      :root[data-look="dealhunter"] #settings-view h3 { font-size: 16px; font-weight: 900; text-transform: none; letter-spacing: -0.01em; color: var(--text-primary); }
+      :root[data-look="dealhunter"] #settings-view input[type="text"], :root[data-look="dealhunter"] #settings-view input[type="password"], :root[data-look="dealhunter"] #settings-view select { border: 2px solid var(--ink); border-radius: 12px; padding: 8px 10px; font-weight: 700; }
+      :root[data-look="dealhunter"] .look-list label { border: 2px solid var(--ink); }
+
+      /* ===== Ink & Paper: serif answers, ink controls, hairlines, one oxblood accent ===== */
+      :root[data-look="ink"] {
+        --bg-canvas: #fbfaf7; --bg-surface: #ffffff; --bg-subtle: #f0eee8;
+        --text-primary: #141414; --text-secondary: #3d3d3d; --text-muted: #696964;
+        --accent: #141414; --accent-on: #fbfaf7; --accent-text: #8a2c0d;
+        --selected: #ebe8e0; --bubble-user: transparent; --bubble-user-text: #141414;
+        --danger: #a3200b; --focus-ring: #8a2c0d; --border-control: #8a8780; --hairline: #e3e0d8; --shadow: none;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root[data-look="ink"] {
+          --bg-canvas: #131211; --bg-surface: #1b1a18; --bg-subtle: #24221f;
+          --text-primary: #eeebe4; --text-secondary: #cfcbc2; --text-muted: #9c978d;
+          --accent: #eeebe4; --accent-on: #131211; --accent-text: #eba286;
+          --selected: #2b2925; --bubble-user: transparent; --bubble-user-text: #eeebe4;
+          --danger: #ff9c86; --focus-ring: #eba286; --border-control: #77736b; --hairline: #2d2b27;
+        }
+      }
+      :root[data-look="ink"] #chat-view > header picture { display: none; }
+      :root[data-look="ink"] header h1, :root[data-look="ink"] header h2 { font-family: var(--font-serif); font-size: 20px; font-weight: 600; }
+      :root[data-look="ink"] .icon-btn { color: var(--text-primary); }
+      :root[data-look="ink"] #empty .scout-mark { display: none; }
+      :root[data-look="ink"] .greeting { display: flex; flex-direction: column-reverse; margin: auto 2px 18px; text-align: left; }
+      :root[data-look="ink"] .greeting b { font-family: var(--font-serif); font-size: 30px; font-weight: 400; line-height: 1.12; }
+      :root[data-look="ink"] .greeting span { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+      :root[data-look="ink"] #starters { border-top: 1px solid var(--text-primary); margin-bottom: 12px; counter-reset: starter; }
+      :root[data-look="ink"] #starters li { border-bottom: 1px solid var(--hairline); }
+      :root[data-look="ink"] #starters button { min-height: 46px; padding: 8px 2px; border-radius: 0; color: var(--text-primary); font-family: var(--font-serif); font-size: 17px; }
+      :root[data-look="ink"] #starters li:not(.starter-extra) button::before { counter-increment: starter; content: counter(starter, decimal-leading-zero); width: 22px; font-family: -apple-system, system-ui, sans-serif; font-size: 11px; font-weight: 600; color: var(--text-muted); }
+      :root[data-look="ink"] #starters button svg.i { width: 16px; height: 16px; }
+      :root[data-look="ink"] .composer-box { border-radius: 4px; border-color: var(--text-primary); box-shadow: none; }
+      :root[data-look="ink"] .composer-box:has(#question:focus-visible) { border-color: var(--text-primary); box-shadow: 0 0 0 1px var(--text-primary); }
+      :root[data-look="ink"] #question { font-family: var(--font-serif); }
+      :root[data-look="ink"] #question::placeholder { font-style: italic; }
+      :root[data-look="ink"] .round, :root[data-look="ink"] .round.mic, :root[data-look="ink"] .round.send { border-radius: 4px; }
+      :root[data-look="ink"] .round { color: var(--text-primary); }
+      :root[data-look="ink"] .round.mic { background: transparent; border: 1px solid var(--hairline); }
+      :root[data-look="ink"] fieldset.segmented { border-radius: 4px; }
+      :root[data-look="ink"] .segmented label { border-radius: 2px; }
+      :root[data-look="ink"] .segmented label.on { background: var(--text-primary); color: var(--bg-canvas); }
+      :root[data-look="ink"] #model-pill { background: transparent; border-radius: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+      :root[data-look="ink"] .msg.user { align-self: stretch; max-width: none; padding: 0 0 8px; border-radius: 0; border-bottom: 1px solid var(--hairline); font-family: var(--font-serif); font-size: 19px; font-style: italic; line-height: 1.35; }
+      :root[data-look="ink"] .msg.user .mode { font-family: -apple-system, system-ui, sans-serif; font-style: normal; font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
+      :root[data-look="ink"] .msg.assistant { font-family: var(--font-serif); font-size: 16.5px; line-height: 1.6; }
+      :root[data-look="ink"] .msg li::marker { color: var(--accent-text); }
+      :root[data-look="ink"] .msg th { font-family: -apple-system, system-ui, sans-serif; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); border-bottom: 1px solid var(--text-primary); }
+      :root[data-look="ink"] .msg td { font-variant-numeric: tabular-nums; }
+      :root[data-look="ink"] #status { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+      :root[data-look="ink"] .coupon-step { font-family: var(--font-serif); font-size: 15px; }
+      :root[data-look="ink"] .coupon-step.busy { font-style: italic; color: var(--text-primary); }
+      :root[data-look="ink"] .coupon-step .done-mark { color: var(--text-primary); }
+      :root[data-look="ink"] .trace-head { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+      :root[data-look="ink"] .trace-body { border-left: 0; padding-left: 0; gap: 0; border-top: 1px solid var(--text-primary); }
+      :root[data-look="ink"] .trace .attempt { padding: 9px 0; border-bottom: 1px solid var(--hairline); font-family: var(--font-serif); font-size: 14px; }
+      :root[data-look="ink"] .trace .attempt .code { letter-spacing: 0.08em; }
+      :root[data-look="ink"] .trace .attempt.good .code { color: var(--accent-text); }
+      :root[data-look="ink"] .btn { border-radius: 3px; border-color: var(--text-primary); background: transparent; font-weight: 600; font-size: 13px; }
+      :root[data-look="ink"] .btn.primary { background: var(--accent); color: var(--accent-on); }
+      :root[data-look="ink"] .btn.danger { border-color: var(--danger); }
+      :root[data-look="ink"] #settings-view section { padding: 18px 0; }
+      :root[data-look="ink"] #settings-view h3 { font-family: var(--font-serif); font-size: 21px; font-weight: 400; text-transform: none; letter-spacing: -0.01em; color: var(--text-primary); }
+      :root[data-look="ink"] #settings-view input[type="text"], :root[data-look="ink"] #settings-view input[type="password"] { border-radius: 0; border: 0; border-bottom: 1px solid var(--text-primary); background: transparent; padding: 6px 0; }
+      :root[data-look="ink"] .look-list label { border-radius: 4px; }
+      :root[data-look="ink"] .msg.user::before { content: "You asked"; display: block; margin-bottom: 4px; font-family: -apple-system, system-ui, sans-serif; font-size: 10.5px; font-style: normal; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
+      /* Send and Stop keep the text-on-accent color in every look (the per-look .round color must not reach them). */
+      :root[data-look] .round.send { color: var(--accent-on); }
     </style>
     <script src="popup.js" defer></script>
   </head>
@@ -532,7 +882,7 @@
           <source srcset="icons/toolbar-dark-64.png" media="(prefers-color-scheme: dark)" />
           <img src="icons/toolbar-64.png" alt="" />
         </picture>
-        <h1>Scout for Safari</h1>
+        <h1>Scout<span class="name-rest"> for Safari</span></h1>
         <button id="open-page" class="icon-btn" type="button" aria-label="Open Scout in a new tab" title="Open Scout in a new tab">
           <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg>
         </button>
@@ -582,11 +932,18 @@
             <circle cx="18" cy="44" r="9"/><circle cx="46" cy="44" r="9"/>
             <circle class="hub" cx="18" cy="44" r="2.5"/><circle class="hub" cx="46" cy="44" r="2.5"/>
           </svg>
+          <!-- Greeting per look (src/panel/look.ts); the Classic look has none. -->
+          <p id="greeting" class="greeting"><b id="greeting-title">Where to next?</b><span id="greeting-sub">Ask about this page, or send Scout to do it.</span></p>
           <ul id="starters" aria-label="Suggestions">
             <li><button type="button" data-prompt="summarize"><span>Summarize this page</span>
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5 8.5 15.5M8.5 10v5.5H14"/></svg></button></li>
             <li><button type="button" data-prompt="Explain the most important points on this page."><span>Explain the key points</span>
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5 8.5 15.5M8.5 10v5.5H14"/></svg></button></li>
+            <!-- Shown only in the looks that bring these out of the + menu and the mode switch (Night Ops, Deal Hunter). -->
+            <li class="starter-extra" data-extra="coupons"><button type="button" data-prompt="coupons"><span>Get a coupon code</span>
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12 12 20 3 11V3h8Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg></button></li>
+            <li class="starter-extra" data-extra="scout"><button type="button" data-prompt="scout"><span>Do a task on this page</span>
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 17H2v-5a1.5 1.5 0 0 1 1.5-1.5h17A1.5 1.5 0 0 1 22 12v5h-1.5M10 17h4M5 10.5 6.4 5h7.4l1.6 5.5"/><circle cx="6.75" cy="17.25" r="3.25"/><circle cx="17.25" cy="17.25" r="3.25"/></svg></button></li>
           </ul>
         </section>
 
@@ -695,6 +1052,14 @@
         <h2 id="settings-title" tabindex="-1">Settings</h2>
       </header>
       <div class="body">
+        <!-- Look (owner choice 2026-10-19): Trailhead by default, the others here (src/panel/look.ts). Filled from script. -->
+        <section id="look-section" aria-labelledby="look-title">
+          <h3 id="look-title">Look</h3>
+          <fieldset id="look-list" class="look-list">
+            <legend class="sr-only">Look</legend>
+          </fieldset>
+        </section>
+
         <section aria-labelledby="provider-title">
           <h3 id="provider-title">AI provider</h3>
           <fieldset class="segmented" id="set-provider">

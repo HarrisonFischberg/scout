@@ -1,0 +1,93 @@
+/* Option 2 · Pure Apple. Prototype only. Reads like a built-in Apple app:
+   grouped inset lists, iMessage-blue question bubbles, tinted toolbar glyphs,
+   Apple type scale (17 pt body on iPhone). Inter stands in for SF Pro here. */
+:root {
+  --bg-canvas: #f2f2f7; --bg-surface: #ffffff; --bg-subtle: #e5e5ea;
+  --text-primary: #000000; --text-secondary: #3c3c43; --text-muted: #6c6c70;
+  --accent: #0a6cff; --accent-on: #ffffff; --accent-text: #0064e0;
+  --selected: #e5e5ea; --bubble-user: #0a6cff; --bubble-user-text: #ffffff;
+  --danger: #d70015; --focus-ring: #0a6cff; --border-control: #8e8e93; --hairline: #d1d1d6;
+  --shadow: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-canvas: #000000; --bg-surface: #1c1c1e; --bg-subtle: #2c2c2e;
+    --text-primary: #ffffff; --text-secondary: #ebebf5; --text-muted: #98989f;
+    --accent: #0a6cff; --accent-on: #ffffff; --accent-text: #3d9bff;
+    --selected: #2c2c2e; --bubble-user: #0a6cff; --bubble-user-text: #ffffff;
+    --danger: #ff6961; --focus-ring: #3d9bff; --border-control: #8e8e93; --hairline: #38383a;
+  }
+}
+/* Toolbar: centered title, tinted glyphs, no rule. */
+header { border-bottom: 0 !important; position: relative; }
+header h1 { position: absolute; left: 0; right: 0; text-align: center; pointer-events: none; font-size: 17px !important; font-weight: 600 !important; }
+header picture { display: none !important; }
+header .icon-btn { color: var(--accent-text); position: relative; z-index: 1; }
+#chats-open { margin-right: auto; }
+
+/* New chat: large title + inset grouped starters with chevrons. */
+#empty .scout-mark { display: none; }
+.rev-large { margin: auto 4px 14px; }
+.rev-large b { display: block; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+.rev-large span { color: var(--text-muted); font-size: 15px; }
+#starters { background: var(--bg-surface); border-radius: 12px; overflow: hidden; margin-bottom: 10px !important; padding: 0 !important; }
+#starters li + li button { border-top: 0.5px solid var(--hairline) !important; }
+#starters button { min-height: 48px !important; padding: 10px 14px !important; border-radius: 0 !important; color: var(--text-primary) !important; font-size: 16px !important; }
+#starters button svg.i { color: var(--text-muted) !important; width: 16px !important; height: 16px !important; stroke-width: 2.2 !important; }
+
+/* Composer: Messages-style capsule field; controls under it are plain glyphs. */
+.composer-box { border-radius: 20px; border: 0.5px solid var(--hairline); padding: 8px 8px 6px 14px; box-shadow: none; }
+.composer-box:has(#question:focus-visible) { border-color: var(--hairline); box-shadow: none; }
+.composer-box:has(#question:focus-visible):focus-within { box-shadow: none; }
+#question:focus-visible { outline: none; }
+.round { border: 0; color: var(--accent-text); background: transparent; }
+.round.mic { background: transparent; color: var(--accent-text); }
+.round.send { background: var(--accent); color: #fff; }
+fieldset.segmented { border: 0; background: var(--bg-subtle); }
+.segmented label { color: var(--text-secondary); }
+.segmented label.on { background: var(--bg-surface); box-shadow: 0 1px 3px rgb(0 0 0 / 12%); color: var(--text-primary); }
+#model-pill { background: transparent; color: var(--accent-text); font-weight: 500; }
+#model-pill::after { content: "⌄"; margin-left: 4px; position: relative; top: -3px; }
+#composer { margin: 0 10px 10px; }
+
+/* Messages */
+.msg.user { border-radius: 18px; padding: 7px 13px; }
+.msg.user .mode { opacity: 0.85; }
+.msg.assistant { font-size: 15px; }
+.msg .table-wrap { background: var(--bg-surface); border-radius: 10px; padding: 2px 12px; }
+.msg tr:last-child td { border-bottom: 0; }
+.msg th { color: var(--text-muted); font-weight: 500; }
+.answer-actions .icon-btn { color: var(--accent-text); }
+#status { color: var(--text-muted); text-align: center; font-size: 12px; }
+
+/* Find coupons: progress as an inset grouped list, codes as cells. */
+.coupon-step { background: var(--bg-surface); margin: 0; padding: 10px 14px; border-radius: 0; }
+#log > .coupon-step:first-of-type, .msg.user + .coupon-step { border-radius: 12px 12px 0 0; }
+.coupon-step + .coupon-step { margin-top: -12px; border-top: 0.5px solid var(--hairline); }
+.coupon-step.busy { border-radius: 0 0 12px 12px; }
+.coupon-step .done-mark { color: #34c759; }
+.trace-body { border-left: 0 !important; padding-left: 0 !important; gap: 0 !important; background: var(--bg-surface); border-radius: 12px; overflow: hidden; }
+.trace .attempt { padding: 10px 14px; border-top: 0.5px solid var(--hairline); }
+.trace .attempt:first-child { border-top: 0; }
+.trace .attempt .code { font-family: inherit; font-weight: 600; }
+.trace .attempt.good .code { color: #248a3d; }
+.trace .controls { padding: 10px 14px; margin: 0 !important; border-top: 0.5px solid var(--hairline); }
+.btn { border: 0; border-radius: 999px; background: var(--bg-subtle); color: var(--accent-text); font-weight: 600; padding: 4px 14px; }
+.btn.primary { background: var(--accent); color: #fff; }
+
+/* Settings: iOS grouped inset sections with footnote headers. */
+#settings-view header h2 { position: absolute; left: 0; right: 0; text-align: center; font-size: 17px; pointer-events: none; }
+#settings-view header .icon-btn { color: var(--accent-text); }
+#settings-view .body { padding: 0 14px 20px; }
+#settings-view section { border-bottom: 0 !important; padding: 0 !important; gap: 0 !important; margin-top: 18px; }
+#settings-view section > * { background: var(--bg-surface); padding: 10px 14px; margin: 0 !important; }
+#settings-view section > h3 { background: transparent; padding: 0 14px 6px; font-size: 13px; font-weight: 400; text-transform: uppercase; letter-spacing: 0; color: var(--text-muted); }
+#settings-view section > h3 + * { border-radius: 12px 12px 0 0; }
+#settings-view section > :last-child { border-radius: 0 0 12px 12px; }
+#settings-view section > * + *:not(h3) { border-top: 0.5px solid var(--hairline); }
+#settings-view section > .hint { background: transparent; border-top: 0 !important; font-size: 13px; padding: 6px 14px 0; }
+#settings-view input[type="password"], #settings-view input[type="text"], #settings-view select { border: 0; background: var(--bg-subtle); border-radius: 10px; padding: 8px 10px; }
+#settings-view .row .btn { flex: 1; }
+#settings-view section ul { padding-left: 32px; }
+#settings-view section > fieldset.segmented { border-radius: 12px 12px 0 0 !important; display: flex; background: var(--bg-surface); padding: 8px 14px; }
+#empty .rev-large { order: 1; } #empty #starters { order: 2; }
