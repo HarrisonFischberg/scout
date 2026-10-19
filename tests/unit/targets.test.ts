@@ -13,8 +13,7 @@ describe("per-browser manifests", () => {
   it("Chrome uses a service worker and drops native messaging", () => {
     const m = manifestFor("chrome", source);
     expect(m.background).toEqual({ service_worker: "background.js" });
-    expect(m.permissions).not.toContain("nativeMessaging");
-    expect(m.permissions).toEqual(expect.arrayContaining(["storage", "scripting", "tabs", "activeTab"]));
+    expect(m.permissions).toEqual(["activeTab", "tabs", "storage", "scripting"]);
     expect(m.browser_specific_settings).toBeUndefined();
     expect(m.manifest_version).toBe(3);
   });
