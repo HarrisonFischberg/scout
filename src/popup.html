@@ -199,6 +199,10 @@
       /* No color, like the mode switch icons (owner item 11, 2026-10-17). */
       #mode-chip { display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 2px; font-weight: 700; color: var(--text-primary); }
       #mode-chip .icon-btn { min-width: 24px; height: 24px; padding: 0; }
+      /* A coupon run left behind by New chat (owner choice 2026-10-19): tap to go back to it. */
+      #coupon-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; margin: 2px 0 6px; padding: 0 12px 0 6px; font-size: 13px; font-weight: 600; }
+      #coupon-chip .done-mark { width: 18px; height: 18px; flex: none; color: var(--accent-text); }
+      #coupon-chip .go { color: var(--accent-text); font-weight: 400; }
       #question {
         display: block; width: 100%; resize: none; border: 0; outline: 0; background: transparent;
         padding: 4px 0; min-height: 24px; max-height: 140px; line-height: 1.45;
@@ -568,6 +572,8 @@
           <ul id="mention-list" role="listbox" aria-label="Tabs to attach" hidden></ul>
           <!-- On a known shopping site, while the chat is empty (src/panel/suggestions.ts). Filled from script. -->
           <ul id="site-suggestions" aria-label="Suggestions for this store" hidden></ul>
+          <!-- Find coupons still running in a chat New chat left (src/popup.ts, couponAway). -->
+          <button id="coupon-chip" class="chip" type="button" hidden></button>
           <div id="mode-chip" hidden>
             <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 17H2v-5a1.5 1.5 0 0 1 1.5-1.5h17A1.5 1.5 0 0 1 22 12v5h-1.5M10 17h4M5 10.5 6.4 5h7.4l1.6 5.5"/><circle cx="6.75" cy="17.25" r="3.25"/><circle cx="17.25" cy="17.25" r="3.25"/></svg>
             <span>Scout mode</span>

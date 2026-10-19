@@ -57,6 +57,10 @@ async function openPanel(page: Page, tab: { id: number; incognito?: boolean }): 
               fake.data = {};
               save();
             },
+            remove: async (keys: string[]) => {
+              for (const k of keys) delete fake.data[k];
+              save();
+            },
           },
         },
       };
@@ -267,3 +271,49 @@ test("a key hint that is out of date falls back to the no-key screen", async ({ 
     openai: false,
   });
 });
+
+// Owner bug 2026-10-19: Clear chat history in Settings did nothing on Mac or
+// iPhone. The thread must be gone after Back and after the panel reopens.
+test("Clear chat history empties the thread, now and after the panel reopens", async ({ page }) => {
+  await page.route("https://api.anthropic.com/v1/messages", (r) =>
+    r.fulfill({ status: 200, contentType: "text/event-stream", body: sse("Answer to clear.") }),
+  );
+  await openPanel(page, { id: 7 });
+  const log = page.getByRole("log");
+  await page.getByLabel("Ask about this page").fill("What moved the market today?");
+  await page.getByLabel("Ask about this page").press("Enter");
+  await expect(log.getByText("Answer to clear.")).toBeVisible();
+  const before = await page.evaluate(() => ((globalThis as unknown as { __fake: { data: { tabState: Record<string, { conv: string }> } } }).__fake.data.tabState["7"]?.conv));
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.locator("#history-count")).toHaveText("1 saved exchange.");
+  await page.getByRole("button", { name: "Clear chat history" }).click();
+  await expect(page.locator("#settings-saved")).toHaveText("Chat history cleared.");
+  await expect(page.locator("#history-count")).toHaveText("0 saved exchanges.");
+  await page.locator("#settings-back").click();
+  await expect(log.getByText("What moved the market today?")).toHaveCount(0);
+
+  // Saved answers and ratings are gone, the tab has a new conversation, and the key stays.
+  const stored = await page.evaluate(() => (globalThis as unknown as { __fake: { data: Record<string, unknown> } }).__fake.data);
+  expect(stored).not.toHaveProperty("history");
+  expect(stored).not.toHaveProperty("ratings");
+  expect((stored.tabState as Record<string, { conv: string }>)["7"]?.conv).not.toBe(before);
+
+  await page.reload();
+  await expect(page.getByRole("list", { name: "Suggestions" })).toBeVisible();
+  await expect(log.getByText("What moved the market today?")).toHaveCount(0);
+  await expect(page.getByLabel("Ask about this page")).toBeVisible();
+});
+
+for (const failure of ["rejects", "never answers"] as const) {
+  test(`Clear chat history says so when storage ${failure}`, async ({ page }) => {
+    await openPanel(page, { id: 8 });
+    await page.evaluate((f) => {
+      const local = (globalThis as unknown as { browser: { storage: { local: { remove: (k: string[]) => Promise<void> } } } }).browser.storage.local;
+      local.remove = () => (f === "rejects" ? Promise.reject(new Error("synthetic write failure")) : new Promise<void>(() => undefined));
+    }, failure);
+    await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("button", { name: "Clear chat history" }).click();
+    await expect(page.locator("#settings-saved")).toHaveText("Could not clear chat history. Try again.", { timeout: 8_000 });
+  });
+}
