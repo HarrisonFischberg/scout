@@ -115,6 +115,41 @@ test("every look shows only Summarize and Explain, each on one line, with nothin
   }
 });
 
+test.describe("iPhone", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 393, height: 740 } });
+
+  test("opens in Pure Apple with only \"Ask Scout\" and the new question-box hint", async ({ page }) => {
+    await openPopup(page);
+    expect(await look(page)).toBe("apple");
+    await expect(page.locator("#greeting")).toHaveText("Ask Scout");
+    await expect(page.locator("#greeting-sub")).toBeHidden();
+    await expect(page.locator("#question")).toHaveAttribute("placeholder", "What can Scout help with today?");
+    // The little car sits above the hint while the box is empty, and steps aside while typing.
+    const car = page.locator(".composer-box .composer-car");
+    await expect(car).toBeVisible();
+    expect((await car.boundingBox())!.y).toBeLessThan((await page.locator("#question").boundingBox())!.y);
+    await page.locator("#question").fill("hello");
+    await expect(car).toBeHidden();
+  });
+
+  test("Delete all data goes back to Pure Apple, and a chosen look is kept", async ({ page }) => {
+    await openPopup(page, { look: "trailhead" });
+    await expect.poll(() => look(page)).toBe("trailhead");
+    await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("button", { name: "Delete all data" }).click();
+    await page.getByRole("button", { name: "Yes, delete all data" }).click();
+    await expect(page.locator("#delete-result")).toBeVisible();
+    expect(await look(page)).toBe("apple");
+  });
+});
+
+test("Mac keeps Trailhead and \"Ask anything…\"", async ({ page }) => {
+  await openPopup(page);
+  expect(await look(page)).toBe("trailhead");
+  await expect(page.locator("#question")).toHaveAttribute("placeholder", "Ask anything…");
+  await expect(page.locator(".composer-box .composer-car")).toBeVisible();
+});
+
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 for (const scheme of ["light", "dark"] as const) {
   test.describe(`${scheme} scheme`, () => {

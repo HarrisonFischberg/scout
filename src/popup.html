@@ -864,6 +864,12 @@
       :root[data-look="ink"] .msg.user::before { content: "You asked"; display: block; margin-bottom: 4px; font-family: -apple-system, system-ui, sans-serif; font-size: 10.5px; font-style: normal; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
       /* Send and Stop keep the text-on-accent color in every look (the per-look .round color must not reach them). */
       :root[data-look] .round.send { color: var(--accent-on); }
+      /* The little car in the question box: every look, Mac and iPhone, only while the box is empty. */
+      .composer-car { display: none; width: 30px; height: 30px; margin: 2px 0 2px 2px; fill: none; stroke: var(--accent-text); stroke-width: 3.5; stroke-linejoin: round; }
+      .composer-car .hub { fill: var(--accent-text); }
+      :root[data-look="nightops"] .composer-car { stroke: var(--signal); }
+      :root[data-look="nightops"] .composer-car .hub { fill: var(--signal); }
+      .composer-box:has(#question:placeholder-shown) .composer-car { display: block; }
       /* A short sheet (iPhone at its middle stop, a small Mac window): the mark and greeting
          shrink, then the mark goes, so nothing is cut off behind the starters (owner 2026-10-19). */
       @media (max-height: 620px) {
@@ -1000,6 +1006,13 @@
             </button>
           </div>
           <div id="attached" class="chips" role="group" aria-label="Attached tabs" hidden></div>
+          <!-- The little Scout car (owner 2026-10-19, from Night Ops), in the look's accent, above the hint while the box is empty. -->
+          <svg class="composer-car" viewBox="0 0 64 64" aria-hidden="true">
+            <polygon points="13,26 16.5,11 36,11 40.5,26"/><polygon points="21,16 32.5,16 34.5,23 21,23"/>
+            <rect x="5" y="26" width="54" height="17" rx="4"/>
+            <circle cx="18" cy="44" r="9"/><circle cx="46" cy="44" r="9"/>
+            <circle class="hub" cx="18" cy="44" r="2.5"/><circle class="hub" cx="46" cy="44" r="2.5"/>
+          </svg>
           <label for="question" class="sr-only">Ask about this page or describe a task</label>
           <textarea id="question" rows="1" placeholder="Ask anything…" autocomplete="off" aria-describedby="composer-help" aria-controls="mention-list"></textarea>
           <p id="composer-help" class="sr-only">Press Enter to send, Shift+Enter for a new line. Type @ to attach a tab.</p>
