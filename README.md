@@ -31,6 +31,7 @@ Shortcut on Mac: Control-Shift-S opens and closes it.
 | Unit tests | `npm test` |
 | Types / lint | `npm run typecheck`, `npm run lint` |
 | Extension bundle | `npm run build` |
+| Chrome / Firefox store packages | `npm run build:chrome`, `npm run build:firefox` (release; `dist/<browser>/` and `dist/scout-<browser>-<version>.zip`) |
 | End-to-end (WebKit) | `PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright npx playwright test` |
 | Release bundle has no debug code | `npm run check:release` |
 | Old name fully removed | `npm run check:rename` |

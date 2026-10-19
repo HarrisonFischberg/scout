@@ -115,3 +115,5 @@ declare const browser: {
 /** Set by scripts/build.mjs: true for debug builds, false for release. */
 declare const __SCOUT_DEBUG__: boolean;
 declare const __SCOUT_VERSION__: string;
+/** Which browser this bundle is for (scripts/build.mjs, SCOUT_TARGET). */
+declare const __SCOUT_TARGET__: "safari" | "chrome" | "firefox";
