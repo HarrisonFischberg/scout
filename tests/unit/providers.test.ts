@@ -73,7 +73,10 @@ describe("anthropic adapter", () => {
       return sse(anthropicStream);
     };
     const events = await collect(createProvider("anthropic", { apiKey: "sk-test-synthetic", fetch: f }).stream(req));
-    expect(events).toEqual(expectedEvents("tu_1"));
+    // The Anthropic adapter also says why the turn ended, just before usage.
+    const want = expectedEvents("tu_1");
+    want.splice(want.length - 2, 0, { type: "stop", reason: "tool_use" });
+    expect(events).toEqual(want);
     expect((seen?.headers as Record<string, string>)["x-api-key"]).toBe("sk-test-synthetic");
     // Without this the API answers 401 to browser-origin calls (seen live, T018).
     expect((seen?.headers as Record<string, string>)["anthropic-dangerous-direct-browser-access"]).toBe("true");
@@ -280,6 +283,24 @@ describe("web search depth and fetch (T031)", () => {
     expect(events).toContainEqual({ type: "fetch", url: "https://linktr.ee/example", ok: true, chars: 30 });
     expect(events).toContainEqual({ type: "source", url: "https://linktr.ee/example", title: "Example links", page: "Use code CREATOR10 for 10% off" });
     expect(events).toContainEqual({ type: "source", url: "https://deals.test/x", title: "Deals", age: "June 7, 2026" });
+    expect(events).toContainEqual({ type: "search", ok: true, results: 1 });
+  });
+
+  // Owner run 2026-10-19 (#237): four searches wrote no code and the report could
+  // not say why. A failed search is a 200 with an error object in place of the list.
+  it("reports a failed web search with its error code", async () => {
+    const stream = [
+      { type: "message_start", message: { usage: { input_tokens: 5, output_tokens: 0 } } },
+      { type: "content_block_start", index: 0, content_block: { type: "web_search_tool_result", tool_use_id: "srv_1", content: { type: "web_search_tool_result_error", error_code: "too_many_requests" } } },
+      { type: "content_block_stop", index: 0 },
+      { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 3 } },
+      { type: "message_stop" },
+    ].map((e) => "event: " + e.type + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
+    const p = createProvider("anthropic", { apiKey: "sk-test-synthetic", fetch: async () => new Response(stream, { status: 200, headers: { "content-type": "text/event-stream" } }) });
+    const events = [];
+    for await (const ev of p.stream({ model: "m", messages: [{ role: "user", content: "x" }], maxTokens: 10, webSearch: true })) events.push(ev);
+    expect(events).toContainEqual({ type: "search", ok: false, error: "too_many_requests" });
+    expect(events).toContainEqual({ type: "stop", reason: "end_turn" });
   });
 });
 
