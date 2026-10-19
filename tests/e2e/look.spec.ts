@@ -109,10 +109,51 @@ test("every look shows only Summarize and Explain, each on one line, with nothin
     await expect(page.locator("#starters button:visible")).toHaveText([/Summarize this page/, /Explain the key points/]);
     const boxes = await page.locator("#starters button:visible").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
     for (const h of boxes) expect(h, id).toBeLessThanOrEqual(44);
-    // The mark is hidden on a short sheet, so it cannot sit behind the starters.
-    await expect(page.locator("#empty .scout-mark")).toBeHidden();
+    // The little car stays on a short sheet, above the title and clear of the starters (owner 2026-10-19).
+    const car = (await page.locator("#empty .scout-mark").boundingBox())!;
+    expect(car.height, id).toBeLessThanOrEqual(40);
+    const first = (await page.locator("#starters button:visible").first().boundingBox())!;
+    expect(car.y + car.height, id).toBeLessThanOrEqual(first.y);
+    // Bottom left, just above the starters (owner 2026-10-19).
+    expect(car.x, id).toBeLessThan(40);
+    expect(first.y - (car.y + car.height), id).toBeLessThan(120);
+    await expect(page.locator("#greeting-sub")).toBeHidden();
     await page.close();
   }
+});
+
+test.describe("iPhone", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 393, height: 740 } });
+
+  test("opens in Pure Apple: the little car, \"Ask Scout\", and the new question-box hint", async ({ page }) => {
+    await openPopup(page);
+    expect(await look(page)).toBe("apple");
+    await expect(page.locator("#greeting")).toHaveText("Ask Scout");
+    await expect(page.locator("#greeting-sub")).toBeHidden();
+    await expect(page.locator("#question")).toHaveAttribute("placeholder", "What can Scout help with today?");
+    // The little car sits above the title; nothing else in the box but the hint.
+    const car = page.locator("#empty .scout-mark");
+    await expect(car).toBeVisible();
+    expect((await car.boundingBox())!.y).toBeLessThan((await page.locator("#greeting").boundingBox())!.y);
+  });
+
+  test("Delete all data goes back to Pure Apple, and a chosen look is kept", async ({ page }) => {
+    await openPopup(page, { look: "trailhead" });
+    await expect.poll(() => look(page)).toBe("trailhead");
+    await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("button", { name: "Delete all data" }).click();
+    await page.getByRole("button", { name: "Yes, delete all data" }).click();
+    await expect(page.locator("#delete-result")).toBeVisible();
+    expect(await look(page)).toBe("apple");
+  });
+});
+
+test("Mac keeps Trailhead, with the same hint and the little car over the title", async ({ page }) => {
+  await openPopup(page);
+  expect(await look(page)).toBe("trailhead");
+  await expect(page.locator("#question")).toHaveAttribute("placeholder", "What can Scout help with today?");
+  await expect(page.locator("#empty .scout-mark")).toBeVisible();
+  await expect(page.locator("#greeting")).toHaveText("Where to next?");
 });
 
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
