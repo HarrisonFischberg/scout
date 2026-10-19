@@ -2563,6 +2563,8 @@ async function main(): Promise<void> {
     current.page(tab.url);
     addMessage("user", COUPON_QUESTION, { mode: "Find coupons" });
     showCouponRun(r.started_at);
+    // The caught-up run gets a diagnostics run of its own, so a report copied now shows it, not the panel opening.
+    startRun("coupons", { provider: session?.settings.provider, model: session?.settings.model });
     trace("coupons:resumed");
     for (const e of r.events) onCouponEvent({ ...e, tab_id: tab.id }, true);
     for (const e of buffered) onCouponEvent({ ...e, tab_id: tab.id });
