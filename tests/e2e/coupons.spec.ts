@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { withWorker } from "./worker";
 
 // Drives the built popup (run `npm run build` first). The mock search returns
 // one page (searched and fetched, with its text) and the model lists 5
@@ -120,6 +121,8 @@ async function openPopup(
       },
     };
   }, opts.pct ?? { SAVE10: 10, SAVE20: 20 });
+  // Find coupons runs in the background worker, next to the panel (src/server/coupon-host.ts).
+  await withWorker(page);
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
   await page.route("https://api.anthropic.com/**", (r) => {

@@ -1812,3 +1812,12 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 ## 2026-10-18 — iPhone quick ask removed (owner decision)
 
 - Owner tried the quick ask box from #51 on his iPhone and decided not to keep it. This reverts #51 exactly; the page tab opens Scout's sheet directly again. The pre-#51 state is also kept as branch `saved/before-quick-ask`.
+
+## 2026-10-19 — Find coupons keeps running when the panel closes (owner request)
+
+- Owner, iPhone: the pointer moving between the code box and Apply was only visible after dragging the panel down; dragging it all the way closed it, which ended the run and left the page glowing with "Working…" until Stop. Asked: drop the panel out of the way, or keep the run going when it is swiped away and show it where it is on reopen.
+- Lowering Safari's sheet is not possible from an extension (see the iPhone sheet notes above). The run lived in the panel, so closing it killed the run.
+- Change: the run moved to the background worker (`src/coupons/job.ts`, `src/server/coupon-host.ts`; tab access in `src/coupons/tab-page.ts`), like Scout mode and answers. The panel starts it (`coupons.start`), shows its events (`coupons.event`), answers "search again?" (`coupons.answer`) and stops it (`coupons.stop`); a reopened panel replays the run so far (`coupons.status`), including a question still waiting. No answer within 2 minutes counts as "Stop here". The overlay toast's Stop goes to the host directly. A closed tab ends its run. No new vendor or data flow: the same provider calls, now from the worker, as answers already are.
+- iPhone: the element the pointer presses or types into is scrolled to the top quarter of the page, above the half-height sheet (`aboveSheetScroll` in `src/actions/pointer.ts`).
+- Evidence: `npm test` 473/474 (the known Take control failure); new `tests/unit/coupon-host.test.ts`, `tests/unit/pointer.test.ts`; e2e (Chromium in the cloud sandbox, WebKit not installed there) `coupons`, `checkout`, `actions` 18/18 with the worker harness; full suite 137 passed, the 20 failures identical on `main` in Chromium. `npm run check:release` clean.
+- Not checked: a real iPhone (whether Safari keeps the worker alive for a several-minute run with the sheet closed; launch blocker 24 covers 45 s answers on the Simulator).

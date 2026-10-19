@@ -17,6 +17,26 @@ export const IDLE_MS = 3500;
 
 const HOST_ID = "scout-pointer";
 
+// iPhone (owner request 2026-10-19): Safari's sheet with the Scout panel covers
+// the bottom half of the page and Scout cannot lower it, so the pointer works
+// in the top part instead. An element Scout presses or types into is scrolled
+// to a spot in the top quarter, unless it is already in the top part.
+/** The share of the page, from the top, that Safari's half-height sheet leaves in view. */
+export const ABOVE_SHEET = 0.42;
+/** Where the element's middle goes, as a share of the page height. */
+export const ABOVE_SHEET_SPOT = 0.22;
+/** Its top must stay this far below the top edge (Safari's status bar). */
+export const ABOVE_SHEET_MARGIN = 0.06;
+
+/**
+ * How far to scroll the page down (negative: up) so an element whose box runs
+ * from `top` to `bottom` (viewport px) sits above the sheet. 0 when it already does.
+ */
+export function aboveSheetScroll(top: number, bottom: number, viewportHeight: number): number {
+  if (top >= viewportHeight * ABOVE_SHEET_MARGIN && bottom <= viewportHeight * ABOVE_SHEET) return 0;
+  return Math.round((top + bottom) / 2 - viewportHeight * ABOVE_SHEET_SPOT);
+}
+
 const STYLE_TEXT = `
 :host { all: initial; }
 .layer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }

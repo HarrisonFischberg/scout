@@ -5,40 +5,14 @@
 // Part 3: Scout mode runs in the worker (src/server/task-host.ts); the panel
 // shows its action log, Take control, and the sensitive-action confirmation
 // (Stop is the composer's button), and the Permissions screen in Settings.
-import { AgentControl } from "./agent/control";
-import type { Action, ActionResult } from "./actions/executor";
-import type { Snapshot } from "./snapshot/snapshot";
-import { CONTENT_HANDLER, OVERLAY_HANDLER, type ContentRequest, type OverlayRequest } from "./content-api";
-import { callInjected } from "./content-call";
 import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { chipSources, renderMarkdown } from "./chat/markdown";
 import { answerText, fillSourceCard, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
 import { ConversationStore, type StoredMessage } from "./chat/store";
 import { MAX_EXTRA_TABS, type TabInfo } from "./chat/tabs";
-import { suggestCodes, type SuggestedCodes } from "./coupons/codes";
-import { browserTrace, type BrowserTarget, type PageBrowser } from "./coupons/browser-read";
-import { READER_HOSTS_KEY, browserFirstSites, countFetch, parseReaderHosts } from "./coupons/reader-hosts";
-import { locateForm } from "./coupons/locate";
-import { identifyMerchant, type MerchantMeta } from "./coupons/merchant";
 import { formatMoney } from "./coupons/money";
-import { codesWithContext, MAX_STORE_CODES, type StoreCode } from "./coupons/store";
-import { mergeCandidates, originLabel, rankCandidates, type CouponCandidate } from "./coupons/candidates";
-import {
-  CodeQueue,
-  couponStatusText,
-  couponSummary,
-  discoveryLine,
-  openCouponTester,
-  checkoutTarget,
-  goToCheckout,
-  percentOff,
-  plural,
-  runCouponSearch,
-  type BatchState,
-  type CartApi,
-  type CartState,
-  type DiscoveryInfo,
-} from "./coupons/finder";
+import { originLabel } from "./coupons/candidates";
+import { couponStatusText } from "./coupons/finder";
 import { formatCostLine } from "./cost";
 import { buildReport, describeBrowser, Diagnostics, disabledRun, type RunHandle, type RunKind } from "./diagnostics";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
@@ -62,6 +36,8 @@ import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
 import { joinDictation, Listener, micErrorText, recognitionCtor } from "./panel/voice";
 import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
 import { probeDrag } from "./panel/drag-probe";
+import { COUPON_QUESTION } from "./server/coupon-host";
+import { isPhoneScreen } from "./panel/blur";
 import { dockComposer } from "./panel/dock";
 import { hintedProvider, KEY_HINT_KEY, parseKeyHint, sameHint, type KeyHint } from "./panel/warm";
 import { isStandalone, openStandalone } from "./panel/standalone";
@@ -85,7 +61,6 @@ import {
   summarizeShared,
   type EffortSetting,
   type HistoryEntry,
-  type HistoryKind,
   type Rating,
   type Settings,
   type StorageArea,
@@ -244,151 +219,8 @@ async function copyDiagnostics(anchor: HTMLElement, statusNode: HTMLElement): Pr
   }
 }
 
-/** The coupon finder's view of the current tab (Scout mode tasks reach the tab from the worker instead). */
-interface CouponPage {
-  snapshot(limits?: { maxElements?: number; maxTextChars?: number }): Promise<Snapshot>;
-  act(action: Action): Promise<ActionResult>;
-  cart: CartApi;
-  /** Codes the store's home page advertises, with the words around each. */
-  storeCodes(): Promise<StoreCode[]>;
-  /** How the page names the store (meta tags). */
-  meta(): Promise<MerchantMeta | null>;
-}
-
-// The content script is injected on demand into the active tab only.
-async function tabAgentPage(): Promise<CouponPage | null> {
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  if (tab?.id === undefined) return null;
-  current.page(tab.url);
-  const tabId = tab.id;
-  await browser.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
-  // A page that reloads (a store whose Apply button submits a form) loses the
-  // content script: inject it again and retry, for up to about 4 s.
-  const call = async (req: ContentRequest): Promise<unknown> => {
-    for (let attempt = 0; ; attempt++) {
-      const out = await callOnce(req).catch(() => ({ ok: false as const, why: "threw-inject" }));
-      if (out.ok || attempt >= 10 || !/no-handler|threw-inject|null-result/.test(out.why)) {
-        if (!out.ok) trace("content:" + req.type + " " + out.why);
-        return out.ok ? out.value : null;
-      }
-      await new Promise((r) => setTimeout(r, 400));
-      await browser.scripting.executeScript({ target: { tabId }, files: ["content.js"] }).catch(() => undefined);
-    }
-  };
-  // Same isolated world as content.js, so its handler is visible here.
-  const callOnce = async (req: ContentRequest): Promise<{ ok: true; value: unknown } | { ok: false; why: string }> => {
-    const [res] = await browser.scripting.executeScript({
-      target: { tabId },
-      // Returns an envelope so a failure inside the page is reported, not
-      // silently turned into null by Safari.
-      func: (r: ContentRequest, name: string) => {
-        try {
-          const h = (globalThis as unknown as Record<string, ((x: ContentRequest) => unknown) | undefined>)[name];
-          if (typeof r !== "object" || r === null) return { ok: false, why: "no-args" };
-          if (!h) {
-            const loaded = (globalThis as unknown as Record<string, unknown>).__safariScoutContent === true;
-            return { ok: false, why: "no-handler loaded=" + String(loaded) };
-          }
-          const out = h(r);
-          if (out && typeof (out as Promise<unknown>).then === "function") {
-            return (out as Promise<unknown>).then(
-              (value) => ({ ok: true, value }),
-              () => ({ ok: false, why: "threw-async" }),
-            );
-          }
-          return { ok: true, value: out };
-        } catch {
-          return { ok: false, why: "threw" };
-        }
-      },
-      args: [req, CONTENT_HANDLER],
-    });
-    const env = res?.result as { ok?: boolean; value?: unknown; why?: string } | null | undefined;
-    if (!env || env.ok !== true) return { ok: false, why: env ? (env.why ?? "bad-envelope") : "null-result" };
-    return { ok: true, value: env.value };
-  };
-
-  return {
-    snapshot: async (limits: { maxElements?: number; maxTextChars?: number } = {}) => (await call({ type: "scout:snapshot", ...limits })) as Snapshot,
-    // Coupon runs show a pointer pressing and typing on the page, so the user can watch (owner, 2026-10-17).
-    act: async (action: Action) => (await call({ type: "scout:act", action, show: true })) as ActionResult,
-    cart: {
-      info: async () => (await call({ type: "scout:cart-info" })) as CartState | null,
-      update: async (discount: string) => (await call({ type: "scout:cart-update", discount })) as CartState | { rateLimited: true } | null,
-      reload: async () => void (await call({ type: "scout:reload" })),
-    },
-    storeCodes: async () => {
-      const codes = await call({ type: "scout:store-codes" });
-      return Array.isArray(codes)
-        ? codes.filter((c): c is StoreCode => !!c && typeof (c as StoreCode).code === "string" && typeof (c as StoreCode).context === "string").slice(0, MAX_STORE_CODES)
-        : [];
-    },
-    meta: async () => {
-      const m = (await call({ type: "scout:page-meta" })) as MerchantMeta | null;
-      return m && typeof m === "object" ? m : null;
-    },
-  };
-}
-
 /** Settings key: "asked" once Find coupons has asked Safari for access to every site (for the browser fallback). */
 const COUPON_BROWSER_KEY = "couponBrowser";
-const BROWSER_SNAPSHOT = { maxElements: 600, maxTextChars: 60_000 };
-
-const originOf = (url: string): string | null => {
-  try {
-    return new URL(url).origin + "/*";
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Find coupons' browser fallback (src/coupons/browser-read.ts): coupon pages
- * the reader could not load open in background tabs of the user's own Safari
- * window (a Private window stays private), read through Scout's content
- * script, and close again with any tab they opened.
- */
-function backgroundTabs(windowId: number | undefined): PageBrowser {
-  const children = new Map<number, Set<number>>();
-  const onCreated = (t: { id?: number; openerTabId?: number }): void => {
-    if (t.id !== undefined && t.openerTabId !== undefined) children.get(t.openerTabId)?.add(t.id);
-  };
-  let listening = false;
-  return {
-    open: async (url) => {
-      const origin = originOf(url);
-      if (!origin || !browser.tabs.create) return null;
-      // Without site access the tab could open but never be read.
-      if (browser.permissions.contains && !(await browser.permissions.contains({ origins: [origin] }).catch(() => false))) return null;
-      if (!listening) {
-        browser.tabs.onCreated?.addListener(onCreated);
-        listening = true;
-      }
-      const t = await browser.tabs.create({ url, active: false, ...(windowId !== undefined ? { windowId } : {}) });
-      if (t.id === undefined) return null;
-      children.set(t.id, new Set());
-      return t.id;
-    },
-    read: async (tab) => {
-      const snap = (await callInjected(tab, "content.js", CONTENT_HANDLER, { type: "scout:snapshot", ...BROWSER_SNAPSHOT }).catch(() => null)) as Snapshot | null;
-      return snap && typeof snap.text === "string" && Array.isArray(snap.elements) ? snap : null;
-    },
-    click: async (tab, ref) => {
-      const r = (await callInjected(tab, "content.js", CONTENT_HANDLER, { type: "scout:act", action: { type: "click", ref } }).catch(() => null)) as ActionResult | null;
-      return r?.ok === true;
-    },
-    close: async (tab) => {
-      const extra = [...(children.get(tab) ?? [])];
-      children.delete(tab);
-      if (!children.size && listening) {
-        browser.tabs.onCreated?.removeListener?.(onCreated);
-        listening = false;
-      }
-      await browser.tabs.remove?.([tab, ...extra]);
-    },
-    wait: (ms) => new Promise((r) => setTimeout(r, ms)),
-  };
-}
 
 // Granted site origins, minus the provider API hosts the manifest always holds.
 async function listOrigins(): Promise<string[]> {
@@ -557,7 +389,6 @@ async function main(): Promise<void> {
   const history: ChatMessage[] = [];
   /** The answer streaming now (Part 2), if any. */
   let activeChat: string | null = null;
-  let control: AgentControl | null = null;
   let others: TabInfo[] = [];
   /** Tabs the user attached. They go with every question until removed. */
   const attached = new Map<number, TabInfo>();
@@ -796,7 +627,7 @@ async function main(): Promise<void> {
    * the old chat's saved history and leave the view.
    */
   async function branchFrom(bubble: HTMLElement): Promise<void> {
-    if (activeChat || control || task || couponRun) {
+    if (activeChat || task || couponRun) {
       status.textContent = "Wait until Scout for Safari finishes, then branch.";
       return;
     }
@@ -940,14 +771,6 @@ async function main(): Promise<void> {
     // On iPhone the starters live in the docked composer (src/panel/dock.ts).
     document.documentElement.toggleAttribute("data-chat-empty", !empty.hidden);
     siteSuggestions.hidden = empty.hidden || !siteSuggestions.childElementCount;
-  }
-
-  async function saveEntry(kind: HistoryKind, q: string, answer: string): Promise<void> {
-    turns.push({ entry: { at: Date.now(), question: q, answer, kind } });
-    if (!storage) return;
-    // Created on first use: after Delete all data, nothing is stored until the next answer.
-    if (!conv) conv = await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "");
-    await appendHistory(storage, settings.retention, { at: Date.now(), question: q, answer, kind, ...(conv ? { conv } : {}) }).catch(() => undefined);
   }
 
   async function restoreConversation(): Promise<void> {
@@ -1680,6 +1503,10 @@ async function main(): Promise<void> {
       onTaskEvent(env.payload as Record<string, unknown>);
       return;
     }
+    if (env.type === "coupons.event") {
+      onCouponEvent(env.payload as Record<string, unknown>);
+      return;
+    }
     if (env.type !== "chat.event") return;
     const w = fromWire(env.payload as Record<string, unknown>);
     if (!w || !views.has(w.message_id)) return;
@@ -1871,7 +1698,7 @@ async function main(): Promise<void> {
   async function ask(text: string, opts: { continueOf?: { bubble: HTMLElement; question: string; partial: string; shared: MessageView["shared"]; sources: Source[] } } = {}): Promise<void> {
     const trimmed = text.trim();
     await sessionReady();
-    if (!trimmed || activeChat || control || task || !session) return;
+    if (!trimmed || activeChat || couponRun || task || !session) return;
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     const cont = opts.continueOf;
@@ -2234,11 +2061,6 @@ async function main(): Promise<void> {
 
   function onTaskEvent(p: Record<string, unknown>): void {
     const id = p.task_id as string;
-    if (p.kind === "stop") {
-      // The overlay toast's Stop, relayed by the worker for a run this panel drives (Find coupons).
-      if (couponRun && couponRun.id === id) couponRun.stop();
-      return;
-    }
     if (!task || task.id !== id) return;
     switch (p.kind) {
       case "log": {
@@ -2316,7 +2138,7 @@ async function main(): Promise<void> {
   async function runTask(goal: string): Promise<void> {
     const trimmed = goal.trim();
     await sessionReady();
-    if (!trimmed || activeChat || control || task || !session) return;
+    if (!trimmed || activeChat || couponRun || task || !session) return;
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     // No per-task question (owner decision 2026-10-17): sending the task starts it.
@@ -2388,28 +2210,22 @@ async function main(): Promise<void> {
   // of them rather than the first 25; milestones (searching, found N, a code
   // that saves, the search done) post in the chat outside the card, the newest
   // with a moving indicator; the summary is a few sentences.
+  // Owner, 2026-10-19: the run lives in the worker (src/server/coupon-host.ts),
+  // so swiping the panel away no longer ends it; this panel is its window, and
+  // a reopened panel replays the run's events (coupons.status).
   interface CouponRun {
-    id: string;
-    stop(): void;
+    tabId: number;
+    t: { body: HTMLElement; head: HTMLButtonElement; headText: HTMLElement; startedAt: number };
+    steps: ReturnType<typeof couponSteps>;
+    stepLines: Map<number, HTMLElement>;
+    timer: ReturnType<typeof setInterval>;
+    /** The last event applied; older ones (a replay overlapping live events) are skipped. */
+    seq: number;
+    ask: { promptId: string; box: HTMLElement } | null;
   }
   let couponRun: CouponRun | null = null;
-  const COUPON_SNAPSHOT = { maxElements: 600, maxTextChars: 100_000 };
-
-  /** The scouting overlay on the current tab, for a run the panel drives itself. */
-  function tabOverlay(tabId: number, id: string): { show(): Promise<void>; state(state: "running" | "waiting"): Promise<void>; hide(): Promise<void> } {
-    const call = async (req: OverlayRequest): Promise<void> => {
-      try {
-        await callInjected(tabId, "overlay.js", OVERLAY_HANDLER, req);
-      } catch {
-        trace("coupons:overlay-failed");
-      }
-    };
-    return {
-      show: () => call({ type: "overlay:show", taskId: id, state: "running" }),
-      state: (state) => call({ type: "overlay:state", state }),
-      hide: () => call({ type: "overlay:hide" }),
-    };
-  }
+  /** Events that arrive while a reopened panel is still reading the run so far. */
+  let couponBuffer: Array<Record<string, unknown>> | null = null;
 
   /** One inline line per code: "SAVE20 · $80.00 · saves $20.00 · seen on deals.test". */
   function attemptRow(
@@ -2456,64 +2272,44 @@ async function main(): Promise<void> {
     followEnd();
   }
 
-  /** The question after a search whose codes saved nothing; the composer's Stop (or the overlay's) answers it "no". */
-  function askMoreCodes(state: BatchState, stopped: AbortSignal): Promise<boolean> {
-    return new Promise((resolve) => {
-      const box = document.createElement("div");
-      box.className = "more";
-      box.id = "coupons-more";
-      box.setAttribute("role", "group");
-      box.setAttribute("aria-labelledby", "coupons-more-text");
-      const p = document.createElement("p");
-      p.id = "coupons-more-text";
-      p.textContent =
-        "We've tried " + state.tried + " code" + (state.tried === 1 ? "" : "s") + " and none lowered your total. " +
-        "Would you like Scout for Safari to search the web again, in other places, for more codes to test?";
-      const row = document.createElement("div");
-      row.className = "row";
-      const yesBtn = document.createElement("button");
-      yesBtn.type = "button";
-      yesBtn.className = "btn primary";
-      yesBtn.textContent = "Search again";
-      const noBtn = document.createElement("button");
-      noBtn.type = "button";
-      noBtn.className = "btn";
-      noBtn.textContent = "Stop here";
-      row.append(yesBtn, noBtn);
-      box.append(p, row);
-      // In the chat, not the folded card, so it is seen.
-      log.appendChild(box);
-      scrollToEnd();
-      yesBtn.focus();
-      trace("coupons:ask-more tried=" + state.tried);
-      const done = (ok: boolean): void => {
-        box.remove();
-        stopped.removeEventListener("abort", no);
-        trace("coupons:more " + (ok ? "yes" : "no"));
-        if (ok) stop.focus();
-        resolve(ok);
-      };
-      const yes = (): void => done(true);
-      const no = (): void => done(false);
-      if (stopped.aborted) return done(false);
-      yesBtn.addEventListener("click", yes);
-      noBtn.addEventListener("click", no);
-      stopped.addEventListener("abort", no, { once: true });
-    });
-  }
-
-  /**
-   * Coupon pages the reader could not load open in background tabs
-   * automatically (owner's choice, 2026-10-17), wherever Safari gives Scout
-   * access to those sites. Access to every site is asked for once, on the
-   * Find coupons press (see `askSiteAccessOnce`); without it the pages are
-   * skipped and the summary says so.
-   */
-  async function allowBrowserPages(pages: BrowserTarget[]): Promise<boolean> {
-    const origins = [...new Set(pages.flatMap((p) => originOf(p.url) ?? []))];
-    const ok = origins.length > 0 && (await browser.permissions.contains?.({ origins }).catch(() => false)) === true;
-    trace("coupons:browser-allow " + (ok ? "auto" : "no-access") + " pages=" + pages.length);
-    return ok;
+  /** The question after a search whose codes saved nothing; the composer's Stop (or the overlay's) answers it "no" in the worker. */
+  function showAsk(run: CouponRun, promptId: string, tried: number): void {
+    run.ask?.box.remove();
+    const box = document.createElement("div");
+    box.className = "more";
+    box.id = "coupons-more";
+    box.setAttribute("role", "group");
+    box.setAttribute("aria-labelledby", "coupons-more-text");
+    const p = document.createElement("p");
+    p.id = "coupons-more-text";
+    p.textContent =
+      "We've tried " + tried + " code" + (tried === 1 ? "" : "s") + " and none lowered your total. " +
+      "Would you like Scout for Safari to search the web again, in other places, for more codes to test?";
+    const row = document.createElement("div");
+    row.className = "row";
+    const yesBtn = document.createElement("button");
+    yesBtn.type = "button";
+    yesBtn.className = "btn primary";
+    yesBtn.textContent = "Search again";
+    const noBtn = document.createElement("button");
+    noBtn.type = "button";
+    noBtn.className = "btn";
+    noBtn.textContent = "Stop here";
+    row.append(yesBtn, noBtn);
+    box.append(p, row);
+    // In the chat, not the folded card, so it is seen.
+    log.appendChild(box);
+    run.ask = { promptId, box };
+    scrollToEnd();
+    yesBtn.focus();
+    const answer = (more: boolean): void => {
+      box.remove();
+      if (run.ask?.promptId === promptId) run.ask = null;
+      if (more) stop.focus();
+      void request(toWorker, "coupons.answer", { tab_id: run.tabId, prompt_id: promptId, more }).catch(() => undefined);
+    };
+    yesBtn.addEventListener("click", () => answer(true));
+    noBtn.addEventListener("click", () => answer(false));
   }
 
   // Asked once ever: Safari's site-access prompt for every site, so later runs open blocked pages without asking.
@@ -2531,8 +2327,6 @@ async function main(): Promise<void> {
     if (storage) void storage.set({ [COUPON_BROWSER_KEY]: "asked" }).catch(() => undefined);
   }
 
-  /** A find this soon after the last "Found" line adds to it instead of posting another. */
-  const FOUND_EVERY_MS = 8000;
   const DONE_MARK = '<svg class="done-mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>';
 
   /** Find coupons' milestone lines in the chat, outside the Working card; the newest one shows the moving indicator. */
@@ -2567,40 +2361,22 @@ async function main(): Promise<void> {
     };
   }
 
-  async function runCoupons(): Promise<void> {
-    await sessionReady();
-    if (activeChat || control || task || couponRun || !session) return;
-    const s = session;
-    askSiteAccessOnce();
-    if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
-    startRun("coupons", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model });
-    const page = await tabAgentPage().catch(() => null);
-    if (!page || tab.id === undefined) {
-      addMessage("error", "Could not reach this page. Reload it and try again.");
-      current.finish("error", "Could not reach this page.");
-      return;
-    }
-    const ask = "Find the best coupon for this cart.";
-    addMessage("user", ask, { mode: "Find coupons" });
-    control = new AgentControl();
-    const run = control;
-    const runId = "coupons:" + tab.id;
-    couponRun = { id: runId, stop: () => run.stop() };
-    const overlay = tabOverlay(tab.id, runId);
-    watchTab();
-    const t = buildTrace([], "running", Date.now(), { takeControl: false });
-    const say = (text: string): void => {
-      const p = document.createElement("p");
-      p.className = "say";
-      p.textContent = text;
-      t.body.appendChild(p);
-      followEnd();
+  /** The Working card and milestones for a coupon run on this tab (new, or caught up after a reopen). */
+  function showCouponRun(startedAt: number): CouponRun {
+    const t = buildTrace([], "running", startedAt, { takeControl: false });
+    const run: CouponRun = {
+      tabId: tab.id!,
+      t,
+      steps: couponSteps(),
+      stepLines: new Map(),
+      timer: setInterval(() => (t.headText.textContent = "Working " + elapsedText(Date.now() - startedAt)), 1000),
+      seq: 0,
+      ask: null,
     };
-    const steps = couponSteps();
-    const timer = setInterval(() => (t.headText.textContent = "Working " + elapsedText(Date.now() - t.startedAt)), 1000);
-    t.headText.textContent = "Working 0s";
+    t.headText.textContent = "Working " + elapsedText(Date.now() - startedAt);
     // The card's head moves too while the run works (owner, 2026-10-17).
     t.head.insertAdjacentHTML("afterbegin", PULSE);
+    couponRun = run;
     syncComposer();
     plus.disabled = modelPill.disabled = true;
     for (const i of modeInputs) i.disabled = true;
@@ -2610,309 +2386,159 @@ async function main(): Promise<void> {
     updateEmpty();
     scrollToEnd();
     stop.focus();
-    void overlay.show();
-    let used: Usage = { inputTokens: 0, outputTokens: 0 };
-    let summary = "";
-    let statusOf = "done";
-    const addUsage = (more: { inputTokens: number; outputTokens: number; webSearches?: number }): void => {
-      const searches = (used.webSearches ?? 0) + (more.webSearches ?? 0);
-      used = {
-        inputTokens: used.inputTokens + more.inputTokens,
-        outputTokens: used.outputTokens + more.outputTokens,
-        ...(searches ? { webSearches: searches } : {}),
-      };
-    };
-    try {
-      const snap = await page.snapshot();
-      // The merchant: the tab's host, less checkout-only subdomains, and the
-      // name the page gives itself. All page data, used only as search words.
-      const meta = await page.meta().catch(() => null);
-      const merchant = identifyMerchant(snap.url, meta ?? {});
-      trace("coupons:merchant " + (merchant.host === merchant.domain ? "store-host" : "other-host") + (meta?.siteName ? " named" : ""));
-      const ac = new AbortController();
-      run.signal.addEventListener("abort", () => ac.abort(), { once: true });
-      // Checkout summaries sit late in big pages: read more of them than the agent does.
-      // Waits run here, not in the page, so they outlast a page that reloads.
-      const couponPage = {
-        ...page,
-        snapshot: () => page.snapshot(COUPON_SNAPSHOT),
-        act: (a: Action) =>
-          a.type === "wait"
-            ? new Promise<ActionResult>((r) => setTimeout(() => r({ ok: true, action: "wait", message: "Waited." }), Math.min(Math.max(a.ms, 0), 10_000)))
-            : page.act(a),
-      };
-      const locate = async (view: Snapshot) => {
-        trace("coupons:locate");
-        const r = await locateForm(s.provider, s.settings.model, view, ac.signal, s.effort);
-        addUsage(r.usage);
-        trace("coupons:locate " + (r.hints ? Object.keys(r.hints).join(",") : "none"));
-        return r.hints;
-      };
-      // 1. A way to test codes, before any search: the store's cart API or its
-      //    coupon box. A page with neither stops here, in seconds.
-      say("Looking for the coupon box on this page…");
-      let tester = await openCouponTester(couponPage, { locate });
-      // No box on the cart: many stores take codes only at checkout. Scout presses the store's own
-      // Checkout button and works on the checkout page (owner's choice 2026-10-17); nothing is typed.
-      let atCheckout = false;
-      if ("error" in tester && tester.error === "no_form" && !run.isStopped) {
-        const here = await couponPage.snapshot().catch(() => null);
-        if (here && checkoutTarget(here)) {
-          say("This store takes codes at checkout. Opening checkout (nothing is bought, and none of your details are filled in)…");
-          trace("coupons:checkout press");
-          const step = await goToCheckout(couponPage, here);
-          trace("coupons:checkout " + (step.ok ? "opened" : step.why));
-          if (step.ok) {
-            atCheckout = true;
-            current.page(step.url);
-            tester = await openCouponTester(couponPage, { locate });
-          } else tester = { error: step.why === "captcha" ? "captcha" : "no_form", message: step.message };
-        }
-      }
-      if ("error" in tester) {
-        trace("coupons:method none status " + tester.error);
-        statusOf = tester.error === "stopped" ? "stopped" : "error";
-        summary = tester.message + (tester.error === "no_form" ? " No codes were searched for or tested." : "");
-        status.textContent = couponStatusText(tester.error);
-        current.finish(tester.error, tester.message, used);
-        addMessage("error", summary);
-      } else {
-        trace("coupons:method " + tester.method);
-        say((tester.method === "page" ? "Found the coupon box." : "Reached the store's cart.") + " Searching the web for " + merchant.brand + " codes…");
-        steps.post("Searching for coupons for " + merchant.brand + "…");
-        // 2. Codes the store advertises itself (banner, announcement bar): this
-        //    page and its home page, read on the device. Then the web search,
-        //    whose codes are tested as it finds them.
-        const storeUrl = new URL("/", snap.url).toString();
-        const asStore = (c: StoreCode, sourceUrl: string): CouponCandidate => ({ code: c.code, origin: "store", sourceUrl, context: c.context });
-        const onSite = rankCandidates(
-          mergeCandidates(
-            codesWithContext(snap.text).map((c) => asStore(c, snap.url)),
-            (await page.storeCodes().catch((): StoreCode[] => [])).map((c) => asStore(c, storeUrl)),
-          ).slice(0, MAX_STORE_CODES),
-          merchant,
-        );
-        trace("coupons:store-codes " + onSite.length);
-        // Milestones for one search: "Found 5 coupons…", then "Found 10 more…"
-        // at most every few seconds (a quicker find adds to the last line).
-        let tried = 0;
-        let over = false;
-        const progress = (again: boolean) => {
-          let count = 0;
-          let line: HTMLElement | null = null;
-          let lineCount = 0;
-          let lineAt = 0;
-          let lineFirst = false;
-          return {
-            found(n: number): void {
-              if (n <= 0) return;
-              const firstFind = count === 0;
-              count += n;
-              if (line && steps.latest() === line && Date.now() - lineAt < FOUND_EVERY_MS) lineCount += n;
-              else {
-                line = null;
-                lineCount = n;
-                lineAt = Date.now();
-                lineFirst = firstFind;
-              }
-              const text = lineFirst
-                ? "Found " + plural(lineCount, again ? "new coupon" : "coupon") + ". Applying them to your cart while I keep searching."
-                : "Found " + lineCount + " more, continuing to search.";
-              if (line) steps.edit(line, text);
-              else line = steps.post(text);
-            },
-            done(): void {
-              if (count === 0 || over || run.isStopped) return;
-              const left = count - (tried - (again ? triedBefore : 0));
-              steps.post("Found all relevant coupons, " + count + " in all." + (left > 0 ? " Applying the rest now." : ""));
-            },
-            get count(): number {
-              return count;
-            },
-          };
-        };
-        let triedBefore = 0;
-        const first = progress(false);
-        if (onSite.length) first.found(onSite.length);
-        const queue = new CodeQueue();
-        const storeFound = new Set(onSite.map((c) => c.code));
-        trace("coupons:search");
-        // Sites that refused the reader on this device go to a background tab first; each fetch is counted.
-        let readerHosts = parseReaderHosts(storage ? (await storage.get(READER_HOSTS_KEY).catch(() => ({}) as Record<string, unknown>))[READER_HOSTS_KEY] : undefined);
-        const browserPages = {
-          tabs: backgroundTabs(tab.windowId),
-          allow: allowBrowserPages,
-          onPage: (p: Parameters<typeof browserTrace>[0]) => trace(browserTrace(p)),
-          firstHosts: browserFirstSites(readerHosts),
-          onReader: (url: string, ok: boolean) => {
-            readerHosts = countFetch(readerHosts, url, ok, Date.now());
-            if (storage) void storage.set({ [READER_HOSTS_KEY]: readerHosts }).catch(() => undefined);
-          },
-        };
-        trace("coupons:browser-first " + browserPages.firstHosts.length);
-        const searching = suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
-          browser: browserPages,
-          onFound: (fresh) => {
-            queue.push(fresh);
-            first.found(fresh.filter((c) => !storeFound.has(c.code)).length);
-          },
-          ...(s.effort ? { effort: s.effort } : {}),
-        });
-        const discovery: DiscoveryInfo = {
-          brand: merchant.brand,
-          searched: true,
-          store: onSite.length,
-          verified: 0,
-          reported: 0,
-          masked: 0,
-          dropped: 0,
-          offers: [],
-          ...(atCheckout ? { atCheckout: true } : {}),
-        };
-        const tally = (more: SuggestedCodes): void => {
-          discovery.searched = discovery.searched && more.searched;
-          discovery.verified += more.verified;
-          discovery.reported += more.reported;
-          discovery.masked += more.masked;
-          discovery.dropped += more.dropped;
-          discovery.offers = [...(discovery.offers ?? []), ...more.offers];
-          if (more.error && !discovery.error) discovery.error = more.error;
-          if (more.browserPages.length) {
-            discovery.browserOpened = (discovery.browserOpened ?? 0) + more.browserPages.length;
-            discovery.browserCodes = (discovery.browserCodes ?? 0) + more.browserCodes;
-          }
-          if (more.browserSkipped?.why === "declined") discovery.browserDeclined = (discovery.browserDeclined ?? 0) + more.browserSkipped.count;
-          if (more.browserSkipped) trace("coupons:browser-skipped " + more.browserSkipped.why + " " + more.browserSkipped.count);
-        };
-        // Host and path only, for the run trace (no query strings).
-        const pageLabel = (url: string): string => {
-          try {
-            const u = new URL(url);
-            return u.hostname.replace(/^www\./, "") + u.pathname.replace(/\/+$/, "");
-          } catch {
-            return "?";
-          }
-        };
-        const searched = searching.then((sug) => {
-          addUsage(sug);
-          tally(sug);
-          if (sug.error) trace("coupons:search-error " + sug.error.code);
-          trace("coupons:pages listed=" + sug.pagesListed + " opened=" + sug.pagesOpened + (sug.pagesRead ? " read-first" : ""));
-          for (const p of sug.pages) trace("coupons:page " + pageLabel(p.url) + " " + (p.ok ? "ok" : p.error ?? "error") + " " + (p.chars ?? 0));
-          trace("coupons:candidates store=" + onSite.length + " verified=" + sug.verified + " reported=" + sug.reported + " dropped=" + sug.dropped + " masked=" + sug.masked + " ignored=" + sug.ignored + " read=" + sug.readFromPages);
-          say(discoveryLine(discovery));
-          if (sug.offers.length) say("Code-free offers the pages mention (not tested): " + sug.offers.slice(0, 3).join("; ") + ".");
-          first.done();
-          return sug;
-        }).finally(() => queue.close());
-        let best: number | null = null;
-        const outcome = await runCouponSearch({
-          page: couponPage,
-          tester,
-          codes: onSite,
-          incoming: queue,
-          control: run,
-          delayMs: 250,
-          askMore: async (state) => {
-            void overlay.state("waiting");
-            steps.end();
-            const more = await askMoreCodes(state, run.signal);
-            void overlay.state("running");
-            return more;
-          },
-          findMore: (known) => {
-            trace("coupons:find-more known=" + known.length);
-            say("Searching the web again for " + merchant.brand + " codes, in other places…");
-            steps.post("Searching the web again for " + merchant.brand + " coupons, in other places…");
-            triedBefore = tried;
-            const again = progress(true);
-            const more = new CodeQueue();
-            void suggestCodes(s.provider, s.settings.model, merchant, ac.signal, {
-              browser: browserPages,
-              exclude: known,
-              more: true,
-              onFound: (fresh) => {
-                more.push(fresh);
-                again.found(fresh.length);
-              },
-              ...(s.effort ? { effort: s.effort } : {}),
-            })
-              .then((found) => {
-                addUsage(found);
-                tally(found);
-                if (found.error) trace("coupons:search-error " + found.error.code);
-                trace("coupons:candidates verified=" + found.verified + " reported=" + found.reported + " dropped=" + found.dropped + " masked=" + found.masked);
-                say(found.codes.length > 0 ? "Found " + plural(found.codes.length, "more code") + " to try." : "No more codes found.");
-                again.done();
-              })
-              .catch(() => undefined)
-              .finally(() => more.close());
-            return more;
-          },
-          onTry: () => {
-            tried++;
-          },
-          onAttempt: (a, index, _total, currency) => {
-            trace("coupons:attempt " + index + (a.combo ? " combo" : "") + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none"));
-            attemptRow(a, currency, t);
-            // A new best: say so in the chat.
-            if (a.accepted !== false && a.saving !== null && a.saving > 0 && a.total !== null && (best === null || a.saving > best)) {
-              best = a.saving;
-              const off = formatMoney(a.saving, currency) + " (" + percentOff(tester.baseline, a.total) + ")";
-              steps.post(
-                a.combo
-                  ? a.combo.join(" + ") + " together save " + off + "."
-                  : "Found code " + a.code + ", saves " + off + ". Continuing to apply for better savings.",
-              );
-            }
-          },
-        });
-        // A run that ended early (CAPTCHA, the store asked to slow down) needs no more codes.
-        over = true;
-        ac.abort();
-        await searched.catch(() => undefined);
-        steps.end();
-        trace("coupons:status " + outcome.status + (outcome.best ? " best" : " none") + (outcome.applied ? " applied" : ""));
-        if (outcome.status === "no_codes") {
-          // Nothing to test: say so plainly; the cart stays as it was.
-          const stopped = discovery.error?.code === "stopped" || run.isStopped;
-          const failed = !stopped && !!discovery.error;
-          outcome.status = stopped ? "stopped" : failed ? "search_failed" : "no_codes";
-          outcome.message = "Nothing was tested, and your cart is unchanged.";
-          statusOf = stopped ? "stopped" : failed ? "error" : "done";
-          summary = couponSummary(outcome, discovery);
-          status.textContent = formatCostLine(s.settings.model, used);
-          current.finish(outcome.status, outcome.message, used);
-          addMessage(failed ? "error" : "assistant", summary);
-        } else {
-          statusOf = outcome.status === "stopped" ? "stopped" : outcome.status === "done" ? "done" : "error";
-          summary = couponSummary(outcome, discovery);
-          status.textContent = formatCostLine(s.settings.model, used);
-          current.finish(outcome.status, outcome.message, used);
-          if (outcome.status === "no_form" || outcome.status === "error") addMessage("error", summary);
-          else addMessage("assistant", summary);
-        }
-      }
-    } catch {
-      statusOf = "error";
-      summary = "Could not finish the coupon search. Nothing was ordered.";
-      status.textContent = couponStatusText("error");
-      addMessage("error", summary);
-      current.finish("error", summary, used);
-    }
-    clearInterval(timer);
-    steps.end();
-    t.head.querySelector(".pulse")?.remove();
-    t.headText.textContent = (statusOf === "done" ? "Finished " : statusOf === "stopped" ? "Stopped " : "Ended ") + elapsedText(Date.now() - t.startedAt);
-    void overlay.hide();
-    await saveEntry("coupons", ask, summary);
-    control = null;
-    couponRun = null;
+    return run;
+  }
+
+  function endCouponRun(run: CouponRun, outcome: string): void {
+    clearInterval(run.timer);
+    run.steps.end();
+    run.ask?.box.remove();
+    run.t.head.querySelector(".pulse")?.remove();
+    run.t.headText.textContent = (outcome === "done" ? "Finished " : outcome === "stopped" ? "Stopped " : "Ended ") + elapsedText(Date.now() - run.t.startedAt);
+    if (couponRun === run) couponRun = null;
     syncComposer();
     plus.disabled = modelPill.disabled = false;
     for (const i of modeInputs) i.disabled = false;
     updateEmpty();
-    if (!matchMedia("(pointer: coarse)").matches) question.focus();
+  }
+
+  /** One event from the worker's coupon run (src/coupons/job.ts). */
+  function onCouponEvent(p: Record<string, unknown>): void {
+    if (p.tab_id !== tab.id) return;
+    const run = couponRun;
+    if (!run) {
+      couponBuffer?.push(p);
+      return;
+    }
+    const seq = Number(p.seq ?? 0);
+    if (seq <= run.seq) return;
+    run.seq = seq;
+    switch (p.kind) {
+      case "say": {
+        const line = document.createElement("p");
+        line.className = "say";
+        line.textContent = String(p.text ?? "");
+        run.t.body.appendChild(line);
+        followEnd();
+        break;
+      }
+      case "step": {
+        const id = Number(p.step);
+        const line = run.stepLines.get(id);
+        if (line) run.steps.edit(line, String(p.text ?? ""));
+        else run.stepLines.set(id, run.steps.post(String(p.text ?? "")));
+        break;
+      }
+      case "steps-end":
+        run.steps.end();
+        break;
+      case "attempt": {
+        const a = p.attempt as Parameters<typeof attemptRow>[0] | null;
+        if (a && typeof a === "object" && typeof a.code === "string") attemptRow(a, typeof p.currency === "string" ? p.currency : undefined, run.t);
+        break;
+      }
+      case "ask":
+        showAsk(run, String(p.prompt_id), Number(p.tried ?? 0));
+        break;
+      case "answered": {
+        const ask = run.ask;
+        if (ask && ask.promptId === p.prompt_id) {
+          ask.box.remove();
+          run.ask = null;
+        }
+        break;
+      }
+      case "trace":
+        trace(String(p.stage ?? ""));
+        break;
+      case "page":
+        current.page(String(p.url ?? ""));
+        break;
+      case "done": {
+        const summary = String(p.summary ?? "");
+        const usage: Usage = {
+          inputTokens: Number(p.input_tokens ?? 0),
+          outputTokens: Number(p.output_tokens ?? 0),
+          ...(p.web_searches ? { webSearches: Number(p.web_searches) } : {}),
+        };
+        endCouponRun(run, String(p.outcome ?? "error"));
+        addMessage(p.tone === "error" ? "error" : "assistant", summary);
+        status.textContent = String(p.status_text ?? "");
+        current.finish(String(p.status ?? "error"), String(p.message ?? ""), usage);
+        // The worker saved it; this keeps it in the session's turns for Branch.
+        turns.push({ entry: { at: Date.now(), question: COUPON_QUESTION, answer: summary, kind: "coupons" } });
+        if (!matchMedia("(pointer: coarse)").matches) question.focus();
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  async function runCoupons(): Promise<void> {
+    await sessionReady();
+    if (activeChat || task || couponRun || !session || tab.id === undefined) return;
+    const s = session;
+    askSiteAccessOnce();
+    if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
+    startRun("coupons", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model });
+    current.page(tab.url);
+    if (!port) {
+      const msg = "Scout for Safari's background worker is not running. Close Scout for Safari and open it again.";
+      addMessage("error", msg);
+      current.finish("error", msg);
+      return;
+    }
+    if (storage && !conv) conv = await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "");
+    addMessage("user", COUPON_QUESTION, { mode: "Find coupons" });
+    // Watch this tab's events on the port now, in case the watch sent when the
+    // port opened reached the worker before it was listening.
+    watchTab();
+    const run = showCouponRun(Date.now());
+    try {
+      await request(
+        toWorker,
+        "coupons.start",
+        {
+          tab_id: tab.id,
+          ...(tab.windowId !== undefined ? { window_id: tab.windowId } : {}),
+          provider: s.settings.provider,
+          model: s.settings.model,
+          ...(s.effort ? { effort: s.effort } : {}),
+          ...(conv ? { conv } : {}),
+          // iPhone: the pointer works above the panel's sheet (src/actions/pointer.ts).
+          ...(isPhoneScreen(matchMedia("(pointer: coarse)").matches, screen.width) ? { phone: true } : {}),
+        },
+        { timeoutMs: 15_000 },
+      );
+    } catch (err) {
+      const msg = err instanceof BridgeError ? err.message : "Could not reach this page. Reload it and try again.";
+      endCouponRun(run, "error");
+      addMessage("error", msg);
+      status.textContent = couponStatusText("error");
+      current.finish("error", msg);
+    }
+  }
+
+  /** A reopened panel: the coupon run still going on this tab, caught up to where it is. */
+  async function resumeCoupons(): Promise<void> {
+    if (tab.id === undefined || !port || couponRun) return;
+    couponBuffer = [];
+    watchTab();
+    const got = await request<{ run?: { started_at: number; events: Array<Record<string, unknown>>; done: boolean } }>(
+      toWorker,
+      "coupons.status",
+      { tab_id: tab.id },
+      { timeoutMs: 3_000 },
+    ).catch(() => null);
+    const buffered = couponBuffer;
+    couponBuffer = null;
+    const r = got?.run;
+    if (!r || r.done || couponRun) return;
+    addMessage("user", COUPON_QUESTION, { mode: "Find coupons" });
+    showCouponRun(r.started_at);
+    trace("coupons:resumed");
+    for (const e of [...r.events, ...buffered]) onCouponEvent({ ...e, tab_id: tab.id });
   }
 
   // ---------- Wiring ----------
@@ -2980,10 +2606,7 @@ async function main(): Promise<void> {
   // The composer's Stop halts whatever runs: a coupon run, a Scout mode task,
   // and the answer streaming around a task the model asked for.
   stop.addEventListener("click", () => {
-    if (couponRun) {
-      trace("ui:stop-click coupons");
-      couponRun.stop();
-    }
+    if (couponRun) void request(toWorker, "coupons.stop", { tab_id: couponRun.tabId }).catch(() => undefined);
     if (task) onStopTask();
     const id = activeChat;
     if (!id) return;
@@ -3003,7 +2626,7 @@ async function main(): Promise<void> {
     });
   });
   el("new-chat").addEventListener("click", () => {
-    if (activeChat || control || task) return;
+    if (activeChat || couponRun || task) return;
     clearThread();
     if (storage) {
       void startNewConversation(storage, tab.id, Date.now(), tab.incognito)
@@ -3641,6 +3264,7 @@ async function main(): Promise<void> {
     if (!likely) await restoreConversation();
     await resumeActive();
     await resumeTask();
+    await resumeCoupons();
     await loadTabs();
     // On touch devices focusing the field on open raises the keyboard over the
     // small popup; let the user tap into it instead.
