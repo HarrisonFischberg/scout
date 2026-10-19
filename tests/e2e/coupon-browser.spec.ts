@@ -65,6 +65,7 @@ test("reader refuses a coupon page; the browser renders it, presses Show code, a
   const log: string[] = [];
   const traces: string[] = [];
   const r = await suggestCodes(refusingProvider(seen), "m", "www.synthshop.test", undefined, {
+    angles: 1,
     readPages: false,
     browser: { tabs: pageBrowser(page, baseURL ?? "", log), allow: async () => true, onPage: (p) => traces.push(browserTrace(p)) },
   });

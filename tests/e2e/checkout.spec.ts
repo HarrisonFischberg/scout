@@ -195,9 +195,10 @@ test("a checkout with a hidden promo box, a slow total in euros, errors, and rem
   const rows = page.locator("#task .attempt");
   // First the code the fixture site's home page advertises (KETO10), refused here in German.
   await expect(rows.nth(0)).toContainText("KETO10");
-  await expect(rows.nth(0)).toContainText("Not accepted by the store.");
+  // The store's own words are shown for each refused code (owner request 2026-10-19).
+  await expect(rows.nth(0)).toContainText("The store said: “Dieser Code ist ungültig.”");
   await expect(rows.nth(1)).toContainText("NOPE1");
-  await expect(rows.nth(1)).toContainText("Not accepted by the store.");
+  await expect(rows.nth(1)).toContainText("The store said: “Dieser Code ist ungültig.”");
   // The 1.2 s store delay is waited out: RABATT10 counts as a saving, measured alone.
   await expect(rows.nth(2)).toContainText("RABATT10");
   await expect(rows.nth(2)).toContainText("€180.00");

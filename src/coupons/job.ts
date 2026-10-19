@@ -32,6 +32,9 @@ import { locateForm } from "./locate";
 import { identifyMerchant } from "./merchant";
 import { formatMoney } from "./money";
 import { codesWithContext, MAX_STORE_CODES, type StoreCode } from "./store";
+import { guessCodes } from "./guesses";
+import { parseWorked, rememberedCodes, updateWorked, WORKED_KEY } from "./memory";
+import { mostlyExpired, type RejectKind } from "./reasons";
 import type { CouponPage } from "./tab-page";
 import type { Snapshot } from "../snapshot/snapshot";
 
@@ -188,6 +191,12 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
       merchant,
     );
     trace("coupons:store-codes " + onSite.length);
+    // Codes that worked on this store before, kept on this device: tried first.
+    const storage = deps.storage;
+    const worked = parseWorked(storage ? (await storage.get(WORKED_KEY).catch(() => ({}) as Record<string, unknown>))[WORKED_KEY] : undefined);
+    const remembered = rememberedCodes(worked, merchant.domain).filter((c) => !onSite.some((s) => s.code === c.code));
+    trace("coupons:remembered " + remembered.length);
+    onSite.unshift(...remembered);
     // Milestones for one search: "Found 5 coupons…", then "Found 10 more…"
     // at most every few seconds (a quicker find adds to the last line).
     let tried = 0;
@@ -230,7 +239,6 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     const storeFound = new Set(onSite.map((c) => c.code));
     trace("coupons:search");
     // Sites that refused the reader on this device go to a background tab first; each fetch is counted.
-    const storage = deps.storage;
     let readerHosts = parseReaderHosts(storage ? (await storage.get(READER_HOSTS_KEY).catch(() => ({}) as Record<string, unknown>))[READER_HOSTS_KEY] : undefined);
     const browserPages = {
       tabs: deps.tabs,
@@ -286,6 +294,9 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         return "?";
       }
     };
+    // Guesses (owner decision 2026-10-19): after every code the search found, never before.
+    let guessed = 0;
+    const known = new Set<string>(onSite.map((c) => c.code));
     const searched = searching
       .then((sug) => {
         addUsage(sug);
@@ -294,13 +305,27 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         trace("coupons:pages listed=" + sug.pagesListed + " opened=" + sug.pagesOpened + (sug.pagesRead ? " read-first" : ""));
         for (const p of sug.pages) trace("coupons:page " + pageLabel(p.url) + " " + (p.ok ? "ok" : p.error ?? "error") + " " + (p.chars ?? 0));
         trace("coupons:candidates store=" + onSite.length + " verified=" + sug.verified + " reported=" + sug.reported + " dropped=" + sug.dropped + " masked=" + sug.masked + " ignored=" + sug.ignored + " read=" + sug.readFromPages);
+        trace("coupons:angles " + sug.angles + (sug.anglesFailed ? " failed=" + sug.anglesFailed : "") + " hints=" + sug.percents.length);
+        for (const c of sug.codes) known.add(c.code);
         say(discoveryLine(discovery));
         if (sug.offers.length) say("Code-free offers the pages mention (not tested): " + sug.offers.slice(0, 3).join("; ") + ".");
+        // A search the provider refused (key, credit) says so on its own; a timeout still leads to guesses.
+        if (!run.isStopped && (!sug.error || sug.error.code === "timeout")) {
+          const guesses = guessCodes({ merchant, percents: sug.percents, known });
+          guessed = guesses.length;
+          discovery.guesses = guessed;
+          trace("coupons:guesses " + guessed);
+          if (guesses.length) {
+            say("Trying " + plural(guesses.length, "guessed code") + " too, built from the store's name and common codes. These are guesses, not codes seen online.");
+            queue.push(guesses);
+          }
+        }
         first.done();
         return sug;
       })
       .finally(() => queue.close());
     let best: number | null = null;
+    const kinds: RejectKind[] = [];
     const outcome = await runCouponSearch({
       page: couponPage,
       tester: found,
@@ -312,17 +337,21 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         steps.end();
         return deps.askMore(state, run.signal);
       },
-      findMore: (known) => {
-        trace("coupons:find-more known=" + known.length);
+      findMore: (already) => {
+        trace("coupons:find-more known=" + already.length);
         say("Searching the web again for " + merchant.brand + " codes, in other places…");
         steps.post("Searching the web again for " + merchant.brand + " coupons, in other places…");
         triedBefore = tried;
         const again = progress(true);
         const more = new CodeQueue();
+        // Mostly expired codes: this round looks for promotions running now first.
+        const fresh = mostlyExpired(kinds);
+        trace("coupons:find-more" + (fresh ? " fresh" : ""));
         void suggestCodes(client, model, merchant, ac.signal, {
           browser: browserPages,
-          exclude: known,
+          exclude: already,
           more: true,
+          ...(fresh ? { fresh: true } : {}),
           onFound: (fresh) => {
             more.push(fresh);
             again.found(fresh.length);
@@ -345,7 +374,9 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         tried++;
       },
       onAttempt: (a, index, _total, currency) => {
-        trace("coupons:attempt " + index + (a.combo ? " combo" : "") + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none") + " from " + sourceLabel(a));
+        if (a.kind) kinds.push(a.kind);
+        // Stage words only: the group of the store's reply (never its words) and where the code came from.
+        trace("coupons:attempt " + index + (a.combo ? " combo" : "") + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none") + (a.kind ? " " + a.kind : "") + " from " + sourceLabel(a));
         emit({ kind: "attempt", attempt: a, ...(currency ? { currency } : {}) });
         // A new best: say so in the chat.
         if (a.accepted !== false && a.saving !== null && a.saving > 0 && a.total !== null && (best === null || a.saving > best)) {
@@ -361,6 +392,15 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     over = true;
     ac.abort();
     await searched.catch(() => undefined);
+    // Remember what worked here (and count remembered codes the store refused), on this device.
+    if (storage && outcome.baseline) {
+      const base = outcome.baseline;
+      const next = updateWorked(worked, merchant.domain, {
+        worked: outcome.attempts.filter((a) => !a.combo && a.accepted !== false && a.saving !== null && a.saving > 0).map((a) => ({ code: a.code, pct: ((a.saving ?? 0) / base) * 100 })),
+        refused: outcome.attempts.filter((a) => !a.combo && a.origin === "remembered" && (a.accepted === false || !a.saving)).map((a) => a.code),
+      });
+      if (JSON.stringify(next) !== JSON.stringify(worked)) void storage.set({ [WORKED_KEY]: next }).catch(() => undefined);
+    }
     trace("coupons:status " + outcome.status + (outcome.best ? " best" : " none") + (outcome.applied ? " applied" : ""));
     if (outcome.status === "no_codes") {
       // Nothing to test: say so plainly; the cart stays as it was.

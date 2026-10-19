@@ -149,11 +149,11 @@ test("coupon run tests every code found online, applies the best, never clicks o
   await expect(page.locator("#log > .coupon-step.busy .pulse")).toHaveCount(1);
   await expect(page.locator("#status")).not.toContainText("couple of minutes");
   const answer = page.getByRole("log").locator(".msg.assistant").last();
+  // Owner decision 2026-10-19: guesses are tested after every code found online, and named as guesses.
   await expect(answer).toHaveText(
-    "I tested 5 codes found online for shop. SAVE20 is the best: your total drops from $100.00 to $80.00 (you save $20.00, 20% off). It's applied to your cart, and I didn't go to checkout.",
+    "I tested 37 codes (5 found online for shop and 32 guesses). SAVE20 is the best: your total drops from $100.00 to $80.00 (you save $20.00, 20% off). It's applied to your cart, and I didn't go to checkout. Codes found online came from deals.test (5).",
     BATCH_WAIT,
   );
-  await expect(answer).not.toContainText("guess");
   await expect(page.locator("#coupons-more")).toBeHidden();
   const said = await steps.allTextContents();
   expect(said).toContain("Found 5 coupons. Applying them to your cart while I keep searching.");
@@ -170,7 +170,7 @@ test("coupon run tests every code found online, applies the best, never clicks o
   // restriction (candidates.ts RESTRICTED), so WELCOME5 goes last of them;
   // BOGUS99, the reply's last line, arrives when the reply ends.
   const rows = page.locator("#task .attempt");
-  await expect(rows).toHaveCount(5);
+  await expect(rows).toHaveCount(37);
   await expect(rows.nth(0)).toContainText("SAVE10");
   await expect(rows.nth(0)).toContainText("$90.00");
   await expect(rows.nth(1)).toContainText("FREESHIP");
@@ -183,10 +183,13 @@ test("coupon run tests every code found online, applies the best, never clicks o
   for (let i = 0; i < 5; i++) {
     await expect(rows.nth(i).getByRole("link", { name: "seen on deals.test" })).toHaveAttribute("href", "https://deals.test/codes");
   }
+  // Then the guesses, store-name codes first, each labeled as a guess.
+  await expect(rows.nth(5)).toContainText("SHOP");
+  await expect(rows.nth(5)).toContainText("a guess");
   // e3 is "Place order": it must never be clicked.
   expect(clicks).not.toContain("e3");
-  // 5 tries plus one re-apply of the winner, all on Apply (e2).
-  expect(clicks).toHaveLength(6);
+  // 37 tries plus one re-apply of the winner, all on Apply (e2).
+  expect(clicks).toHaveLength(38);
   expect(new Set(clicks)).toEqual(new Set(["e2"]));
 });
 
@@ -196,7 +199,7 @@ test("no winning code: offers to search again, searches without repeating codes,
   await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   await expect(page.locator("#coupons-more-text")).toHaveText(
-    "We've tried 5 codes and none lowered your total. Would you like Scout for Safari to search the web again, in other places, for more codes to test?",
+    "We've tried 37 codes and none lowered your total. Would you like Scout for Safari to search the web again, in other places, for more codes to test?",
     BATCH_WAIT,
   );
   await expect(page.getByRole("button", { name: "Search again" })).toBeFocused();
@@ -206,21 +209,27 @@ test("no winning code: offers to search again, searches without repeating codes,
   await expect(page.getByRole("button", { name: "Send" })).toBeHidden();
   await page.getByRole("button", { name: "Search again" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
-  await expect(answer).toContainText("I tested 5 codes found online for shop and none lowered your total of $100.00, so your cart is unchanged. I couldn't find any more codes to try.", BATCH_WAIT);
-  // Three requests: the listed coupon pages read first, the search, then the
-  // second search, which names the codes already tried and looks in other places.
-  expect(asks).toHaveLength(3);
+  await expect(answer).toContainText(
+    "I tested 37 codes (5 found online for shop and 32 guesses) and none lowered your total of $100.00, so your cart is unchanged. I couldn't find any more codes to try.",
+    BATCH_WAIT,
+  );
+  // The listed coupon pages read first, four searches at once from different
+  // angles, then a second round of four, which names the codes already tried
+  // and looks in other places.
+  expect(asks).toHaveLength(9);
   expect(asks[0]).toContain("First job, no searching");
-  expect(asks[2]).toContain("Already tried, do not list these again");
-  // In the order they were tested (see the first test).
-  expect(asks[2]).toContain("SAVE10, FREESHIP, SAVE20, WELCOME5, BOGUS99");
-  expect(asks[2]).toContain("second search");
+  for (const ask of asks.slice(5)) {
+    expect(ask).toContain("Already tried, do not list these again");
+    // In the order they were tested (see the first test).
+    expect(ask).toContain("SAVE10, FREESHIP, SAVE20, WELCOME5, BOGUS99");
+    expect(ask).toContain("second search");
+  }
   // The trace is folded by default: open it to read the code lines.
   await page.locator("#task .trace-head").click();
   const rows = page.locator("#task .attempt");
-  await expect(rows).toHaveCount(5);
+  await expect(rows).toHaveCount(37);
   const codes = await rows.locator(".code").allTextContents();
-  expect(new Set(codes).size).toBe(5);
+  expect(new Set(codes).size).toBe(37);
 });
 
 // Owner, 2026-10-17: the send arrow turns into Stop while the run works, and Stop halts it.
@@ -243,7 +252,8 @@ test("Find coupons turns Send into Stop next to the model picker, and Stop ends 
   await expect(page.locator("#task .trace-head")).toContainText(/Finished|Stopped/);
 });
 
-// Owner rule 2026-10-17: a failed web search means nothing is tested; no guesses stand in for it.
+// A web search the provider refused (bad key) means nothing is tested: the key has to be fixed first,
+// so no guesses stand in for it (a search that only ran out of time still leads to guesses).
 test("a failed web search tests nothing and says why", async ({ page }) => {
   test.setTimeout(90_000);
   const { clicks } = await openPopup(page, { status: 401 });

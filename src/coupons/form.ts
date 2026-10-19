@@ -131,6 +131,9 @@ export function newLines(before: string, after: string): string {
 
 export type StoreReply = "rejected" | "accepted" | "busy" | null;
 
+/** Whether a line the store just showed turns a code down. */
+export const isRejectLine = (line: string): boolean => REJECT_RE.test(line);
+
 /** How the store answered, from the messages it just showed. */
 export function storeReply(fresh: string): StoreReply {
   if (REJECT_RE.test(fresh)) return "rejected";
