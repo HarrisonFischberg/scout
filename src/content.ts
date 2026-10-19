@@ -53,8 +53,9 @@ if (!g[FLAG]) {
     const raw = v instanceof HTMLLinkElement ? v.href : v?.content;
     return typeof raw === "string" && raw.trim() ? raw.trim().slice(0, 200) : undefined;
   };
-  const pageMeta = (): { title: string; siteName?: string; canonical?: string } => ({
+  const pageMeta = (): { title: string; siteName?: string; canonical?: string; description?: string } => ({
     title: document.title.slice(0, 200),
+    ...(meta('meta[name="description"]') ?? meta('meta[property="og:description"]') ? { description: meta('meta[name="description"]') ?? meta('meta[property="og:description"]') } : {}),
     ...(meta('meta[property="og:site_name"]') ?? meta('meta[name="application-name"]') ? { siteName: meta('meta[property="og:site_name"]') ?? meta('meta[name="application-name"]') } : {}),
     ...(meta('link[rel="canonical"]') ? { canonical: meta('link[rel="canonical"]') } : {}),
   });
