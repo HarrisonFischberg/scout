@@ -1950,3 +1950,14 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 ## 2026-10-19 — Find coupons reads coupon sites without opening tabs
 
 Owner asked whether coupon testing could stop showing/opening tabs. Testing codes already ran on the shop tab itself; the tabs came from the browser fallback for coupon sites that refuse the provider's reader. Owner chose "Quiet only": those pages are now downloaded by the background worker (`src/coupons/quiet-read.ts`, no cookies, no tab, no history) and parsed without a DOM; codes kept in `data-code`-style attributes and embedded JSON are read as "Code: X" lines. Trade-off: no page scripts run and "Show code" is never pressed. Evidence: `tests/unit/coupon-quiet.test.ts` (8 tests); full unit suite 523/524 (the known Take control failure on `main`); typecheck, lint, build, check:release clean. Device check still needed on Mac and iPhone.
+
+## 2026-10-19 — Chrome and Firefox packages (Scout AI Assistant, step 1)
+
+Owner asked to rename to "Scout AI Assistant" and ship on Chrome, Firefox and Safari. Plan: `/mnt/project-files/scout-ai-assistant/plan.md`. This step builds the other two browsers from the same code; the rename follows after the Trailhead look PR.
+
+- `SCOUT_TARGET=chrome|firefox` in `scripts/build.mjs` (`npm run build:chrome`, `build:firefox`, release by default) writes `dist/<browser>/` and a store zip. Safari build unchanged. Per-browser manifest in `scripts/targets.mjs`: Chrome uses a service worker; Firefox keeps background scripts, add-on ID `scout-ai-assistant@harrisonfischberg` (fixed once uploaded), Firefox 140+ with `data_collection_permissions` (website content, browsing activity, sent to the user's provider). Both drop `nativeMessaging`.
+- Chrome shim (prepended to Chrome bundles): exposes `browser`, binds Chrome's functions, and answers Promise-returning `runtime.onMessage` listeners through `sendResponse`.
+- API key on Chrome/Firefox: local extension storage, never synced (owner chose "Browser storage" 2026-10-19). Safari still Keychain only; `check:release` fails if the storage path is in a Safari bundle. New row in `docs/data-inventory.md`.
+- Evidence: real Chromium 1194 loaded `dist/chrome`, worker answered ping through the shim, saved key showed the composer, a chat against the mock server streamed an answer with cost, no console errors. Mozilla `addons-linter` on `dist/firefox`: 0 errors, 15 innerHTML warnings (reviewer notes). Firefox itself not run here (not installed). Unit 540/541 (known Take control failure), typecheck, lint, `check:release` clean. `check:rename` was already failing on main (3 old hits in files this change does not touch).
+- Not yet: Safari wording on other browsers ("kept in your Keychain", Safari settings paths, history note) changes with the rename PR, since it edits the same panel text.
+
