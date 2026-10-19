@@ -1913,6 +1913,15 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Fix: the page's overlay holds a port to the worker (`scout-run`, `src/bridge/run-port.ts`) for as long as it shows, with a heartbeat every 10 s, so Safari keeps the worker and the run alive. The worker answers each beat with whether it still has the run (`runAlive` in `src/server/worker.ts`); if not (it ended, or the worker was unloaded anyway), the glow goes by itself. Applies to Scout mode tasks too.
 - Evidence: `tests/unit/run-port.test.ts` (holds and beats, glow goes when the run is gone, reconnects after the worker drops). Unit 498/499 (known Take control failure), typecheck, lint, build, `check:release` clean. e2e Chromium (WebKit not in the cloud sandbox): 139 passed, the same 20 failures as `main`. Not checked: real Mac Safari.
 
+## 2026-10-19 — Mac: the Scout button did nothing on the tab where Find coupons ran (owner report)
+
+- Actual (owner, macOS Safari, build with #63/#64): after starting Find coupons and clicking away, Scout opened on other tabs, but on the coupon tab the Scout button did nothing for the whole run; the run kept going and applied its code. Reports #199 and #203.
+- Expected (owner's first message, confirmed in thread): back on that tab, Scout opens and shows the search, still going or with its result.
+- What the reports show: #63 worked (the run survived). The panel that started run #203 was still loaded and taking the run's events 132 s later, after it had been clicked away; in #199 a panel loaded on the coupon tab and replayed the run while the owner saw nothing open. So on Mac a panel Safari has hidden can stay loaded.
+- Cause (inferred, not reproduced in Safari): while that hidden panel is still loaded, Safari does not show a new one on the same tab, so the button does nothing. Before #55 the run died with the panel, so this never came up.
+- Fix: on Mac (not touch screens, not the standalone page) the panel closes itself when Safari hides it (`visibilitychange` to hidden, `src/panel/dismiss.ts`). The next click opens a fresh panel, which catches up with the run in the worker. Debug builds trace `panel:visibility` and `panel:close-hidden`, so the next report shows whether Safari sends the signal.
+- Evidence: `tests/unit/dismiss.test.ts`. Unit 508/509 (known Take control failure), typecheck, lint, build, `check:release` clean. e2e Chromium: 145 passed, the same 20 failures as `main`. Not checked: real Mac Safari.
+
 ## 2026-10-19 — getbeefy.co: junk codes, no creator code, empty coupon report (owner run #203 and panel log)
 
 - Actual (owner): run #203's report had no stages, only `port:reconnecting`. The panel log: GETBEEFY (a guess) applied; every "code found online" was a menu word or another store's code (BUNDLE, STORES, CATEGORY, STUDENT701, EXTRA10, ETSC); WELCOME10 and WELCOME "saved" $0.01 and were tried together with GETBEEFY; BEEFY5 and BEEFY50 were the first guesses; the offers line showed `&#34;` and cut words. No creator code (KETOVORENURSE) was found. The model was Haiku 5.5.

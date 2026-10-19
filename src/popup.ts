@@ -39,6 +39,7 @@ import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
 import { probeDrag } from "./panel/drag-probe";
 import { COUPON_QUESTION } from "./server/coupon-host";
 import { isPhoneScreen } from "./panel/blur";
+import { closeWhenHidden } from "./panel/dismiss";
 import { dockComposer } from "./panel/dock";
 import { hintedProvider, KEY_HINT_KEY, parseKeyHint, sameHint, type KeyHint } from "./panel/warm";
 import { isStandalone, openStandalone } from "./panel/standalone";
@@ -378,6 +379,8 @@ async function main(): Promise<void> {
     }
   }
   window.addEventListener("pagehide", () => port?.close());
+  // Mac: a panel Safari has hidden closes itself, so the Scout button opens a fresh one (src/panel/dismiss.ts).
+  if (!STANDALONE && !matchMedia("(pointer: coarse)").matches) closeWhenHidden(document, () => window.close(), trace);
 
   // Cached or built-in model lists, so names and effort support are known
   // before Settings is opened. No network call here. Debug builds load their
