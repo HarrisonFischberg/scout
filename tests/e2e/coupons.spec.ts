@@ -252,6 +252,34 @@ test("Find coupons turns Send into Stop next to the model picker, and Stop ends 
   await expect(page.locator("#task .trace-head")).toContainText(/Finished|Stopped/);
 });
 
+// Owner choice 2026-10-19: New chat opens at once while Find coupons runs; the
+// run keeps going in the worker and a chip above the composer goes back to it.
+test("New chat during Find coupons opens a new chat, the run keeps going, and the chip goes back to it", async ({ page }) => {
+  test.setTimeout(90_000);
+  await openPopup(page, { pct: {} });
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("button", { name: "Find coupons" }).click();
+  await expect(page.locator("#task")).toBeVisible();
+  await page.getByRole("button", { name: "New chat" }).click();
+  await expect(page.locator("#log")).toBeEmpty();
+  await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+  await expect(page.locator("#question")).toBeEnabled();
+  const chip = page.locator("#coupon-chip");
+  await expect(chip).toBeVisible();
+  await expect(chip).toContainText(/Finding coupons…|needs your answer/);
+  // The run asks "search again?" while its chat is out of view: the chip says so.
+  await expect(chip).toContainText("Find coupons needs your answer", BATCH_WAIT);
+  await chip.click();
+  await expect(chip).toBeHidden();
+  await expect(page.locator("#task")).toBeVisible();
+  await expect(page.locator(".msg.user").first()).toContainText("Find the best coupon for this cart.");
+  await expect(page.locator("#coupons-more-text")).toBeVisible();
+  await expect(page.locator(".composer-foot").getByRole("button", { name: "Stop", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Stop here" }).click();
+  await expect(page.locator("#task .trace-head")).toContainText(/Finished|Stopped/);
+  await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+});
+
 // A web search the provider refused (bad key) means nothing is tested: the key has to be fixed first,
 // so no guesses stand in for it (a search that only ran out of time still leads to guesses).
 test("a failed web search tests nothing and says why", async ({ page }) => {
