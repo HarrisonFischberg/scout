@@ -52,3 +52,14 @@ export async function openPanel(
     await wait(ms);
   }
 }
+
+/**
+ * Whether the worker opens the panel after switching to a tab for the chats
+ * menu. Not on a Mac (owner report 2026-10-19): `openPopup` there, with no
+ * click behind it, showed nothing and left Scout's button dead on that tab
+ * until the coupon search ended. iPhone and iPad keep it (the page button
+ * opens the sheet the same way). Unknown counts as not a Mac.
+ */
+export function reopensAfterSwitch(os: string | undefined): boolean {
+  return os !== "mac";
+}
