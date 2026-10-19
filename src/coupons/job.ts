@@ -29,7 +29,7 @@ import {
   type DiscoveryInfo,
 } from "./finder";
 import { locateForm } from "./locate";
-import { identifyMerchant } from "./merchant";
+import { identifyMerchant, sellsLine } from "./merchant";
 import { formatMoney } from "./money";
 import { codesWithContext, MAX_STORE_CODES, type StoreCode } from "./store";
 import { guessCodes } from "./guesses";
@@ -123,7 +123,8 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     // name the page gives itself. All page data, used only as search words.
     const meta = await page.meta().catch(() => null);
     const merchant = identifyMerchant(snap.url, meta ?? {});
-    trace("coupons:merchant " + (merchant.host === merchant.domain ? "store-host" : "other-host") + (meta?.siteName ? " named" : ""));
+    const sells = sellsLine(meta);
+    trace("coupons:merchant " + (merchant.host === merchant.domain ? "store-host" : "other-host") + (meta?.siteName ? " named" : "") + (sells ? " sells" : ""));
     const ac = new AbortController();
     run.signal.addEventListener("abort", () => ac.abort(), { once: true });
     // Waits run here, not in the page, so they outlast a page that reloads.
@@ -252,6 +253,7 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     };
     trace("coupons:browser-first " + browserPages.firstHosts.length);
     const searching = suggestCodes(client, model, merchant, ac.signal, {
+          ...(sells ? { sells } : {}),
       browser: browserPages,
       onFound: (fresh) => {
         queue.push(fresh);
@@ -348,6 +350,7 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         const fresh = mostlyExpired(kinds);
         trace("coupons:find-more" + (fresh ? " fresh" : ""));
         void suggestCodes(client, model, merchant, ac.signal, {
+          ...(sells ? { sells } : {}),
           browser: browserPages,
           exclude: already,
           more: true,
