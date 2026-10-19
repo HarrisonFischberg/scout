@@ -1829,3 +1829,19 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - (3) Likely cause (inferred, not reproduced): with the panel closed, "search again?" made the worker call `action.openPopup()` without a tap. The coupon host no longer opens the panel itself; the overlay pill says "Waiting for you" and the question waits for the panel (2 minutes, then "Stop here").
 - (1) Glow stronger at the edges (center unchanged), sweep 2.5 s → 1.5 s, a 1.8 s pulse; iPhone at full strength (was 75%). Preview: /mnt/project-files/coupon-glow/before-after.png (Chromium, iPhone size).
 - Evidence: unit 473/474 (known Take control failure); e2e overlay (new iPhone layout test), actions, coupons, checkout pass in Chromium; full Chromium suite 139 passed, the same 20 failures as `main`. `npm run check:release` clean. Not checked: real iPhone.
+
+## 2026-10-19 — iPhone glow back over the whole page
+
+- Actual (owner, on device after #56): the blue glow was missing from the bottom quarter of the page, and the solid strip under Safari's bar was still there.
+- Expected: the glow fills the whole page with "Working…" at the very bottom.
+- Cause: #56 stopped the overlay 120 px above the bottom on iPhone to clear the strip. It did not clear it, so the strip comes from something else.
+- Fix: `src/overlay.ts` covers the whole screen on every device again. iPhone still skips the top layer (a top-layer `::backdrop` is what made Safari's bar solid in #27).
+- Evidence: `tests/e2e/overlay.spec.ts` "on iPhone" asserts the overlay reaches the bottom edge, is not in the top layer, and the pill sits at the bottom. Build, typecheck, lint, and the overlay/actions/coupons/checkout e2e pass (Chromium, 26/26).
+
+## 2026-10-19 — Diagnostics name each tested code's source site
+
+- Actual (owner report #193): the panel was reopened mid-run, so the report began at attempt 26 and could not show where any code came from.
+- Expected: a report shows the whole run and the site each tested code came from.
+- Cause: `CouponHost` did not keep trace stages for a reopened panel, and attempt lines did not name a source.
+- Fix: attempt traces end with `from <host>` (host only, or the origin such as `store`); a reopened panel replays the run's trace stages as `replay +Ns …`. Page URLs are still not kept.
+- Evidence: `tests/unit/coupon-host.test.ts` checks replayed traces carry their time and the attempt names its source. Unit 473/474 (only the known Take control failure), typecheck, lint, check:release, e2e 26/26 (Chromium).
