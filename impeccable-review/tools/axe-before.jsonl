@@ -1,0 +1,2 @@
+{"shot":"iphone-light-12-settings","id":"target-size","impact":"serious","nodes":2,"sample":"#legal-privacy","summary":"Fix any of the following:   Target has insufficient size (137.3px by 17px, should be at least 24px by 24px)"}
+{"shot":"iphone-dark-12-settings","id":"target-size","impact":"serious","nodes":2,"sample":"#legal-privacy","summary":"Fix any of the following:   Target has insufficient size (137.3px by 17px, should be at least 24px by 24px)"}
