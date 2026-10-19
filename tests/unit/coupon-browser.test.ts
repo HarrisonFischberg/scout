@@ -179,6 +179,7 @@ describe("suggestCodes with the browser fallback", () => {
     const site = couponSite("https://coupons.test/synthshop");
     const asked: string[][] = [];
     const r = await suggestCodes(refusingProvider(seen), "m", "www.synthshop.test", undefined, {
+      angles: 1,
       readPages: false,
       browser: { tabs: site, allow: async (pages) => (asked.push(pages.map((p) => p.url + " " + p.reason)), true) },
     });
@@ -291,6 +292,7 @@ describe("sites that keep refusing the reader go to the browser first", () => {
       },
     };
     const r = await suggestCodes(p, "m", "www.synthshop.test", undefined, {
+      angles: 1,
       readPages: false,
       browser: { tabs, allow: async () => true, onReader: (u, ok) => learned.push(u + " " + ok) },
     });

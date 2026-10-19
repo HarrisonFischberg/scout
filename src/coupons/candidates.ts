@@ -1,20 +1,21 @@
-// Coupon candidates. Every candidate is a code that was actually seen written
-// on a page, with that page kept as evidence. Nothing here generates codes:
-// no brand-name patterns, no "WELCOME10"-style guesses, no variations of a
-// found code (owner rule 2026-10-17, replacing the 2026-10-16 guess list).
+// Coupon candidates. Codes found online keep the page they were seen on as
+// evidence. Guesses are built in guesses.ts (owner decision 2026-10-19) and
+// tested only after every code found online; nothing here generates codes.
 // Origins, best-supported first:
+//   remembered - worked on this store before, on this device (memory.ts)
 //   store    - the store's own site (banner, announcement bar, promotions page), read on the device
 //   verified - the exact code appears in page text the search retrieved (a fetched page or a cited passage)
 //   reported - the model listed it with a page the search returned, but no retrieved text could be checked
+//   guess    - built from the store's name, hinted percentages or common codes; no page
 // A code the model lists with a page the search never returned is dropped,
 // because nothing but the model's memory stands behind it.
 
-export type CandidateOrigin = "store" | "verified" | "reported";
+export type CandidateOrigin = "remembered" | "store" | "verified" | "reported" | "guess";
 
 export interface CouponCandidate {
   code: string;
   origin: CandidateOrigin;
-  /** The page the code was seen on. */
+  /** The page the code was seen on; empty for guesses and remembered codes. */
   sourceUrl: string;
   sourceTitle?: string;
   /** Words from the page around the code: the evidence shown to the user. */
@@ -49,7 +50,7 @@ export function isMasked(raw: string): boolean {
   return MASK_RE.test(raw.trim());
 }
 
-const RANK: Record<CandidateOrigin, number> = { store: 0, verified: 1, reported: 2 };
+const RANK: Record<CandidateOrigin, number> = { remembered: -1, store: 0, verified: 1, reported: 2, guess: 4 };
 const RESTRICTED =
   /\bfirst[- ](?:time\s+)?(?:order|purchase|customer)|new\s+(?:customer|subscriber|member)s?|welcome|sign[- ]?up|newsletter|subscri(?:be|ption|ber)|app[- ]only|students?|military|veterans?|teachers?|nurses?|first\s+responders?|referr|friends?\s+(?:and|&)\s+family|minimum|orders?\s+(?:over|above)|select(?:ed)?\s+(?:items|styles|products)|bundle|exclusions/i;
 const STALE = /\bexpired|no\s+longer|ended|inactive|not\s+working|didn['’]t\s+work|stopped\s+working|dead\b|invalid|out\s+of\s+date|last\s+(?:reported|worked)\s+(?:working\s+)?(?:a|one|\d+)\s+years?/i;
@@ -132,6 +133,10 @@ export function originLabel(c: { origin: CandidateOrigin; sourceUrl?: string; co
       return host ? "seen on " + host : "seen on its page";
     case "reported":
       return host ? host + " (reported by the search)" : "reported by the search";
+    case "remembered":
+      return "worked on this store before";
+    case "guess":
+      return "a guess";
   }
 }
 

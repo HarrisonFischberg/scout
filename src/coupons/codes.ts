@@ -11,6 +11,7 @@ import type { Effort, ProviderClient } from "../providers/types";
 import { isMasked, mergeCandidates, normalizeCode, rankCandidates, type CouponCandidate } from "./candidates";
 import { identifyMerchant, type Merchant } from "./merchant";
 import { codesWithContext } from "./store";
+import { hintedPercents } from "./guesses";
 import { BROWSER_MAX_PAGES, BROWSER_TABS, BROWSER_TIME_MS, browserRead, type BrowserPage, type BrowserReason, type BrowserTarget, type PageBrowser } from "./browser-read";
 
 export const MAX_FOUND = 40;
@@ -21,9 +22,18 @@ export const MAX_FOUND = 40;
  * at 150 s with nothing kept, so the budget is four minutes.
  */
 export const SEARCH_TIME_MS = 240_000;
-/** Web searches and page fetches the model may run per search. */
+/** Web searches and page fetches one request may run (a single-angle search). */
 export const SEARCH_USES = 10;
 export const FETCH_USES = 10;
+/**
+ * Owner request 2026-10-19: search dozens and dozens of sites, as the owner's
+ * local tool did (Birdcall, getbeefy.co). The search runs as several requests
+ * at once, each from its own angle, and pools what they find. Each angle's
+ * budget is smaller than a lone search's, so one round reads about 40 pages
+ * besides the listed ones; a second round (`more`) adds four new angles.
+ */
+export const ANGLE_SEARCH_USES = 6;
+export const ANGLE_FETCH_USES = 6;
 /**
  * A search that fetches pages can spend its whole budget on slow pages and
  * write nothing (MASA, Ancestral Supplements in the 2026-10-17 sweeps). It is
@@ -154,6 +164,45 @@ const BROWSER_NOTE =
 /** The second search, after the first found nothing that worked: other kinds of sources. */
 export const MORE_FOCUS =
   "This is a second search. The coupon sites were already covered: now look mainly at creator, affiliate, podcast, YouTube, Instagram, TikTok, Linktree, Reddit, newsletter and blog pages, and the store's own FAQ, help center and promotions pages; and at coupon sites not tried before.";
+/** Added to a second search when most codes the store turned down had expired: look for current promotions. */
+export const FRESH_NOTE = "Most codes tried so far had expired. Look first for promotions running now, this month and this season:";
+
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+/** "October 2026", for searches about current promotions. */
+export const monthYear = (now: Date): string => (MONTH_NAMES[now.getMonth()] ?? "") + " " + now.getFullYear();
+
+/** One part of a search: what this request looks at. Others cover the rest at the same time. */
+export interface SearchAngle {
+  id: string;
+  focus: (when: string) => string;
+}
+const ANGLE_LEAD = "Your part of a larger search (other searches cover the rest at the same time): ";
+/** First round: four requests at once. */
+export const SEARCH_ANGLES: SearchAngle[] = [
+  { id: "coupon-sites", focus: () => "coupon and deal sites. Search the store's name with the names of coupon sites (" + COUPON_SITES + ") and open the pages that print codes in full." },
+  {
+    id: "creators",
+    focus: () =>
+      "creators, influencers and affiliates. Search for the store's name with 'code', 'discount code', 'my code', 'use code', 'linktree', 'podcast', 'YouTube', 'Instagram', 'TikTok', 'review', 'ambassador'; open creators' Linktree and 'discount codes' pages, influencer code directories, podcast show notes, and review blogs that print a code for this store.",
+  },
+  {
+    id: "store",
+    focus: () =>
+      "the store's own pages and news about it. Look at its rewards or loyalty program, newsletter or text sign-up offers, affiliate or ambassador program, blog, FAQ, help center, promotions and press pages, and at news and trade press articles about its promotions.",
+  },
+  {
+    id: "community",
+    focus: (when) =>
+      "community and current deals. Search Reddit, Slickdeals, deal forums and local news and events sites for the store's codes, and for promotions running now (" + when + ").",
+  },
+];
+/** Second round (`more`): four other angles, with the codes already tried excluded. */
+export const MORE_ANGLES: SearchAngle[] = [
+  { id: "more-coupon-sites", focus: () => "coupon, cashback and voucher sites not tried before, including international ones (VoucherCodes, HotUKDeals, OzBargain, RedFlagDeals, Cuponation) and smaller ones that print codes in full." },
+  { id: "fresh", focus: (when) => "promotions running now. Search the store's name with '" + when + "', 'promo', 'sale', 'limited time', 'new customers', 'launch', 'holiday'; open the newest pages first." },
+  { id: "more-creators", focus: () => "more creators: Instagram, TikTok and YouTube posts and descriptions, podcast sponsor reads, newsletters and Substack posts, and influencer code sites, for codes not tried before." },
+  { id: "programs", focus: () => "the store's programs and archived emails: student, military, nurse, teacher and first responder discounts (ID.me, GovX, UNiDAYS, Student Beans), app-only offers, and archived promotional emails (for example milled.com)." },
+];
 
 /** Why the web search ended early. Codes found before then are kept. */
 export interface SearchError {
@@ -201,6 +250,11 @@ export interface SuggestedCodes {
   browserCodes: number;
   /** Pages that needed the browser but were not opened: the user said no, or no browser was available. */
   browserSkipped?: { count: number; why: "declined" | "unavailable" };
+  /** Percentages pages hinted at for this store (hidden codes, result titles), most-seen first: for guesses. */
+  percents: number[];
+  /** Search requests run at once; and how many ended with an error while others finished. */
+  angles: number;
+  anglesFailed: number;
 }
 
 export interface FetchedPage {
@@ -395,6 +449,16 @@ export interface SearchOptions {
   retryTimeoutMs?: number;
   /** False: no search-only retry. */
   retry?: boolean;
+  /**
+   * Requests run at once, each from its own angle (SEARCH_ANGLES, or
+   * MORE_ANGLES for a second search). 1: one request with the lone-search
+   * budget, as before 2026-10-19.
+   */
+  angles?: number;
+  /** A second search after mostly expired codes: look for current promotions first. */
+  fresh?: boolean;
+  /** For "this month" wording; tests set it. */
+  now?: Date;
   /** False: the listed pages are not read in a pass of their own first. */
   readPages?: boolean;
   readTimeoutMs?: number;
@@ -465,6 +529,8 @@ export async function suggestCodes(
   const searched = opts.webSearch !== false;
   let retried = false;
   let pagesRead = false;
+  let anglesRun = 0;
+  let anglesFailed = 0;
   const listed = likelyCodePages(merchant);
   // Sites that refuse the reader: with a browser, their pages skip the reader.
   const blockedSites = opts.browser ? [...new Set([...READER_BLOCKED_HOSTS, ...(opts.browser.firstHosts ?? [])].map((h) => h.toLowerCase()))] : [];
@@ -484,6 +550,7 @@ export async function suggestCodes(
     (merchant.host.replace(/^www\./, "") !== merchant.domain ? "\nCheckout host: " + merchant.host : "") +
     (aka.length ? "\nAlso written as: " + aka.join(", ") : "") +
     (opts.more ? "\n" + MORE_FOCUS : "") +
+    (opts.fresh ? "\n" + FRESH_NOTE + " " + monthYear(opts.now ?? new Date()) + "." : "") +
     (blockedSites.length ? "\n" + BLOCKED_NOTE + " " + blockedSites.join(", ") : "") +
     (opts.exclude?.length
       ? "\nAlready tried, do not list these again; look for different codes: " + opts.exclude.slice(0, MAX_EXCLUDE_LISTED).join(", ")
@@ -586,7 +653,7 @@ export async function suggestCodes(
   };
 
   /** One streamed request; what it finds lands in `text`, `retrieved` and `cited`. Returns why it ended early, if it did. */
-  const pass = async (p: { search: boolean; fetch: boolean; timeoutMs: number; searches?: number; fetches?: number; note?: string }): Promise<SearchError | undefined> => {
+  const pass = async (p: { search: boolean; fetch: boolean; timeoutMs: number; searches?: number; fetches?: number; note?: string; focus?: string }): Promise<SearchError | undefined> => {
     const ac = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -599,7 +666,7 @@ export async function suggestCodes(
     const req = {
       model,
       system: CODES_SYSTEM_PROMPT,
-      messages: [{ role: "user" as const, content: content + (p.note ? "\n" + p.note : "") }],
+      messages: [{ role: "user" as const, content: content + (p.focus ? "\n" + ANGLE_LEAD + p.focus : "") + (p.note ? "\n" + p.note : "") }],
       // Room for thinking between searches at higher effort.
       maxTokens: 8000,
       ...(opts.effort ? { effort: opts.effort } : {}),
@@ -612,11 +679,17 @@ export async function suggestCodes(
     // Each pass starts on a line of its own: a reply that ended without a
     // newline must not run its last code line into the next pass's first.
     if (text && !text.endsWith("\n")) text += "\n";
+    // Passes run at the same time: each keeps its unfinished line to itself
+    // and adds only finished lines to `text`, so lines never interleave.
+    let own = "";
     try {
       for await (const ev of provider.stream(req)) {
         if (ev.type === "text") {
-          text += ev.delta;
-          if (ev.delta.includes("\n")) {
+          own += ev.delta;
+          const end = own.lastIndexOf("\n");
+          if (end >= 0) {
+            text += own.slice(0, end + 1);
+            own = own.slice(end + 1);
             report(false);
             scanMasked();
           }
@@ -649,6 +722,7 @@ export async function suggestCodes(
     } catch (err) {
       return searchError(err, timedOut, signal?.aborted === true);
     } finally {
+      if (own) text += own + "\n";
       report(true);
       if (text && !text.endsWith("\n")) text += "\n";
       scanMasked();
@@ -680,7 +754,22 @@ export async function suggestCodes(
       const missed = readerListed.filter((u) => !opened.has(urlKey(u)));
       const note = [read.length ? AFTER_READ_NOTE + " " + read.join(" ") : "", missed.length ? NOT_READ_NOTE + " " + missed.join(" ") : ""].filter(Boolean).join("\n");
       const budget = opts.timeoutMs ?? Math.max(MIN_SEARCH_TIME_MS, SEARCH_TIME_MS - spent);
-      error = await pass({ search: true, fetch: true, timeoutMs: budget, searches: SEARCH_USES, fetches: FETCH_USES, ...(note ? { note } : {}) });
+      const when = monthYear(opts.now ?? new Date());
+      const angles = (opts.more ? MORE_ANGLES : SEARCH_ANGLES).slice(0, Math.max(1, opts.angles ?? SEARCH_ANGLES.length));
+      anglesRun = angles.length;
+      if (angles.length === 1 && opts.angles === 1) {
+        error = await pass({ search: true, fetch: true, timeoutMs: budget, searches: SEARCH_USES, fetches: FETCH_USES, ...(note ? { note } : {}) });
+      } else {
+        // Every angle at once. The search failed only when none finished; a
+        // refusal (key, quota) is reported over a timeout.
+        const ends = await Promise.all(
+          angles.map((a) => pass({ search: true, fetch: true, timeoutMs: budget, searches: ANGLE_SEARCH_USES, fetches: ANGLE_FETCH_USES, focus: a.focus(when), ...(note ? { note } : {}) })),
+        );
+        anglesFailed = ends.filter((e) => e && e.code !== "timeout").length;
+        const errs = ends.filter((e): e is SearchError => !!e);
+        if (errs.length === ends.length) error = errs.find((e) => e.code !== "timeout") ?? errs[0];
+        else if (errs.some((e) => e.code === "timeout") && !errs.some((e) => e.code !== "timeout")) error = errs.find((e) => e.code === "timeout");
+      }
       // No code line written before the time ran out: one quick pass from search results alone.
       if (error?.code === "timeout" && foundSoFar() === 0 && opts.retry !== false && !stopped()) {
         retried = true;
@@ -724,6 +813,13 @@ export async function suggestCodes(
     readFromPages: read.length,
     browserPages,
     browserCodes: codes.filter((c) => fromBrowser.has(c.code) || browserKeys.has(urlKey(c.sourceUrl))).length,
+    percents: hintedPercents([
+      ...text.split("\n").filter((l) => /^\W*MASKED\b/i.test(l) || maskedToken(l)),
+      ...findings.offers,
+      ...[...retrieved.titles].filter(([key, title]) => aboutStore(key) || title.toLowerCase().includes(merchant.brand.toLowerCase())).map(([, title]) => title),
+    ]),
+    angles: anglesRun,
+    anglesFailed,
     // A search the provider refused says why on its own; skipped pages are not news then.
     ...(notOpened && (declined || !opts.browser) && (!error || error.code === "timeout") ? { browserSkipped: { count: notOpened, why: declined ? ("declined" as const) : ("unavailable" as const) } } : {}),
   };

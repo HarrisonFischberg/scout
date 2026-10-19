@@ -1,4 +1,4 @@
-// Discovery never guesses (owner rule 2026-10-17): every candidate is a code
+// The web search itself never guesses (guesses.ts adds them later): every candidate is a code
 // the model saw on a page, checked here against what the search retrieved.
 // Synthetic stores, codes and pages only.
 import { describe, expect, it } from "vitest";
@@ -149,7 +149,7 @@ describe("suggestCodes when the search does not finish", () => {
         yield { type: "text", delta: "QUICK10 | https://deals.test/quick\n" };
       },
     };
-    const r = await suggestCodes(twoPass, "m", "www.masa.test", undefined, { timeoutMs: 20, retryTimeoutMs: 500, readPages: false });
+    const r = await suggestCodes(twoPass, "m", "www.masa.test", undefined, { angles: 1, timeoutMs: 20, retryTimeoutMs: 500, readPages: false });
     expect(reqs).toHaveLength(2);
     expect(reqs[0]).toMatchObject({ webFetch: true, webSearchMaxUses: 10 });
     expect(reqs[1]).toMatchObject({ webFetch: false, webSearchMaxUses: 6 });
@@ -170,7 +170,7 @@ describe("suggestCodes when the search does not finish", () => {
         await new Promise((_res, rej) => req.signal?.addEventListener("abort", () => rej(new ProviderError("anthropic", "network"))));
       },
     };
-    const r = await suggestCodes(slow, "m", "www.shop.test", undefined, { timeoutMs: 20, retryTimeoutMs: 20, readPages: false });
+    const r = await suggestCodes(slow, "m", "www.shop.test", undefined, { angles: 1, timeoutMs: 20, retryTimeoutMs: 20, readPages: false });
     expect(calls).toBe(1);
     expect(r.retried).toBeUndefined();
     expect(r.error?.code).toBe("timeout");
@@ -182,7 +182,7 @@ describe("suggestCodes when the search does not finish", () => {
       },
     };
     calls = 0;
-    await suggestCodes(empty, "m", "www.shop.test", undefined, { timeoutMs: 20, retry: false, readPages: false });
+    await suggestCodes(empty, "m", "www.shop.test", undefined, { angles: 1, timeoutMs: 20, retry: false, readPages: false });
     expect(calls).toBe(1);
   });
 
@@ -217,7 +217,7 @@ describe("suggestCodes request and evidence", () => {
         reqs.push(req);
       },
     };
-    await suggestCodes(recorder, "m", "www.tackform.test");
+    await suggestCodes(recorder, "m", "www.tackform.test", undefined, { angles: 1 });
     expect(reqs).toHaveLength(2);
     // Live sweep 2026-10-17: Melin's search stopped at 6 masked codes, and a model told to open the
     // listed pages before searching read them all and wrote nothing in four minutes (Brumate). The
@@ -278,7 +278,7 @@ describe("suggestCodes request and evidence", () => {
       "www.shop.test",
       undefined,
       // This fake replays the same stream on every call; the read-first pass is tested on its own.
-      { readPages: false },
+      { readPages: false, angles: 1 },
     );
     expect(r.codes.map((c) => [c.code, c.origin])).toEqual([
       ["SAVE20", "verified"],
@@ -356,7 +356,7 @@ describe("listed pages are read first", () => {
         yield { type: "text", delta: "TACKFAN10 | https://creator.test/tack\n" };
       },
     };
-    const r = await suggestCodes(p, "m", "www.tackform.test");
+    const r = await suggestCodes(p, "m", "www.tackform.test", undefined, { angles: 1 });
     const listed = await listedFor("www.tackform.test");
     expect(reqs).toHaveLength(2);
     expect(reqs[0]).toMatchObject({ webSearch: false, webFetch: true, webFetchMaxUses: listed.length });
@@ -412,7 +412,7 @@ describe("listed pages are read first", () => {
         yield { type: "text", delta: "OPEN10 | https://deals.test/o\n" };
       },
     };
-    const r = await suggestCodes(openai, "m", "www.tackform.test");
+    const r = await suggestCodes(openai, "m", "www.tackform.test", undefined, { angles: 1 });
     expect(reqs).toHaveLength(1);
     expect(reqs[0]).toMatchObject({ webSearch: true });
     expect(r.pagesRead).toBeUndefined();
@@ -424,7 +424,7 @@ describe("listed pages are read first", () => {
         again.push(req);
       },
     };
-    await suggestCodes(anthropic, "m", "www.tackform.test", undefined, { more: true, exclude: ["OPEN10"] });
+    await suggestCodes(anthropic, "m", "www.tackform.test", undefined, { angles: 1, more: true, exclude: ["OPEN10"] });
     expect(again).toHaveLength(1);
     expect(again[0]).toMatchObject({ webSearch: true });
   });
@@ -443,7 +443,7 @@ describe("listed pages are read first", () => {
         yield { type: "text", delta: "LATE10 | https://deals.test/s\n" };
       },
     };
-    const r = await suggestCodes(slowRead, "m", "www.tackform.test", undefined, { readTimeoutMs: 20 });
+    const r = await suggestCodes(slowRead, "m", "www.tackform.test", undefined, { angles: 1, readTimeoutMs: 20 });
     expect(reqs).toHaveLength(2);
     expect(r.error).toBeUndefined();
     expect(r.codes.map((c) => c.code)).toEqual(["LATE10"]);
@@ -455,7 +455,7 @@ describe("listed pages are read first", () => {
         throw new ProviderError("anthropic", "no_credit");
       },
     };
-    const r2 = await suggestCodes(broke, "m", "www.tackform.test");
+    const r2 = await suggestCodes(broke, "m", "www.tackform.test", undefined, { angles: 1 });
     expect(calls).toBe(1);
     expect(r2.error?.code).toBe("no_credit");
   });
@@ -517,7 +517,7 @@ describe("listed pages are read first", () => {
         yield { type: "text", delta: "QUICK10 | https://deals.test/quick\n" };
       },
     };
-    const r = await suggestCodes(p, "m", "www.tackform.test", undefined, { timeoutMs: 20, retryTimeoutMs: 500 });
+    const r = await suggestCodes(p, "m", "www.tackform.test", undefined, { angles: 1, timeoutMs: 20, retryTimeoutMs: 500 });
     expect(reqs.map((q) => [q.webSearch, q.webFetch])).toEqual([
       [false, true],
       [true, true],
