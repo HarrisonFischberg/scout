@@ -15,6 +15,16 @@ import { brandTokens, hintedPercents } from "./guesses";
 import { BROWSER_MAX_PAGES, BROWSER_TABS, BROWSER_TIME_MS, browserRead, type BrowserPage, type BrowserReason, type BrowserTarget, type PageBrowser } from "./browser-read";
 
 export const MAX_FOUND = 40;
+/** The web search's model when the panel's is Haiku (owner decision 2026-10-19, "Sonnet for search"). */
+export const SEARCH_MODEL = "claude-sonnet-5-5";
+/**
+ * The model the coupon web search runs on: Sonnet 5.5 in place of a Haiku
+ * model, which found no code online in the getbeefy.co run of 2026-10-19; a
+ * stronger model the user picked, and other providers' models, stay as they are.
+ */
+export function couponSearchModel(provider: string, model: string): string {
+  return provider === "anthropic" && /haiku/i.test(model) ? SEARCH_MODEL : model;
+}
 /**
  * The whole search, resumed turns included; what was found by then is kept.
  * Live sweep 2026-10-17: most searches finish in about a minute, but one that

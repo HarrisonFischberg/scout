@@ -224,6 +224,39 @@ describe("a whole run on a store whose best codes are guesses (getbeefy.co, from
     expect(second.tried.slice(0, 3).map((a) => [a.code, a.origin])).toEqual(kept.map((c) => [c, "remembered"]));
     expect(second.done.summary).toContain("It worked on this store before.");
   }, 60_000);
+
+  // Owner decision 2026-10-19 ("Sonnet for search"): with Haiku picked in the
+  // panel, the web search runs on Sonnet 5.5, and the cost line prices it so.
+  it("searches with Sonnet 5.5 when the panel's model is Haiku, and prices the search with it", async () => {
+    const models: string[] = [];
+    const priced: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        if (req.webSearch) models.push(req.model);
+        yield* search.stream(req);
+        if (req.webSearch) yield { type: "usage", usage: { inputTokens: 1_000_000, outputTokens: 0, webSearches: 0 } };
+      },
+    };
+    const events: CouponEvent[] = [];
+    const done = await runCouponJob({
+      page: store(),
+      provider: priced,
+      model: "claude-haiku-5-5",
+      control: new AgentControl(),
+      tabs: { open: async () => null, read: async () => null, click: async () => false, close: async () => undefined, wait: async () => undefined },
+      allowBrowser: async () => false,
+      askMore: async () => false,
+      emit: (e) => void events.push(e),
+    });
+    expect(models.length).toBeGreaterThan(0);
+    expect(new Set(models)).toEqual(new Set(["claude-sonnet-5-5"]));
+    expect(events.some((e) => e.kind === "trace" && e.stage === "coupons:search-model claude-sonnet-5-5")).toBe(true);
+    // Every search request read a million tokens at Sonnet 5.5's $2 per million.
+    expect(done.status_text).toBe("Cost: $" + (models.length * 2).toFixed(2));
+    const { couponSearchModel } = await import("../../src/coupons/codes");
+    expect(couponSearchModel("anthropic", "claude-opus-5-5")).toBe("claude-opus-5-5");
+    expect(couponSearchModel("openai", "gpt-mini")).toBe("gpt-mini");
+  }, 60_000);
 });
 
 // Owner report 2026-10-19: getbeefy.co found GETBEEFY but not a creator's
