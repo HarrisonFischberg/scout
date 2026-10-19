@@ -27,6 +27,8 @@ export interface HistoryEntry {
   conv?: string;
   /** Part 2: tabs and screenshots shared for this answer (title, host, status). Never page text. */
   shared?: Array<{ title: string; host: string; status: string }>;
+  /** Host of the page the chat was on (no path), titling it in the chats menu. */
+  site?: string;
   /** Numbered sources the answer may cite as [n] (pages shared, then web results): address without query, title, kind. */
   sources?: Array<{ url: string; title?: string; kind?: "page" | "web" }>;
 }
@@ -150,6 +152,7 @@ function parseHistory(raw: unknown): HistoryEntry[] {
             answer: r.answer,
             ...(r.kind === "agent" || r.kind === "coupons" || r.kind === "chat" ? { kind: r.kind } : {}),
             ...(typeof r.conv === "string" && r.conv ? { conv: r.conv } : {}),
+            ...(typeof r.site === "string" && /^[a-z0-9.-]{1,253}$/i.test(r.site) ? { site: r.site } : {}),
             ...(Array.isArray(r.shared) ? { shared: parseShared(r.shared) } : {}),
             ...(Array.isArray(r.sources) ? { sources: parseSources(r.sources) } : {}),
           },
@@ -304,6 +307,25 @@ export async function saveRating(storage: StorageArea, key: string, rating: Rati
   if (rating) all[key] = rating;
   const kept = Object.fromEntries(Object.entries(all).slice(-MAX_RATINGS));
   await storage.set({ [RATINGS_KEY]: kept });
+}
+
+/** Deletes one conversation's saved entries (the chats menu). */
+export async function deleteConversation(storage: StorageArea, conv: string): Promise<void> {
+  const got = await storage.get(HISTORY_KEY);
+  const raw = got[HISTORY_KEY];
+  if (!Array.isArray(raw)) return;
+  await storage.set({ [HISTORY_KEY]: raw.filter((e: unknown) => (e as { conv?: unknown } | null)?.conv !== conv) });
+}
+
+/** Host of a page address for HistoryEntry.site; undefined for anything but http(s). */
+export function siteOf(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:" ? u.hostname.replace(/^www\./, "") || undefined : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Removes all saved chat history and the ratings given to its answers. */

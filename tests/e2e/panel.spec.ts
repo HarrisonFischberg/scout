@@ -136,6 +136,62 @@ test("the panel works in Private Browsing like in any other tab, and marks the c
   expect(stored.privateConversations).toEqual({ "3": [conv] });
 });
 
+// Owner request 2026-10-19: a chats menu lists earlier chats so they can be opened again or deleted.
+test("the chats menu lists earlier chats, opens one, deletes one, and keeps private chats to their tab", async ({ page }) => {
+  let n = 0;
+  await page.route("https://api.anthropic.com/v1/messages", (r) =>
+    r.fulfill({ status: 200, contentType: "text/event-stream", body: sse("Answer " + ++n + ".") }),
+  );
+  await openPanel(page, { id: 1 });
+  const log = page.getByRole("log");
+  const ask = async (q: string, a: string): Promise<void> => {
+    await page.getByLabel("Ask about this page").fill(q);
+    await page.getByLabel("Ask about this page").press("Enter");
+    await expect(log.getByText(a)).toBeVisible();
+  };
+  await ask("What moved the market today?", "Answer 1.");
+  await page.getByRole("button", { name: "New chat" }).click();
+  await ask("Which sector led?", "Answer 2.");
+
+  const chats = page.getByRole("complementary", { name: "Chats" });
+  await page.getByRole("button", { name: "Chats", exact: true }).click();
+  await expect(chats).toBeVisible();
+  const rows = chats.locator("#chats-list li");
+  await expect(rows).toHaveCount(2);
+  // Newest first, the chat on screen marked, each with its site.
+  await expect(rows.nth(0)).toContainText("Which sector led?");
+  await expect(rows.nth(0)).toHaveAttribute("aria-current", "true");
+  await expect(rows.nth(1)).toContainText("What moved the market today?");
+  await expect(rows.nth(1)).toContainText("stocks.test");
+
+  await rows.nth(1).locator(".chat-open").click();
+  await expect(chats).toBeHidden();
+  await expect(log.getByText("Answer 1.")).toBeVisible();
+  await expect(log.getByText("Which sector led?")).toHaveCount(0);
+  // The next question continues the reopened chat, and reopening the panel keeps it.
+  await ask("And tomorrow?", "Answer 3.");
+  await page.reload();
+  await expect(log.getByText("And tomorrow?")).toBeVisible();
+
+  await page.getByRole("button", { name: "Chats", exact: true }).click();
+  await chats.getByRole("button", { name: "Delete chat: Which sector led?" }).click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.nth(0)).toContainText("What moved the market today?");
+  await page.keyboard.press("Escape");
+  await expect(chats).toBeHidden();
+
+  // A private tab sees only its own chats, and its chats stay out of other tabs' menus.
+  await switchTab(page, { id: 3, incognito: true });
+  await ask("Private question", "Answer 4.");
+  await page.getByRole("button", { name: "Chats", exact: true }).click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.nth(0)).toContainText("Private question");
+  await switchTab(page, { id: 1 });
+  await page.getByRole("button", { name: "Chats", exact: true }).click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.nth(0)).toContainText("What moved the market today?");
+});
+
 // Owner request 2026-10-18: Scout should be usable sooner after Safari starts
 // from cold. Each Keychain read wakes the app's native handler, slow the first
 // time, so the panel reads both keys once, in parallel, as it opens.

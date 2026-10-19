@@ -280,6 +280,30 @@ test("New chat during Find coupons opens a new chat, the run keeps going, and th
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
 });
 
+// Owner request 2026-10-19: the chats menu lists a running coupon search first and opens it, still going.
+test("the chats menu shows a running Find coupons and goes back to it", async ({ page }) => {
+  test.setTimeout(90_000);
+  await openPopup(page, { pct: {} });
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("button", { name: "Find coupons" }).click();
+  await expect(page.locator("#task")).toBeVisible();
+  await page.getByRole("button", { name: "New chat" }).click();
+  await expect(page.locator("#log")).toBeEmpty();
+  await page.getByRole("button", { name: "Chats", exact: true }).click();
+  const row = page.locator("#chats-list li").first();
+  await expect(row).toContainText("Find coupons");
+  await expect(row).toContainText(/Finding coupons…|Needs your answer/);
+  await expect(row.getByRole("button", { name: /^Delete chat/ })).toHaveCount(0);
+  await row.getByRole("button").first().click();
+  await expect(page.locator("#chats")).toBeHidden();
+  await expect(page.locator("#coupon-chip")).toBeHidden();
+  await expect(page.locator("#task")).toBeVisible();
+  await expect(page.locator(".msg.user").first()).toContainText("Find the best coupon for this cart.");
+  await expect(page.locator("#coupons-more-text")).toBeVisible(BATCH_WAIT);
+  await page.getByRole("button", { name: "Stop here" }).click();
+  await expect(page.locator("#task .trace-head")).toContainText(/Finished|Stopped/);
+});
+
 // A web search the provider refused (bad key) means nothing is tested: the key has to be fixed first,
 // so no guesses stand in for it (a search that only ran out of time still leads to guesses).
 test("a failed web search tests nothing and says why", async ({ page }) => {
