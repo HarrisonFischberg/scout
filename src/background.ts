@@ -92,6 +92,7 @@ browser.runtime.onConnect?.addListener((port) => {
 
 browser.tabs.onRemoved?.addListener((tabId) => {
   scout.taskHost.stopForTab(tabId);
+  scout.couponHost.stopForTab(tabId);
   if (storage) void forgetTab(storage, tabId).catch(() => undefined);
 });
 

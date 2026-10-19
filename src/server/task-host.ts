@@ -272,22 +272,6 @@ export class TaskHost {
    */
   async control(p: { task_id: string; command: "pause" | "resume" | "stop" }, sender?: { kind: "panel" | "content"; raw: MessageSender }): Promise<{ ok: boolean; state?: OverlayState }> {
     const task = this.tasks.get(p.task_id);
-    // A coupon run shows the same overlay from the panel ("coupons:<tab>"); its Stop is relayed to the panel watching that tab.
-    const coupons = /^coupons:(\d+)$/.exec(p.task_id);
-    if (!task && coupons && p.command === "stop") {
-      const tabId = Number(coupons[1]);
-      if (sender?.kind === "content" && sender.raw.tab?.id !== tabId) throw new BridgeError("schema-error", "not this tab's run");
-      let delivered = false;
-      for (const port of [...(this.watchers.get(tabId) ?? [])]) {
-        try {
-          port.postMessage(envelope("task.event", { task_id: p.task_id, tab_id: tabId, seq: 1, kind: "stop" }));
-          delivered = true;
-        } catch {
-          this.watchers.get(tabId)?.delete(port);
-        }
-      }
-      return { ok: delivered };
-    }
     if (!task || task.done) return { ok: false };
     if (sender?.kind === "content" && sender.raw.tab?.id !== task.tab_id) throw new BridgeError("schema-error", "not this tab's task");
     if (p.command === "stop") {

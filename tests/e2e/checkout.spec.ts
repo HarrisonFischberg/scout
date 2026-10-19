@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { withWorker } from "./worker";
 
 // Diagnostics run #20 (2026-10-16): Find coupons on a Shopify checkout page.
 // Drives the built popup and the built content script (run `npm run build`
@@ -93,6 +94,8 @@ async function open(page: Page, opts: { shopify: boolean; codes: string[]; fixtu
       },
     };
   }, shop.url());
+  // Find coupons runs in the background worker, next to the panel (src/server/coupon-host.ts).
+  await withWorker(page);
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
   await page.route("https://api.anthropic.com/**", (r) =>
