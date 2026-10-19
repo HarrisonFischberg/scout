@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { clampY, coversAllSites, edgeMatches, isDrag, MAX_TAB_SCALE, pageButtonOffered, parsePageButton, reachText, sameMatches, snapSide, TAB_SIZE, tabScale, topLayerTab, Y_MAX, Y_MIN } from "../../src/panel/edge";
-import { openPanel } from "../../src/panel/toolbar";
+import { openPanel, reopensAfterSwitch } from "../../src/panel/toolbar";
 
 describe("page button settings", () => {
   // Owner bug report 2026-10-18: a top-layer tab's ::backdrop made iPhone
@@ -146,5 +146,16 @@ describe("page button opens Scout's own panel", () => {
     // when they use extension APIs; the entry also makes Safari ask for site
     // access before Scout opens.
     expect(manifest.web_accessible_resources).toBeUndefined();
+  });
+});
+
+// Chats menu, coupon search on another tab (owner report 2026-10-19): on a Mac
+// the worker only switches tabs; opening the popover from there left Scout's
+// button dead on that tab.
+describe("switching to a tab from the chats menu", () => {
+  it("opens the panel after the switch on iPhone and iPad, not on a Mac", () => {
+    expect(reopensAfterSwitch("mac")).toBe(false);
+    expect(reopensAfterSwitch("ios")).toBe(true);
+    expect(reopensAfterSwitch(undefined)).toBe(true);
   });
 });
