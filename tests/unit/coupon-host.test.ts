@@ -75,6 +75,8 @@ describe("coupon host", () => {
     // The panel opens: everything so far, in order, diagnostics stages included with their time in the run.
     const run = f.host.status(1).run!;
     expect(run.done).toBe(false);
+    // The run's chat, so a panel showing another chat (after New chat) leaves it there.
+    expect(run.conv).toBe("c1");
     const kinds = run.events.map((e) => e.kind);
     expect(kinds).toContain("say");
     expect(kinds).toContain("attempt");

@@ -123,9 +123,13 @@ export async function conversationForTab(storage: Store, tabId: number | undefin
 
 /** "New chat": this tab gets a fresh conversation. Earlier entries stay in history until they expire (private ones until the tab closes). */
 export async function startNewConversation(storage: Store, tabId: number | undefined, now: number, priv = false): Promise<string> {
+  return reopenConversation(storage, tabId, newConversationId(now), now, priv);
+}
+
+/** This tab shows `conv` again (back to a coupon run's chat from its chip). */
+export async function reopenConversation(storage: Store, tabId: number | undefined, conv: string, now: number, priv = false): Promise<string> {
   const states = await loadTabStates(storage);
   const key = tabKey(tabId);
-  const conv = newConversationId(now);
   states[key] = { conv, open: states[key]?.open ?? false, at: now };
   await saveTabStates(storage, states);
   if (priv) await markPrivate(storage, tabId, conv);
