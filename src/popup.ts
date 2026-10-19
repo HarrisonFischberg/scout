@@ -274,6 +274,8 @@ function syncSegmented(inputs: HTMLInputElement[]): void {
 }
 
 const CONTEXT_TURNS = 10;
+/** Clear chat history gives up and says so when storage has not answered by then. */
+const CLEAR_TIMEOUT_MS = 5_000;
 
 /** The moving "processing" indicator: coupon milestones, a Working card's head, and an answer before its first words. */
 const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></span>';
@@ -824,7 +826,8 @@ async function main(): Promise<void> {
   // window's panel): this thread goes too, unless an answer or run is still going.
   browser.storage?.onChanged?.addListener((changes, area) => {
     const change = changes[HISTORY_KEY];
-    if (area !== "local" || !change || !Array.isArray(change.newValue) || change.newValue.length) return;
+    const emptied = change && (change.newValue === undefined || (Array.isArray(change.newValue) && !change.newValue.length));
+    if (area !== "local" || !emptied) return;
     if (activeChat || task || couponRun || !turns.length) return;
     clearThread();
   });
@@ -3200,27 +3203,34 @@ async function main(): Promise<void> {
       });
   });
 
-  // Owner bug 2026-10-19: Clear chat history seemed to do nothing on Mac and
-  // iPhone. A failed write now says so, and this tab starts a new
-  // conversation, so nothing saved under the old one can show again.
+  // Owner bug 2026-10-19: Clear chat history showed nothing at all on Mac
+  // and iPhone. The saved history is removed first and the result always
+  // shows: cleared, or could not clear (also when storage never answers). The
+  // tab then starts a new conversation, so nothing saved under the old one
+  // can show again.
   el("history-clear").addEventListener("click", () => {
-    if (!storage) {
-      savedMsg.textContent = "Could not clear chat history. Try again.";
-      return;
-    }
     savedMsg.textContent = "";
-    void clearHistory(storage)
-      .then(async () => {
-        clearThread();
-        conv = await startNewConversation(storage, tab.id, Date.now(), tab.incognito).catch(() => conv);
-        trace("history:cleared");
-        savedMsg.textContent = "Chat history cleared.";
-      })
-      .catch((err: unknown) => {
-        trace("history:clear-failed " + (err instanceof Error ? err.name : "unknown"));
-        savedMsg.textContent = "Could not clear chat history. Try again.";
-      })
-      .then(refreshSettings);
+    trace("history:clear");
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), CLEAR_TIMEOUT_MS));
+    void (storage ? Promise.race([clearHistory(storage), timeout]) : Promise.reject(new Error("no storage")))
+      .then(
+        async () => {
+          trace("history:cleared");
+          savedMsg.textContent = "Chat history cleared.";
+          try {
+            clearThread();
+          } catch {
+            trace("history:thread-not-cleared");
+          }
+          if (storage) conv = await startNewConversation(storage, tab.id, Date.now(), tab.incognito).catch(() => conv);
+        },
+        (err: unknown) => {
+          trace("history:clear-failed " + (err instanceof Error ? err.message.slice(0, 60) : "unknown"));
+          savedMsg.textContent = "Could not clear chat history. Try again.";
+        },
+      )
+      .then(refreshSettings)
+      .catch(() => undefined);
   });
 
   const deleteBtn = el<HTMLButtonElement>("delete-all");
