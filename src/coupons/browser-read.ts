@@ -41,7 +41,8 @@ export interface BrowserTarget {
   error?: string;
 }
 
-export type BrowserOutcome = "read" | "empty" | "captcha" | "sign_in" | "no_access" | "timeout" | "stopped" | "error";
+/** "wall": a bot check or block page; "missing": a not-found page. */
+export type BrowserOutcome = "read" | "empty" | "wall" | "missing" | "captcha" | "sign_in" | "no_access" | "timeout" | "stopped" | "error";
 
 /** One page the browser visited: the run trace's record of it. */
 export interface BrowserPage {
@@ -93,6 +94,21 @@ const NOT_CODES = new Set([
   "YES", "NO", "OK", "NEW", "HOT", "TOP", "BEST", "FREE", "SHIPPING", "LOADING", "MENU", "SEARCH", "LOGIN", "SIGNUP", "HOME",
   "FAQ", "FAQS", "USD", "EUR", "GBP", "CAD", "AUD", "OFF", "BOGO", "SITEWIDE", "TODAY", "ACTIVE", "SUCCESS", "THANKS",
 ]);
+
+// Short pages that are a bot check or a block, not a coupon page. Owner run
+// 2026-10-19 (#237): every coupon-site page came back "empty" at 263 to 1704
+// characters, and the report could not say whether the site blocked Scout or
+// had no page for the store.
+const WALL = /\b(?:just a moment|checking (?:your browser|if the site connection is secure)|verify (?:that )?you(?: are|'re) (?:a )?human|are you a (?:human|robot)|attention required|access denied|request blocked|you have been blocked|unusual traffic|enable (?:javascript|cookies) (?:and cookies )?to continue|ddos protection|security check)\b/i;
+const MISSING = /\b(?:page not found|404|no longer exists|could(?: not|n't) find (?:that|this|the) page|no (?:coupons|results|stores?) (?:found|for))\b/i;
+const SHORT_PAGE = 2500;
+/** Why a page with no codes had none: a wall, a missing page, or just nothing there. */
+export function emptyOutcome(text: string): "wall" | "missing" | "empty" {
+  if (text.length > SHORT_PAGE) return "empty";
+  if (WALL.test(text)) return "wall";
+  if (MISSING.test(text)) return "missing";
+  return "empty";
+}
 
 const isButtonish = (e: SnapElement): boolean => e.tag === "button" || e.role === "button" || e.tag === "a" || e.role === "link" || e.role === "tab";
 
@@ -305,7 +321,7 @@ export async function browserRead(targets: BrowserTarget[], browser: PageBrowser
           if (page.outcome !== "captcha") {
             if (found.length) page.outcome = "read";
             else if (SIGN_IN.test(text)) page.outcome = "sign_in";
-            else page.outcome = stopped() ? "stopped" : text.trim().length >= MIN_TEXT ? "empty" : "timeout";
+            else page.outcome = stopped() ? "stopped" : text.trim().length >= MIN_TEXT ? emptyOutcome(text) : "timeout";
           }
         }
       }

@@ -12,7 +12,7 @@ import type { Effort, ProviderClient, Usage } from "../providers/types";
 import { browserFirstSites, countFetch, parseReaderHosts, READER_HOSTS_KEY } from "./reader-hosts";
 import { browserTrace, type BrowserTarget, type PageBrowser } from "./browser-read";
 import { mergeCandidates, rankCandidates, type CouponCandidate } from "./candidates";
-import { couponSearchModel, suggestCodes, type SuggestedCodes } from "./codes";
+import { couponSearchModel, passTrace, suggestCodes, type SuggestedCodes } from "./codes";
 import {
   CodeQueue,
   checkoutTarget,
@@ -314,6 +314,7 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         trace("coupons:pages listed=" + sug.pagesListed + " opened=" + sug.pagesOpened + (sug.pagesRead ? " read-first" : ""));
         for (const p of sug.pages) trace("coupons:page " + pageLabel(p.url) + " " + (p.ok ? "ok" : p.error ?? "error") + " " + (p.chars ?? 0));
         trace("coupons:candidates store=" + onSite.length + " verified=" + sug.verified + " reported=" + sug.reported + " dropped=" + sug.dropped + " masked=" + sug.masked + " ignored=" + sug.ignored + " read=" + sug.readFromPages);
+        for (const p of sug.passes) trace(passTrace(p));
         trace("coupons:angles " + sug.angles + (sug.anglesFailed ? " failed=" + sug.anglesFailed : "") + " hints=" + sug.percents.length);
         for (const c of sug.codes) known.add(c.code);
         say(discoveryLine(discovery));
@@ -375,7 +376,8 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
             addUsage(f, searchModel);
             tally(f);
             if (f.error) trace("coupons:search-error " + f.error.code);
-            trace("coupons:candidates verified=" + f.verified + " reported=" + f.reported + " dropped=" + f.dropped + " masked=" + f.masked);
+            for (const p of f.passes) trace(passTrace(p));
+            trace("coupons:candidates verified=" + f.verified + " reported=" + f.reported + " dropped=" + f.dropped + " masked=" + f.masked + " ignored=" + f.ignored);
             say(f.codes.length > 0 ? "Found " + plural(f.codes.length, "more code") + " to try." : "No more codes found.");
             again.done();
           })
