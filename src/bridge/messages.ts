@@ -313,6 +313,8 @@ export const WORKER_EVENTS = {
       prompt_id: "string",
       tried: "number",
       stage: "string",
+      /** A stage's time in the run (CouponHost.emit). Missing here, every stage was dropped (owner report 2026-10-19, run #203). */
+      at_ms: "number",
       url: "string",
       status: "string",
       message: "string",
@@ -325,7 +327,7 @@ export const WORKER_EVENTS = {
       web_searches: "number",
     },
     optional: [
-      "text", "step", "attempt", "currency", "prompt_id", "tried", "stage", "url", "status", "message", "outcome", "summary", "tone", "status_text",
+      "text", "step", "attempt", "currency", "prompt_id", "tried", "stage", "at_ms", "url", "status", "message", "outcome", "summary", "tone", "status_text",
       "input_tokens", "output_tokens", "web_searches",
     ],
   },

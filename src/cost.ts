@@ -65,3 +65,15 @@ export function formatCostLine(model: string, usage: Usage): string {
   const usd = estimateCostUsd(model, usage);
   return usd === null ? `Cost: not available for ${model}` : `Cost: ${formatUsd(usd)}`;
 }
+
+/** One cost line for a run that used more than one model: each part priced with its own model. */
+export function formatCostLineParts(parts: Array<{ model: string; usage: Usage }>): string {
+  let usd = 0;
+  for (const p of parts) {
+    if (!p.usage.inputTokens && !p.usage.outputTokens && !p.usage.webSearches) continue;
+    const part = estimateCostUsd(p.model, p.usage);
+    if (part === null) return `Cost: not available for ${p.model}`;
+    usd += part;
+  }
+  return `Cost: ${formatUsd(usd)}`;
+}

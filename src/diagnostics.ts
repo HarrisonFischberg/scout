@@ -42,7 +42,8 @@ interface Stored {
 
 export const DIAG_KEY = "diagnostics";
 export const MAX_RUNS = 5;
-export const MAX_EVENTS = 200;
+// A coupon run with two searches and 80 tested codes writes about 250 stages.
+export const MAX_EVENTS = 400;
 const MAX_TEXT = 300;
 
 /** Removes anything that looks like a secret or personal identifier, then caps length. */

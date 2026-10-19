@@ -7,12 +7,12 @@
 // panel replays them. Diagnostics stages are stage names only, never content.
 import type { Action, ActionResult } from "../actions/executor";
 import type { AgentControl } from "../agent/control";
-import { formatCostLine } from "../cost";
+import { formatCostLineParts } from "../cost";
 import type { Effort, ProviderClient, Usage } from "../providers/types";
 import { browserFirstSites, countFetch, parseReaderHosts, READER_HOSTS_KEY } from "./reader-hosts";
 import { browserTrace, type BrowserTarget, type PageBrowser } from "./browser-read";
 import { mergeCandidates, rankCandidates, type CouponCandidate } from "./candidates";
-import { suggestCodes, type SuggestedCodes } from "./codes";
+import { couponSearchModel, suggestCodes, type SuggestedCodes } from "./codes";
 import {
   CodeQueue,
   checkoutTarget,
@@ -102,15 +102,21 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     latest: (): number => latestStep,
     end: (): void => emit({ kind: "steps-end" }),
   };
+  // The web search runs on a stronger model than Haiku (owner decision
+  // 2026-10-19, "Sonnet for search"): Haiku found no code online on getbeefy.co.
+  // Everything else (finding the coupon box) keeps the panel's model.
+  const searchModel = couponSearchModel(client.id, model);
   let used: Usage = { inputTokens: 0, outputTokens: 0 };
-  const addUsage = (more: { inputTokens: number; outputTokens: number; webSearches?: number }): void => {
-    const searches = (used.webSearches ?? 0) + (more.webSearches ?? 0);
-    used = {
-      inputTokens: used.inputTokens + more.inputTokens,
-      outputTokens: used.outputTokens + more.outputTokens,
-      ...(searches ? { webSearches: searches } : {}),
+  let usedByModel = new Map<string, Usage>();
+  const addUsage = (more: { inputTokens: number; outputTokens: number; webSearches?: number }, by = model): void => {
+    const sum = (a: Usage): Usage => {
+      const searches = (a.webSearches ?? 0) + (more.webSearches ?? 0);
+      return { inputTokens: a.inputTokens + more.inputTokens, outputTokens: a.outputTokens + more.outputTokens, ...(searches ? { webSearches: searches } : {}) };
     };
+    used = sum(used);
+    usedByModel = new Map(usedByModel).set(by, sum(usedByModel.get(by) ?? { inputTokens: 0, outputTokens: 0 }));
   };
+  const costLine = (): string => formatCostLineParts([...usedByModel].map(([m, u]) => ({ model: m, usage: u })));
   const finish = (d: Omit<Extract<CouponEvent, { kind: "done" }>, "kind" | "usage">): Extract<CouponEvent, { kind: "done" }> => {
     steps.end();
     const done = { kind: "done" as const, ...d, usage: used };
@@ -252,7 +258,8 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
       },
     };
     trace("coupons:browser-first " + browserPages.firstHosts.length);
-    const searching = suggestCodes(client, model, merchant, ac.signal, {
+    if (searchModel !== model) trace("coupons:search-model " + searchModel);
+    const searching = suggestCodes(client, searchModel, merchant, ac.signal, {
           ...(sells ? { sells } : {}),
       browser: browserPages,
       onFound: (fresh) => {
@@ -301,7 +308,7 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     const known = new Set<string>(onSite.map((c) => c.code));
     const searched = searching
       .then((sug) => {
-        addUsage(sug);
+        addUsage(sug, searchModel);
         tally(sug);
         if (sug.error) trace("coupons:search-error " + sug.error.code);
         trace("coupons:pages listed=" + sug.pagesListed + " opened=" + sug.pagesOpened + (sug.pagesRead ? " read-first" : ""));
@@ -310,7 +317,10 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         trace("coupons:angles " + sug.angles + (sug.anglesFailed ? " failed=" + sug.anglesFailed : "") + " hints=" + sug.percents.length);
         for (const c of sug.codes) known.add(c.code);
         say(discoveryLine(discovery));
-        if (sug.offers.length) say("Code-free offers the pages mention (not tested): " + sug.offers.slice(0, 3).join("; ") + ".");
+        if (sug.offers.length) {
+          const list = sug.offers.slice(0, 3).join("; ");
+          say("Code-free offers the pages mention (not tested): " + list + (/[.…!?]$/.test(list) ? "" : "."));
+        }
         // A search the provider refused (key, credit) says so on its own; a timeout still leads to guesses.
         if (!run.isStopped && (!sug.error || sug.error.code === "timeout")) {
           const guesses = guessCodes({ merchant, percents: sug.percents, known });
@@ -349,7 +359,7 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         // Mostly expired codes: this round looks for promotions running now first.
         const fresh = mostlyExpired(kinds);
         trace("coupons:find-more" + (fresh ? " fresh" : ""));
-        void suggestCodes(client, model, merchant, ac.signal, {
+        void suggestCodes(client, searchModel, merchant, ac.signal, {
           ...(sells ? { sells } : {}),
           browser: browserPages,
           exclude: already,
@@ -362,7 +372,7 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
           ...(deps.effort ? { effort: deps.effort } : {}),
         })
           .then((f) => {
-            addUsage(f);
+            addUsage(f, searchModel);
             tally(f);
             if (f.error) trace("coupons:search-error " + f.error.code);
             trace("coupons:candidates verified=" + f.verified + " reported=" + f.reported + " dropped=" + f.dropped + " masked=" + f.masked);
@@ -417,7 +427,7 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         outcome: stopped ? "stopped" : failed ? "error" : "done",
         summary: couponSummary(outcome, discovery),
         tone: failed ? "error" : "assistant",
-        status_text: formatCostLine(model, used),
+        status_text: costLine(),
       });
     }
     return finish({
@@ -426,7 +436,7 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
       outcome: outcome.status === "stopped" ? "stopped" : outcome.status === "done" ? "done" : "error",
       summary: couponSummary(outcome, discovery),
       tone: outcome.status === "no_form" || outcome.status === "error" ? "error" : "assistant",
-      status_text: formatCostLine(model, used),
+      status_text: costLine(),
     });
   } catch {
     const summary = "Could not finish the coupon search. Nothing was ordered.";

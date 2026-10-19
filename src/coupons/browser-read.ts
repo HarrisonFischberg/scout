@@ -127,13 +127,24 @@ export function codeAlone(s: string): string | null {
   return /\d/.test(code) || code.length >= 6 ? code : null;
 }
 
-/** Element names and values that are codes by themselves. */
-function elementCodes(snap: Snapshot): Map<string, string> {
+/** "SAVE20 Copy", "Code: CYBERTACK": a string labeled as a code, not just written in capitals. */
+const labeledCode = (s: string): boolean => /\s+(?:copy|copied|copy\s+code)$/i.test(s.trim()) || /^(?:code|promo\s+code|coupon\s+code)\s*[:-]/i.test(s.trim());
+
+/**
+ * Element names and values that are codes by themselves. `asLoaded`: the page
+ * as it first rendered, where a word with no digit counts only when labeled as
+ * a code. Live run 2026-10-19 (getbeefy.co): menu links styled in capitals
+ * (STORES, CATEGORY, BUNDLE) were tested as codes. After a "Show code" press,
+ * a new word alone is the code the press revealed.
+ */
+function elementCodes(snap: Snapshot, asLoaded = false): Map<string, string> {
   const out = new Map<string, string>();
   for (const e of snap.elements) {
     for (const s of [e.name, e.redacted ? "" : (e.value ?? "")]) {
       const code = codeAlone(s);
-      if (code && !out.has(code)) out.set(code, s.trim());
+      if (!code || out.has(code)) continue;
+      if (asLoaded && !/\d/.test(code) && !labeledCode(s)) continue;
+      out.set(code, s.trim());
     }
   }
   return out;
@@ -247,7 +258,7 @@ export async function browserRead(targets: BrowserTarget[], browser: PageBrowser
           text = snap.text;
           const landed = snap.url || target.url;
           for (const c of codesWithContext(snap.text, 20)) addCode({ code: c.code, url: target.url, context: c.context, how: "printed" });
-          for (const [code, s] of elementCodes(snap)) addCode({ code, url: target.url, context: s, how: "printed" });
+          for (const [code, s] of elementCodes(snap, true)) addCode({ code, url: target.url, context: s, how: "printed" });
           // 2. Press coupon controls, one at a time, reading what each shows.
           // Refs are renumbered on every read, so presses are counted by name:
           // `skipped` = how many leading controls of that name are done. A press

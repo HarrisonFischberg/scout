@@ -18,7 +18,7 @@ import {
 import { shopifyCartInfo } from "../../src/coupons/shopify";
 import { buildSnapshot, type SnapNode, type Snapshot } from "../../src/snapshot/snapshot";
 
-const PCT: Record<string, number> = { SAVE10: 10, SAVE20: 20 };
+const PCT: Record<string, number> = { SAVE10: 10, SAVE20: 20, CENT1: 0.01 };
 
 /** Fake shop cart: Total is 100 minus the discount of the last applied code. */
 function shop(opts: { captchaAfter?: string; noForm?: boolean } = {}): CouponPage & { acts: Action[]; ordered: number } {
@@ -104,6 +104,14 @@ describe("runCouponSearch", () => {
     // Winner re-applied last: the box ends on the best code.
     const typedCodes = p.acts.filter((a) => a.type === "type").map((a) => (a as { text: string }).text);
     expect(typedCodes[typedCodes.length - 1]).toBe("SAVE20");
+  });
+
+  // Live run 2026-10-19 (getbeefy.co): WELCOME10 took $0.01 off $177.10 and
+  // was then tried together with the real winner.
+  it("a code that takes off a cent does not count as a saving", async () => {
+    const out = await runCouponSearch({ page: shop(), codes: ["CENT1"].map((code) => ({ code, origin: "guess" as const, sourceUrl: "" })), settleMs: 0 });
+    expect(out.best).toBeUndefined();
+    expect(out.attempts[0]).toMatchObject({ code: "CENT1", saving: 0, note: "Takes off only $0.01, too little to count." });
   });
 
   it("reports no saving when no code works", async () => {

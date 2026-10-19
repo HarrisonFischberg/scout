@@ -64,6 +64,12 @@ describe("guessed codes", () => {
     expect(new Set(codes).size).toBe(codes.length);
   });
 
+  it("skips hinted percentages store codes rarely use (5% off 3+ bags, up to 50% off)", () => {
+    const codes = guessCodes({ merchant: beefy, percents: [5, 50, 15], now: new Date(2026, 9, 19) }).map((c) => c.code);
+    expect(codes.slice(0, 2)).toEqual(["BEEFY15", "GETBEEFY15"]);
+    for (const c of ["BEEFY5", "BEEFY50", "SAVE5", "SAVE50"]) expect(codes).not.toContain(c);
+  });
+
   it("never guesses a code already found, and labels every guess as one", () => {
     const g = guessCodes({ merchant: beefy, percents: [15], known: ["BEEFY15", "welcome10"] });
     expect(g.map((c) => c.code)).not.toContain("BEEFY15");
@@ -114,7 +120,13 @@ describe("several searches at once", () => {
     expect(parts.some((p) => p.includes("creators, influencers and affiliates"))).toBe(true);
     expect(parts.some((p) => p.includes("the store's own pages"))).toBe(true);
     expect(parts.some((p) => p.includes("October 2026"))).toBe(true);
-    expect(reqs.every((q) => q.webSearchMaxUses === 6 && q.webFetchMaxUses === 6)).toBe(true);
+    expect(reqs.every((q) => q.webFetchMaxUses === 6)).toBe(true);
+    // The creator search runs its searches word for word, with room for all of them (owner report 2026-10-19).
+    const creators = reqs.find((q) => String(q.messages[0]?.content).includes("creators, influencers"))!;
+    expect(creators.webSearchMaxUses).toBe(9);
+    expect(String(creators.messages[0]?.content)).toContain("'site:linktr.ee shop'");
+    expect(String(creators.messages[0]?.content)).toContain("'\"shop.test\" code'");
+    expect(reqs.filter((q) => q !== creators).every((q) => q.webSearchMaxUses === 6)).toBe(true);
     expect(r.codes.map((c) => c.code).sort()).toEqual(["CODE1A", "CODE1B", "CODE2A", "CODE2B", "CODE3A", "CODE3B", "CODE4A", "CODE4B"]);
     expect(r.codes.every((c) => c.origin === "verified")).toBe(true);
     expect(r.angles).toBe(4);
@@ -212,6 +224,39 @@ describe("a whole run on a store whose best codes are guesses (getbeefy.co, from
     expect(second.tried.slice(0, 3).map((a) => [a.code, a.origin])).toEqual(kept.map((c) => [c, "remembered"]));
     expect(second.done.summary).toContain("It worked on this store before.");
   }, 60_000);
+
+  // Owner decision 2026-10-19 ("Sonnet for search"): with Haiku picked in the
+  // panel, the web search runs on Sonnet 5.5, and the cost line prices it so.
+  it("searches with Sonnet 5.5 when the panel's model is Haiku, and prices the search with it", async () => {
+    const models: string[] = [];
+    const priced: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        if (req.webSearch) models.push(req.model);
+        yield* search.stream(req);
+        if (req.webSearch) yield { type: "usage", usage: { inputTokens: 1_000_000, outputTokens: 0, webSearches: 0 } };
+      },
+    };
+    const events: CouponEvent[] = [];
+    const done = await runCouponJob({
+      page: store(),
+      provider: priced,
+      model: "claude-haiku-5-5",
+      control: new AgentControl(),
+      tabs: { open: async () => null, read: async () => null, click: async () => false, close: async () => undefined, wait: async () => undefined },
+      allowBrowser: async () => false,
+      askMore: async () => false,
+      emit: (e) => void events.push(e),
+    });
+    expect(models.length).toBeGreaterThan(0);
+    expect(new Set(models)).toEqual(new Set(["claude-sonnet-5-5"]));
+    expect(events.some((e) => e.kind === "trace" && e.stage === "coupons:search-model claude-sonnet-5-5")).toBe(true);
+    // Every search request read a million tokens at Sonnet 5.5's $2 per million.
+    expect(done.status_text).toBe("Cost: $" + (models.length * 2).toFixed(2));
+    const { couponSearchModel } = await import("../../src/coupons/codes");
+    expect(couponSearchModel("anthropic", "claude-opus-5-5")).toBe("claude-opus-5-5");
+    expect(couponSearchModel("openai", "gpt-mini")).toBe("gpt-mini");
+  }, 60_000);
 });
 
 // Owner report 2026-10-19: getbeefy.co found GETBEEFY but not a creator's
@@ -256,5 +301,90 @@ describe("codes on a creator's page", () => {
     };
     const r = await suggestCodes(p, "m", identifyMerchant("https://getbeefy.co/cart", { siteName: "Beefy" }), undefined, { readPages: false, angles: 1 });
     expect(r.codes.map((c) => [c.code, c.origin]).sort()).toEqual([["KETOSYNTH", "verified"], ["KETOTWO", "verified"]]);
+  });
+});
+
+// Live run 2026-10-19 on getbeefy.co (owner's panel log): every "code found
+// online" was junk. Menu links in capitals (STORES, CATEGORY, BUNDLE), and
+// other stores' codes (STUDENT701, EXTRA10) from a coupon site's page whose
+// address was built from the store's name but that was not about the store.
+describe("pages that are not about the store, and menu words", () => {
+  const filler = "Coupons, promo codes and deals updated daily. ".repeat(8);
+  const pages: Record<string, { text: string; elements: Array<{ name: string; tag?: string; role?: string; href?: string }> }> = {
+    // A coupon site's answer for a store it does not list: popular codes of other stores.
+    "us.hotdeals.com": {
+      text: filler + "\nNo results for getbeefy\nPopular today\nOther Shop: use code STUDENT701 for 20% off\nPromo code: EXTRA10",
+      elements: [{ name: "STORES", tag: "a", role: "link", href: "/stores" }, { name: "EXTRA10 Copy" }],
+    },
+    // The real page for the store: it names the store all over.
+    "usa.coupert.com": {
+      text: filler + "\nBeefy coupon codes\nBeefy promo: use code SYNTHBEEF20 for 20% off\nMore Beefy deals\nBeefy free shipping",
+      elements: [{ name: "CATEGORY", tag: "a", role: "link", href: "/category" }, { name: "BEEFJERKY Copy" }],
+    },
+  };
+  const tabs = (): { tabs: import("../../src/coupons/browser-read").PageBrowser; opened: string[] } => {
+    const opened: string[] = [];
+    const at = new Map<number, string>();
+    return {
+      opened,
+      tabs: {
+        open: async (u) => (opened.push(u), at.set(opened.length, u), opened.length),
+        read: async (tab) => {
+          const url = at.get(tab) ?? "";
+          const host = new URL(url).hostname;
+          const p = pages[host];
+          if (!p) return null;
+          return { url, title: "Coupons", text: p.text, truncated: false, elements: p.elements.map((e, i) => ({ ref: "e" + i, tag: "button", role: "button", ...e })) };
+        },
+        click: async () => false,
+        close: async () => undefined,
+        wait: async () => undefined,
+      },
+    };
+  };
+
+  it("keeps the codes on the store's page and drops other stores' codes and menu words", async () => {
+    const p: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        if (!req.webSearch && !req.webFetch) {
+          // Reading what the tabs showed: the model lists everything in capitals it saw.
+          yield { type: "text", delta: "STUDENT701 | https://us.hotdeals.com/store/getbeefy-coupon | \"use code STUDENT701\" | -\nSYNTHBEEF20 | https://usa.coupert.com/coupons/getbeefy-co-discount-code | \"use code SYNTHBEEF20\" | -\n" };
+          return;
+        }
+        yield { type: "text", delta: "NONE\n" };
+      },
+    };
+    const t = tabs();
+    const r = await suggestCodes(p, "m", identifyMerchant("https://getbeefy.co/cart", { siteName: "Beefy" }), undefined, {
+      angles: 1,
+      browser: { tabs: t.tabs, allow: async () => true },
+    });
+    expect(t.opened.some((u) => u.includes("hotdeals"))).toBe(true);
+    const codes = r.codes.map((c) => c.code).sort();
+    expect(codes).toEqual(["BEEFJERKY", "SYNTHBEEF20"]);
+  });
+});
+
+describe("code-free offers", () => {
+  it("reads one plain sentence per offer: entities decoded, cut at a word (live run 2026-10-19)", async () => {
+    const long = "Start a subscription and you&#39;ll lock in 10% off every order like clockwork, and the page says subscribing plus bundles stacks.";
+    const p: ProviderClient = {
+      id: "anthropic",
+      async *stream() {
+        yield {
+          type: "text",
+          delta:
+            'OFFER | https://getbeefy.co/pages/faq | "Buy 3 or more bags of BEEFY and you&#39;ll get 5% off automatically&#34;" | automatic 5% off with 3+ bags; no code\n' +
+            "OFFER | https://getbeefy.co/pages/faq | \"" + long + "\" | subscription\n",
+        };
+      },
+    };
+    const r = await suggestCodes(p, "m", identifyMerchant("https://getbeefy.co/cart", { siteName: "Beefy" }), undefined, { readPages: false, angles: 1 });
+    expect(r.offers[0]).toBe("Buy 3 or more bags of BEEFY and you'll get 5% off automatically");
+    expect(r.offers[1]!.endsWith("…")).toBe(true);
+    expect(r.offers[1]!.length).toBeLessThanOrEqual(121);
+    expect(r.offers[1]).toMatch(/^Start a subscription and you'll lock in 10% off/);
+    expect(r.offers[1]).not.toMatch(/\s…$/);
   });
 });
