@@ -864,17 +864,27 @@
       :root[data-look="ink"] .msg.user::before { content: "You asked"; display: block; margin-bottom: 4px; font-family: -apple-system, system-ui, sans-serif; font-size: 10.5px; font-style: normal; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
       /* Send and Stop keep the text-on-accent color in every look (the per-look .round color must not reach them). */
       :root[data-look] .round.send { color: var(--accent-on); }
-      /* A short sheet (iPhone at its middle stop, a small Mac window): the mark and greeting
-         shrink, then the mark goes, so nothing is cut off behind the starters (owner 2026-10-19). */
-      @media (max-height: 620px) {
-        #empty .scout-mark { width: 64px; height: 64px; }
-        :root[data-look="trailhead"] #empty .scout-mark { width: 72px; height: 72px; padding: 12px; margin-bottom: 8px; }
-        .greeting b { font-size: 19px; }
+      /* The little Scout car above the greeting in every look (owner 2026-10-19, from Night Ops):
+         small, outlined, in the look's accent, on every sheet size. No subtitle under the title. */
+      :root[data-look] #empty .scout-mark {
+        display: block; width: 40px; height: 40px; padding: 0; margin: auto auto 8px; border-radius: 0;
+        background: none; box-shadow: none; transform: none; fill: none; stroke: var(--accent-text); stroke-width: 3;
       }
-      @media (max-height: 520px) {
-        #empty .scout-mark, :root[data-look="trailhead"] #empty .scout-mark { display: none; }
-        .greeting { margin-top: auto; }
-        #empty > #starters { margin-top: auto; }
+      :root[data-look] #empty .scout-mark .hub { fill: var(--accent-text); }
+      :root[data-look="nightops"] #empty .scout-mark { margin: auto 0 8px; stroke: var(--signal); }
+      :root[data-look="nightops"] #empty .scout-mark .hub { fill: var(--signal); }
+      :root[data-look="apple"] #empty .scout-mark { margin: auto 0 8px 4px; }
+      :root[data-look="apple"] .greeting { margin-top: 0; }
+      :root[data-look="ink"] #empty .scout-mark { margin: auto 0 10px 2px; }
+      :root[data-look="ink"] .greeting { margin-top: 0; }
+      :root[data-look="nightops"] .greeting { margin-top: 0; }
+      .greeting span:empty { display: none; }
+      /* Car and title together at the bottom left, just above the starters, in every look (owner 2026-10-19). */
+      :root[data-look] #empty .scout-mark { margin: auto 0 8px 4px; }
+      :root[data-look] .greeting { margin: 0 4px 12px; text-align: left; }
+      /* A short sheet (iPhone at its middle stop, a small Mac window): a smaller title, so nothing is cut off. */
+      @media (max-height: 620px) {
+        .greeting b { font-size: 19px; }
       }
     </style>
     <script src="popup.js" defer></script>
@@ -1001,7 +1011,7 @@
           </div>
           <div id="attached" class="chips" role="group" aria-label="Attached tabs" hidden></div>
           <label for="question" class="sr-only">Ask about this page or describe a task</label>
-          <textarea id="question" rows="1" placeholder="Ask anything…" autocomplete="off" aria-describedby="composer-help" aria-controls="mention-list"></textarea>
+          <textarea id="question" rows="1" placeholder="What can Scout help with today?" autocomplete="off" aria-describedby="composer-help" aria-controls="mention-list"></textarea>
           <p id="composer-help" class="sr-only">Press Enter to send, Shift+Enter for a new line. Type @ to attach a tab.</p>
           <div class="composer-foot">
             <button id="plus" class="round" type="button" aria-label="More actions" aria-expanded="false" aria-controls="plus-menu">

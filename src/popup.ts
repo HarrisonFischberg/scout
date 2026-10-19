@@ -43,7 +43,7 @@ import { closeWhenHidden } from "./panel/dismiss";
 import { dockComposer } from "./panel/dock";
 import { hintedProvider, KEY_HINT_KEY, parseKeyHint, sameHint, type KeyHint } from "./panel/warm";
 import { isStandalone, openStandalone } from "./panel/standalone";
-import { applyLook, cachedLook, cacheLook, DEFAULT_LOOK, LOOK_KEY, LOOKS, pageCache, parseLook, type LookId } from "./panel/look";
+import { applyLook, cachedLook, cacheLook, defaultLook, LOOK_KEY, LOOKS, pageCache, parseLook, type LookId } from "./panel/look";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
   appendHistory,
@@ -292,7 +292,12 @@ if (STANDALONE) document.documentElement.dataset.standalone = "";
 
 // The look (src/panel/look.ts), from the synchronous cache so the panel opens in it; the saved setting confirms it in main().
 const lookCache = pageCache();
-applyLook(document, cachedLook(lookCache));
+/** iPhone and iPad (touch): Pure Apple by default (owner 2026-10-19). */
+const TOUCH = matchMedia("(pointer: coarse)").matches;
+const HOME_LOOK = defaultLook(TOUCH);
+/** The question box hint on every device (owner 2026-10-19). */
+const ASK_HINT = "What can Scout help with today?";
+applyLook(document, cachedLook(lookCache, HOME_LOOK));
 
 async function main(): Promise<void> {
   applyBrowserText(document);
@@ -306,6 +311,7 @@ async function main(): Promise<void> {
   const siteSuggestions = el<HTMLUListElement>("site-suggestions");
   const composer = el<HTMLFormElement>("composer");
   const question = el<HTMLTextAreaElement>("question");
+  question.placeholder = ASK_HINT;
   const send = el<HTMLButtonElement>("send");
   const stop = el<HTMLButtonElement>("stop");
   const mic = el<HTMLButtonElement>("mic");
@@ -355,7 +361,7 @@ async function main(): Promise<void> {
     label.append(input, sw, name, blurb);
     input.addEventListener("change", () => {
       if (!input.checked) return;
-      const id = parseLook(input.value);
+      const id = parseLook(input.value, HOME_LOOK);
       showLook(id);
       trace("look:" + id);
       void storage?.set({ [LOOK_KEY]: id }).catch(() => undefined);
@@ -363,13 +369,13 @@ async function main(): Promise<void> {
     lookInputs.push(input);
     el("look-list").appendChild(label);
   }
-  showLook(parseLook(document.documentElement.dataset.look));
+  showLook(parseLook(document.documentElement.dataset.look, HOME_LOOK));
   if (storage) {
     void storage
       .get(LOOK_KEY)
       .then((got) => {
         // No saved look (never chosen, or Delete all data) is the default, whatever the cache says.
-        showLook(parseLook(got[LOOK_KEY]));
+        showLook(parseLook(got[LOOK_KEY], HOME_LOOK));
       })
       .catch(() => undefined);
   }
@@ -973,7 +979,7 @@ async function main(): Promise<void> {
     for (const i of modeInputs) i.checked = i.value === next;
     syncSegmented(modeInputs);
     modeChip.hidden = next !== "scout";
-    question.placeholder = next === "scout" ? "Tell Scout what to do on this page…" : "Ask anything…";
+    question.placeholder = next === "scout" ? "Tell Scout what to do on this page…" : ASK_HINT;
     send.setAttribute("aria-label", next === "scout" ? "Start task" : "Send");
   }
   for (const i of modeInputs) i.addEventListener("change", () => setMode(mode()));
@@ -3581,7 +3587,7 @@ async function main(): Promise<void> {
       settings = parseSettings(undefined);
       consent.forget();
       diag?.forget();
-      showLook(DEFAULT_LOOK);
+      showLook(HOME_LOOK);
       clearThread();
       conv = "";
       await connect(false);

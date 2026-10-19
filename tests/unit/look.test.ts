@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { applyLook, cachedLook, cacheLook, DEFAULT_LOOK, LOOK_CACHE_KEY, LOOKS, parseLook } from "../../src/panel/look";
+import { applyLook, cachedLook, cacheLook, DEFAULT_LOOK, defaultLook, LOOK_CACHE_KEY, LOOKS, parseLook } from "../../src/panel/look";
 
 // Looks (owner choice 2026-10-19): Trailhead by default, five others in Settings.
 describe("looks", () => {
   it("defaults to Trailhead and keeps the other five on offer", () => {
     expect(DEFAULT_LOOK).toBe("trailhead");
     expect(LOOKS.map((l) => l.id)).toEqual(["trailhead", "apple", "nightops", "dealhunter", "ink", "classic"]);
+  });
+
+  it("iPhone and iPad open in Pure Apple, with only \"Ask Scout\" above the starters (owner 2026-10-19)", () => {
+    expect(defaultLook(true)).toBe("apple");
+    expect(defaultLook(false)).toBe("trailhead");
+    expect(parseLook(undefined, "apple")).toBe("apple");
+    expect(cachedLook({ getItem: () => null }, "apple")).toBe("apple");
+    expect(cachedLook({ getItem: () => { throw new Error("blocked"); } }, "apple")).toBe("apple");
+    expect(LOOKS.find((l) => l.id === "apple")?.greeting).toEqual({ title: "Ask Scout", sub: "" });
   });
 
   it("reads only known looks; anything else is the default", () => {
