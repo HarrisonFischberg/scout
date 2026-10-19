@@ -2939,10 +2939,6 @@ async function main(): Promise<void> {
       const p = chip.dataset.prompt ?? "";
       if (p === "summarize") void ask(SUMMARIZE_QUESTION);
       else if (p === "coupons") void runCoupons();
-      else if (p === "scout") {
-        setMode("scout");
-        question.focus();
-      }
       else void ask(p);
     });
   }
