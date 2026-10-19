@@ -199,7 +199,7 @@ test("no winning code: offers to search again, searches without repeating codes,
   await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
   await expect(page.locator("#coupons-more-text")).toHaveText(
-    "We've tried 37 codes and none lowered your total. Would you like Scout for Safari to search the web again, in other places, for more codes to test?",
+    "We've tried 37 codes and none lowered your total. Would you like Scout to search the web again, in other places, for more codes to test?",
     BATCH_WAIT,
   );
   await expect(page.getByRole("button", { name: "Search again" })).toBeFocused();
@@ -313,7 +313,7 @@ test("a failed web search tests nothing and says why", async ({ page }) => {
   await page.getByRole("button", { name: "Find coupons" }).click();
   const answer = page.getByRole("log").locator(".msg.error").last();
   await expect(answer).toContainText(
-    "The web search ended early (The web search failed. The API key was rejected. Check the key in Scout for Safari settings). No code posted for shop could be found. Nothing was tested, and your cart is unchanged.",
+    "The web search ended early (The web search failed. The API key was rejected. Check the key in Scout settings). No code posted for shop could be found. Nothing was tested, and your cart is unchanged.",
     BATCH_WAIT,
   );
   await expect(page.locator("#task .attempt")).toHaveCount(0);

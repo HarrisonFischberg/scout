@@ -191,7 +191,7 @@ test("history search does nothing until it is turned on", async ({ page }) => {
   expect((await calls(page)).queriesAll).toBe(0);
 
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByLabel("Let Scout for Safari search your open tabs and history").check();
+  await page.getByLabel("Let Scout search your open tabs and history").check();
   await expect(page.locator("#access-search-help")).toContainText("Safari does not let extensions search history");
   await page.getByRole("button", { name: "Back to chat" }).click();
   await ask(page, "Find my tabs again [mock:tool=search_tabs]");

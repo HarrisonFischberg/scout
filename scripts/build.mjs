@@ -115,14 +115,14 @@ for (const [from, to, title] of legalPages) {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="color-scheme" content="light dark" />
-<title>${title} (DRAFT) - Scout for Safari</title>
+<title>${title} (DRAFT) - Scout AI Assistant</title>
 <style>body{font:15px/1.5 -apple-system,system-ui,sans-serif;max-width:42rem;margin:0 auto;padding:16px}body{background:#FFFFFF;color:#1D1D1F}a{color:#0066CC;text-decoration:underline}@media (prefers-color-scheme:dark){body{background:#1C1C1E;color:#F5F5F7}a{color:#2997FF}}a:focus-visible{outline:2px solid currentColor;outline-offset:2px}</style>
 </head>
 <body>
 <main>
 <p><strong>DRAFT. Not approved by legal review.</strong></p>
 ${body}
-<p><a href="popup.html">Back to Scout for Safari</a></p>
+<p><a href="popup.html">Back to Scout</a></p>
 </main>
 </body>
 </html>

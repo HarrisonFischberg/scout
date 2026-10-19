@@ -212,7 +212,7 @@ if (!g[FLAG]) {
     layer = document.createElement("div");
     layer.className = onPhone() ? "layer phone" : "layer";
     layer.setAttribute("role", "group");
-    layer.setAttribute("aria-label", "Scout for Safari is controlling this page");
+    layer.setAttribute("aria-label", "Scout is controlling this page");
     const glow = document.createElement("div");
     glow.className = "glow";
     glow.setAttribute("aria-hidden", "true");
@@ -232,7 +232,7 @@ if (!g[FLAG]) {
     const stopBtn = document.createElement("button");
     stopBtn.type = "button";
     stopBtn.className = "stop";
-    stopBtn.setAttribute("aria-label", "Stop Scout for Safari");
+    stopBtn.setAttribute("aria-label", "Stop Scout");
     stopBtn.title = "Stop";
     // Take control lives in the panel; the toast keeps one control, Stop.
     stopBtn.addEventListener("click", (e) => {

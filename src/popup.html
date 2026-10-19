@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Scout for Safari</title>
+    <title>Scout AI Assistant</title>
     <style>
       /* Tokens: replica/design/tokens.json (contrast-checked, replica/contrast.txt).
          System-matched: Apple neutral grays and Apple blue, following the system
@@ -882,7 +882,7 @@
           <source srcset="icons/toolbar-dark-64.png" media="(prefers-color-scheme: dark)" />
           <img src="icons/toolbar-64.png" alt="" />
         </picture>
-        <h1>Scout<span class="name-rest"> for Safari</span></h1>
+        <h1>Scout<span class="name-rest"> AI Assistant</span></h1>
         <button id="open-page" class="icon-btn" type="button" aria-label="Open Scout in a new tab" title="Open Scout in a new tab">
           <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg>
         </button>
@@ -916,9 +916,9 @@
           <img src="icons/icon-128.png" alt="" />
           <h2 id="no-key-title">Add your API key to start</h2>
           <p class="hint">
-            Scout for Safari uses your own Anthropic or OpenAI key, kept in your Keychain. Page text you ask about is sent to that provider.
-            Your provider bills your account for every request Scout for Safari makes, at the provider's prices.
-            Scout for Safari shows an estimated cost after each answer or task.
+            Scout uses your own Anthropic or OpenAI key, kept in <span data-other-browsers="this browser on this computer">your Keychain</span>. Page text you ask about is sent to that provider.
+            Your provider bills your account for every request Scout makes, at the provider's prices.
+            Scout shows an estimated cost after each answer or task.
           </p>
           <button id="no-key-open" class="btn primary" type="button">Add API key</button>
         </section>
@@ -952,7 +952,7 @@
         <!-- Part 3, Scout mode: the task's trace is built inline in the conversation (#task). -->
         <!-- Part 3, spec 8.4: sensitive-action confirmation, asked on the device every time. Deny has focus. -->
         <section id="confirm" class="card" role="alertdialog" aria-labelledby="confirm-title" aria-describedby="confirm-what confirm-reason" hidden>
-          <h2 id="confirm-title">Scout for Safari wants to:</h2>
+          <h2 id="confirm-title">Scout wants to:</h2>
           <p id="confirm-what"></p>
           <p id="confirm-reason" class="hint"></p>
           <div class="row">
@@ -1078,14 +1078,14 @@
           </form>
           <p id="key-error" class="hint" role="alert"></p>
           <p id="key-help" class="hint">
-            Saved in your Keychain on this device, never in browser storage. Your provider bills your account for every request.
+            <span data-other-browsers="Saved in this browser on this computer, never synced to your other devices.">Saved in your Keychain on this device, never in browser storage.</span> Your provider bills your account for every request.
           </p>
         </section>
 
         <section aria-labelledby="sharing-title">
           <h3 id="sharing-title" tabindex="-1">Sharing with AI providers</h3>
           <p class="hint">
-            Scout for Safari asks before it sends anything to a provider: your messages, and page content when a request uses the page.
+            Scout asks before it sends anything to a provider: your messages, and page content when a request uses the page.
             Withdraw to stop all requests to that provider until you allow it again.
           </p>
           <ul id="consent-list" aria-labelledby="sharing-title"></ul>
@@ -1134,15 +1134,15 @@
 
         <section aria-labelledby="access-title">
           <h3 id="access-title">Permissions</h3>
-          <p class="hint">Every permission here is enforced on this device by Scout for Safari itself, never by a server.</p>
+          <p class="hint">Every permission here is enforced on this device by Scout itself, never by a server.</p>
           <h4>Read the current page</h4>
           <label class="check"><input id="access-read" type="checkbox" aria-describedby="access-read-help" />Share the current page with each question</label>
-          <p id="access-read-help" class="hint">On by default: Scout for Safari sends the page you are on with your question. Off: only tabs you attach.</p>
+          <p id="access-read-help" class="hint">On by default: Scout sends the page you are on with your question. Off: only tabs you attach.</p>
           <h4>Search history and tabs</h4>
-          <label class="check"><input id="access-search" type="checkbox" aria-describedby="access-search-help" />Let Scout for Safari search your open tabs and history</label>
+          <label class="check"><input id="access-search" type="checkbox" aria-describedby="access-search-help" />Let Scout search your open tabs and history</label>
           <p id="access-search-help" class="hint"></p>
           <h4>Screenshots</h4>
-          <p class="hint">Asked per site: Scout for Safari asks before each screenshot of a site, unless you chose Always or Never for it. A screenshot shows everything on screen, including anything typed into the page.</p>
+          <p class="hint">Asked per site: Scout asks before each screenshot of a site, unless you chose Always or Never for it. A screenshot shows everything on screen, including anything typed into the page.</p>
           <ul id="shot-list" class="list" aria-label="Screenshot choices"></ul>
           <h4>Scout mode</h4>
           <label class="field">
@@ -1160,7 +1160,7 @@
           <p class="hint">Sites where you chose "Always allow on this site" for a kind of sensitive action. Revoke one to be asked again.</p>
           <ul id="allow-list" class="list" aria-label="Always allowed sites"></ul>
           <h4>Blocked sites</h4>
-          <p class="hint">Scout for Safari never reads, screenshots, or acts on these sites or their subdomains.</p>
+          <p class="hint">Scout never reads, screenshots, or acts on these sites or their subdomains.</p>
           <form id="block-form" class="row" autocomplete="off">
             <label class="field" style="flex: 1 1 60%">
               <span>Site to block</span>
@@ -1176,7 +1176,7 @@
             <ul id="admin-list" class="list" aria-label="Blocked by your organization"></ul>
           </div>
           <h4>Private browsing</h4>
-          <p class="hint">Scout for Safari works in Private Browsing like in any other tab. Chats in a private tab are deleted from this device when you close the tab, and private tabs never show up in tab search.</p>
+          <p class="hint" data-other-browsers="Scout works in private windows once you allow it there in {browser}'s extension settings. Chats in a private tab are deleted from this device when you close the tab, and private tabs never show up in tab search.">Scout works in Private Browsing like in any other tab. Chats in a private tab are deleted from this device when you close the tab, and private tabs never show up in tab search.</p>
           <h4>Shared in conversations</h4>
           <p id="shared-help" class="hint">What each conversation shared with your AI provider: tabs, screenshots, and tools, by title and site. Clearing removes that record from this device; your provider keeps its own under your account.</p>
           <ul id="shared-list" class="list" aria-label="Shared in conversations"></ul>
@@ -1188,7 +1188,7 @@
           <h3 id="pagebutton-title">Button on webpages</h3>
           <label class="check"><input id="pagebutton-on" type="checkbox" aria-describedby="pagebutton-help" />Show a Scout button on the edge of webpages</label>
           <p id="pagebutton-help" class="hint">
-            Handy on iPhone and iPad, where Safari keeps Scout for Safari in the page menu. Tap it to open Scout for Safari. Drag it up, down, or to the other side. It shows only on sites Scout for Safari
+            Handy on iPhone and iPad, where Safari keeps Scout in the page menu. Tap it to open Scout. Drag it up, down, or to the other side. It shows only on sites Scout
             can access and reads nothing from the page.
           </p>
           <fieldset class="segmented" id="pagebutton-side">
@@ -1202,9 +1202,9 @@
         <section aria-labelledby="toolbar-title">
           <h3 id="toolbar-title">Toolbar button</h3>
           <p class="hint">
-            Shortcut: Control-Shift-S on Mac opens and closes Scout for Safari. Safari does not let extensions hide their own button
-            or change the shortcut. To hide the button on Mac, choose View &gt; Customize Toolbar in Safari and drag the Scout truck out.
-            <span id="toolbar-pagebutton">On iPhone and iPad, Scout for Safari lives in the page menu (the button in the address bar); turn on Button on webpages
+            <span data-other-browsers="Shortcut: Alt-Shift-S (Control-Shift-S on Mac) opens and closes Scout. Change the shortcut, or pin and unpin the Scout button, in {browser}'s extensions menu.">Shortcut: Control-Shift-S on Mac opens and closes Scout. Safari does not let extensions hide their own button
+            or change the shortcut. To hide the button on Mac, choose View &gt; Customize Toolbar in Safari and drag the Scout truck out.</span>
+            <span id="toolbar-pagebutton">On iPhone and iPad, Scout lives in the page menu (the button in the address bar); turn on Button on webpages
             above to also get a button on the page.</span>
           </p>
         </section>
@@ -1237,10 +1237,10 @@
 
         <section aria-labelledby="delete-title-h">
           <h3 id="delete-title-h">Delete all data</h3>
-          <p class="hint">Removes your API keys from the Keychain, saved settings and history, permission to share with AI providers, and site access. Your provider keeps its own records under your account.</p>
+          <p class="hint">Removes your API keys from <span data-other-browsers="this browser">the Keychain</span>, saved settings and history, permission to share with AI providers, and site access. Your provider keeps its own records under your account.</p>
           <div class="row"><button id="delete-all" class="btn danger" type="button">Delete all data</button></div>
           <div id="delete-confirm" role="alertdialog" aria-labelledby="delete-title" hidden>
-            <p id="delete-title"><strong>Delete everything Scout for Safari stored on this device?</strong> This cannot be undone.</p>
+            <p id="delete-title"><strong>Delete everything Scout stored on this device?</strong> This cannot be undone.</p>
             <div class="row">
               <button id="delete-yes" class="btn primary" type="button">Yes, delete all data</button>
               <button id="delete-no" class="btn" type="button">Cancel</button>

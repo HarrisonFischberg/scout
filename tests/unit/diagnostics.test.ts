@@ -88,7 +88,7 @@ describe("buildReport", () => {
     r.stage("snapshot:start 1");
     r.finish("error", "Could not read the page.");
     const text = buildReport(d.runs, ENV);
-    expect(text).toContain("## Scout for Safari diagnostics — Actual behavior");
+    expect(text).toContain("## Scout AI Assistant diagnostics — Actual behavior");
     expect(text).toContain("- Run: agent (#2)");
     expect(text).toContain('- Outcome: error — "Could not read the page."');
     expect(text).toContain("- Page: 127.0.0.1");
@@ -162,6 +162,16 @@ describe("describeBrowser", () => {
     expect(
       describeBrowser("Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0 Mobile/15E148 Safari/604.1"),
     ).toBe("Safari 27.0 on iOS");
+  });
+
+  it("tells Chrome and Firefox apart from Safari", () => {
+    expect(
+      describeBrowser("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"),
+    ).toBe("Chrome 141 on Windows");
+    expect(describeBrowser("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:144.0) Gecko/20100101 Firefox/144.0")).toBe("Firefox 144.0 on macOS");
+    expect(describeBrowser("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36")).toBe(
+      "Chrome 141 on Linux",
+    );
   });
 });
 

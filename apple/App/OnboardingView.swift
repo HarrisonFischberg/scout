@@ -32,7 +32,7 @@ struct OnboardingView: View {
                     .frame(width: 84, height: 84)
                     .padding(.bottom, 4)
                     .accessibilityHidden(true)
-                Text("Set up Scout for Safari")
+                Text("Set up Scout AI Assistant")
                     .font(.system(.largeTitle, design: .rounded).weight(.heavy))
                     .foregroundStyle(Color.trailInk)
                     .accessibilityAddTraits(.isHeader)
@@ -68,7 +68,7 @@ struct OnboardingView: View {
     private var enableSection: some View {
         #if os(macOS)
         StepCard(number: 1, done: extensionOn == true, title: "1. Turn on the extension", status: extensionOn.map { $0 ? "On" : "Off" }) {
-            Text("Open Safari extension settings, then switch on Scout for Safari.")
+            Text("Open Safari extension settings, then switch on Scout AI Assistant.")
             Button("Open Safari Extension Settings") {
                 SFSafariApplication.showPreferencesForExtension(withIdentifier: extensionBundleIdentifier) { _ in }
             }
@@ -76,7 +76,7 @@ struct OnboardingView: View {
         }
         #else
         StepCard(number: 1, done: false, title: "1. Turn on the extension", status: nil) {
-            Text("Open the Settings app. Go to Apps, then Safari, then Extensions. Switch on Scout for Safari and allow it on the websites you choose.")
+            Text("Open the Settings app. Go to Apps, then Safari, then Extensions. Switch on Scout AI Assistant and allow it on the websites you choose.")
         }
         #endif
     }
@@ -88,14 +88,14 @@ struct OnboardingView: View {
     // saved in either is the same key.)
     private var keySection: some View {
         StepCard(number: 2, done: false, title: "2. Add your API key", status: nil) {
-            Text("Scout for Safari sends page content to the provider you choose, using your own key. The key is stored in Keychain on this device.")
-            Text("Your provider bills your account for every request Scout for Safari makes, at the provider's prices. Scout for Safari shows an estimated cost after each answer or task.")
+            Text("Scout sends page content to the provider you choose, using your own key. The key is stored in Keychain on this device.")
+            Text("Your provider bills your account for every request Scout makes, at the provider's prices. Scout shows an estimated cost after each answer or task.")
             #if os(macOS)
-            Text("Add your key in Safari: click the Scout for Safari icon in the toolbar, then Settings.")
+            Text("Add your key in Safari: click the Scout icon in the toolbar, then Settings.")
                 .bold()
                 .foregroundStyle(Color.trailInk)
             #else
-            Text("Add your key in Safari: open Scout for Safari from the menu in the address bar, then tap Settings.")
+            Text("Add your key in Safari: open Scout from the menu in the address bar, then tap Settings.")
                 .bold()
                 .foregroundStyle(Color.trailInk)
             #endif

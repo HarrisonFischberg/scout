@@ -104,7 +104,7 @@ describe("runTurn", () => {
     });
     expect(result).toEqual({
       ok: false,
-      error: "The API key was rejected. Check the key in Scout for Safari settings.",
+      error: "The API key was rejected. Check the key in Scout settings.",
       partial: "",
     });
   });

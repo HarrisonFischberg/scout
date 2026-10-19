@@ -1,8 +1,8 @@
 // Toolbar button identity (Part 1). Safari has no theme_icons, so the worker
 // swaps the monochrome icon itself when the system theme changes. The active
 // (filled-lens) icon is for Part 3, while the agent works.
-export const TITLE_OPEN = "Open Scout for Safari";
-export const TITLE_CLOSE = "Close Scout for Safari";
+export const TITLE_OPEN = "Open Scout";
+export const TITLE_CLOSE = "Close Scout";
 
 export const TOOLBAR_SIZES = [16, 19, 32, 38, 48, 64, 128] as const;
 

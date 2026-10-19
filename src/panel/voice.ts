@@ -6,6 +6,8 @@
 // dictation stays the fallback.
 
 /** The part of the Web Speech API recognition object Scout uses. */
+import { browserName } from "../platform";
+
 export interface RecognitionLike {
   lang: string;
   continuous: boolean;
@@ -36,9 +38,9 @@ export function micErrorText(code: string, phone: boolean): string {
   switch (code) {
     case "not-allowed":
     case "service-not-allowed":
-      return "Safari didn't allow the microphone here. " + keyboard;
+      return browserName() + " didn't allow the microphone here. " + keyboard;
     case "unsupported":
-      return "This version of Safari can't listen from Scout. " + keyboard;
+      return "This version of " + browserName() + " can't listen from Scout. " + keyboard;
     case "no-speech":
       return "Didn't hear anything. Tap the mic and try again.";
     case "audio-capture":

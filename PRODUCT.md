@@ -1,4 +1,4 @@
-# Product: Scout for Safari
+# Product: Scout AI Assistant
 
 Written for the UI/UX review (2026-10-19) from `prd.md`, `replica/design.md`,
 project memory and the code. Update it when the product changes.
@@ -47,7 +47,7 @@ costs; it never overstates.
 ## Constraints that shape the design
 
 - Safari owns the iPhone sheet (height, drag, solid background) and its own
-  "Scout for Safari" bar and checkmark; Scout cannot change them.
+  "Scout AI Assistant" bar and checkmark; Scout cannot change them.
 - Do not re-propose: a Comet-style in-page quick-ask box (#51, reverted) or a
   half see-through iPhone panel / keyboard on open (#53, reverted).
 - No web font requests (no new vendor). Fonts must be system fonts or bundled.

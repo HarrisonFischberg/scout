@@ -32,7 +32,7 @@ const warm = (): void => {
   void request((m) => browser.runtime.sendMessage(m), "panel.warm", {}).catch(() => undefined);
 };
 
-const CANT_OPEN = "Couldn't open Scout for Safari here. Use the Scout button in Safari's page menu.";
+const CANT_OPEN = "Couldn't open Scout here. Use the Scout button in Safari's page menu.";
 
 // Monochrome Scout truck (design/icons/scout-truck-solid.svg). Window and hubs are
 // drawn in the pill color instead of a mask: url(#id) masks are unreliable
@@ -133,7 +133,7 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, hidde
   const root = host.attachShadow({ mode: "closed" });
   root.innerHTML =
     "<style>" + CSS + "</style>" +
-    '<button class="tab" type="button" aria-label="Open Scout for Safari"><span class="pill">' + GLYPH + "</span></button>" +
+    '<button class="tab" type="button" aria-label="Open Scout"><span class="pill">' + GLYPH + "</span></button>" +
     '<p class="toast" role="status"></p>';
   const tab = root.querySelector("button") as HTMLButtonElement;
   const toastNode = root.querySelector("p") as HTMLParagraphElement;

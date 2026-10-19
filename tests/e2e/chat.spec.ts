@@ -185,7 +185,7 @@ test.describe("touch device", () => {
     await openPopup(page, { key: "sk-test-synthetic" });
     const header = page.locator("#chat-view > header");
     await expect(header.locator("img")).toBeHidden();
-    await expect(page.getByRole("heading", { name: "Scout for Safari", level: 1 })).toHaveCSS("width", "1px");
+    await expect(page.getByRole("heading", { name: "Scout AI Assistant", level: 1 })).toHaveCSS("width", "1px");
     await expect(page.getByRole("button", { name: "New chat" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
   });
@@ -194,7 +194,7 @@ test.describe("touch device", () => {
 test("on Mac the chat header keeps the icon and the name", async ({ page }) => {
   await openPopup(page, { key: "sk-test-synthetic" });
   await expect(page.locator("#chat-view > header img")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Scout for Safari", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scout AI Assistant", level: 1 })).toBeVisible();
 });
 
 // T018: with OpenAI chosen but only an Anthropic key saved, the popup used
@@ -225,6 +225,6 @@ test("a provider fallback is announced in the conversation", async ({ page }) =>
   await page.goto("/popup.html");
   await expect(page.getByLabel("Ask about this page")).toBeVisible();
   await expect(
-    page.getByRole("log").getByText("No OpenAI key is saved, so Scout for Safari is using your Anthropic key."),
+    page.getByRole("log").getByText("No OpenAI key is saved, so Scout is using your Anthropic key."),
   ).toBeVisible();
 });

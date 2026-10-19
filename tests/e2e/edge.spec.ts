@@ -270,7 +270,7 @@ test("Settings turns the button on: asks Safari for site access and shows it on 
   const box = page.getByRole("checkbox", { name: "Show a Scout button on the edge of webpages" });
   // On from a fresh install (owner request 2026-10-17); it shows once a site is granted.
   await expect(box).toBeChecked();
-  await expect(page.locator("#pagebutton-status")).toHaveText("On. It appears on a site after you let Scout for Safari access it.");
+  await expect(page.locator("#pagebutton-status")).toHaveText("On. It appears on a site after you let Scout access it.");
   await box.uncheck();
   await expect(page.locator("#pagebutton-status")).toHaveText("Off.");
   await box.check();

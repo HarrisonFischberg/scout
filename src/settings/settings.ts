@@ -2,6 +2,7 @@
 // The API key is never stored here; it lives in the Keychain (keychain.ts).
 import type { Provider } from "../keychain";
 import { EFFORTS, type Effort } from "../providers/types";
+import { browserName, siteAccessSettings, TARGET } from "../platform";
 
 export type Retention = "off" | "7" | "30";
 
@@ -252,18 +253,17 @@ export async function deleteAllData(deps: DeleteDeps): Promise<DeleteReport> {
 export function deleteReportText(r: DeleteReport): string {
   const parts: string[] = [];
   const failed = [
-    r.keychain ? "" : "your API keys in Keychain",
+    r.keychain ? "" : "your API keys in " + (TARGET === "safari" ? "Keychain" : "this browser"),
     r.storage ? "" : "saved settings and history",
   ].filter(Boolean);
   if (failed.length) parts.push("Could not delete " + failed.join(" or ") + ". Try again.");
   if (r.remainingOrigins.length) {
     const sites = r.remainingOrigins.map((o) => o.replace(/^\*:\/\/\*?\.?/, "").replace(/\/\*$/, "")).join(", ");
     parts.push(
-      "Safari still lets Scout for Safari read: " + sites + ". Remove it in Safari's extension settings: " +
-        "on iPhone, Settings > Apps > Safari > Extensions > Scout for Safari; on Mac, Safari > Settings > Extensions > Scout for Safari > Edit Websites.",
+      browserName() + " still lets Scout read: " + sites + ". Remove it in " + browserName() + "'s extension settings. " + siteAccessSettings(),
     );
   } else if (!r.siteAccess) {
-    parts.push("Could not remove site access. Check Safari's extension settings.");
+    parts.push("Could not remove site access. Check " + browserName() + "'s extension settings.");
   }
   if (r.keychain && r.storage) parts.unshift("Deleted your API keys, settings, and history from this device.");
   return parts.join(" ");
