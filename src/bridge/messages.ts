@@ -156,8 +156,10 @@ export const REQUESTS = {
         answer_prefix: "string",
         /** Sources numbered in answer_prefix, so the saved answer keeps them. */
         prefix_sources: { array: { object: { url: "string", title: "string" } } },
+        /** Host of the page the chat is on, saved to title it in the chats menu. */
+        site: "string",
       },
-      optional: ["effort", "shared", "display_question", "answer_prefix", "prefix_sources"],
+      optional: ["effort", "shared", "display_question", "answer_prefix", "prefix_sources", "site"],
     },
   },
   "chat.stop": { senders: ["panel"], payload: { object: { message_id: "string" } } },
@@ -237,8 +239,10 @@ export const REQUESTS = {
         conv: "string",
         /** iPhone: the panel's sheet covers the bottom half of the page. */
         phone: "boolean",
+        /** Host of the store, saved to title the chat in the chats menu. */
+        site: "string",
       },
-      optional: ["window_id", "effort", "conv", "phone"],
+      optional: ["window_id", "effort", "conv", "phone", "site"],
     },
   },
   "coupons.stop": { senders: ["panel"], payload: { object: { tab_id: "number" } } },
@@ -246,6 +250,10 @@ export const REQUESTS = {
   "coupons.answer": { senders: ["panel"], payload: { object: { tab_id: "number", prompt_id: "string", more: "boolean" } } },
   /** The run on a tab, if any, with its events so far (a reopened panel catches up). */
   "coupons.status": { senders: ["panel"], payload: { object: { tab_id: "number" } } },
+  /** The chats menu: switch to the tab a coupon run is on and open the panel there. */
+  "tabs.show": { senders: ["panel"], payload: { object: { tab_id: "number" } } },
+  /** Every tab's run, without events, for the chats menu. */
+  "coupons.list": { senders: ["panel"], payload: { object: {} } },
 } as const satisfies Record<string, RequestSpec>;
 
 export type RequestType = keyof typeof REQUESTS;

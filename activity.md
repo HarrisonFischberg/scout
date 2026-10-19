@@ -1869,6 +1869,21 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Also from the same report: a coupon run the panel caught up with after reopening was recorded under the panel's startup run ("startup → no_form"); it now gets its own coupons run. Earlier runs in the report name their site and last error.
 - Evidence: new tests in `tests/unit/edge.test.ts` (retry after "Another popup is already open", gives up after 3 tries in under 1 s) and `tests/unit/diagnostics.test.ts` fail on `main` and pass. Unit 490/491 (known Take control failure), typecheck, lint, build, `npm run check:release` clean. e2e Chromium (WebKit not in the cloud sandbox): 139 passed, the same 20 failures as `main`. Not checked: real iPhone.
 
+## 2026-10-19 — New chat opens while Find coupons runs (owner choice 1)
+
+- Before: New chat did nothing while a coupon run was going (`popup.ts` returned early on `couponRun`), which felt broken.
+- Now: New chat opens at once. The run keeps going in the worker (#55) and still saves its summary to the chat it started in. A chip above the composer ("Finding coupons… Show", "Find coupons needs your answer", "Coupon search finished") goes back to that chat and replays the run so far, or shows its summary. A panel reopened on the new chat shows the chip instead of replaying the run into it. While the run is away, Find coupons goes back to it and Scout mode waits (both would drive the same page); chat questions work.
+- `coupons.status` now returns the run's `conv`; `reopenConversation` (`src/panel/state.ts`) points the tab back at it. No change to the coupon search itself.
+- Evidence: new e2e `coupons.spec.ts` "New chat during Find coupons…", unit tests for `reopenConversation` and the run's `conv`. Unit 491/492 (known Take control failure), typecheck, lint, build, `npm run check:release` clean. e2e Chromium (WebKit not in the cloud sandbox): 140 passed, the same 20 failures as `main`. Not checked: real Mac and iPhone.
+
+## 2026-10-19 — Chats menu (owner request)
+
+- Request: a hamburger menu listing earlier chats to refer back to; a chat with a coupon search still running opens with the search still going. Also from the report: on Mac, clicking away from the popover during Find coupons left the glow but no way back to the search.
+- Owner choice: slide-in list (decision card). Defaults stated in the thread: title = first question with the site and how long ago; kept as long as chat history keeps them (Settings, 7 days by default, max 200 entries); trash icon per chat (hover on Mac, always on iPhone); Clear chat history empties the list; a search running on another tab switches to that tab and opens Scout there.
+- Built: ☰ at the top left of the chat header opens `#chats` over the chat. `src/chat/list.ts` groups saved history by conversation. The worker lists coupon runs (`coupons.list`) so a running search shows first with "Finding coupons…" / "Needs your answer" before its summary is saved. Opening a chat reuses #62's `reopenConversation`; a run shown in the panel goes on in the background, as with New chat. Private Browsing chats show only in their own tab. History entries now save `site` (host only; data inventory updated). `tabs.show` (worker) activates another tab and opens the panel there.
+- Builds on PR #62 (merge #62 first).
+- Evidence: new `tests/unit/chat-list.test.ts`, coupon-host list test, e2e "the chats menu lists earlier chats…" (panel.spec) and "the chats menu shows a running Find coupons…" (coupons.spec). Unit 497/498 (known Take control failure), typecheck, lint, build, `npm run check:release` clean. e2e Chromium (WebKit not in the cloud sandbox): 142 passed, the same 20 failures as the base branch. Not checked: real Mac and iPhone, and whether Safari opens the panel after switching tabs (`tabs.show`).
+
 ## 2026-10-19 — Find coupons missed a creator's code on getbeefy.co; diagnostics showed the wrong run (owner report)
 
 - Actual (owner, iPhone, build with #58): getbeefy.co found and applied GETBEEFY, but not KETOVORENURSE, which the owner's other tool found on a creator's Linktree. The copied diagnostics (#227) showed a panel opening, not the coupon run (#225 "unfinished", listed below it).

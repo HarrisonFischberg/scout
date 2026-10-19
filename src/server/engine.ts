@@ -40,6 +40,8 @@ export interface StartRequest {
   answer_prefix?: string;
   /** Continue after a drop: the sources numbered in the text before the new part. */
   prefix_sources?: Array<{ url: string; title: string }>;
+  /** Host of the page the chat is on (the chats menu). */
+  site?: string;
 }
 
 /** A numbered source saved with the answer: a shared page, then web citations. */
@@ -62,7 +64,7 @@ export interface EngineDeps {
   provider(p: Provider, model: string): Promise<ProviderClient>;
   /** Tools to offer the model now (src/tools/registry.ts offeredTools). */
   tools(): Promise<ToolSpec[]>;
-  save(entry: { at: number; conv: string; question: string; answer: string; shared: SharedRef[]; sources: SourceRef[] }): Promise<void>;
+  save(entry: { at: number; conv: string; question: string; answer: string; shared: SharedRef[]; sources: SourceRef[]; site?: string }): Promise<void>;
   now(): number;
   /** How long a tool request waits for the panel. Default 2 minutes. */
   toolTimeoutMs?: number;
@@ -267,6 +269,7 @@ export class ScoutServer {
           conv: req.conv,
           question: req.display_question ?? req.question,
           answer: (req.answer_prefix ?? "") + full,
+          ...(req.site ? { site: req.site } : {}),
           shared: [...(req.shared ?? []), ...run.shared],
           // Numbered as the panel numbers them: earlier part, pages, then citations.
           sources: [
