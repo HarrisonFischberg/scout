@@ -89,9 +89,11 @@ export class CouponHost {
   }
 
   private emit(r: RunRecord, e: CouponEvent): void {
-    const wire: CouponWire = { ...flat(e), kind: e.kind, seq: ++r.seq };
-    // Diagnostics stages go to a watching panel only; a reopened one does not replay them.
-    if (e.kind !== "trace" && e.kind !== "page") r.events.push(wire);
+    const wire: CouponWire = { ...flat(e), kind: e.kind, seq: ++r.seq, ...(e.kind === "trace" ? { at_ms: this.deps.now() - r.started_at } : {}) };
+    // A reopened panel replays diagnostics stages too, with their time in the
+    // run, so a report sent after closing the panel still shows where each code
+    // came from (owner report 2026-10-19 began at attempt 26). Page URLs are not kept.
+    if (e.kind !== "page") r.events.push(wire);
     const payload = { tab_id: r.tab_id, ...wire };
     for (const port of [...(this.watchers.get(r.tab_id) ?? [])]) {
       try {

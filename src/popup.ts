@@ -2403,7 +2403,7 @@ async function main(): Promise<void> {
   }
 
   /** One event from the worker's coupon run (src/coupons/job.ts). */
-  function onCouponEvent(p: Record<string, unknown>): void {
+  function onCouponEvent(p: Record<string, unknown>, replay = false): void {
     if (p.tab_id !== tab.id) return;
     const run = couponRun;
     if (!run) {
@@ -2449,7 +2449,8 @@ async function main(): Promise<void> {
         break;
       }
       case "trace":
-        trace(String(p.stage ?? ""));
+        // Replayed stages keep their time in the run (see CouponHost.emit).
+        trace(replay && typeof p.at_ms === "number" ? "replay +" + (p.at_ms / 1000).toFixed(2) + "s " + String(p.stage ?? "") : String(p.stage ?? ""));
         break;
       case "page":
         current.page(String(p.url ?? ""));
@@ -2538,7 +2539,8 @@ async function main(): Promise<void> {
     addMessage("user", COUPON_QUESTION, { mode: "Find coupons" });
     showCouponRun(r.started_at);
     trace("coupons:resumed");
-    for (const e of [...r.events, ...buffered]) onCouponEvent({ ...e, tab_id: tab.id });
+    for (const e of r.events) onCouponEvent({ ...e, tab_id: tab.id }, true);
+    for (const e of buffered) onCouponEvent({ ...e, tab_id: tab.id });
   }
 
   // ---------- Wiring ----------

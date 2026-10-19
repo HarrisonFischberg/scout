@@ -72,14 +72,19 @@ describe("coupon host", () => {
     await until(() => !!f.host.status(1).run?.prompt_id);
     // The host never brings the panel up itself: on iPhone that left Safari unable to open it (owner report 2026-10-19).
     expect(f.overlay[f.overlay.length - 1]).toMatchObject({ type: "overlay:state", state: "waiting" });
-    // The panel opens: everything so far, in order, without diagnostics stages.
+    // The panel opens: everything so far, in order, diagnostics stages included with their time in the run.
     const run = f.host.status(1).run!;
     expect(run.done).toBe(false);
     const kinds = run.events.map((e) => e.kind);
     expect(kinds).toContain("say");
     expect(kinds).toContain("attempt");
     expect(kinds[kinds.length - 1]).toBe("ask");
-    expect(kinds).not.toContain("trace");
+    const traces = run.events.filter((e) => e.kind === "trace");
+    expect(traces.length).toBeGreaterThan(0);
+    for (const t of traces) expect(typeof t.at_ms).toBe("number");
+    // Each tested code names the site it came from.
+    expect(traces.some((t) => /^coupons:attempt 1 rejected from \S+$/.test(String(t.stage)))).toBe(true);
+    expect(kinds).not.toContain("page");
     expect(run.events.map((e) => e.seq)).toEqual([...run.events.map((e) => e.seq)].sort((a, b) => a - b));
     expect(run.events.find((e) => e.kind === "attempt")?.attempt).toMatchObject({ code: "SYNTH5", accepted: false });
     f.host.watch(f.port, 1);
