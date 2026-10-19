@@ -181,7 +181,7 @@ async function startTask(page: Page, goal: string): Promise<void> {
 // A CSS locator: the list sits inside a closed <details>, which role queries treat as hidden.
 const taskLog = (page: Page) => page.locator('#task ol[aria-label="Action log"]');
 const traceHead = (page: Page) => page.locator("#task .trace-head");
-const confirmCard = (page: Page) => page.getByRole("alertdialog", { name: "Scout for Safari wants to:" });
+const confirmCard = (page: Page) => page.getByRole("alertdialog", { name: "Scout wants to:" });
 
 test("a task runs a batch, logs each step in plain language, shows the overlay and the active toolbar icon, and ends with a summary", async ({ page }) => {
   await openPopup(page, [toolTurn("act", { actions: [{ type: "fill_field", target: { ref: "e1" }, value: "Ada" }, { type: "click", target: { ref: "e3" } }] }, "Found the name field, filling it and applying."), finish("Applied the code.\n- Filled the name")]);
@@ -254,7 +254,7 @@ test("every sensitive action asks first, even when the server marks it pre-appro
   await expect(card).toBeVisible();
   await expect(card).toContainText("click “Place order” on shop.test");
   await expect(card).toContainText("places an order");
-  await expect(card).toContainText("The model marked this as approved; Scout for Safari asks you anyway.");
+  await expect(card).toContainText("The model marked this as approved; Scout asks you anyway.");
   await expect(card.getByRole("button", { name: "Deny" })).toBeFocused();
   await expect(card.getByRole("button", { name: "Always allow on this site" })).toBeVisible();
   const f = await fake(page);
@@ -342,13 +342,13 @@ test("Scout mode is off when turned off in Settings, and the Permissions screen 
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page.getByRole("heading", { name: "Permissions" })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "Share the current page with each question" })).toBeChecked();
-  await expect(page.getByRole("checkbox", { name: "Let Scout for Safari search your open tabs and history" })).not.toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Let Scout search your open tabs and history" })).not.toBeChecked();
   await expect(page.getByRole("combobox", { name: "Scout mode (acting on pages for you)" })).toHaveValue("on");
   await expect(page.getByRole("checkbox", { name: /Ask before submitting, buying/ })).toBeDisabled();
   await expect(page.getByText("Always on. It cannot be turned off.")).toBeVisible();
   await expect(page.getByRole("list", { name: "Always allowed sites" })).toContainText("No sites always allowed.");
   await expect(page.getByRole("list", { name: "Blocked sites" })).toContainText("No sites blocked.");
-  await expect(page.getByText("Scout for Safari works in Private Browsing like in any other tab.")).toBeVisible();
+  await expect(page.getByText("Scout works in Private Browsing like in any other tab.")).toBeVisible();
   await expect(page.getByRole("list", { name: "Shared in conversations" })).toBeVisible();
   // Off refuses the task before touching the page.
   await page.getByRole("combobox", { name: "Scout mode (acting on pages for you)" }).selectOption("off");

@@ -1,12 +1,14 @@
-# Scout for Safari
+# Scout AI Assistant
 
-Your AI Scout for the Safari Browser. A Safari Web Extension for macOS
-and iOS, opened from the Scout truck button in the toolbar (on iPhone and iPad,
-from the page menu). It uses your own Anthropic or OpenAI API key, kept in your
-Keychain. There is no Scout for Safari server.
+Your AI assistant for Safari, Chrome and Firefox (formerly Scout for Safari).
+A Web Extension for Safari on macOS and iOS, Chrome and Firefox, opened from the
+Scout truck button in the toolbar (on iPhone and iPad, from the page menu). It
+uses your own Anthropic or OpenAI API key, kept in your Keychain on Safari and in
+the browser's local extension storage on Chrome and Firefox. There is no Scout
+server.
 
 - **Chat** about anything. When a question is about the page you are on,
-  Scout for Safari uses the page; otherwise it answers like any chat window.
+  Scout uses the page; otherwise it answers like any chat window.
 - **Summarize** a page, or ask across other open tabs.
 - **Scout mode**: a supervised agent that carries out a task on the page for
   you, step by step, under a glowing page with Take control and Stop. Sending
@@ -19,7 +21,7 @@ Keychain. There is no Scout for Safari server.
   never checks out.
 - **Settings**: pick the model and effort level from dropdowns.
 
-Each tab keeps its own conversation. Scout for Safari works in Private Browsing; chats in a private tab are deleted when the tab closes.
+Each tab keeps its own conversation. Scout works in Private Browsing; chats in a private tab are deleted when the tab closes.
 Settings > Permissions lists every permission with its default; all of them are
 enforced on the device.
 Shortcut on Mac: Control-Shift-S opens and closes it.

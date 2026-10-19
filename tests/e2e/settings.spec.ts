@@ -215,7 +215,7 @@ test("Button on webpages is offered on iPhone and iPad, and not on Mac", async (
   await expect(page.getByRole("heading", { name: "Toolbar button" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Button on webpages" })).toBeHidden();
   await expect(page.getByText("turn on Button on webpages")).toBeHidden();
-  await expect(page.getByText("Control-Shift-S on Mac opens and closes Scout for Safari")).toBeVisible();
+  await expect(page.getByText("Control-Shift-S on Mac opens and closes Scout")).toBeVisible();
 });
 
 test("Button on webpages shows on iPhone and iPad", async ({ page }) => {

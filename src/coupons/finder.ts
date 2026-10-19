@@ -23,6 +23,7 @@ import { CODE_RE, safeHost, type CandidateOrigin, type CouponCandidate } from ".
 import { findForm, isRejectLine, newLines, removeTarget, revealTargets, showsCode, storeReply, type FormHints, type StoreReply } from "./form";
 import { groupByKind, KIND_LABEL, rejectKind, storeMessage, type RejectKind } from "./reasons";
 import { formatMoney, readTotal } from "./money";
+import { browserName } from "../platform";
 
 export type { CouponCandidate } from "./candidates";
 
@@ -852,14 +853,14 @@ export function discoveryLine(d: DiscoveryInfo): string {
   if (d.dropped) line += " " + plural(d.dropped, "code") + " the search mentioned without a page it had opened " + (d.dropped === 1 ? "was" : "were") + " left out.";
   if (d.browserOpened) {
     line +=
-      " The web reader couldn't load " + plural(d.browserOpened, "page") + ", so I opened " + (d.browserOpened === 1 ? "it" : "them") + " in Safari and found " +
+      " The web reader couldn't load " + plural(d.browserOpened, "page") + ", so I opened " + (d.browserOpened === 1 ? "it" : "them") + " in " + browserName() + " and found " +
       (d.browserCodes ? plural(d.browserCodes, "code") + " there (found on the page, not yet tested)." : "no code there.");
   }
   if (d.guesses) line += " Then " + plural(d.guesses, "guessed code") + " built from the store's name and common codes.";
   if (d.browserDeclined) {
     line +=
       " " + plural(d.browserDeclined, "page") + " the web reader couldn't load " + (d.browserDeclined === 1 ? "was" : "were") +
-      " not opened in Safari, because Scout for Safari isn't allowed on " + (d.browserDeclined === 1 ? "that site" : "those sites") + " (Safari Settings, Extensions).";
+      " not opened in " + browserName() + ", because Scout isn't allowed on " + (d.browserDeclined === 1 ? "that site" : "those sites") + " (" + browserName() + " extension settings).";
   }
   return line;
 }
