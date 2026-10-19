@@ -43,6 +43,7 @@ import { closeWhenHidden } from "./panel/dismiss";
 import { dockComposer } from "./panel/dock";
 import { hintedProvider, KEY_HINT_KEY, parseKeyHint, sameHint, type KeyHint } from "./panel/warm";
 import { isStandalone, openStandalone } from "./panel/standalone";
+import { applyLook, cachedLook, cacheLook, DEFAULT_LOOK, LOOK_KEY, LOOKS, pageCache, parseLook, type LookId } from "./panel/look";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
   appendHistory,
@@ -288,6 +289,10 @@ const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></spa
 const STANDALONE = isStandalone(location.search);
 if (STANDALONE) document.documentElement.dataset.standalone = "";
 
+// The look (src/panel/look.ts), from the synchronous cache so the panel opens in it; the saved setting confirms it in main().
+const lookCache = pageCache();
+applyLook(document, cachedLook(lookCache));
+
 async function main(): Promise<void> {
   const chatView = el("chat-view");
   const settingsView = el("settings-view");
@@ -318,6 +323,54 @@ async function main(): Promise<void> {
   const confirmDeny = el<HTMLButtonElement>("confirm-deny");
 
   const storage: StorageArea | undefined = browser.storage?.local;
+
+  // ---------- Look (Settings > Look) ----------
+  const lookInputs: HTMLInputElement[] = [];
+  function showLook(id: LookId): void {
+    applyLook(document, id);
+    cacheLook(lookCache, id);
+    for (const i of lookInputs) i.checked = i.value === id;
+  }
+  for (const look of LOOKS) {
+    const label = document.createElement("label");
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "look";
+    input.value = look.id;
+    const sw = document.createElement("span");
+    sw.className = "sw";
+    sw.setAttribute("aria-hidden", "true");
+    for (const c of look.swatch) {
+      const dot = document.createElement("i");
+      dot.style.background = c;
+      sw.appendChild(dot);
+    }
+    const name = document.createElement("span");
+    name.textContent = look.name;
+    const blurb = document.createElement("span");
+    blurb.className = "blurb";
+    blurb.textContent = look.blurb;
+    label.append(input, sw, name, blurb);
+    input.addEventListener("change", () => {
+      if (!input.checked) return;
+      const id = parseLook(input.value);
+      showLook(id);
+      trace("look:" + id);
+      void storage?.set({ [LOOK_KEY]: id }).catch(() => undefined);
+    });
+    lookInputs.push(input);
+    el("look-list").appendChild(label);
+  }
+  showLook(parseLook(document.documentElement.dataset.look));
+  if (storage) {
+    void storage
+      .get(LOOK_KEY)
+      .then((got) => {
+        // No saved look (never chosen, or Delete all data) is the default, whatever the cache says.
+        showLook(parseLook(got[LOOK_KEY]));
+      })
+      .catch(() => undefined);
+  }
   const keychain = createKeychain(nativeSend);
   // Started now so the Keychain reads run while the rest of the panel loads;
   // the first connect() uses them, later ones read again.
@@ -2884,6 +2937,10 @@ async function main(): Promise<void> {
       const p = chip.dataset.prompt ?? "";
       if (p === "summarize") void ask(SUMMARIZE_QUESTION);
       else if (p === "coupons") void runCoupons();
+      else if (p === "scout") {
+        setMode("scout");
+        question.focus();
+      }
       else void ask(p);
     });
   }
@@ -3522,6 +3579,7 @@ async function main(): Promise<void> {
       settings = parseSettings(undefined);
       consent.forget();
       diag?.forget();
+      showLook(DEFAULT_LOOK);
       clearThread();
       conv = "";
       await connect(false);

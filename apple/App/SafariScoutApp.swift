@@ -35,8 +35,8 @@ struct SafariScoutApp: App {
         WindowGroup {
             ContentView()
                 .preferredColorScheme(Self.forcedScheme)
-                // Link-style buttons use the design's accent-text token, which
-                // meets WCAG AA on both canvases; system blue measured ~4:1.
+                // Link-style buttons use the Trailhead accent-text token, which
+                // meets WCAG AA on both canvases.
                 .tint(.accentText)
         }
     }
@@ -59,11 +59,19 @@ extension SafariScoutApp {
 }
 
 extension Color {
-    // replica/design/tokens.json: color.{light,dark}.accent-text (Apple blue)
-    static let accentText = Color(light: 0x0066CC, dark: 0x2997FF)
-    // color.{light,dark}.accent / accent-on: 4.70:1 light, 4.57:1 dark.
-    static let accentFill = Color(light: 0x0071E3, dark: 0x0073E6)
-    static let accentOn = Color(light: 0xFFFFFF, dark: 0xFFFFFF)
+    // Trailhead look (owner choice 2026-10-19; src/popup.html, html[data-look="trailhead"]).
+    // Pairs are AA: accent-text on canvas 6.6:1 light / 10.7:1 dark, accent-on on
+    // accent-fill 6.4:1 / 9.6:1, muted on surface 8.0:1 / 10.2:1, accent-text on chip 6.0:1 / 7.2:1.
+    static let accentText = Color(light: 0x2A6034, dark: 0x9BD6A5)
+    static let accentFill = Color(light: 0x2F6B3A, dark: 0x8FD19B)
+    static let accentOn = Color(light: 0xFFFFFF, dark: 0x0F1F11)
+    static let trailCanvas = Color(light: 0xF6F1E7, dark: 0x131913)
+    static let trailSurface = Color(light: 0xFFFDF8, dark: 0x1B231C)
+    static let trailChip = Color(light: 0xE2EAD6, dark: 0x2B3A2C)
+    static let trailHairline = Color(light: 0xE3D9C5, dark: 0x2B352B)
+    static let trailInk = Color(light: 0x1F2A1F, dark: 0xEEF1E8)
+    static let trailMuted = Color(light: 0x485245, dark: 0xC9D0C1)
+    static let trailSun = Color(light: 0xF2C14E, dark: 0xE9B949)
 
     init(light: UInt32, dark: UInt32) {
         func rgb(_ v: UInt32) -> (Double, Double, Double) {
