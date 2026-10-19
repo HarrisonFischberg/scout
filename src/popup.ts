@@ -292,10 +292,11 @@ if (STANDALONE) document.documentElement.dataset.standalone = "";
 
 // The look (src/panel/look.ts), from the synchronous cache so the panel opens in it; the saved setting confirms it in main().
 const lookCache = pageCache();
-/** iPhone and iPad (touch): Pure Apple by default and their own question-box hint (owner 2026-10-19). */
+/** iPhone and iPad (touch): Pure Apple by default (owner 2026-10-19). */
 const TOUCH = matchMedia("(pointer: coarse)").matches;
 const HOME_LOOK = defaultLook(TOUCH);
-const ASK_HINT = TOUCH ? "What can Scout help with today?" : "Ask anything…";
+/** The question box hint on every device (owner 2026-10-19). */
+const ASK_HINT = "What can Scout help with today?";
 applyLook(document, cachedLook(lookCache, HOME_LOOK));
 
 async function main(): Promise<void> {

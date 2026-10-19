@@ -17,11 +17,11 @@ export interface Look {
 }
 
 export const LOOKS: readonly Look[] = [
-  { id: "trailhead", swatch: ["#f6f1e7", "#2f6b3a", "#f2c14e"], name: "Trailhead", blurb: "Warm sand and forest green", greeting: { title: "Where to next?", sub: "Ask about this page, or send Scout to do it." } },
+  { id: "trailhead", swatch: ["#f6f1e7", "#2f6b3a", "#f2c14e"], name: "Trailhead", blurb: "Warm sand and forest green", greeting: { title: "Where to next?", sub: "" } },
   { id: "apple", swatch: ["#f2f2f7", "#0a6cff", "#34c759"], name: "Pure Apple", blurb: "Like Safari's own apps", greeting: { title: "Ask Scout", sub: "" } },
-  { id: "nightops", swatch: ["#0b0d0c", "#b8f35a", "#e8f0ea"], name: "Night Ops", blurb: "Dark console, signal lime", greeting: { title: "What should Scout do?", sub: "Type a question, or pick a command." } },
-  { id: "dealhunter", swatch: ["#fff6e5", "#c2410c", "#ffd34d"], name: "Deal Hunter", blurb: "Bold and bright, for shopping", greeting: { title: "What are we hunting?", sub: "Deals, answers, or a job done on this page." } },
-  { id: "ink", swatch: ["#fbfaf7", "#141414", "#8a2c0d"], name: "Ink & Paper", blurb: "Calm, for reading", greeting: { title: "What would you like to know?", sub: "On this page" } },
+  { id: "nightops", swatch: ["#0b0d0c", "#b8f35a", "#e8f0ea"], name: "Night Ops", blurb: "Dark console, signal lime", greeting: { title: "What should Scout do?", sub: "" } },
+  { id: "dealhunter", swatch: ["#fff6e5", "#c2410c", "#ffd34d"], name: "Deal Hunter", blurb: "Bold and bright, for shopping", greeting: { title: "What are we hunting?", sub: "" } },
+  { id: "ink", swatch: ["#fbfaf7", "#141414", "#8a2c0d"], name: "Ink & Paper", blurb: "Calm, for reading", greeting: { title: "What would you like to know?", sub: "" } },
   { id: "classic", swatch: ["#f5f5f7", "#0071e3", "#e8e8ed"], name: "Classic", blurb: "The original gray and blue", greeting: { title: "", sub: "" } },
 ];
 
