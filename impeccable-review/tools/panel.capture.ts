@@ -17,6 +17,7 @@ const OUT = resolve(ROOT, process.env.OUT ?? "impeccable-review/before");
 const THEME = process.env.THEME ? resolve(ROOT, process.env.THEME) : "";
 const THEME_JS = process.env.THEME_JS ? resolve(ROOT, process.env.THEME_JS) : "";
 const FONTS = join(ROOT, "impeccable-review/tools/fonts");
+const LOOK = process.env.LOOK ?? "";
 const ONLY = process.env.SHOTS ? new Set(process.env.SHOTS.split(",")) : null;
 const KEY = "sk-ant-test-synthetic-REVIEW-0000";
 const now = Date.now();
@@ -77,7 +78,9 @@ async function open(page: Page, o: Opts = {}): Promise<void> {
     settings: { provider: "anthropic", model: "claude-haiku-5-5", retention: "30" },
     ...(o.consent === false ? {} : { aiConsent: { anthropic: { at: now - 72 * H, version: 2 }, openai: { at: now - 72 * H, version: 2 } } }),
     ...(o.history ? { history: HISTORY } : {}),
+    ...(LOOK ? { look: LOOK } : {}),
   };
+  if (LOOK) await page.addInitScript((l) => localStorage.setItem("scout.look", l), LOOK);
   await page.addInitScript(
     ({ keys, data, pageData }) => {
       const g = globalThis as unknown as Record<string, unknown>;
@@ -122,7 +125,10 @@ async function open(page: Page, o: Opts = {}): Promise<void> {
   await page.route("**/popup.html*", async (r) => {
     let html = await readFile(join(RES, "popup.html"), "utf8");
     // Linux has no SF Pro: Inter stands in for the system font in these captures.
-    const font = `<style id="review-font">body{font-family:Inter,"SF Pro Text",-apple-system,system-ui,sans-serif!important}</style>`;
+    // Stand-ins for the Apple fonts the looks name: SF Pro Rounded, New York, SF Mono.
+    const faces = [400, 600, 700, 800, 900].map((w) => `@font-face{font-family:"SF Pro Rounded";font-weight:${w};src:url(/rf/nunito-latin-${w}-normal.woff2)}`).join("")
+      + `@font-face{font-family:"New York";src:local("Bitstream Charter")}@font-face{font-family:"SF Mono";font-weight:400;src:url(/rf/jetbrains-mono-latin-400-normal.woff2)}@font-face{font-family:"SF Mono";font-weight:600 700;src:url(/rf/jetbrains-mono-latin-600-normal.woff2)}`;
+    const font = `<style id="review-font">${faces}body{font-family:Inter,"SF Pro Text",-apple-system,system-ui,sans-serif!important}</style>`;
     html = html.replace("</head>", font + (theme ? `<style id="review-theme">${theme}</style>` : "") + "</head>");
     await r.fulfill({ body: html, contentType: "text/html" });
   });

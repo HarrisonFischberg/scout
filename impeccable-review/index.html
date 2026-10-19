@@ -181,6 +181,12 @@ dialog p { color: #fff; font-size: 13px; margin: 6px 0 0; text-align: center; }
     <div class="gallery" id="gallery"></div>
   </section>
 
+  <section id="built">
+    <h2>7. As built: Trailhead by default, five more in Settings</h2>
+    <p class="note">The real panel after the change, captured from the built extension (same Mac/iPhone and Light/Dark switches as above). Trailhead is the default; Settings &gt; Look switches to any of the others at once and remembers it. Classic is the original design. Fonts here are stand-ins for SF Pro Rounded and New York.</p>
+    <div class="compare"><div class="grid" id="built-grid"></div></div>
+  </section>
+
   <section id="pick">
     <h2>6. Recommendation</h2>
     <div class="card rec">
@@ -250,6 +256,7 @@ const DIRS = [
   },
 ];
 
+const LOOKS = [["trailhead", "Trailhead", "Default"], ["apple", "Pure Apple", "In Settings"], ["nightops", "Night Ops", "In Settings"], ["dealhunter", "Deal Hunter", "In Settings"], ["ink", "Ink &amp; Paper", "In Settings"], ["classic", "Classic", "The original, in Settings"]];
 let plat = "mac", scheme = "light";
 const src = (dir, shot) => `${dir}/${plat}-${scheme}-${shot}.png`;
 function render() {
@@ -257,6 +264,11 @@ function render() {
   grid.innerHTML = '<div></div>' + OPTIONS.map((o) => `<div class="colhead">${o.name}<small>${o.sub}</small></div>`).join("");
   for (const [shot, label] of ROWS) {
     grid.insertAdjacentHTML("beforeend", `<div class="rowhead">${label}</div>` + OPTIONS.map((o) => `<figure><img loading="lazy" src="${src(o.dir, shot)}" alt="${o.name}: ${label}, ${plat}, ${scheme}"></figure>`).join(""));
+  }
+  const built = document.getElementById("built-grid");
+  built.innerHTML = '<div></div>' + LOOKS.map(([, n, d]) => `<div class="colhead">${n}<small>${d}</small></div>`).join("");
+  for (const [shot, label] of ROWS.filter(([s]) => s !== "20-setup-app")) {
+    built.insertAdjacentHTML("beforeend", `<div class="rowhead">${label}</div>` + LOOKS.map(([id, n]) => `<figure><img loading="lazy" src="${src("after/" + id, shot)}" alt="As built, ${n}: ${label}, ${plat}, ${scheme}"></figure>`).join(""));
   }
   document.getElementById("gallery").innerHTML = BEFORE
     .filter(([s]) => !(plat === "iphone" && s === "15-page"))

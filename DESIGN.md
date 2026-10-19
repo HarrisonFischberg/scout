@@ -10,6 +10,10 @@ is the short version for design reviews. Proposed refreshes live in
 System-matched and quiet: Apple neutral grays, one Apple-blue accent for
 actions, links and focus, light and dark following the system. Text-first chat.
 
+## Looks (2026-10-19)
+
+Trailhead (sand, forest green, sun yellow, SF Pro Rounded headings) is the default. Settings > Look also offers Pure Apple, Night Ops, Deal Hunter, Ink & Paper and Classic. A look is a token set plus component rules under `:root[data-look="<id>"]` in `src/popup.html`, with a dark set for each; Classic is the base CSS below. Names, swatches and greetings live in `src/panel/look.ts`. Mockups and screenshots: `impeccable-review/`.
+
 ## Tokens
 
 | Role | Light | Dark |
