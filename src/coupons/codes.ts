@@ -284,6 +284,34 @@ export interface SuggestedCodes {
   /** Search requests run at once; and how many ended with an error while others finished. */
   angles: number;
   anglesFailed: number;
+  /** Each request the search ran, in the order they started. */
+  passes: PassStat[];
+}
+
+/**
+ * One request of the search, for the run trace: what it ran and wrote, never
+ * page text. Owner run 2026-10-19 (#237): four searches ran for 216 s and
+ * wrote no code line, and the report could not say why.
+ */
+export interface PassStat {
+  /** "listed", "single", an angle id ("creators"), "retry" or "browser-text". */
+  id: string;
+  ms: number;
+  /** Searches that returned results, and how many results in all. */
+  searches: number;
+  results: number;
+  /** Error codes of searches that failed ("max_uses_exceeded", "too_many_requests"). */
+  searchErrors: string[];
+  fetches: number;
+  /** Code lines it wrote (kept or dropped), masked lines, and lines that were neither. */
+  lines: number;
+  masked: number;
+  ignored: number;
+  shapes: Record<string, number>;
+  /** Why the model's turn ended, when the provider said. */
+  stop?: string;
+  /** Why the request ended early. */
+  error?: string;
 }
 
 export interface FetchedPage {
@@ -349,6 +377,14 @@ function plainLine(line: string): string {
     .replace(/^\s*\|\s*|\s*\|\s*$/g, "");
 }
 
+/** "CODE | www.site.com/page | ..." read as if the page had https://; only with "|", so prose is never a code line. */
+function bareUrlLine(line: string): RegExpExecArray | null {
+  const m = /^([^\s|]+?)\s*\|\s*((?:www\.)?[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.[a-z]{2,}(?:\/[^\s|]*)?)\s*(?:\|\s*(.*))?$/i.exec(line);
+  if (!m) return null;
+  m[2] = "https://" + m[2];
+  return m;
+}
+
 const trimUrl = (url: string): string => url.replace(/[)>\].,;|"'”]+$/, "");
 
 /** Whether the first field of a reply line is a masked code ("SAVE1***", "WELC•••"), emphasis aside. */
@@ -392,6 +428,8 @@ export interface Findings {
   ignored: number;
   /** Pages the model said hide or mask a code: worth a press of "Show code" in the browser. */
   maskedUrls: string[];
+  /** Ignored lines by shape (never their text), for the run trace: "pipe-no-url", "url-unparsed", "prose". */
+  ignoredShapes: Record<string, number>;
 }
 
 /**
@@ -406,6 +444,7 @@ export function parseFindings(text: string, retrieved: Retrieved): Findings {
   const offers: string[] = [];
   let masked = 0;
   let ignored = 0;
+  const ignoredShapes: Record<string, number> = {};
   const maskedUrls: string[] = [];
   const maskedAt = (line: string): void => {
     const url = trimUrl(/https?:\/\/[^\s|]+/.exec(plainLine(line))?.[0] ?? "");
@@ -435,9 +474,16 @@ export function parseFindings(text: string, retrieved: Retrieved): Findings {
       continue;
     }
     // "CODE | url | quote | conditions"; also "CODE - url", "CODE: url" from older replies.
-    const m = /^([^\s|]+?)\s*(?:\||\s[-–—]\s|[–—]|:(?=\s*https?))\s*(https?:\/\/[^\s|]+)\s*(?:\|?\s*(.*))?$/.exec(line);
+    const m =
+      /^([^\s|]+?)\s*(?:\||\s[-–—]\s|[–—]|:(?=\s*https?))\s*(https?:\/\/[^\s|]+)\s*(?:\|?\s*(.*))?$/.exec(line) ??
+      // "CODE | linktr.ee/creator | ...": a page written without https:// (owner run 2026-10-19 #237).
+      bareUrlLine(line);
     if (!m) {
-      if (!/^NONE\b/i.test(line)) ignored++;
+      if (!/^NONE\b/i.test(line)) {
+        ignored++;
+        const shape = /https?:\/\//i.test(line) ? "url-unparsed" : line.includes("|") ? "pipe-no-url" : "prose";
+        ignoredShapes[shape] = (ignoredShapes[shape] ?? 0) + 1;
+      }
       continue;
     }
     const rawCode = (m[1] ?? "").replace(/[:,;]+$/, "");
@@ -472,7 +518,7 @@ export function parseFindings(text: string, retrieved: Retrieved): Findings {
     });
     if (found.length >= MAX_FOUND) break;
   }
-  return { found, dropped, masked, offers, ignored, maskedUrls };
+  return { found, dropped, masked, offers, ignored, maskedUrls, ignoredShapes };
 }
 
 function searchError(err: unknown, timedOut: boolean, stopped: boolean): SearchError {
@@ -608,6 +654,7 @@ export async function suggestCodes(
   let retried = false;
   let pagesRead = false;
   let anglesRun = 0;
+  const passStats: PassStat[] = [];
   let anglesFailed = 0;
   const listed = likelyCodePages(merchant);
   // Sites that refuse the reader: with a browser, their pages skip the reader.
@@ -738,7 +785,12 @@ export async function suggestCodes(
   };
 
   /** One streamed request; what it finds lands in `text`, `retrieved` and `cited`. Returns why it ended early, if it did. */
-  const pass = async (p: { search: boolean; fetch: boolean; timeoutMs: number; searches?: number; fetches?: number; note?: string; focus?: string }): Promise<SearchError | undefined> => {
+  const pass = async (p: { id: string; search: boolean; fetch: boolean; timeoutMs: number; searches?: number; fetches?: number; note?: string; focus?: string }): Promise<SearchError | undefined> => {
+    const stat: PassStat = { id: p.id, ms: 0, searches: 0, results: 0, searchErrors: [], fetches: 0, lines: 0, masked: 0, ignored: 0, shapes: {} };
+    passStats.push(stat);
+    const passStart = Date.now();
+    // This pass's own finished lines, for its trace line.
+    let mine = "";
     const ac = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -773,12 +825,21 @@ export async function suggestCodes(
           own += ev.delta;
           const end = own.lastIndexOf("\n");
           if (end >= 0) {
+            mine += own.slice(0, end + 1);
             text += own.slice(0, end + 1);
             own = own.slice(end + 1);
             report(false);
             scanMasked();
           }
+        } else if (ev.type === "search") {
+          if (ev.ok) {
+            stat.searches++;
+            stat.results += ev.results ?? 0;
+          } else stat.searchErrors.push(ev.error ?? "error");
+        } else if (ev.type === "stop") {
+          stat.stop = ev.reason;
         } else if (ev.type === "fetch") {
+          stat.fetches++;
           opened.add(urlKey(ev.url));
           pages.push({ url: ev.url, ok: ev.ok, ...(ev.chars !== undefined ? { chars: ev.chars } : {}), ...(ev.error ? { error: ev.error } : {}) });
           // The reader failed or refused the page: the browser tries it instead.
@@ -805,9 +866,20 @@ export async function suggestCodes(
       }
       return undefined;
     } catch (err) {
-      return searchError(err, timedOut, signal?.aborted === true);
+      const e = searchError(err, timedOut, signal?.aborted === true);
+      stat.error = e.code;
+      return e;
     } finally {
-      if (own) text += own + "\n";
+      if (own) {
+        mine += own + "\n";
+        text += own + "\n";
+      }
+      const f = parseFindings(mine, retrieved);
+      stat.lines = f.found.length + f.dropped.length;
+      stat.masked = f.masked;
+      stat.ignored = f.ignored;
+      stat.shapes = f.ignoredShapes;
+      stat.ms = Date.now() - passStart;
       report(true);
       if (text && !text.endsWith("\n")) text += "\n";
       scanMasked();
@@ -828,7 +900,7 @@ export async function suggestCodes(
     if (readerListed.length && !opts.more && provider.id === "anthropic" && opts.readPages !== false && !stopped()) {
       pagesRead = true;
       const started = Date.now();
-      const first = await pass({ search: false, fetch: true, timeoutMs: opts.readTimeoutMs ?? READ_TIME_MS, fetches: readerListed.length, note: READ_NOTE + " " + readerListed.join(" ") });
+      const first = await pass({ id: "listed", search: false, fetch: true, timeoutMs: opts.readTimeoutMs ?? READ_TIME_MS, fetches: readerListed.length, note: READ_NOTE + " " + readerListed.join(" ") });
       spent = Date.now() - started;
       // A refused request ends the search here; running out of time only moves on to the search.
       if (first && first.code !== "timeout") error = first;
@@ -843,12 +915,12 @@ export async function suggestCodes(
       const angles = (opts.more ? MORE_ANGLES : SEARCH_ANGLES).slice(0, Math.max(1, opts.angles ?? SEARCH_ANGLES.length));
       anglesRun = angles.length;
       if (angles.length === 1 && opts.angles === 1) {
-        error = await pass({ search: true, fetch: true, timeoutMs: budget, searches: SEARCH_USES, fetches: FETCH_USES, ...(note ? { note } : {}) });
+        error = await pass({ id: "single", search: true, fetch: true, timeoutMs: budget, searches: SEARCH_USES, fetches: FETCH_USES, ...(note ? { note } : {}) });
       } else {
         // Every angle at once. The search failed only when none finished; a
         // refusal (key, quota) is reported over a timeout.
         const ends = await Promise.all(
-          angles.map((a) => pass({ search: true, fetch: true, timeoutMs: budget, searches: a.searches ?? ANGLE_SEARCH_USES, fetches: ANGLE_FETCH_USES, focus: a.focus(when, { brand: merchant.brand, domain: merchant.domain }), ...(note ? { note } : {}) })),
+          angles.map((a) => pass({ id: a.id, search: true, fetch: true, timeoutMs: budget, searches: a.searches ?? ANGLE_SEARCH_USES, fetches: ANGLE_FETCH_USES, focus: a.focus(when, { brand: merchant.brand, domain: merchant.domain }), ...(note ? { note } : {}) })),
         );
         anglesFailed = ends.filter((e) => e && e.code !== "timeout").length;
         const errs = ends.filter((e): e is SearchError => !!e);
@@ -858,7 +930,7 @@ export async function suggestCodes(
       // No code line written before the time ran out: one quick pass from search results alone.
       if (error?.code === "timeout" && foundSoFar() === 0 && opts.retry !== false && !stopped()) {
         retried = true;
-        error = await pass({ search: true, fetch: false, timeoutMs: opts.retryTimeoutMs ?? RETRY_TIME_MS, searches: RETRY_SEARCH_USES, note: RETRY_NOTE });
+        error = await pass({ id: "retry", search: true, fetch: false, timeoutMs: opts.retryTimeoutMs ?? RETRY_TIME_MS, searches: RETRY_SEARCH_USES, note: RETRY_NOTE });
       }
     }
   }
@@ -870,7 +942,7 @@ export async function suggestCodes(
   closed = true;
   if (browserTexts.size && !stopped()) {
     const shown = [...browserTexts].map(([url, t]) => "<<<PAGE " + url + ">>>\n" + t.slice(0, MAX_BROWSER_TEXT) + "\n<<<END PAGE>>>").join("\n");
-    await pass({ search: false, fetch: false, timeoutMs: BROWSER_NOTE_TIME_MS, note: BROWSER_NOTE + "\n" + shown });
+    await pass({ id: "browser-text", search: false, fetch: false, timeoutMs: BROWSER_NOTE_TIME_MS, note: BROWSER_NOTE + "\n" + shown });
   }
   const notOpened = waiting.length;
   const { findings, codes } = collect(true);
@@ -905,7 +977,19 @@ export async function suggestCodes(
     ]),
     angles: anglesRun,
     anglesFailed,
+    passes: passStats,
     // A search the provider refused says why on its own; skipped pages are not news then.
     ...(notOpened && (declined || !opts.browser) && (!error || error.code === "timeout") ? { browserSkipped: { count: notOpened, why: declined ? ("declined" as const) : ("unavailable" as const) } } : {}),
   };
+}
+
+/** Trace line for one request of the search: counts and codes only, never page text. */
+export function passTrace(p: PassStat): string {
+  const errs = [...new Set(p.searchErrors)].map((e) => e + "×" + p.searchErrors.filter((x) => x === e).length).join(",");
+  const shapes = Object.entries(p.shapes).map(([k, n]) => k + "×" + n).join(",");
+  return (
+    "coupons:pass " + p.id + " " + Math.round(p.ms / 1000) + "s searches=" + p.searches + " results=" + p.results + (errs ? " search-errors=" + errs : "") +
+    " fetches=" + p.fetches + " lines=" + p.lines + " masked=" + p.masked + " ignored=" + p.ignored + (shapes ? "(" + shapes + ")" : "") +
+    (p.stop ? " stop=" + p.stop : "") + (p.error ? " error=" + p.error : "")
+  );
 }

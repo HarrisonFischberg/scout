@@ -149,7 +149,13 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
                   yield { type: "source", url, ...(typeof doc?.title === "string" ? { title: doc.title } : {}), ...(page !== undefined ? { page } : {}) };
                 }
               }
+              // A failed search comes back as an error object, not a list (owner run
+              // 2026-10-19 #237: four searches wrote no code, and nothing said why).
+              if (cb.type === "web_search_tool_result" && !Array.isArray(cb.content)) {
+                yield { type: "search", ok: false, error: typeof cb.content?.error_code === "string" ? cb.content.error_code : "error" };
+              }
               if (cb.type === "web_search_tool_result" && Array.isArray(cb.content)) {
+                yield { type: "search", ok: true, results: cb.content.filter((r: { type?: unknown }) => r?.type === "web_search_result").length };
                 for (const r of cb.content) {
                   if (r?.type === "web_search_result" && typeof r.url === "string") {
                     yield {
@@ -227,7 +233,10 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
         }
         outputTokens += respOut;
         webSearches += respSearches;
-        if (stop !== "pause_turn" || round >= MAX_RESUMES || req.signal?.aborted) break;
+        if (stop !== "pause_turn" || round >= MAX_RESUMES || req.signal?.aborted) {
+          if (stop) yield { type: "stop", reason: stop };
+          break;
+        }
         paused = [...paused, ...resumable(content)];
       }
       yield { type: "usage", usage: { inputTokens, outputTokens, ...(webSearches ? { webSearches } : {}) } };

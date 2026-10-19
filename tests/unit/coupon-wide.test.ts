@@ -388,3 +388,53 @@ describe("code-free offers", () => {
     expect(r.offers[1]).not.toMatch(/\s…$/);
   });
 });
+
+// Owner run 2026-10-19 (#237, Sonnet search on getbeefy.co): four searches ran
+// for 216 s, wrote five lines that were not read as codes and none that were,
+// and every coupon-site page in the browser came back "empty". The report now
+// says what each search did, a page written without https:// still counts, and
+// a bot check or missing page is named as one.
+describe("what each search did, in the report", () => {
+  it("reads a code line whose page has no https://, and counts ignored lines by shape", async () => {
+    const { parseFindings, newRetrieved, addRetrieved } = await import("../../src/coupons/codes");
+    const r = newRetrieved();
+    addRetrieved(r, "https://linktr.ee/ketosynth", "Beefy: use code KETOSYNTH");
+    const f = parseFindings("KETOSYNTH | linktr.ee/ketosynth | \"use code KETOSYNTH\" | -\nI looked at several pages.\nOTHER | no page given\n", r);
+    expect(f.found.map((c) => [c.code, c.origin, c.sourceUrl])).toEqual([["KETOSYNTH", "verified", "https://linktr.ee/ketosynth"]]);
+    expect(f.ignoredShapes).toEqual({ prose: 1, "pipe-no-url": 1 });
+    // Prose with a domain in it is not a code line.
+    expect(parseFindings("Note: getbeefy.co has a sale\n", r).found).toEqual([]);
+  });
+
+  it("traces each request's searches, errors, lines and why it stopped, with no page text", async () => {
+    const { passTrace } = await import("../../src/coupons/codes");
+    let n = 0;
+    const p: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        n++;
+        if (!req.webSearch) return;
+        yield { type: "search", ok: true, results: 10 };
+        yield { type: "search", ok: false, error: "too_many_requests" };
+        yield { type: "source", url: "https://deals.test/beefy", title: "Beefy codes" };
+        yield { type: "text", delta: "Searching found codes on several pages.\nBEEFY10 | https://deals.test/beefy\n" };
+        yield { type: "stop", reason: "end_turn" };
+      },
+    };
+    const r = await suggestCodes(p, "m", identifyMerchant("https://getbeefy.co/cart", { siteName: "Beefy" }), undefined, { readPages: false });
+    expect(n).toBe(SEARCH_ANGLES.length);
+    const lines = r.passes.map(passTrace);
+    const creators = lines.find((l) => l.startsWith("coupons:pass creators "))!;
+    expect(creators).toMatch(/^coupons:pass creators \d+s searches=1 results=10 search-errors=too_many_requests×1 fetches=0 lines=1 masked=0 ignored=1\(prose×1\) stop=end_turn$/);
+    expect(lines.join("\n")).not.toMatch(/several pages|deals\.test/);
+  });
+
+  it("names a bot check or a missing page instead of calling it empty", async () => {
+    const { emptyOutcome } = await import("../../src/coupons/browser-read");
+    expect(emptyOutcome("Just a moment... Checking if the site connection is secure")).toBe("wall");
+    expect(emptyOutcome("Sorry, you have been blocked. Cloudflare Ray ID")).toBe("wall");
+    expect(emptyOutcome("Page not found. Try searching for a store.")).toBe("missing");
+    expect(emptyOutcome("Beefy coupons. Sign up for deals.")).toBe("empty");
+    expect(emptyOutcome("Just a moment " + "x".repeat(3000))).toBe("empty");
+  });
+});
