@@ -146,14 +146,15 @@ test.describe("stop timing", () => {
 
 });
 
-test("the border sweeps on a 2.5 s loop and pauses while the tab is hidden", async ({ page }) => {
+test("the border sweeps on a 1.5 s loop with a slow pulse, and pauses while the tab is hidden", async ({ page }) => {
   await load(page);
   await overlay(page, { type: "overlay:show", taskId: "t1", state: "running" });
   const anim = await inShadow(page, (root) => {
     const s = getComputedStyle(root.querySelector(".glow")!);
     return { name: s.animationName, duration: s.animationDuration, count: s.animationIterationCount, state: s.animationPlayState };
   });
-  expect(anim).toEqual({ name: "scout-sweep", duration: "2.5s", count: "infinite", state: "running" });
+  // Owner, 2026-10-19: more motion (the sweep was 2.5 s, with no pulse).
+  expect(anim).toEqual({ name: "scout-sweep, scout-pulse", duration: "1.5s, 1.8s", count: "infinite, infinite", state: "running, running" });
   // The gradient computes: the angle is registered on the document, not in the shadow tree.
   expect(await inShadow(page, (root) => getComputedStyle(root.querySelector(".glow")!).backgroundImage)).toContain("conic-gradient");
   await page.evaluate(() => {
@@ -223,4 +224,38 @@ test("task actions act on the real page: fill, type, key, scroll, drag, and a pr
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(1000);
   expect((await content<{ ok: boolean }>(page, { type: "scout:task-act", action: { type: "key", key: "Tab", modifiers: [] } })).ok).toBe(true);
   expect((await content<{ ok: boolean }>(page, { type: "scout:task-act", action: { type: "drag", from: { ref: ref("Name") }, to: { ref: ref("Email") } } })).ok).toBe(true);
+});
+
+// Owner bug report 2026-10-19: with coupon runs going on after the panel closes,
+// Safari's bottom bar went solid on iPhone. Safari 26 does that while a page has
+// a see-through fixed box over the whole screen or a top-layer ::backdrop.
+test.describe("on iPhone", () => {
+  test.use({ viewport: { width: 390, height: 664 }, screen: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
+
+  test("the glow and the pointer cover nothing full-screen: no top layer, and the glow stops above the bottom edge", async ({ page }) => {
+    await load(page, "/shop.html");
+    await overlay(page, { type: "overlay:show", taskId: "coupons:1", state: "running" });
+    const snap = await content<{ elements: Array<{ ref: string; name: string }> }>(page, { type: "scout:snapshot" });
+    const ref = snap.elements.find((e) => e.name === "Apply")!.ref;
+    await content(page, { type: "scout:act", action: { type: "click", ref }, show: true, aboveSheet: true });
+    const boxes = await page.evaluate(() => {
+      const o = document.querySelector("[data-scout-overlay]") as HTMLElement;
+      const p = document.getElementById("scout-pointer") as HTMLElement;
+      const r = (el: HTMLElement) => {
+        const b = el.getBoundingClientRect();
+        return { w: b.width, h: b.height, bottom: b.bottom, topLayer: el.matches(":popover-open") };
+      };
+      return { overlay: r(o), pointer: r(p), height: window.innerHeight };
+    });
+    expect(boxes.overlay.topLayer).toBe(false);
+    expect(boxes.overlay.bottom).toBeLessThanOrEqual(boxes.height - 100);
+    expect(boxes.pointer).toMatchObject({ w: 0, h: 0, topLayer: false });
+    // The pill is still on screen, above Safari's bar.
+    const pill = await inShadow(page, (root) => {
+      const b = (root.querySelector(".pill") as HTMLElement).getBoundingClientRect();
+      return { top: b.top, bottom: b.bottom };
+    });
+    expect(pill.top).toBeGreaterThan(0);
+    expect(pill.bottom).toBeLessThan(boxes.height - 100);
+  });
 });

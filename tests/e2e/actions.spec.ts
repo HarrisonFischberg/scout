@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 // Loads the built content script (run `npm run build` first) into a fixture
 // page, then drives it through the same handler the popup calls via
 // scripting.executeScript.
-type Req = { type: "scout:snapshot" } | { type: "scout:act"; action: Record<string, unknown>; show?: boolean };
+type Req = { type: "scout:snapshot" } | { type: "scout:act"; action: Record<string, unknown>; show?: boolean; aboveSheet?: boolean };
 interface Snap {
   elements: Array<{ ref: string; name: string; role: string; value?: string }>;
 }
