@@ -375,9 +375,8 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
       },
       onAttempt: (a, index, _total, currency) => {
         if (a.kind) kinds.push(a.kind);
-        // Stage words only: where the code came from (a host), and the group of the store's reply, never its words.
-        const from = a.combo ? "" : a.origin === "guess" || a.origin === "remembered" ? " " + a.origin : a.sourceUrl ? " " + (pageLabel(a.sourceUrl).split("/")[0] ?? "?") : "";
-        trace("coupons:attempt " + index + (a.combo ? " combo" : "") + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none") + (a.kind ? " " + a.kind : "") + from);
+        // Stage words only: the group of the store's reply (never its words) and where the code came from.
+        trace("coupons:attempt " + index + (a.combo ? " combo" : "") + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none") + (a.kind ? " " + a.kind : "") + " from " + sourceLabel(a));
         emit({ kind: "attempt", attempt: a, ...(currency ? { currency } : {}) });
         // A new best: say so in the chat.
         if (a.accepted !== false && a.saving !== null && a.saving > 0 && a.total !== null && (best === null || a.saving > best)) {
@@ -430,4 +429,16 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     const summary = "Could not finish the coupon search. Nothing was ordered.";
     return finish({ status: "error", message: summary, outcome: "error", summary, tone: "error", status_text: couponStatusText("error") });
   }
+}
+
+/** Where a tested code came from, for the run trace: the site's host only (no path or query). */
+export function sourceLabel(a: { origin: string; sourceUrl?: string }): string {
+  if (a.sourceUrl) {
+    try {
+      return new URL(a.sourceUrl).hostname.replace(/^www\./, "");
+    } catch {
+      // Falls through to the origin.
+    }
+  }
+  return a.origin;
 }

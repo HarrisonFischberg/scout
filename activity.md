@@ -1830,6 +1830,22 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - (1) Glow stronger at the edges (center unchanged), sweep 2.5 s → 1.5 s, a 1.8 s pulse; iPhone at full strength (was 75%). Preview: /mnt/project-files/coupon-glow/before-after.png (Chromium, iPhone size).
 - Evidence: unit 473/474 (known Take control failure); e2e overlay (new iPhone layout test), actions, coupons, checkout pass in Chromium; full Chromium suite 139 passed, the same 20 failures as `main`. `npm run check:release` clean. Not checked: real iPhone.
 
+## 2026-10-19 — iPhone glow back over the whole page
+
+- Actual (owner, on device after #56): the blue glow was missing from the bottom quarter of the page, and the solid strip under Safari's bar was still there.
+- Expected: the glow fills the whole page with "Working…" at the very bottom.
+- Cause: #56 stopped the overlay 120 px above the bottom on iPhone to clear the strip. It did not clear it, so the strip comes from something else.
+- Fix: `src/overlay.ts` covers the whole screen on every device again. iPhone still skips the top layer (a top-layer `::backdrop` is what made Safari's bar solid in #27).
+- Evidence: `tests/e2e/overlay.spec.ts` "on iPhone" asserts the overlay reaches the bottom edge, is not in the top layer, and the pill sits at the bottom. Build, typecheck, lint, and the overlay/actions/coupons/checkout e2e pass (Chromium, 26/26).
+
+## 2026-10-19 — Diagnostics name each tested code's source site
+
+- Actual (owner report #193): the panel was reopened mid-run, so the report began at attempt 26 and could not show where any code came from.
+- Expected: a report shows the whole run and the site each tested code came from.
+- Cause: `CouponHost` did not keep trace stages for a reopened panel, and attempt lines did not name a source.
+- Fix: attempt traces end with `from <host>` (host only, or the origin such as `store`); a reopened panel replays the run's trace stages as `replay +Ns …`. Page URLs are still not kept.
+- Evidence: `tests/unit/coupon-host.test.ts` checks replayed traces carry their time and the attempt names its source. Unit 473/474 (only the known Take control failure), typecheck, lint, check:release, e2e 26/26 (Chromium).
+
 ## 2026-10-19 — Find coupons searches far wider and learns from each run (owner request)
 
 - Owner: search "dozens and dozens (100+?)" sites, use AI to find the most likely coupons, do better than Comet. Owner supplied two logs from his local tool: Birdcall (61 codes, none worked; it grouped the store's replies: only Tuesday, not active yet, used up, another location, expired) and getbeefy.co (GETBEEFY applied at checkout; BEEFY15 and KETOVORENURSE worked in the cart earlier). Merged plan: /mnt/project-files/coupon-engine/best-in-class-plan.md.
@@ -1839,7 +1855,7 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
   - `src/coupons/reasons.ts` + `finder.ts`: on the page path the store's own message is kept for each refused code ("The store said: …") and grouped (expired, not active yet, used, days/times, location, minimum, items, combining, account, invalid). The summary lists codes by group and the sites the codes came from.
   - `src/coupons/guesses.ts`: after the search ends, up to 40 guesses: the store's name with the hinted percentage first (BEEFY15), the name alone (BEEFY, GETBEEFY), then common and seasonal codes (WELCOME10, SAVE15, OCTOBER, HALLOWEEN). Skipped when the provider refused the search (fix the key first) and on IP/localhost fixtures. Labeled as guesses in the rows and summary.
   - `src/coupons/memory.ts` + `job.ts`: codes that lowered the total are remembered per store on the device (`coupons.worked.v1`, data inventory updated) and tried first next time; a remembered code refused twice is forgotten.
-  - Diagnostics: each attempt line now carries the reply group and the source host (or `guess` / `remembered`), never the store's words; plus `coupons:remembered`, `coupons:angles`, `coupons:guesses`, `coupons:find-more fresh`.
+  - Diagnostics: each attempt line now also carries the reply group (never the store's words), next to #57's `from <host>` (`from guess` / `from remembered` for those); plus `coupons:remembered`, `coupons:angles`, `coupons:guesses`, `coupons:find-more fresh`.
   - At most 140 codes per run (was 80).
 - Evidence: unit 484/485 (known Take control failure), new `tests/unit/coupon-wide.test.ts` (Birdcall reply groups, BEEFY15/GETBEEFY guesses from a "15% Off" title, a whole getbeefy-like run that tests the creator code first, applies BEEFY15 and tries it first next time, parallel angles, partial failure). Typecheck, lint, build, `npm run check:release` clean. e2e in Chromium (WebKit not installed in the cloud sandbox): coupons, cart, checkout, coupon-browser 13/13 with updated expectations (37 codes = 5 found + 32 guesses; store's words on refused codes); full suite 139 passed, the same 20 failures as `main`.
 - Not checked: a live run with a real key (the 56-store suite on the owner's Mac, plus getbeefy.co and order.eatbirdcall.com); rate limits on low-tier keys with four requests at once; checkout confirmation of a cart winner (step 3 of the plan, not built).
