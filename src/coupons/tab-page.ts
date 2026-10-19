@@ -1,14 +1,14 @@
 // Find coupons' reach into the browser, from the background worker
 // (src/server/coupon-host.ts): the shop tab, through content.js, and the
-// background tabs of the browser fallback. Moved out of the panel so a run
+// quiet page downloads of the browser fallback. Moved out of the panel so a run
 // keeps going when the panel closes (owner request 2026-10-19).
 import type { Action, ActionResult } from "../actions/executor";
 import { CONTENT_HANDLER, type ContentRequest } from "../content-api";
-import { callInjected } from "../content-call";
 import type { Snapshot } from "../snapshot/snapshot";
 import type { BrowserTarget, PageBrowser } from "./browser-read";
 import type { CartApi, CartState } from "./finder";
 import type { MerchantMeta } from "./merchant";
+import { quietPages } from "./quiet-read";
 import { MAX_STORE_CODES, type StoreCode } from "./store";
 
 /** The coupon finder's view of the current tab . */
@@ -99,8 +99,6 @@ export async function tabCouponPage(tabId: number, opts: { aboveSheet?: boolean;
   };
 }
 
-const BROWSER_SNAPSHOT = { maxElements: 600, maxTextChars: 60_000 };
-
 const originOf = (url: string): string | null => {
   try {
     return new URL(url).origin + "/*";
@@ -111,54 +109,20 @@ const originOf = (url: string): string | null => {
 
 /**
  * Find coupons' browser fallback (src/coupons/browser-read.ts): coupon pages
- * the reader could not load open in background tabs of the user's own Safari
- * window (a Private window stays private), read through Scout's content
- * script, and close again with any tab they opened.
+ * the reader could not load are downloaded quietly from the worker, with no
+ * tab opened on Mac or iPhone (owner's choice "Quiet only", 2026-10-19;
+ * src/coupons/quiet-read.ts). Background tabs of the user's window were used
+ * before; they flashed in the tab bar and iPhone could not read them.
  */
-export function backgroundTabs(windowId: number | undefined): PageBrowser {
-  const children = new Map<number, Set<number>>();
-  const onCreated = (t: { id?: number; openerTabId?: number }): void => {
-    if (t.id !== undefined && t.openerTabId !== undefined) children.get(t.openerTabId)?.add(t.id);
-  };
-  let listening = false;
-  return {
-    open: async (url) => {
-      const origin = originOf(url);
-      if (!origin || !browser.tabs.create) return null;
-      // Without site access the tab could open but never be read.
-      if (browser.permissions.contains && !(await browser.permissions.contains({ origins: [origin] }).catch(() => false))) return null;
-      if (!listening) {
-        browser.tabs.onCreated?.addListener(onCreated);
-        listening = true;
-      }
-      const t = await browser.tabs.create({ url, active: false, ...(windowId !== undefined ? { windowId } : {}) });
-      if (t.id === undefined) return null;
-      children.set(t.id, new Set());
-      return t.id;
-    },
-    read: async (tab) => {
-      const snap = (await callInjected(tab, "content.js", CONTENT_HANDLER, { type: "scout:snapshot", ...BROWSER_SNAPSHOT }).catch(() => null)) as Snapshot | null;
-      return snap && typeof snap.text === "string" && Array.isArray(snap.elements) ? snap : null;
-    },
-    click: async (tab, ref) => {
-      const r = (await callInjected(tab, "content.js", CONTENT_HANDLER, { type: "scout:act", action: { type: "click", ref } }).catch(() => null)) as ActionResult | null;
-      return r?.ok === true;
-    },
-    close: async (tab) => {
-      const extra = [...(children.get(tab) ?? [])];
-      children.delete(tab);
-      if (!children.size && listening) {
-        browser.tabs.onCreated?.removeListener?.(onCreated);
-        listening = false;
-      }
-      await browser.tabs.remove?.([tab, ...extra]);
-    },
-    wait: (ms) => new Promise((r) => setTimeout(r, ms)),
-  };
+export function quietBrowser(): PageBrowser {
+  return quietPages({
+    fetch: (u, init) => fetch(u, init),
+    hasAccess: async (origin) => !browser.permissions.contains || (await browser.permissions.contains({ origins: [origin] })),
+  });
 }
 
 /**
- * Coupon pages the reader could not load open in background tabs
+ * Coupon pages the reader could not load are read quietly
  * automatically (owner's choice, 2026-10-17), wherever Safari gives Scout
  * access to those sites. Access to every site is asked for once, on the
  * Find coupons press (the panel's `askSiteAccessOnce`); without it the pages

@@ -26,7 +26,7 @@ import { ScoutServer, type SharedRef } from "./engine";
 import { toWire } from "./protocol";
 import { TaskHost } from "./task-host";
 import { CouponHost } from "./coupon-host";
-import { allowBrowserPages, backgroundTabs, tabCouponPage } from "../coupons/tab-page";
+import { allowBrowserPages, quietBrowser, tabCouponPage } from "../coupons/tab-page";
 import { platformOs } from "../panel/edge";
 import { reopensAfterSwitch } from "../panel/toolbar";
 
@@ -198,7 +198,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
   const couponHost = new CouponHost({
     provider,
     page: (tabId, opts) => tabCouponPage(tabId, opts),
-    tabs: backgroundTabs,
+    tabs: () => quietBrowser(),
     allowBrowser: allowBrowserPages,
     ...(storage ? { storage } : {}),
     overlay: (tabId, req: OverlayRequest) => callInjected(tabId, "overlay.js", OVERLAY_HANDLER, req),
