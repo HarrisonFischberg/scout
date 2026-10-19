@@ -58,7 +58,7 @@ const HISTORY = [
 type Plat = "mac" | "iphone";
 const PLATS: Record<Plat, BrowserContextOptions> = {
   mac: { viewport: { width: 400, height: 600 }, deviceScaleFactor: 2 },
-  iphone: { viewport: { width: 393, height: 740 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+  iphone: { viewport: { width: 393, height: Number(process.env.PH ?? 740) }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
 };
 
 interface Opts {
