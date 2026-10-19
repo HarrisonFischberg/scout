@@ -34,8 +34,6 @@ export const GLOW_CORNER = "100%";
 // iPhone used to show three quarters (2026-10-18, on top of the panel's page
 // blur, since removed); full strength now, like Mac.
 export const PHONE_GLOW_SCALE = 1;
-/** iPhone: the overlay stops this far above the bottom edge (see hostStyle). */
-export const PHONE_BOTTOM_GAP_PX = 120;
 // Many close stops, so the fade is smooth rather than banded.
 const MASK_STOPS = [
   "rgb(0 0 0 / " + GLOW_CENTER + ") 0%",
@@ -98,8 +96,6 @@ const STYLE_TEXT = `
 .layer.paused .glow { opacity: 0.5; }
 .layer.phone .glow { opacity: ${PHONE_GLOW_SCALE}; }
 .wash { position: absolute; inset: 0; pointer-events: none; }
-/* iPhone: the layer stops above Safari's bar (hostStyle); the wash's last 48 px fade out instead of a hard edge. */
-.layer.phone .wash { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent); }
 .layer.phone.paused .glow { opacity: ${PHONE_GLOW_SCALE * 0.5}; }
 .layer.hidden-tab .glow { animation-play-state: paused; }
 @keyframes scout-sweep { to { --scout-angle: 360deg; } }
@@ -137,18 +133,16 @@ const STYLE_TEXT = `
 }
 `;
 
-// iPhone (owner bug report 2026-10-19, as in src/panel/edge.ts topLayerTab):
-// Safari 26 takes a see-through fixed box over the whole screen, or a top-layer
-// element's full-screen ::backdrop, as a dimming layer and paints a solid strip
-// under its bottom bar. Coupon runs now go on with the panel closed, so the bar
-// shows. On a phone the overlay is a plain fixed box that stops above the
-// bottom edge, and it does not use the top layer.
-const hostStyle = (phone: boolean): string =>
+// The whole screen on every device (owner, 2026-10-19: #56 stopped it above
+// the bottom on iPhone, which left the bottom quarter without glow and did not
+// clear the solid strip under Safari's bar). iPhone still skips the top layer
+// (see `mount`).
+const HOST_STYLE =
   [
     "all: initial",
     "display: block",
     "position: fixed",
-    ...(phone ? ["top: 0", "left: 0", "right: 0", "bottom: " + PHONE_BOTTOM_GAP_PX + "px"] : ["inset: 0"]),
+    "inset: 0",
     "margin: 0",
     "padding: 0",
     "border: 0",
@@ -207,7 +201,7 @@ if (!g[FLAG]) {
     registerAngle();
     host = document.createElement("div");
     host.setAttribute("data-scout-overlay", "");
-    host.setAttribute("style", hostStyle(onPhone()));
+    host.setAttribute("style", HOST_STYLE);
     // The page can inspect the overlay; it cannot press its buttons (trusted events only).
     const root = host.attachShadow({ mode: "open" });
     const style = document.createElement("style");
@@ -256,7 +250,9 @@ if (!g[FLAG]) {
   // Attached the way the page button is (src/edge.ts, checked in Safari): the
   // popover attribute set before the host joins the document, on the root
   // element, then shown into the top layer so page z-indexes cannot cover the pill.
-  // Not on iPhone (hostStyle): there it is a fixed box with the top z-index.
+  // Not on iPhone: a top-layer element gets a full-screen ::backdrop, which
+  // iPhone Safari 26 takes as a dimming layer (src/panel/edge.ts topLayerTab).
+  // There it is a fixed box with the top z-index.
   const mount = (): void => {
     build();
     const h = host as HTMLElement & { showPopover?(): void };
