@@ -75,6 +75,14 @@ export type StreamEvent =
    * never a source.
    */
   | { type: "fetch"; url: string; ok: boolean; chars?: number; error?: string }
+  /**
+   * One web search the provider ran (Anthropic): how many results it
+   * returned, or its error code ("max_uses_exceeded", "too_many_requests",
+   * …). A failed search returns HTTP 200 with an error block, not an error.
+   */
+  | { type: "search"; ok: boolean; results?: number; error?: string }
+  /** Why the model's turn ended ("end_turn", "max_tokens", "pause_turn" after the last resume, "refusal"). */
+  | { type: "stop"; reason: string }
   | { type: "usage"; usage: Usage }
   | { type: "done" };
 
