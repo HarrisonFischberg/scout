@@ -1,7 +1,8 @@
 // Coupon finder: test the codes found online one at a time against the real
 // cart, keep the best, apply it, and never touch checkout. The try loop is
-// plain code, not model-driven, so page content cannot steer it, and it only
-// ever tests codes that were seen on a page (candidates.ts): never guesses.
+// plain code, not model-driven, so page content cannot steer it. It tests the
+// codes it is given in order: remembered and found codes first, guesses
+// (guesses.ts, owner decision 2026-10-19) only after the search ended.
 //
 // Two ways to test a code:
 //   cart API - the store's own cart endpoint (Shopify /cart/update.js,
@@ -18,8 +19,9 @@ import type { Action, ActionResult } from "../actions/executor";
 import type { AgentControl } from "../agent/control";
 import { detectCaptcha } from "../safety/classifier";
 import type { SnapElement, Snapshot } from "../snapshot/snapshot";
-import { CODE_RE, type CandidateOrigin, type CouponCandidate } from "./candidates";
-import { findForm, newLines, removeTarget, revealTargets, showsCode, storeReply, type FormHints, type StoreReply } from "./form";
+import { CODE_RE, safeHost, type CandidateOrigin, type CouponCandidate } from "./candidates";
+import { findForm, isRejectLine, newLines, removeTarget, revealTargets, showsCode, storeReply, type FormHints, type StoreReply } from "./form";
+import { groupByKind, KIND_LABEL, rejectKind, storeMessage, type RejectKind } from "./reasons";
 import { formatMoney, readTotal } from "./money";
 
 export type { CouponCandidate } from "./candidates";
@@ -63,6 +65,9 @@ export interface CouponAttempt {
   /** Cart API: whether the store accepted the code. Page path: unknown (null). */
   accepted: boolean | null;
   note: string;
+  /** The store's own words when it turned the code down, and their group. */
+  message?: string;
+  kind?: RejectKind;
 }
 
 export type CouponStatus = "done" | "no_form" | "no_codes" | "search_failed" | "captcha" | "stopped" | "rate_limited" | "error";
@@ -102,7 +107,7 @@ export interface CouponOutcome {
 }
 
 /** Most codes one run tests, across all its searches. */
-export const MAX_TOTAL = 80;
+export const MAX_TOTAL = 140;
 /** Pairs tried on top of the best single code, on stores whose cart API allows stacking. */
 const MAX_COMBOS = 2;
 const STOPWORDS = new Set(["NONE", "N/A", "CODE", "CODES", "COUPON", "SORRY", "NOTE", "THE", "AND"]);
@@ -142,6 +147,8 @@ export interface TryResult {
   rateLimited?: boolean;
   /** No further code can be measured on this page; `note` says why. */
   halt?: boolean;
+  /** The store's own words when it turned the code down. */
+  message?: string;
 }
 
 /** A way to test codes on the user's cart: the store's cart API or its coupon box. */
@@ -430,6 +437,7 @@ async function pageTester(
     const quiet = answerMs === null ? times.quietMs : Math.min(times.quietMs, Math.max(MIN_QUIET_MS, 2 * answerMs + POLL_MS));
     let after = ready;
     let reply: StoreReply = null;
+    let message: string | null = null;
     let changed: number | null = null;
     let waited = 0;
     let answeredAt: number | null = null;
@@ -443,7 +451,9 @@ async function pageTester(
       if (!next) return { total: null, accepted: null, note: "Could not read the page after applying." };
       if (detectCaptcha(next)) return { total: null, accepted: null, captcha: true };
       after = next;
-      reply = storeReply(newLines(ready.text, next.text)) ?? reply;
+      const fresh = newLines(ready.text, next.text);
+      reply = storeReply(fresh) ?? reply;
+      message ??= storeMessage(fresh, isRejectLine);
       const t = totalOf(next)?.amount ?? null;
       const moved = t !== null && Math.abs(t - preTotal) > EPS;
       if (answeredAt === null && (moved || (reply !== null && reply !== "busy"))) answeredAt = waited;
@@ -476,7 +486,7 @@ async function pageTester(
     }
     const lowered = total < baseline - EPS;
     kept = lowered ? { code, total } : null;
-    if (reply === "rejected" && !lowered) return { total, accepted: false, note: "Not accepted by the store." };
+    if (reply === "rejected" && !lowered) return { total, accepted: false, note: "Not accepted by the store.", ...(message ? { message } : {}) };
     return { total, accepted: reply === "accepted" ? true : null };
   };
   return {
@@ -593,7 +603,7 @@ export interface CouponInput extends TesterOptions {
   onAttempt?: (a: CouponAttempt, index: number, total: number, currency?: string) => void;
 }
 
-const attemptOf = (cand: CouponCandidate, r: { total: number | null; accepted: boolean | null }, saving: number | null, note: string): CouponAttempt => ({
+const attemptOf = (cand: CouponCandidate, r: { total: number | null; accepted: boolean | null; message?: string }, saving: number | null, note: string): CouponAttempt => ({
   code: cand.code,
   origin: cand.origin,
   ...(cand.sourceUrl ? { sourceUrl: cand.sourceUrl } : {}),
@@ -603,6 +613,7 @@ const attemptOf = (cand: CouponCandidate, r: { total: number | null; accepted: b
   saving,
   accepted: r.accepted,
   note,
+  ...(r.message ? { message: r.message, kind: rejectKind(r.message) } : {}),
 });
 
 export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome> {
@@ -649,6 +660,7 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
   }
   const savingOf = (total: number | null): number | null => (total === null ? null : Math.round((baseline - total) * 100) / 100);
   const noteOf = (r: TryResult, saving: number | null): string =>
+    (r.message ? "The store said: “" + r.message + "”" : undefined) ??
     r.note ??
     (r.accepted === false
       ? "Not accepted by the store."
@@ -810,6 +822,8 @@ export interface DiscoveryInfo {
   atCheckout?: boolean;
   /** Pages that needed the browser and were not opened: Scout has no access to those sites in Safari. */
   browserDeclined?: number;
+  /** Guessed codes added after the search (owner decision 2026-10-19). */
+  guesses?: number;
 }
 
 export const plural = (n: number, what: string): string => n + " " + what + (n === 1 ? "" : "s");
@@ -834,12 +848,36 @@ export function discoveryLine(d: DiscoveryInfo): string {
       " The web reader couldn't load " + plural(d.browserOpened, "page") + ", so I opened " + (d.browserOpened === 1 ? "it" : "them") + " in Safari and found " +
       (d.browserCodes ? plural(d.browserCodes, "code") + " there (found on the page, not yet tested)." : "no code there.");
   }
+  if (d.guesses) line += " Then " + plural(d.guesses, "guessed code") + " built from the store's name and common codes.";
   if (d.browserDeclined) {
     line +=
       " " + plural(d.browserDeclined, "page") + " the web reader couldn't load " + (d.browserDeclined === 1 ? "was" : "were") +
       " not opened in Safari, because Scout for Safari isn't allowed on " + (d.browserDeclined === 1 ? "that site" : "those sites") + " (Safari Settings, Extensions).";
   }
   return line;
+}
+
+/** "What the store said: Expired: A, B. Only on certain days or times: C." Built from each code's reply group. */
+export function storeSaid(attempts: CouponAttempt[]): string {
+  const groups = groupByKind(attempts.filter((a) => !a.combo && a.accepted === false));
+  if (!groups.length || groups.every((g) => g.kind === "invalid" || g.kind === "other")) return "";
+  const shown = (codes: string[]): string => (codes.length > 6 ? codes.slice(0, 6).join(", ") + " and " + (codes.length - 6) + " more" : codes.join(", "));
+  return "What the store said: " + groups.map((g) => KIND_LABEL[g.kind] + ": " + shown(g.codes)).join(". ") + ".";
+}
+
+/** "Codes found online came from wethrift.com (12), simplycodes.com (3)." The sites behind the tested codes, most first. */
+export function whereFrom(attempts: CouponAttempt[]): string {
+  const counts = new Map<string, number>();
+  for (const a of attempts) {
+    if (a.combo || a.origin === "guess" || a.origin === "remembered") continue;
+    const host = a.sourceUrl ? safeHost(a.sourceUrl) : "";
+    if (host) counts.set(host, (counts.get(host) ?? 0) + 1);
+  }
+  const sites = [...counts].sort((x, y) => y[1] - x[1]);
+  const parts = sites.slice(0, 6).map(([h, n]) => h + " (" + n + ")");
+  if (sites.length > 6) parts.push(plural(sites.length - 6, "other site"));
+  if (!sites.length) return "";
+  return "Codes found online came from " + parts.join(", ") + ".";
 }
 
 /**
@@ -855,7 +893,16 @@ export function couponSummary(o: CouponOutcome, discovery?: DiscoveryInfo): stri
     const head = discovery ? discoveryLine(discovery) : "";
     return (head ? head + " " : "") + o.message;
   }
-  const found = discovery?.searched ? " found online for " + discovery.brand : "";
+  // Guessed and remembered codes are named apart from the ones found online.
+  const singles = o.attempts.filter((a) => !a.combo);
+  const guessed = singles.filter((a) => a.origin === "guess").length;
+  const recalled = singles.filter((a) => a.origin === "remembered").length;
+  const online = n - guessed - recalled;
+  const extra = [recalled ? recalled + " that worked here before" : "", guessed ? guessed + (guessed === 1 ? " guess" : " guesses") : ""].filter(Boolean);
+  const found =
+    extra.length === 0
+      ? discovery?.searched ? " found online for " + discovery.brand : ""
+      : " (" + [online ? online + (discovery?.searched ? " found online for " + discovery.brand : " found online") : "", ...extra].filter(Boolean).join(" and ") + ")";
   const out: string[] = [];
   if (o.status === "captcha") out.push("I stopped after " + tested + " because the page asked for a CAPTCHA. Complete it yourself, then try again.");
   else if (o.status === "rate_limited") out.push("I stopped after " + tested + " because the store asked to slow down. Try again in a few minutes.");
@@ -874,13 +921,19 @@ export function couponSummary(o: CouponOutcome, discovery?: DiscoveryInfo): stri
         : "I couldn't re-apply it, so enter it yourself in the coupon box.",
     );
     if (o.best.conditions) out.push("Conditions seen with it: " + o.best.conditions + ".");
+    if (!o.best.combo && o.best.origin === "guess") out.push("It was a guess, not a code posted online.");
+    else if (!o.best.combo && o.best.origin === "remembered") out.push("It worked on this store before.");
   } else if (o.status === "done" || o.status === "stopped") {
     out.push(
       "I tested " + tested + found + " and none lowered your total" + (o.baseline !== null ? " of " + money(o.baseline) : "") + ", so your cart is unchanged." +
         (o.exhausted ? " I couldn't find any more codes to try." : o.untested > 0 ? " " + o.untested + " more codes were left untested." : ""),
     );
     if (discovery?.error && discovery.error.code !== "stopped") out.push("The web search ended early, so other codes may exist.");
+    const said = storeSaid(o.attempts);
+    if (said) out.push(said);
   }
+  const from = whereFrom(o.attempts);
+  if (from) out.push(from);
   if (o.note) out.push(o.note);
   return out.join(" ");
 }

@@ -227,9 +227,11 @@ describe("the page path on different kinds of checkout", () => {
   it("moves on as soon as the store says a code is invalid", async () => {
     const p = store({ pct: {}, message: true });
     const out = await runCouponSearch({ page: p, codes: codes("NOPE1", "NOPE2"), settleMs: 2500 });
+    // The store's own words are kept, and grouped (owner request 2026-10-19).
+    expect(out.attempts.map((a) => a.kind)).toEqual(["invalid", "invalid"]);
     expect(out.attempts.map((a) => [a.accepted, a.note])).toEqual([
-      [false, "Not accepted by the store."],
-      [false, "Not accepted by the store."],
+      [false, "The store said: “Sorry, NOPE1 isn't a valid code.”"],
+      [false, "The store said: “Sorry, NOPE2 isn't a valid code.”"],
     ]);
   });
 

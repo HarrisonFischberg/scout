@@ -249,8 +249,8 @@ describe("page path on a drawer that keeps the applied code", () => {
   });
 });
 
-// Owner rule 2026-10-17: never guess. Every tested code was seen on a page,
-// and the page, the words around the code and any conditions travel with it.
+// Every code found online keeps its page, the words around the code and any
+// conditions (guesses, allowed again 2026-10-19, are tested separately).
 describe("candidates and evidence", () => {
   it("keeps the source, the quote and the conditions on every attempt, and labels where each code came from", async () => {
     const out = await runCouponSearch({
@@ -267,7 +267,7 @@ describe("candidates and evidence", () => {
     expect(out.best?.code).toBe("SAVE20");
     // The chat summary is a few sentences; each code's row stays in the Working card.
     expect(couponSummary(out)).toBe(
-      "I tested **3 codes**. **SAVE20** is the best: your total drops from **$100.00** to **$80.00** (you save $20.00, 20% off). It's applied to your cart, and I didn't go to checkout.",
+      "I tested **3 codes**. **SAVE20** is the best: your total drops from **$100.00** to **$80.00** (you save $20.00, 20% off). It's applied to your cart, and I didn't go to checkout. Codes found online came from deals.test (2), shop.test (1).",
     );
     expect(couponSummary(out)).not.toMatch(/guess/i);
   });
@@ -420,7 +420,7 @@ describe("batches", () => {
     expect(asked).toEqual([30]);
     expect(out.attempts).toHaveLength(30);
     expect(out.untested).toBe(0);
-    expect(couponSummary(out)).toBe("I tested **30 codes** and none lowered your total of $100.00, so your cart is unchanged.");
+    expect(couponSummary(out)).toBe("I tested **30 codes** and none lowered your total of $100.00, so your cart is unchanged. Codes found online came from deals.test (30).");
   });
 
   // Owner, 2026-10-17: codes are tested as the search finds them, not after it ends.
