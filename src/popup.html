@@ -184,11 +184,11 @@
       .scout-mark .hub { fill: var(--text-muted); }
       #starters { list-style: none; margin: 0; padding: 0; }
       #starters button {
-        display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 6px 4px;
-        border: 0; border-radius: 10px; background: transparent; color: var(--text-secondary); font-size: 16px; text-align: left;
+        display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 4px;
+        border: 0; border-radius: 10px; background: transparent; color: var(--text-secondary); font-size: 15px; text-align: left;
       }
       #starters button span { flex: 1; }
-      #starters button svg.i { width: 22px; height: 22px; stroke-width: 1.6; color: var(--text-muted); }
+      #starters button svg.i { width: 20px; height: 20px; stroke-width: 1.6; color: var(--text-muted); }
       #starters button:hover:not(:disabled) { color: var(--text-primary); }
       .center p { margin: 0; }
       .center h2 { margin: 0; font-size: 17px; }
@@ -491,7 +491,7 @@
            handing over mid-gesture (owner 2026-10-18, smooth sheet drag). */
         html, body { overscroll-behavior: none; }
         body { font-size: 14px; }
-        #starters button { font-size: 16px; min-height: 32px; padding: 2px 4px; }
+        #starters button { font-size: 15px; min-height: 32px; padding: 2px 4px; }
         .composer-box { border-radius: 22px; padding: 10px 10px 8px 14px; }
         #question { font-size: 16px; }
         .composer-foot { gap: 6px; margin-top: 6px; }
@@ -533,9 +533,6 @@
       .greeting b { display: block; font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
       .greeting span { display: block; margin-top: 2px; color: var(--text-muted); font-size: 14px; }
       :root[data-look="classic"] .greeting { display: none; }
-      #starters .starter-extra { display: none; }
-      /* Trailhead shows all four starters as cards: coupons and Scout mode no longer hide behind + and an icon. */
-      :root[data-look="trailhead"] #starters .starter-extra { display: flex; }
       :root:not([data-look="classic"]) .composer-box:has(#question:focus-visible) { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), var(--shadow); }
       /* A heading focused from script (dialog title) is not a control: no ring around it. */
       #consent-title:focus, #settings-title:focus, #sharing-title:focus, #tool-ask-title:focus { outline: none; }
@@ -590,14 +587,17 @@
       :root[data-look="trailhead"] #empty .scout-mark .hub { fill: var(--accent-on); }
       :root[data-look="trailhead"] .greeting { margin-bottom: auto; }
       :root[data-look="trailhead"] .greeting b { font-weight: 800; }
-      :root[data-look="trailhead"] #starters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-bottom: 10px; }
+      :root[data-look="trailhead"] #starters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-bottom: 8px; }
       :root[data-look="trailhead"] #starters li { display: flex; }
       :root[data-look="trailhead"] #starters button {
-        flex-direction: column; align-items: flex-start; gap: 8px; min-height: 76px; padding: 12px;
-        border: 1px solid var(--hairline); border-radius: 16px; background: var(--bg-surface);
-        color: var(--text-primary); font-weight: 700; font-size: 14px; box-shadow: var(--shadow);
+        gap: 6px; min-height: 40px; padding: 4px 8px;
+        border: 1px solid var(--hairline); border-radius: 14px; white-space: nowrap; background: var(--bg-surface);
+        color: var(--text-primary); font-weight: 700; font-size: 13px; line-height: 1.2; box-shadow: var(--shadow);
       }
-      :root[data-look="trailhead"] #starters button svg.i { order: -1; width: 28px; height: 28px; padding: 5px; border-radius: 9px; background: var(--selected); color: var(--accent-text); }
+      :root[data-look="trailhead"] #starters button svg.i { order: -1; flex: none; width: 22px; height: 22px; padding: 3px; border-radius: 7px; background: var(--selected); color: var(--accent-text); }
+      /* One line per card; a very narrow screen ends the label with an ellipsis instead of growing the card. */
+      :root[data-look="trailhead"] #starters button, :root[data-look="dealhunter"] #starters button { min-width: 0; }
+      :root[data-look="trailhead"] #starters button span, :root[data-look="dealhunter"] #starters button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
       :root[data-look="trailhead"] .composer-box { border-radius: 22px; padding: 10px 10px 8px 14px; }
       :root[data-look="trailhead"] #model-pill { background: var(--selected); color: var(--accent-text); font-weight: 700; }
       :root[data-look="trailhead"] .round.mic { background: var(--selected); color: var(--accent-text); }
@@ -652,7 +652,7 @@
       :root[data-look="apple"] .greeting span { font-size: 15px; }
       :root[data-look="apple"] #starters { background: var(--bg-surface); border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
       :root[data-look="apple"] #starters li + li button { border-top: 0.5px solid var(--hairline); }
-      :root[data-look="apple"] #starters button { min-height: 48px; padding: 10px 14px; border-radius: 0; color: var(--text-primary); font-size: 16px; }
+      :root[data-look="apple"] #starters button { min-height: 40px; padding: 6px 14px; border-radius: 0; color: var(--text-primary); font-size: 15px; }
       :root[data-look="apple"] #starters button svg.i { width: 16px; height: 16px; stroke-width: 2.2; }
       :root[data-look="apple"] .composer-box { border-radius: 20px; border-width: 0.5px; box-shadow: none; }
       :root[data-look="apple"] .round { border: 0; color: var(--accent-text); }
@@ -706,11 +706,10 @@
       :root[data-look="nightops"] .greeting { margin: 0 0 12px; text-align: left; }
       :root[data-look="nightops"] .greeting b { font-weight: 600; }
       :root[data-look="nightops"] .greeting span { font-family: var(--font-mono); font-size: 12px; }
-      :root[data-look="nightops"] #starters .starter-extra { display: block; }
       :root[data-look="nightops"] #starters { border: 1px solid var(--hairline); border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
       :root[data-look="nightops"] #starters li + li { border-top: 1px solid var(--hairline); }
-      :root[data-look="nightops"] #starters button { min-height: 42px; padding: 8px 12px; border-radius: 0; color: var(--text-primary); font-size: 14px; font-weight: 500; }
-      :root[data-look="nightops"] #starters button svg.i { color: var(--signal); width: 18px; height: 18px; }
+      :root[data-look="nightops"] #starters button { min-height: 36px; padding: 4px 12px; border-radius: 0; color: var(--text-primary); font-size: 13px; font-weight: 500; }
+      :root[data-look="nightops"] #starters button svg.i { color: var(--signal); width: 16px; height: 16px; }
       :root[data-look="nightops"] .composer-box { border-radius: 10px; box-shadow: none; }
       :root[data-look="nightops"] #question::placeholder { font-family: var(--font-mono); font-size: 13px; }
       :root[data-look="nightops"] .round, :root[data-look="nightops"] .round.mic, :root[data-look="nightops"] .round.send { border-radius: 7px; }
@@ -765,15 +764,12 @@
       :root[data-look="dealhunter"] #empty .scout-mark .hub { fill: var(--ink); }
       :root[data-look="dealhunter"] .greeting { margin-bottom: auto; }
       :root[data-look="dealhunter"] .greeting b { font-size: 26px; font-weight: 900; letter-spacing: -0.03em; }
-      :root[data-look="dealhunter"] #starters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-bottom: 12px; }
-      :root[data-look="dealhunter"] #starters .starter-extra[data-extra="coupons"] { display: block; order: -1; grid-column: 1 / -1; }
+      :root[data-look="dealhunter"] #starters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-bottom: 10px; }
       :root[data-look="dealhunter"] #starters button {
-        min-height: 56px; padding: 10px 14px; border: 2px solid var(--ink); border-radius: 16px;
-        background: var(--bg-surface); color: var(--text-primary); font-weight: 800; font-size: 15px; box-shadow: var(--pop);
+        gap: 6px; min-height: 40px; padding: 4px 10px; border: 2px solid var(--ink); border-radius: 14px; white-space: nowrap;
+        background: var(--bg-surface); color: var(--text-primary); font-weight: 800; font-size: 13px; line-height: 1.2; box-shadow: var(--pop);
       }
       :root[data-look="dealhunter"] #starters button svg.i { color: var(--text-primary); }
-      :root[data-look="dealhunter"] #starters .starter-extra button { background: var(--accent); color: var(--accent-on); font-size: 17px; }
-      :root[data-look="dealhunter"] #starters .starter-extra button svg.i { color: var(--accent-on); }
       :root[data-look="dealhunter"] .composer-box { border: 2px solid var(--ink); border-radius: 18px; }
       :root[data-look="dealhunter"] .composer-box:has(#question:focus-visible) { border-color: var(--ink); box-shadow: var(--pop), 0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent); }
       :root[data-look="dealhunter"] .round, :root[data-look="dealhunter"] .round.mic, :root[data-look="dealhunter"] .round.send { border: 2px solid var(--ink); }
@@ -829,8 +825,8 @@
       :root[data-look="ink"] .greeting span { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
       :root[data-look="ink"] #starters { border-top: 1px solid var(--text-primary); margin-bottom: 12px; counter-reset: starter; }
       :root[data-look="ink"] #starters li { border-bottom: 1px solid var(--hairline); }
-      :root[data-look="ink"] #starters button { min-height: 46px; padding: 8px 2px; border-radius: 0; color: var(--text-primary); font-family: var(--font-serif); font-size: 17px; }
-      :root[data-look="ink"] #starters li:not(.starter-extra) button::before { counter-increment: starter; content: counter(starter, decimal-leading-zero); width: 22px; font-family: -apple-system, system-ui, sans-serif; font-size: 11px; font-weight: 600; color: var(--text-muted); }
+      :root[data-look="ink"] #starters button { min-height: 38px; padding: 4px 2px; border-radius: 0; color: var(--text-primary); font-family: var(--font-serif); font-size: 16px; }
+      :root[data-look="ink"] #starters button::before { counter-increment: starter; content: counter(starter, decimal-leading-zero); width: 22px; font-family: -apple-system, system-ui, sans-serif; font-size: 11px; font-weight: 600; color: var(--text-muted); }
       :root[data-look="ink"] #starters button svg.i { width: 16px; height: 16px; }
       :root[data-look="ink"] .composer-box { border-radius: 4px; border-color: var(--text-primary); box-shadow: none; }
       :root[data-look="ink"] .composer-box:has(#question:focus-visible) { border-color: var(--text-primary); box-shadow: 0 0 0 1px var(--text-primary); }
@@ -868,6 +864,18 @@
       :root[data-look="ink"] .msg.user::before { content: "You asked"; display: block; margin-bottom: 4px; font-family: -apple-system, system-ui, sans-serif; font-size: 10.5px; font-style: normal; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
       /* Send and Stop keep the text-on-accent color in every look (the per-look .round color must not reach them). */
       :root[data-look] .round.send { color: var(--accent-on); }
+      /* A short sheet (iPhone at its middle stop, a small Mac window): the mark and greeting
+         shrink, then the mark goes, so nothing is cut off behind the starters (owner 2026-10-19). */
+      @media (max-height: 620px) {
+        #empty .scout-mark { width: 64px; height: 64px; }
+        :root[data-look="trailhead"] #empty .scout-mark { width: 72px; height: 72px; padding: 12px; margin-bottom: 8px; }
+        .greeting b { font-size: 19px; }
+      }
+      @media (max-height: 520px) {
+        #empty .scout-mark, :root[data-look="trailhead"] #empty .scout-mark { display: none; }
+        .greeting { margin-top: auto; }
+        #empty > #starters { margin-top: auto; }
+      }
     </style>
     <script src="popup.js" defer></script>
   </head>
@@ -939,11 +947,6 @@
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5 8.5 15.5M8.5 10v5.5H14"/></svg></button></li>
             <li><button type="button" data-prompt="Explain the most important points on this page."><span>Explain the key points</span>
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5 8.5 15.5M8.5 10v5.5H14"/></svg></button></li>
-            <!-- Shown only in the looks that bring these out of the + menu and the mode switch (Night Ops, Deal Hunter). -->
-            <li class="starter-extra" data-extra="coupons"><button type="button" data-prompt="coupons"><span>Get a coupon code</span>
-              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12 12 20 3 11V3h8Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg></button></li>
-            <li class="starter-extra" data-extra="scout"><button type="button" data-prompt="scout"><span>Do a task on this page</span>
-              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 17H2v-5a1.5 1.5 0 0 1 1.5-1.5h17A1.5 1.5 0 0 1 22 12v5h-1.5M10 17h4M5 10.5 6.4 5h7.4l1.6 5.5"/><circle cx="6.75" cy="17.25" r="3.25"/><circle cx="17.25" cy="17.25" r="3.25"/></svg></button></li>
           </ul>
         </section>
 

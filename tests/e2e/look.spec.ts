@@ -57,11 +57,11 @@ async function openPopup(page: Page, data: Record<string, unknown> = {}): Promis
 
 const look = (page: Page) => page.evaluate(() => document.documentElement.dataset.look);
 
-test("opens in Trailhead, with its greeting and all four starters", async ({ page }) => {
+test("opens in Trailhead, with its greeting and only the two starters", async ({ page }) => {
   await openPopup(page);
   expect(await look(page)).toBe("trailhead");
   await expect(page.locator("#greeting")).toHaveText(/Where to next\?/);
-  await expect(page.locator("#starters button:visible")).toHaveText([/Summarize this page/, /Explain the key points/, /Get a coupon code/, /Do a task on this page/]);
+  await expect(page.locator("#starters button:visible")).toHaveText([/Summarize this page/, /Explain the key points/]);
 });
 
 test("Settings > Look switches at once, is saved, and is kept on the next open", async ({ page }) => {
@@ -101,11 +101,18 @@ test("Delete all data goes back to Trailhead, now and on the next open", async (
   await expect.poll(() => look(page)).toBe("trailhead");
 });
 
-test("the Do a task starter switches to Scout mode", async ({ page }) => {
-  await openPopup(page, { look: "nightops" });
-  await page.getByRole("button", { name: "Do a task on this page" }).click();
-  await expect(page.locator("#mode-chip")).toBeVisible();
-  await expect(page.getByRole("radio", { name: "Scout" })).toBeChecked();
+test("every look shows only Summarize and Explain, each on one line, with nothing cut off on a short iPhone sheet", async ({ browser }) => {
+  for (const id of ["trailhead", "apple", "nightops", "dealhunter", "ink", "classic"]) {
+    const page = await browser.newPage({ viewport: { width: 393, height: 390 }, hasTouch: true, isMobile: true });
+    await openPopup(page, { look: id });
+    await expect.poll(() => look(page)).toBe(id);
+    await expect(page.locator("#starters button:visible")).toHaveText([/Summarize this page/, /Explain the key points/]);
+    const boxes = await page.locator("#starters button:visible").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+    for (const h of boxes) expect(h, id).toBeLessThanOrEqual(44);
+    // The mark is hidden on a short sheet, so it cannot sit behind the starters.
+    await expect(page.locator("#empty .scout-mark")).toBeHidden();
+    await page.close();
+  }
 });
 
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
