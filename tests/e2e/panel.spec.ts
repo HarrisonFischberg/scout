@@ -57,6 +57,10 @@ async function openPanel(page: Page, tab: { id: number; incognito?: boolean }): 
               fake.data = {};
               save();
             },
+            remove: async (keys: string[]) => {
+              for (const k of keys) delete fake.data[k];
+              save();
+            },
           },
         },
       };
@@ -291,8 +295,8 @@ test("Clear chat history empties the thread, now and after the panel reopens", a
 
   // Saved answers and ratings are gone, the tab has a new conversation, and the key stays.
   const stored = await page.evaluate(() => (globalThis as unknown as { __fake: { data: Record<string, unknown> } }).__fake.data);
-  expect(stored.history).toEqual([]);
-  expect(stored.ratings).toEqual({});
+  expect(stored).not.toHaveProperty("history");
+  expect(stored).not.toHaveProperty("ratings");
   expect((stored.tabState as Record<string, { conv: string }>)["7"]?.conv).not.toBe(before);
 
   await page.reload();
@@ -301,17 +305,15 @@ test("Clear chat history empties the thread, now and after the panel reopens", a
   await expect(page.getByLabel("Ask about this page")).toBeVisible();
 });
 
-test("Clear chat history says so when it could not clear", async ({ page }) => {
-  await openPanel(page, { id: 8 });
-  await page.evaluate(() => {
-    const local = (globalThis as unknown as { browser: { storage: { local: { set: (i: Record<string, unknown>) => Promise<void> } } } }).browser.storage.local;
-    const set = local.set;
-    local.set = async (items) => {
-      if ("history" in items) throw new Error("synthetic write failure");
-      return set(items);
-    };
+for (const failure of ["rejects", "never answers"] as const) {
+  test(`Clear chat history says so when storage ${failure}`, async ({ page }) => {
+    await openPanel(page, { id: 8 });
+    await page.evaluate((f) => {
+      const local = (globalThis as unknown as { browser: { storage: { local: { remove: (k: string[]) => Promise<void> } } } }).browser.storage.local;
+      local.remove = () => (f === "rejects" ? Promise.reject(new Error("synthetic write failure")) : new Promise<void>(() => undefined));
+    }, failure);
+    await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("button", { name: "Clear chat history" }).click();
+    await expect(page.locator("#settings-saved")).toHaveText("Could not clear chat history. Try again.", { timeout: 8_000 });
   });
-  await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByRole("button", { name: "Clear chat history" }).click();
-  await expect(page.locator("#settings-saved")).toHaveText("Could not clear chat history. Try again.");
-});
+}
