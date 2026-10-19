@@ -221,6 +221,31 @@ export const REQUESTS = {
   "task.decide": { senders: ["panel"], payload: { object: { task_id: "string", prompt_id: "string", decision: { enum: ["once", "always", "deny"] } } } },
   /** The task on a tab, if any, with its log so far (a reopened panel catches up). */
   "task.status": { senders: ["panel"], payload: { object: { tab_id: "number" } } },
+  // ---------- Find coupons (src/server/coupon-host.ts): runs in the worker, so it outlives the panel ----------
+  /** Starts a coupon run on a tab. Events follow on the port after task.watch. */
+  "coupons.start": {
+    senders: ["panel"],
+    payload: {
+      object: {
+        tab_id: "number",
+        /** The window background tabs open in (the browser fallback). */
+        window_id: "number",
+        provider: { enum: ["anthropic", "openai"] },
+        model: "string",
+        effort: { enum: EFFORTS },
+        /** Conversation the outcome is saved to. */
+        conv: "string",
+        /** iPhone: the panel's sheet covers the bottom half of the page. */
+        phone: "boolean",
+      },
+      optional: ["window_id", "effort", "conv", "phone"],
+    },
+  },
+  "coupons.stop": { senders: ["panel"], payload: { object: { tab_id: "number" } } },
+  /** The answer to "search the web again?". */
+  "coupons.answer": { senders: ["panel"], payload: { object: { tab_id: "number", prompt_id: "string", more: "boolean" } } },
+  /** The run on a tab, if any, with its events so far (a reopened panel catches up). */
+  "coupons.status": { senders: ["panel"], payload: { object: { tab_id: "number" } } },
 } as const satisfies Record<string, RequestSpec>;
 
 export type RequestType = keyof typeof REQUESTS;
@@ -267,13 +292,41 @@ export const WORKER_EVENTS = {
   /** The worker no longer knows this answer (it restarted): nothing more will come. */
   "chat.lost": { object: { message_id: "string" } },
   /** Part 3: one Scout mode task event (flat, per kind: started, state, log, confirm, done). */
+  /** One Find coupons event (src/coupons/job.ts; flat, per kind). */
+  "coupons.event": {
+    object: {
+      tab_id: "number",
+      seq: "number",
+      kind: { enum: ["say", "step", "steps-end", "attempt", "ask", "answered", "trace", "page", "done"] },
+      text: "string",
+      step: "number",
+      attempt: "unknown",
+      currency: "string",
+      prompt_id: "string",
+      tried: "number",
+      stage: "string",
+      url: "string",
+      status: "string",
+      message: "string",
+      outcome: { enum: ["done", "stopped", "error"] },
+      summary: "string",
+      tone: { enum: ["assistant", "error"] },
+      status_text: "string",
+      input_tokens: "number",
+      output_tokens: "number",
+      web_searches: "number",
+    },
+    optional: [
+      "text", "step", "attempt", "currency", "prompt_id", "tried", "stage", "url", "status", "message", "outcome", "summary", "tone", "status_text",
+      "input_tokens", "output_tokens", "web_searches",
+    ],
+  },
   "task.event": {
     object: {
       task_id: "string",
       tab_id: "number",
       seq: "number",
-      /** "stop": the overlay toast's Stop for a run the panel drives itself (Find coupons). */
-      kind: { enum: ["started", "state", "log", "confirm", "done", "stop"] },
+      kind: { enum: ["started", "state", "log", "confirm", "done"] },
       goal: "string",
       state: { enum: ["running", "paused", "waiting"] },
       text: "string",
