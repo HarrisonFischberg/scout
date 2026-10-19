@@ -41,6 +41,7 @@ export interface StorageArea {
   get(keys: string | string[]): Promise<Record<string, unknown>>;
   set(items: Record<string, unknown>): Promise<void>;
   clear(): Promise<void>;
+  remove?(keys: string[]): Promise<void>;
 }
 
 export const DEFAULT_MODEL: Record<Provider, string> = {
@@ -328,9 +329,14 @@ export function siteOf(url: string | undefined): string | undefined {
   }
 }
 
-/** Removes all saved chat history and the ratings given to its answers. */
+/**
+ * Removes all saved chat history and the ratings given to its answers. Removes
+ * the keys rather than writing empty values (owner bug 2026-10-19: in Safari
+ * the button showed nothing at all, so the write never finished).
+ */
 export async function clearHistory(storage: StorageArea): Promise<void> {
-  await storage.set({ [HISTORY_KEY]: [], [RATINGS_KEY]: {} });
+  if (storage.remove) await storage.remove([HISTORY_KEY, RATINGS_KEY]);
+  else await storage.set({ [HISTORY_KEY]: [], [RATINGS_KEY]: {} });
 }
 
 /** Part 3, spec 10: what each conversation shared (tabs, screenshots, tools), for Settings > Permissions. */

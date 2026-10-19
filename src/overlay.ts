@@ -12,6 +12,7 @@
 // The page can see the host element (and remove it), but it cannot press the
 // buttons: only trusted events count, and the layer never reads the page.
 import { request } from "./bridge/messages";
+import { holdRun } from "./bridge/run-port";
 import { OVERLAY_HANDLER, type OverlayRequest } from "./content-api";
 import { isPhoneScreen } from "./panel/blur";
 
@@ -191,6 +192,8 @@ if (!g[FLAG]) {
   let shown = false;
   let removeTimer: ReturnType<typeof setTimeout> | null = null;
   let markers = 0;
+  /** Lets go of the worker (src/bridge/run-port.ts); set while the overlay shows. */
+  let held: { taskId: string; release: () => void } | null = null;
 
   const send = (command: "pause" | "resume" | "stop"): void => {
     void request((m) => browser.runtime.sendMessage(m), "task.control", { task_id: taskId, command }).catch(() => undefined);
@@ -278,6 +281,13 @@ if (!g[FLAG]) {
 
   const show = (id: string, next: State): void => {
     taskId = id;
+    // Keeps the worker, and so the run, alive while the panel is closed; a
+    // run the worker no longer has takes its glow with it.
+    if (held?.taskId !== id) {
+      held?.release();
+      const connect = browser.runtime.connect ? (info: { name: string }) => browser.runtime.connect!(info) : undefined;
+      held = { taskId: id, release: holdRun(connect, id, () => hide()) };
+    }
     if (removeTimer) {
       clearTimeout(removeTimer);
       removeTimer = null;
@@ -291,6 +301,8 @@ if (!g[FLAG]) {
   };
 
   const hide = (): void => {
+    held?.release();
+    held = null;
     if (!layer || !host) return;
     shown = false;
     const fading = layer;
