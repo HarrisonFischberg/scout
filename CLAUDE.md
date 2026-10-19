@@ -1,6 +1,6 @@
-# Scout for Safari
+# Scout AI Assistant
 
-Scout for Safari: Safari (macOS + iOS) toolbar AI assistant and browser agent using the user's own Anthropic or OpenAI API key
+Scout AI Assistant (formerly Scout for Safari): Safari (macOS + iOS), Chrome and Firefox toolbar AI assistant and browser agent using the user's own Anthropic or OpenAI API key
 
 ## Workflow
 
@@ -42,7 +42,7 @@ Gate A (engineering complete) is not Gate B (ready for release).
 
 Debug builds have a "Copy diagnostics" button (on every error message and in
 Settings → Diagnostics). The copied text starts with
-`## Scout for Safari diagnostics — Actual behavior`.
+`## Scout AI Assistant diagnostics — Actual behavior` (older builds: `## Scout for Safari diagnostics`).
 
 When the owner pastes a report that starts with that heading:
 

@@ -67,6 +67,10 @@ describe("where the edge script runs", () => {
     expect(pageButtonOffered("ios")).toBe(true);
     expect(pageButtonOffered(undefined)).toBe(true);
     expect(pageButtonOffered("mac")).toBe(false);
+    // Chrome and Firefox on computers keep Scout in the toolbar.
+    for (const os of ["win", "mac", "linux", "cros", undefined]) expect(pageButtonOffered(os, "chrome")).toBe(false);
+    for (const os of ["win", "mac", "linux"]) expect(pageButtonOffered(os, "firefox")).toBe(false);
+    expect(pageButtonOffered("android", "firefox")).toBe(true);
   });
 
   it("uses only granted web origins, never the AI provider hosts", () => {
@@ -88,7 +92,7 @@ describe("where the edge script runs", () => {
     expect(reachText(false, ["https://*/*"])).toBe("Off.");
     expect(reachText(true, ["*://*/*"])).toBe("On for every website.");
     expect(reachText(true, ["https://shop.test/*"])).toMatch(/^On for 1 site /);
-    expect(reachText(true, [])).toMatch(/after you let Scout for Safari access it/);
+    expect(reachText(true, [])).toMatch(/after you let Scout access it/);
   });
 });
 

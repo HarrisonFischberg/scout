@@ -225,7 +225,20 @@ function clock(ms: number): string {
 
 /** Short browser description from the user agent, e.g. "Safari 27 on macOS". */
 export function describeBrowser(ua: string): string {
-  const os = /iPhone|iPad|iPod/.test(ua) ? "iOS" : /Mac OS X|Macintosh/.test(ua) ? "macOS" : "unknown OS";
+  const os = /iPhone|iPad|iPod/.test(ua)
+    ? "iOS"
+    : /Mac OS X|Macintosh/.test(ua)
+      ? "macOS"
+      : /Windows/.test(ua)
+        ? "Windows"
+        : /Linux|X11/.test(ua)
+          ? "Linux"
+          : "unknown OS";
+  // Chrome and Firefox also say "Safari" in their user agent, so check them first.
+  const firefox = /Firefox\/(\d+(?:\.\d+)?)/.exec(ua)?.[1];
+  if (firefox) return "Firefox " + firefox + " on " + os;
+  const chrome = /Chrome\/(\d+)/.exec(ua)?.[1];
+  if (chrome) return "Chrome " + chrome + " on " + os;
   const v = /Version\/(\d+(?:\.\d+)?)/.exec(ua)?.[1];
   return (v ? "Safari " + v : "Safari (version unknown)") + " on " + os;
 }
@@ -246,7 +259,7 @@ export function reportedRun(runs: readonly DiagRun[]): DiagRun | undefined {
 
 /** Markdown the user pastes as "Actual behavior". The reported run (see `reportedRun`) in full, the others summarised. */
 export function buildReport(runs: readonly DiagRun[], env: ReportEnv, buttonFailures: readonly ButtonFailure[] = []): string {
-  const lines: string[] = ["## Scout for Safari diagnostics — Actual behavior", ""];
+  const lines: string[] = ["## Scout AI Assistant diagnostics — Actual behavior", ""];
   const last = reportedRun(runs);
   const button = (): void => {
     if (!buttonFailures.length) return;
@@ -256,13 +269,13 @@ export function buildReport(runs: readonly DiagRun[], env: ReportEnv, buttonFail
     }
   };
   if (!last) {
-    lines.push("No runs recorded yet. Use Scout for Safari, then copy diagnostics again.");
+    lines.push("No runs recorded yet. Use Scout, then copy diagnostics again.");
     button();
     return lines.join("\n");
   }
   lines.push(
     `- Run: ${last.kind} (#${last.id}) at ${clock(last.startedAt)}${env.tz ? " " + env.tz : ""}`,
-    `- Build: Scout for Safari ${env.version} (${env.build}) · ${env.browser}`,
+    `- Build: Scout AI Assistant ${env.version} (${env.build}) · ${env.browser}`,
     `- Provider: ${last.provider ?? "none"}${last.model ? " / " + last.model : ""}${last.mock ? " · local mock server" : ""}`,
     `- Page: ${last.pageHost ?? "not read"}`,
     `- Outcome: ${last.outcome ? `${last.outcome.status} — "${last.outcome.message}"` : "did not finish (popup closed or still running)"}`,

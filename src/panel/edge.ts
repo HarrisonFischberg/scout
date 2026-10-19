@@ -5,6 +5,8 @@
 // Browsing. Tapping it opens the toolbar panel. Pure helpers
 // shared by the content script (src/edge.ts), the worker, Settings, and tests.
 
+import { TARGET, type Target } from "../platform";
+
 export const PAGE_BUTTON_KEY = "pageButton";
 
 export type Side = "left" | "right";
@@ -158,16 +160,20 @@ export function reachText(on: boolean, origins: readonly string[]): string {
   if (!on) return "Off.";
   if (coversAllSites(origins)) return "On for every website.";
   const n = edgeMatches(origins).length;
-  if (n === 0) return "On. It appears on a site after you let Scout for Safari access it.";
-  return "On for " + n + (n === 1 ? " site" : " sites") + " Scout for Safari can access (listed under Site access).";
+  if (n === 0) return "On. It appears on a site after you let Scout access it.";
+  return "On for " + n + (n === 1 ? " site" : " sites") + " Scout can access (listed under Site access).";
 }
 
 /**
  * The button is for iPhone and iPad only (owner request 2026-10-17): Mac Safari
  * has Scout in the toolbar, so the button and its setting are not offered
  * there. Safari reports "mac" or "ios" (iPadOS too); unknown counts as offered.
+ * Chrome and Firefox on computers have Scout in the toolbar too; only Firefox
+ * for Android, which hides it in a menu, gets the button.
  */
-export function pageButtonOffered(os: string | undefined): boolean {
+export function pageButtonOffered(os: string | undefined, target: Target = TARGET): boolean {
+  if (target === "chrome") return false;
+  if (target === "firefox") return os === "android";
   return os !== "mac";
 }
 

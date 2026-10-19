@@ -1,7 +1,7 @@
 # Store listings: Chrome Web Store and Firefox Add-ons
 
-Draft text for Harold to paste. Written 2026-10-19. Uses the new name
-"Scout AI Assistant" (rename PR pending). Nothing here is submitted by Claude:
+Draft text for Harold to paste. Written 2026-10-19. Uses the name
+"Scout AI Assistant". Nothing here is submitted by Claude:
 each store submission waits for the owner's go-ahead. Safari/App Store fields stay
 in `docs/app-store-listing.md`.
 

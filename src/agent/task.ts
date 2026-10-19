@@ -176,7 +176,7 @@ export const TASK_TOOLS: ToolSpec[] = [
 ];
 
 export const TASK_SYSTEM_PROMPT = [
-  "You are Scout for Safari, a browser agent working for the user on the page they have open.",
+  "You are Scout, a browser agent working for the user on the page they have open.",
   "Each turn you see the page's structure (text and interactive elements with refs like e12), and usually a screenshot.",
   "Propose the next short batch of actions with the act tool (1 to 5 actions), then read the results and the fresh view before the next batch.",
   "Before each act call, write one short plain sentence for the user about what you found or are doing next (for example: Found the coupon field, trying code SAVE10.). No Markdown, no lists, nothing else.",

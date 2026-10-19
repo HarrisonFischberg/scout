@@ -13,7 +13,7 @@ final class HostAppAccessibilityUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["-UITestColorScheme", scheme.rawValue, "-UITestResetConsent", "YES"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["Set up Scout for Safari"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Set up Scout AI Assistant"].waitForExistence(timeout: 10))
         // Prove the scheme took effect: sample the top-left background pixel.
         let png = app.screenshot().image
         let dark = Self.isDarkCorner(png)
@@ -67,7 +67,7 @@ final class HostAppAccessibilityUITests: XCTestCase {
     // has no key field and sends nothing.
     func testSetupScreenPointsToSafariForTheKey() throws {
         let app = launch(.light)
-        XCTAssertTrue(app.staticTexts["Add your key in Safari: open Scout for Safari from the menu in the address bar, then tap Settings."].exists)
+        XCTAssertTrue(app.staticTexts["Add your key in Safari: open Scout from the menu in the address bar, then tap Settings."].exists)
         XCTAssertFalse(app.secureTextFields["API key"].exists)
         XCTAssertFalse(app.buttons["Test key"].exists)
     }
@@ -81,6 +81,6 @@ final class HostAppAccessibilityUITests: XCTestCase {
         attachScreenshot("T006-ios-legal-sheet")
         try audit(app, "legal-sheet")
         app.buttons["Done"].tap()
-        XCTAssertTrue(app.staticTexts["Set up Scout for Safari"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Set up Scout AI Assistant"].waitForExistence(timeout: 5))
     }
 }

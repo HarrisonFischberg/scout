@@ -71,6 +71,7 @@ import {
   type Settings,
   type StorageArea,
 } from "./settings/settings";
+import { applyBrowserText, browserName, keyPlace, TARGET } from "./platform";
 
 // Model defaults live in settings.ts. The OpenAI default is UNKNOWN until
 // confirmed against OpenAI docs (activity.md T005).
@@ -294,6 +295,7 @@ const lookCache = pageCache();
 applyLook(document, cachedLook(lookCache));
 
 async function main(): Promise<void> {
+  applyBrowserText(document);
   const chatView = el("chat-view");
   const settingsView = el("settings-view");
   const thread = el("thread");
@@ -602,7 +604,7 @@ async function main(): Promise<void> {
     const share = actionButton("share", "Share answer", () => {
       const text = turn.question + "\n\n" + answerText(turn.answer, sources);
       void (async () => {
-        const data = { title: "Scout for Safari", text };
+        const data = { title: "Scout AI Assistant", text };
         if (typeof navigator.share === "function" && (!navigator.canShare || navigator.canShare(data))) {
           try {
             await navigator.share(data);
@@ -699,7 +701,7 @@ async function main(): Promise<void> {
    */
   async function branchFrom(bubble: HTMLElement): Promise<void> {
     if (activeChat || task || couponRun) {
-      status.textContent = "Wait until Scout for Safari finishes, then branch.";
+      status.textContent = "Wait until Scout finishes, then branch.";
       return;
     }
     const i = turns.findIndex((t) => t.bubble === bubble);
@@ -957,7 +959,7 @@ async function main(): Promise<void> {
     if (found.fellBackFrom) {
       fallbackNotice = addMessage(
         "error",
-        "No " + PROVIDER_NAME[found.fellBackFrom] + " key is saved, so Scout for Safari is using your " +
+        "No " + PROVIDER_NAME[found.fellBackFrom] + " key is saved, so Scout is using your " +
           PROVIDER_NAME[session.settings.provider] + " key. Add your " + PROVIDER_NAME[found.fellBackFrom] + " key in Settings to use it.",
       );
     }
@@ -971,7 +973,7 @@ async function main(): Promise<void> {
     for (const i of modeInputs) i.checked = i.value === next;
     syncSegmented(modeInputs);
     modeChip.hidden = next !== "scout";
-    question.placeholder = next === "scout" ? "Tell Scout for Safari what to do on this page…" : "Ask anything…";
+    question.placeholder = next === "scout" ? "Tell Scout what to do on this page…" : "Ask anything…";
     send.setAttribute("aria-label", next === "scout" ? "Start task" : "Send");
   }
   for (const i of modeInputs) i.addEventListener("change", () => setMode(mode()));
@@ -1426,7 +1428,7 @@ async function main(): Promise<void> {
   async function allowSharing(p: Provider): Promise<boolean> {
     const ok = await ensureConsent(consent, p, askConsent, Date.now());
     renderConsent();
-    if (!ok) status.textContent = "Nothing was sent. Scout for Safari asks before it shares anything with " + PROVIDER_NAME[p] + ".";
+    if (!ok) status.textContent = "Nothing was sent. Scout asks before it shares anything with " + PROVIDER_NAME[p] + ".";
     return ok;
   }
 
@@ -1575,7 +1577,7 @@ async function main(): Promise<void> {
   function onWorkerEvent(env: Envelope): void {
     if (env.type === "chat.lost") {
       const id = (env.payload as { message_id: string }).message_id;
-      store.lose(id, "Scout for Safari restarted before this answer finished.");
+      store.lose(id, "Scout restarted before this answer finished.");
       trace("chat:lost");
       finalize(id);
       return;
@@ -1674,7 +1676,7 @@ async function main(): Promise<void> {
     });
     return askTool({
       title: ids.length === 1 ? "Close this tab?" : "Close " + ids.length + " tabs?",
-      what: "Scout for Safari wants to close:",
+      what: "Scout wants to close:",
       items: names,
       choices: [
         { label: ids.length === 1 ? "Close tab" : "Close tabs", value: "confirmed" },
@@ -1693,7 +1695,7 @@ async function main(): Promise<void> {
     return askTool({
       title: "Allow a screenshot?",
       what:
-        "Scout for Safari wants a screenshot of the visible part of " + site + " to answer, and would send it to " + PROVIDER_NAME[provider] +
+        "Scout wants a screenshot of the visible part of " + site + " to answer, and would send it to " + PROVIDER_NAME[provider] +
         " (" + prettyModel(model) + "). It shows everything on screen, including anything typed into the page.",
       items: [],
       choices: [
@@ -1793,7 +1795,7 @@ async function main(): Promise<void> {
     const isSummary = trimmed === SUMMARIZE_QUESTION;
     startRun(isSummary ? "summarize" : "ask", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model, question: cont ? cont.question : trimmed });
     if (!port) {
-      addMessage("error", "Scout for Safari's background worker is not running. Close Scout for Safari and open it again.");
+      addMessage("error", "Scout's background worker is not running. Close Scout and open it again.");
       current.finish("error", "No worker port.");
       return;
     }
@@ -1878,7 +1880,7 @@ async function main(): Promise<void> {
         { timeoutMs: 10_000 },
       );
     } catch {
-      store.lose(id, "Could not start the answer. Close Scout for Safari, open it again, and try again.");
+      store.lose(id, "Could not start the answer. Close Scout, open it again, and try again.");
       finalize(id);
       return;
     }
@@ -2107,7 +2109,7 @@ async function main(): Promise<void> {
     if (!task) return;
     task.promptId = p.prompt_id;
     confirmWhat.textContent = p.what + (p.site ? " on " + p.site : "");
-    confirmReason.textContent = (p.reason ? p.reason + " " : "") + (p.preapproved ? "The model marked this as approved; Scout for Safari asks you anyway." : "");
+    confirmReason.textContent = (p.reason ? p.reason + " " : "") + (p.preapproved ? "The model marked this as approved; Scout asks you anyway." : "");
     confirmBox.hidden = false;
     setTaskState("waiting");
     status.textContent = "Waiting for your answer.";
@@ -2188,7 +2190,7 @@ async function main(): Promise<void> {
   async function startTask(goal: string, source: "panel" | "chat"): Promise<{ status: string; summary: string; usage: Usage } | null> {
     if (task || tab.id === undefined) return null;
     if (!port) {
-      addMessage("error", "Scout for Safari's background worker is not running. Close Scout for Safari and open it again.");
+      addMessage("error", "Scout's background worker is not running. Close Scout and open it again.");
       return null;
     }
     if (!storage) conv = conv || "";
@@ -2371,7 +2373,7 @@ async function main(): Promise<void> {
     p.id = "coupons-more-text";
     p.textContent =
       "We've tried " + tried + " code" + (tried === 1 ? "" : "s") + " and none lowered your total. " +
-      "Would you like Scout for Safari to search the web again, in other places, for more codes to test?";
+      "Would you like Scout to search the web again, in other places, for more codes to test?";
     const row = document.createElement("div");
     row.className = "row";
     const yesBtn = document.createElement("button");
@@ -2579,7 +2581,7 @@ async function main(): Promise<void> {
     startRun("coupons", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model });
     current.page(tab.url);
     if (!port) {
-      const msg = "Scout for Safari's background worker is not running. Close Scout for Safari and open it again.";
+      const msg = "Scout's background worker is not running. Close Scout and open it again.";
       addMessage("error", msg);
       current.finish("error", msg);
       return;
@@ -2721,7 +2723,7 @@ async function main(): Promise<void> {
    */
   async function openChat(target: string): Promise<void> {
     if (activeChat || task) {
-      status.textContent = "Wait until Scout for Safari finishes, then open another chat.";
+      status.textContent = "Wait until Scout finishes, then open another chat.";
       return;
     }
     if (couponRun) {
@@ -2963,7 +2965,7 @@ async function main(): Promise<void> {
     trace("ui:open-page");
     void openStandalone(browser).then((ok) => {
       if (ok) window.close();
-      else status.textContent = "Safari did not open a new tab. Try again.";
+      else status.textContent = browserName() + " did not open a new tab. Try again.";
     });
   });
   el("new-chat").addEventListener("click", () => {
@@ -3013,7 +3015,7 @@ async function main(): Promise<void> {
         const li = document.createElement("li");
         const rec = consent.record(p);
         if (!rec) {
-          li.textContent = PROVIDER_NAME[p] + ": not allowed. Scout for Safari asks before it sends anything.";
+          li.textContent = PROVIDER_NAME[p] + ": not allowed. Scout asks before it sends anything.";
           return li;
         }
         const day = new Date(rec.at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -3025,7 +3027,7 @@ async function main(): Promise<void> {
         btn.addEventListener("click", () => {
           // The gate closes at once; storage follows.
           void consent.withdraw(p).then(
-            () => (consentStatus.textContent = "Withdrawn. Scout for Safari sends nothing to " + PROVIDER_NAME[p] + " until you allow it again."),
+            () => (consentStatus.textContent = "Withdrawn. Scout sends nothing to " + PROVIDER_NAME[p] + " until you allow it again."),
             () => (consentStatus.textContent = "Could not save the change. Nothing is sent to " + PROVIDER_NAME[p] + " while this panel is open. Try again."),
           );
           trace("consent:withdrawn " + p);
@@ -3061,7 +3063,7 @@ async function main(): Promise<void> {
     } catch {
       has = false;
     }
-    keyStatus.textContent = has ? PROVIDER_NAME[p] + " key saved in your Keychain." : "No " + PROVIDER_NAME[p] + " key saved yet.";
+    keyStatus.textContent = has ? PROVIDER_NAME[p] + " key saved in " + keyPlace() + "." : "No " + PROVIDER_NAME[p] + " key saved yet.";
     keyRemove.hidden = !has;
     keyInput.placeholder = has ? "Paste a new key to replace it" : p === "anthropic" ? "sk-ant-…" : "sk-…";
   }
@@ -3116,7 +3118,7 @@ async function main(): Promise<void> {
         ? key
           ? "Could not load your " + PROVIDER_NAME[p] + " model list. Showing common models."
           : saved
-            ? "Showing common models. Scout for Safari lists every model your key can use after you allow sharing with " + PROVIDER_NAME[p] + "."
+            ? "Showing common models. Scout lists every model your key can use after you allow sharing with " + PROVIDER_NAME[p] + "."
             : "Showing common models. Save your " + PROVIDER_NAME[p] + " key to list every model it can use."
         : "Models your " + PROVIDER_NAME[p] + " key can use." + (list.error ? " Could not refresh the list just now." : "");
     trace("models:" + p + " " + list.source + " " + list.models.length);
@@ -3211,8 +3213,12 @@ async function main(): Promise<void> {
     accessRead.checked = a.readCurrent;
     accessSearch.checked = a.searchTabs;
     el("access-search-help").textContent =
-      "Off until you turn it on. On: when a question needs it, Scout for Safari can list the titles and addresses of your open tabs" +
-      (browser.history ? " and search your history." : ". Safari does not let extensions search history or recently closed tabs, so only open tabs are searched.");
+      "Off until you turn it on. On: when a question needs it, Scout can list the titles and addresses of your open tabs" +
+      (browser.history
+        ? " and search your history."
+        : TARGET === "safari"
+          ? ". Safari does not let extensions search history or recently closed tabs, so only open tabs are searched."
+          : ". Only open tabs are searched, not history or recently closed tabs.");
     accessScout.value = a.scoutMode;
     const allows = Object.entries(a.alwaysAllow);
     allowList.replaceChildren(
@@ -3221,7 +3227,7 @@ async function main(): Promise<void> {
             listRow(host + ": " + kinds.map((k) => KIND_LABEL[k as SensitiveKind] ?? k).join(", "), {
               label: "Revoke",
               aria: "Ask again before sensitive actions on " + host,
-              onClick: () => void updateAccess((x) => withoutAlwaysAllow(x, host), "Scout for Safari will ask again on " + host + "."),
+              onClick: () => void updateAccess((x) => withoutAlwaysAllow(x, host), "Scout will ask again on " + host + "."),
             }),
           )
         : [listRow("No sites always allowed.")]),
@@ -3236,7 +3242,7 @@ async function main(): Promise<void> {
               onClick: () => {
                 const next = { ...a.screenshots };
                 delete next[host];
-                void updateAccess((x) => ({ ...x, screenshots: next }), "Scout for Safari will ask before screenshots of " + host + ".");
+                void updateAccess((x) => ({ ...x, screenshots: next }), "Scout will ask before screenshots of " + host + ".");
               },
             }),
           )
@@ -3272,7 +3278,7 @@ async function main(): Promise<void> {
     blockInput.value = "";
     void updateAccess(
       (a) => ({ ...a, blocked: [...new Set([...a.blocked, host])] }),
-      "Blocked " + host + ". Scout for Safari will not read or screenshot it.",
+      "Blocked " + host + ". Scout will not read or screenshot it.",
     );
     trace("access:blocked");
   }
@@ -3283,7 +3289,7 @@ async function main(): Promise<void> {
   });
   accessSearch.addEventListener("change", () => {
     const on = accessSearch.checked;
-    void updateAccess((a) => ({ ...a, searchTabs: on }), on ? "Scout for Safari may search your open tabs." : "Tab and history search is off.");
+    void updateAccess((a) => ({ ...a, searchTabs: on }), on ? "Scout may search your open tabs." : "Tab and history search is off.");
   });
   accessScout.addEventListener("change", () => {
     const choice = accessScout.value === "off" ? "off" : "on";
@@ -3476,7 +3482,7 @@ async function main(): Promise<void> {
       // Testing the key is a request to the provider, so it needs consent too.
       if (!consent.has(p) && !(await allowSharing(p))) {
         keyStatus.textContent =
-          "The key was not tested or saved. Scout for Safari tests it with " + PROVIDER_NAME[p] + " only after you allow sharing.";
+          "The key was not tested or saved. Scout tests it with " + PROVIDER_NAME[p] + " only after you allow sharing.";
         return;
       }
       keySave.disabled = true;
@@ -3488,11 +3494,11 @@ async function main(): Promise<void> {
           await keychain.setKey(p, key);
           keyInput.value = "";
           await refreshKeyStatus();
-          keyStatus.textContent = PROVIDER_NAME[p] + " key works and is saved in your Keychain.";
+          keyStatus.textContent = PROVIDER_NAME[p] + " key works and is saved in " + keyPlace() + ".";
           await connect();
           await refreshModels(true);
         } catch {
-          keyError.textContent = "The key works, but it could not be saved to the Keychain. Try again.";
+          keyError.textContent = "The key works, but it could not be saved" + (TARGET === "safari" ? " to the Keychain" : "") + ". Try again.";
         }
       } else {
         keyInput.setAttribute("aria-invalid", "true");
@@ -3510,7 +3516,7 @@ async function main(): Promise<void> {
     void keychain
       .deleteKey(p)
       .then(
-        () => (keyStatus.textContent = PROVIDER_NAME[p] + " key removed from your Keychain."),
+        () => (keyStatus.textContent = PROVIDER_NAME[p] + " key removed from " + keyPlace() + "."),
         () => (keyError.textContent = "Could not remove the key. Try again."),
       )
       .then(async () => {

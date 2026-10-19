@@ -177,8 +177,8 @@ describe("deleteAllData", () => {
     expect(report.siteAccess).toBe(false);
     expect(report.remainingOrigins).toEqual(["*://*.127.0.0.1/*"]);
     const text = deleteReportText(report);
-    expect(text).toContain("Safari still lets Scout for Safari read: 127.0.0.1.");
-    expect(text).toContain("Settings > Apps > Safari > Extensions > Scout for Safari");
+    expect(text).toContain("Safari still lets Scout read: 127.0.0.1.");
+    expect(text).toContain("Settings > Apps > Safari > Extensions > Scout;");
   });
 
   it("says plainly when everything was deleted", () => {
