@@ -199,7 +199,6 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     allowBrowser: allowBrowserPages,
     ...(storage ? { storage } : {}),
     overlay: (tabId, req: OverlayRequest) => callInjected(tabId, "overlay.js", OVERLAY_HANDLER, req),
-    openPanel: options.openPanel ?? (async () => undefined),
     save: async (e) => {
       if (!storage) return;
       const { retention } = await loadSettings(storage);
