@@ -11,6 +11,8 @@ export interface MerchantMeta {
   /** rel=canonical link, when the page has one. */
   canonical?: string;
   title?: string;
+  /** The page's meta description: what the store says it sells. */
+  description?: string;
 }
 
 export interface Merchant {
@@ -126,4 +128,20 @@ export function mentionsStore(text: string, m: Merchant): boolean {
   const hay = token(text);
   const flat = hay.replace(/\s+/g, "");
   return m.names.some((n) => hay.includes(n) || flat.includes(n.replace(/\s+/g, "")));
+}
+
+const MAX_SELLS = 120;
+/**
+ * What the store sells, in its own words, as search words: its meta
+ * description, cut at the first sentence. Owner report 2026-10-19: "Beefy"
+ * plus "code" missed a creator's Linktree that only said "meat chips";
+ * the owner's other tool searched with what was in the cart. Untrusted page
+ * text, used only as search words.
+ */
+export function sellsLine(meta: Pick<MerchantMeta, "description"> | null | undefined): string | undefined {
+  const raw = (meta?.description ?? "").replace(/\s+/g, " ").trim();
+  if (raw.length < 8) return undefined;
+  const first = raw.split(/(?<=[.!?])\s/)[0] ?? raw;
+  const cut = first.length > MAX_SELLS ? first.slice(0, MAX_SELLS).replace(/\s+\S*$/, "") : first;
+  return cut.replace(/[.!?]+$/, "") || undefined;
 }

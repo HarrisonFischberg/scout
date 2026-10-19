@@ -97,6 +97,25 @@ describe("buildReport", () => {
     expect(text).toContain("not recorded (opt in under Diagnostics)");
   });
 
+  // Owner report 2026-10-19 (run #227): opening the panel to copy the report
+  // started a run of its own, and the coupon run was only listed below it.
+  it("shows the latest run that is more than a quiet panel opening", () => {
+    const d = new Diagnostics(undefined, () => 0);
+    const c = d.start("coupons", { provider: "anthropic", model: "m" });
+    c.stage("coupons:attempt 1 rejected expired from wethrift.com");
+    c.finish("done", "No code lowered the total.");
+    d.start("startup").finish("ready", "Ready.");
+    d.start("startup").finish("ready", "Ready.");
+    const text = buildReport(d.runs, ENV);
+    expect(text).toContain("- Run: coupons (#1)");
+    expect(text).toContain("coupons:attempt 1 rejected expired from wethrift.com");
+    expect(text).toContain("### Other runs");
+    expect(text).toContain("- #3 startup at");
+    // A panel opening that went wrong is still the one shown.
+    d.start("startup").finish("error", "No key.");
+    expect(buildReport(d.runs, ENV)).toContain("- Run: startup (#4)");
+  });
+
   // Owner report 2026-10-19: earlier runs said "no_form (1 error)" with no
   // site or message, so it could not be told what failed or where.
   it("names the site and the error of earlier runs", () => {
@@ -105,7 +124,7 @@ describe("buildReport", () => {
     c.page("https://shop.test/cart?id=9");
     c.error("No coupon box found on this page. Open the cart or checkout page first.");
     c.finish("no_form", "No coupon box found on this page.");
-    d.start("startup").finish("ready", "Ready.");
+    d.start("ask").finish("done", "ok");
     const text = buildReport(d.runs, ENV);
     expect(text).toContain('- #1 coupons on shop.test at');
     expect(text).toContain('→ no_form (1 error: "No coupon box found on this page. Open the cart or checkout page first.")');
