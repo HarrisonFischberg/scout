@@ -1,0 +1,90 @@
+/* Option 4 · Deal Hunter. Prototype only. Loud, friendly shopping sidekick:
+   cream paper, tangerine and marigold, chunky rounded type, sticker cards with
+   ink outlines and offset shadows, coupon codes as tear-off tickets.
+   Nunito stands in for SF Pro Rounded (ui-rounded). */
+@font-face { font-family: "RevRound"; font-weight: 400; src: url("/rf/nunito-latin-400-normal.woff2"); }
+@font-face { font-family: "RevRound"; font-weight: 700; src: url("/rf/nunito-latin-700-normal.woff2"); }
+@font-face { font-family: "RevRound"; font-weight: 800; src: url("/rf/nunito-latin-800-normal.woff2"); }
+@font-face { font-family: "RevRound"; font-weight: 900; src: url("/rf/nunito-latin-900-normal.woff2"); }
+:root {
+  --bg-canvas: #fff6e5; --bg-surface: #ffffff; --bg-subtle: #ffe9c2;
+  --text-primary: #1b1712; --text-secondary: #3f372c; --text-muted: #6a5f50;
+  --accent: #c2410c; --accent-on: #ffffff; --accent-text: #b13a0a;
+  --selected: #ffd34d; --bubble-user: #ffd34d; --bubble-user-text: #1b1712;
+  --danger: #b42318; --focus-ring: #c2410c; --border-control: #1b1712; --hairline: #1b1712;
+  --ink: #1b1712; --pop: 3px 3px 0 var(--ink); --gold: #ffd34d; --shadow: var(--pop);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-canvas: #17130e; --bg-surface: #231c14; --bg-subtle: #33281b;
+    --text-primary: #fbefd9; --text-secondary: #e3d3b6; --text-muted: #bba98a;
+    --accent: #ff8a3d; --accent-on: #1b1712; --accent-text: #ffa465;
+    --selected: #ffcf40; --bubble-user: #ffcf40; --bubble-user-text: #1b1712;
+    --danger: #ff9b8a; --focus-ring: #ffa465; --border-control: #fbefd9; --hairline: #fbefd9;
+    --ink: #fbefd9; --gold: #ffcf40;
+  }
+}
+html body { font-family: "RevRound", ui-rounded, system-ui, sans-serif !important; font-weight: 700; }
+header { border-bottom: 2px solid var(--ink) !important; }
+header h1 { font-weight: 900 !important; font-size: 18px !important; letter-spacing: -0.02em; }
+.icon-btn { color: var(--text-primary); }
+
+/* New chat: headline + big tiles; Find coupons is promoted out of the + menu. */
+#empty .scout-mark { width: 64px; height: 64px; margin: auto auto 6px; fill: var(--gold); stroke: var(--ink); stroke-width: 3.5; transform: rotate(-6deg); }
+#empty .scout-mark .hub { fill: var(--ink); }
+.rev-hunt { text-align: center; margin: 0 0 auto; font: 900 26px/1.1 "RevRound"; letter-spacing: -0.03em; }
+.rev-hunt span { display: block; font: 700 14px "RevRound"; color: var(--text-muted); letter-spacing: 0; margin-top: 6px; }
+#starters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 0 12px !important; }
+#starters li:first-child { grid-column: 1 / -1; }
+#starters button {
+  min-height: 56px !important; padding: 10px 14px !important; border: 2px solid var(--ink) !important; border-radius: 16px !important;
+  background: var(--bg-surface) !important; color: var(--text-primary) !important; font-weight: 800 !important; font-size: 15px !important; box-shadow: var(--pop);
+}
+#starters li:first-child button { background: var(--accent) !important; color: var(--accent-on) !important; font-size: 17px !important; }
+#starters li:first-child button svg.i { color: var(--accent-on) !important; }
+#starters button svg.i { color: var(--text-primary) !important; }
+
+/* Composer: sticker box. */
+.composer-box { border: 2px solid var(--ink); border-radius: 18px; box-shadow: var(--pop); }
+.composer-box:has(#question:focus-visible) { border-color: var(--ink); box-shadow: var(--pop), 0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent); }
+#question { font-weight: 700; }
+.round { border: 2px solid var(--ink); color: var(--text-primary); }
+.round.mic { border: 2px solid var(--ink); background: var(--bg-subtle); color: var(--text-primary); }
+.round.send { border: 2px solid var(--ink); background: var(--accent); color: var(--accent-on); }
+fieldset.segmented { border: 2px solid var(--ink); }
+.segmented label.on { background: var(--gold); color: #1b1712; }
+#model-pill { border: 2px solid var(--ink); background: var(--bg-surface); color: var(--text-primary); font-weight: 800; }
+
+/* Messages */
+.msg.user { border: 2px solid var(--ink); border-radius: 18px 18px 4px 18px; box-shadow: var(--pop); font-weight: 800; }
+.msg.assistant { font-weight: 600; font-size: 15px; }
+.msg.assistant strong { font-weight: 900; background: linear-gradient(transparent 55%, color-mix(in srgb, var(--gold) 70%, transparent) 55%); }
+.msg .table-wrap { border: 2px solid var(--ink); border-radius: 14px; padding: 2px 12px; background: var(--bg-surface); box-shadow: var(--pop); }
+.msg th { font-weight: 900; color: var(--text-primary); }
+.msg td, .msg th { border-color: color-mix(in srgb, var(--ink) 25%, transparent) !important; }
+.msg tr:last-child td { border-bottom: 0; }
+#status { font-weight: 800; }
+
+/* Find coupons: tickets. The winner is a gold ticket. */
+.coupon-step { font-weight: 800; }
+.coupon-step .done-mark { color: var(--accent-text); }
+.trace-body { border-left: 0 !important; padding-left: 0 !important; gap: 10px !important; }
+.trace .attempt {
+  position: relative; display: grid !important; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center;
+  padding: 10px 14px; border: 2px solid var(--ink); border-radius: 12px; background: var(--bg-surface); font-weight: 700; font-size: 13px;
+  background-image: linear-gradient(90deg, transparent 0 calc(100% - 1px), transparent 0);
+}
+.trace .attempt .code { grid-row: span 2; padding-right: 12px; border-right: 2px dashed var(--ink); font: 900 15px "RevRound"; letter-spacing: 0.04em; }
+.trace .attempt.good { background: var(--gold); color: #1b1712; box-shadow: var(--pop); }
+.trace .attempt.good .code { color: #1b1712; }
+.trace .attempt.good a { color: #1b1712; }
+.btn { border: 2px solid var(--ink); border-radius: 999px; font-weight: 800; box-shadow: 2px 2px 0 var(--ink); background: var(--bg-surface); }
+.btn.primary { background: var(--accent); color: var(--accent-on); border-color: var(--ink); }
+
+/* Settings */
+#settings-view .body { padding: 8px 12px 16px; }
+#settings-view section { border: 2px solid var(--ink) !important; border-radius: 16px; padding: 14px; margin-bottom: 12px; background: var(--bg-surface); box-shadow: var(--pop); }
+#settings-view h3 { font: 900 16px "RevRound"; text-transform: none; letter-spacing: -0.01em; color: var(--text-primary); }
+#settings-view h2 { font-weight: 900; }
+#settings-view .hint { font-weight: 600; }
+#settings-view input[type="password"], #settings-view input[type="text"], #settings-view select { border: 2px solid var(--ink); border-radius: 12px; padding: 8px 10px; font-weight: 700; }

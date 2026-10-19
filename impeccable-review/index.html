@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scout UI Review</title>
+<style>
+:root {
+  --bg: #f6f6f4; --surface: #ffffff; --subtle: #ececea; --fg: #18181a; --sec: #4a4a50; --muted: #6a6a70;
+  --line: #dddcd8; --accent: #2f6b3a; --accent-on: #fff; --sev-hi: #b42318; --sev-md: #a15c00; --sev-lo: #4a4a50;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121213; --surface: #1c1c1e; --subtle: #2a2a2d; --fg: #f2f2f2; --sec: #c9c9cf; --muted: #9a9aa1;
+    --line: #2f2f33; --accent: #8fd19b; --accent-on: #0f1f11; --sev-hi: #ff8a80; --sev-md: #f5b35c; --sev-lo: #c9c9cf;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121213; --surface: #1c1c1e; --subtle: #2a2a2d; --fg: #f2f2f2; --sec: #c9c9cf; --muted: #9a9aa1;
+  --line: #2f2f33; --accent: #8fd19b; --accent-on: #0f1f11; --sev-hi: #ff8a80; --sev-md: #f5b35c; --sev-lo: #c9c9cf;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif; }
+main { max-width: 1240px; margin: 0 auto; padding: 32px 16px 80px; }
+h1 { font-size: 32px; letter-spacing: -0.02em; margin: 0 0 6px; line-height: 1.15; }
+h2 { font-size: 22px; letter-spacing: -0.01em; margin: 48px 0 12px; }
+h3 { font-size: 17px; margin: 0 0 6px; }
+p { margin: 0 0 10px; }
+.lede { color: var(--sec); font-size: 17px; max-width: 760px; }
+.note { color: var(--muted); font-size: 13px; max-width: 860px; }
+a { color: inherit; }
+nav.toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 0; }
+nav.toc a { text-decoration: none; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; color: var(--sec); background: var(--surface); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+.tablewrap { overflow-x: auto; }
+.problems { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
+.problems .card h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.problems ul { margin: 0; padding-left: 18px; }
+.problems li { margin: 6px 0; }
+.sev { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.sev.hi { color: var(--sev-hi); } .sev.md { color: var(--sev-md); } .sev.lo { color: var(--sev-lo); }
+.controls { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 0; background: var(--bg); border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 2px; background: var(--surface); }
+.seg button { border: 0; background: transparent; color: var(--sec); font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 999px; cursor: pointer; min-height: 32px; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); font-weight: 600; }
+.seg button:focus-visible, nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.compare { overflow-x: auto; padding-bottom: 8px; }
+.grid { display: grid; grid-template-columns: 96px repeat(6, minmax(160px, 1fr)); gap: 10px; min-width: 1080px; }
+.grid .colhead { font-weight: 700; font-size: 14px; padding: 4px 2px; align-self: end; }
+.grid .colhead small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.grid .rowhead { font-weight: 600; font-size: 13px; color: var(--sec); padding-top: 6px; }
+.grid figure { margin: 0; }
+.grid img, .gallery img { width: 100%; height: auto; display: block; border-radius: 10px; border: 1px solid var(--line); background: var(--subtle); cursor: zoom-in; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.gallery figure { margin: 0; }
+.gallery figcaption { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.dirs { display: grid; gap: 16px; }
+.dir { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 18px; }
+.dir .shots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; align-self: start; }
+.dir .shots img { width: 100%; border-radius: 8px; border: 1px solid var(--line); cursor: zoom-in; }
+.dir h3 { font-size: 21px; letter-spacing: -0.01em; }
+.dir .num { color: var(--muted); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
+.dir ul { margin: 4px 0 10px; padding-left: 18px; }
+.dir li { margin: 3px 0; }
+.dir .label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 2px; }
+.swatches { display: flex; gap: 4px; margin: 6px 0 10px; }
+.swatches i { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line); display: block; }
+.rec { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: var(--accent-on); letter-spacing: 0.04em; vertical-align: 3px; }
+dialog { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 94vh; }
+dialog::backdrop { background: rgb(0 0 0 / 70%); }
+dialog img { max-width: 96vw; max-height: 90vh; display: block; border-radius: 12px; }
+dialog p { color: #fff; font-size: 13px; margin: 6px 0 0; text-align: center; }
+@media (max-width: 860px) {
+  .dir { grid-template-columns: 1fr; }
+  .dir .shots { grid-template-columns: repeat(2, 1fr); }
+  h1 { font-size: 26px; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Scout for Safari: UI/UX review and five refresh directions</h1>
+    <p class="lede">A full review of every Scout screen on Mac and iPhone, the main problems it found, and five clearly different looks for the whole app, each shown on the real panel. Nothing in the app has changed yet.</p>
+    <p class="note">How these were made: panel screens are the real built extension (current <code>main</code>) rendered in Chromium with synthetic data, at the Mac popover size (400×600) and an iPhone sheet size (393 wide). Inter stands in for Apple's SF font, Charter for New York, and Nunito for SF Rounded, because the cloud machine has no Apple fonts. The five directions are CSS and small script layers on top of the real panel (in <code>impeccable-review/option-N/prototype/</code>), not source changes. The Mac and iPhone setup app screens are faithful HTML recreations of <code>OnboardingView.swift</code>, since there is no Xcode here; real Simulator and Safari captures come with the build of whichever direction is chosen. Find coupons and the purchase confirmation are staged with the panel's own markup (no live store run).</p>
+    <nav class="toc" aria-label="Sections">
+      <a href="#inventory">Surfaces</a><a href="#problems">Top problems</a><a href="#compare">Side by side</a><a href="#directions">The 5 directions</a><a href="#before">All before shots</a><a href="#pick">Recommendation</a>
+    </nav>
+  </header>
+
+  <section id="inventory">
+    <h2>1. UI surfaces and platforms</h2>
+    <div class="card tablewrap">
+      <table>
+        <thead><tr><th>Surface</th><th>Mac</th><th>iPhone / iPad</th><th>States captured</th></tr></thead>
+        <tbody>
+          <tr><td>Safari panel: chat, answers, Scout mode, Find coupons, models, chats, consent, confirm</td><td>Toolbar popover</td><td>Safari's own sheet</td><td>No key, empty, store suggestions, answer, thinking, error, Scout mode, coupons, + menu, models, chats, settings, consent, confirm; light and dark</td></tr>
+          <tr><td>Settings (inside the panel)</td><td>Yes</td><td>Yes</td><td>Light and dark</td></tr>
+          <tr><td>Scout as its own page</td><td>Full tab</td><td>Not offered</td><td>Answer, light and dark</td></tr>
+          <tr><td>Page button (truck tab on the page edge)</td><td>Yes</td><td>Yes</td><td>On a shop page</td></tr>
+          <tr><td>Scout-mode glow and Working toast</td><td>Yes</td><td>Yes (lighter glow)</td><td>Running</td></tr>
+          <tr><td>Setup app (SwiftUI)</td><td>macOS app window</td><td>iOS app</td><td>Light and dark (recreated)</td></tr>
+          <tr><td>Chrome extension, website</td><td colspan="3">Not in this repo, skipped</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="problems">
+    <h2>2. Top problems (critique and audit)</h2>
+    <p class="note">The automated accessibility audit (axe-core, WCAG 2.2 A/AA) on all 42 captured panel states found one rule failing: the Privacy and Terms links in Settings are 17 px tall on iPhone, under the 24 px minimum. Everything else here comes from design review against Apple's guidelines and the screenshots.</p>
+    <div class="problems">
+      <div class="card"><h3>Hierarchy <span class="sev hi">High</span></h3><ul>
+        <li>The new chat screen is mostly empty: a large gray truck and two quiet text lines. Nothing says what Scout can do, and Find coupons and Scout mode are hidden behind + and an unlabeled icon.</li>
+        <li>The composer row holds six controls of the same weight (+, two mode icons, model pill, mic, send). The magnifier for Chat and the truck for Scout are not readable as modes.</li>
+        <li>On Mac the header spends its best space on the full product name next to four equal icons.</li>
+      </ul></div>
+      <div class="card"><h3>Consistency <span class="sev hi">High</span></h3><ul>
+        <li>Three visual languages: the Models sheet is an iOS grouped list, Settings is a long web form with uppercase labels and browser selects, cards and the error box are bordered web boxes.</li>
+        <li>Buttons come in four shapes (8 px rectangles, pills, circles, link text), and primary vs secondary changes by screen.</li>
+        <li>The cyan page glow does not match the blue accent in the panel, and neither matches the green and yellow app icon.</li>
+      </ul></div>
+      <div class="card"><h3>Accessibility <span class="sev md">Medium</span></h3><ul>
+        <li>The consent dialog shows a focus box around its heading on open; it reads as a bug.</li>
+        <li>The composer opens with a heavy blue focus ring, so the resting state looks selected or in error.</li>
+        <li>iPhone header and answer action buttons are 32 px, under Apple's 44 pt touch target; panel text ignores the iPhone text size setting (fixed px).</li>
+        <li>Settings legal links fail the 24 px target size check on iPhone (axe).</li>
+      </ul></div>
+      <div class="card"><h3>Spacing <span class="sev md">Medium</span></h3><ul>
+        <li>Left edges do not line up: header 12 px, thread 14 px, composer 10 px, status 16 px.</li>
+        <li>Settings is one 13-section scroll with paragraphs between every control; sections are separated only by hairlines.</li>
+        <li>The status line (cost, "The request failed.") floats between thread and composer, detached from the answer it belongs to.</li>
+      </ul></div>
+      <div class="card"><h3>Typography <span class="sev md">Medium</span></h3><ul>
+        <li>No real type scale: almost everything is 13 to 16 px at 600 to 650 weight, so headings, labels and body blur together.</li>
+        <li>iPhone body is 14 px, smaller than Apple's 17 pt default reading size.</li>
+        <li>Find coupons attempts mix monospace codes, prices and source links on one wrapping line; the winning code does not stand out.</li>
+      </ul></div>
+      <div class="card"><h3>Color <span class="sev lo">Low</span></h3><ul>
+        <li>Gray plus one Apple blue is safe but anonymous: Scout looks like a generic chat box, with no link to its own icon.</li>
+        <li>The only color on most screens is the store letter tiles and the blue send button.</li>
+        <li>Error state is a red outline box with red text and no way to retry.</li>
+      </ul></div>
+      <div class="card"><h3>Copy <span class="sev md">Medium</span></h3><ul>
+        <li>"Scout for Safari" is repeated in nearly every sentence (four times in the no-key paragraph). Inside Safari, "Scout" is enough.</li>
+        <li>The no-key screen is a four-sentence billing paragraph before the button.</li>
+        <li>Errors say the same thing twice ("The provider is having problems" plus "The request failed.") and offer no Retry.</li>
+        <li>"Legal (DRAFT)" and "(draft)" links are visible in Settings and the setup app.</li>
+      </ul></div>
+      <div class="card"><h3>Setup app <span class="sev md">Medium</span></h3><ul>
+        <li>A text-only page: no icon, no picture of the steps, and it never shows whether the extension is on or a key is saved.</li>
+        <li>On iPhone the instructions are a long paragraph of Settings paths with no button.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section id="compare">
+    <h2>3. Side by side</h2>
+    <p class="note">Each row is one key screen. Tap any image to enlarge it.</p>
+    <div class="controls" role="group" aria-label="View options">
+      <div class="seg" role="group" aria-label="Platform"><button type="button" data-plat="mac" aria-pressed="true">Mac</button><button type="button" data-plat="iphone" aria-pressed="false">iPhone</button></div>
+      <div class="seg" role="group" aria-label="Appearance"><button type="button" data-scheme="light" aria-pressed="true">Light</button><button type="button" data-scheme="dark" aria-pressed="false">Dark</button></div>
+    </div>
+    <div class="compare"><div class="grid" id="grid"></div></div>
+  </section>
+
+  <section id="directions">
+    <h2>4. The five directions</h2>
+    <p class="note">Fixes shared by all five, because the audit found them regardless of look: call it "Scout" inside Safari; a real new-chat screen that says what Scout can do; a calm composer focus state; Settings grouped into clear sections; errors with a Retry; the status line moved under its answer; 44 pt targets on iPhone; no focus box on dialog headings; no visible "draft" labels at release; a setup app that shows live status (extension on, key saved).</p>
+    <div class="dirs" id="dirs"></div>
+  </section>
+
+  <section id="before">
+    <h2>5. All before shots</h2>
+    <p class="note">Every captured screen and state on <code>main</code>, for the platform and appearance chosen above.</p>
+    <div class="gallery" id="gallery"></div>
+  </section>
+
+  <section id="pick">
+    <h2>6. Recommendation</h2>
+    <div class="card rec">
+      <p><strong>Option 1, Trailhead.</strong> It gives Scout an identity that comes straight from its own green-and-yellow truck icon, sets it apart from ChatGPT, Comet and Safari's own gray UI, and still behaves like an Apple app (system type sizes, standard sheets, light and dark). It suits both everyday questions and the coupon hunt without shouting. If you would rather Scout look like it shipped with Safari, Option 2 (Pure Apple) is the safe second choice.</p>
+    </div>
+  </section>
+</main>
+
+<dialog id="zoom" aria-label="Enlarged screenshot"><img alt=""><p></p></dialog>
+
+<script>
+const OPTIONS = [
+  { dir: "before", name: "Before", sub: "main today" },
+  { dir: "option-1", name: "1 · Trailhead", sub: "warm outdoors brand" },
+  { dir: "option-2", name: "2 · Pure Apple", sub: "built-in Apple app" },
+  { dir: "option-3", name: "3 · Night Ops", sub: "agent console" },
+  { dir: "option-4", name: "4 · Deal Hunter", sub: "bold shopping sidekick" },
+  { dir: "option-5", name: "5 · Ink & Paper", sub: "editorial reading" },
+];
+const ROWS = [["02-new-chat", "New chat"], ["04-answer", "Answer"], ["08-coupons", "Find coupons"], ["12-settings", "Settings"], ["20-setup-app", "Setup app"]];
+const BEFORE = [
+  ["01-no-key", "No API key"], ["02-new-chat", "New chat (empty)"], ["03-store", "Store suggestions"], ["04-answer", "Answer"],
+  ["05-thinking", "Thinking (loading)"], ["06-error", "Error"], ["07-scout-mode", "Scout mode"], ["08-coupons", "Find coupons (staged)"],
+  ["09-plus-menu", "+ menu"], ["10-models", "Models"], ["11-chats", "Chats"], ["12-settings", "Settings"], ["13-consent", "Consent"],
+  ["14-confirm", "Confirm purchase (staged)"], ["15-page", "Scout as a page (Mac)"], ["16-page-button", "Page button"], ["17-scout-glow", "Scout-mode glow"], ["20-setup-app", "Setup app (recreated)"],
+];
+const DIRS = [
+  {
+    n: 1, dir: "option-1", name: "Trailhead", rec: true, sw: ["#f6f1e7", "#2f6b3a", "#f2c14e", "#1f2a1f", "#131913"],
+    why: "Scout's icon is a green truck on a yellow sky, but the app inside is anonymous gray and blue. Trailhead brings the icon into the product: warm sand paper, forest green for actions, a sunrise badge, rounded type (SF Rounded on Apple). It feels like a dependable guide rather than a chatbot, and it is the only direction that makes Scout recognizable in a screenshot.",
+    mac: ["Sand canvas, green primary buttons and question bubbles, rounded headings", "New chat: sunrise truck badge, \"Where to next?\", starters as two cards", "Answers: tables in soft cards, key facts in green", "Find coupons as a dashed trail; the working code highlighted in green", "Settings as rounded section cards; page glow retinted green-gold"],
+    ios: ["Same world at iPhone sizes; text up to Apple's reading size", "Starter cards sit above the docked composer", "Page button becomes a green badge"],
+    native: ["Setup app: badge, two step cards with live On / Not added status, one green button"],
+    same: ["Layout, header icons, composer controls and every flow stay where they are", "Light and dark follow the system; contrast checked"],
+  },
+  {
+    n: 2, dir: "option-2", name: "Pure Apple", sw: ["#f2f2f7", "#ffffff", "#0a6cff", "#34c759", "#000000"],
+    why: "Make Scout look like it shipped with Safari. Everything follows Apple's own patterns: centered title and tinted toolbar glyphs, a large-title greeting, inset grouped lists for starters, Find coupons and Settings, iMessage-blue question bubbles, true black in dark mode. Lowest risk and most familiar, at the cost of a distinct personality.",
+    mac: ["Centered \"Scout\" title, blue-tinted header glyphs, no rule", "New chat: large title \"Ask Scout\" with chevron rows", "Blue question bubbles; answers plain", "Find coupons as an inset grouped list with green checks", "Settings as iOS-style grouped sections with footnotes"],
+    ios: ["Matches iOS Settings and Messages closely; true black dark mode", "Model pill becomes a tinted menu label"],
+    native: ["Setup app: app icon, grouped Setup list (Safari extension: On, API key: Not added), About links"],
+    same: ["System blue accent and gray neutrals; current structure and flows"],
+  },
+  {
+    n: 3, dir: "option-3", name: "Night Ops", sw: ["#0b0d0c", "#121614", "#b8f35a", "#e8f0ea", "#f3f5f2"],
+    why: "Lean into what makes Scout different from a chat box: it is an agent that acts. Night Ops is dark-first and technical: ink and signal lime, a grotesk UI face, monospace for machine facts (model, cost, codes, steps), and the agent run drawn as a timeline. New chat becomes a command list that surfaces /coupons and /scout instead of hiding them.",
+    mac: ["\"SCOUT · READY\" header with a status chip", "New chat: command list (/summarize, /explain, /coupons, /scout) with shortcuts", "Key facts highlighted in lime; tables with mono headers", "Find coupons as a run log with a lime timeline", "Settings labelled like a config file"],
+    ios: ["Same commands as large rows; shortcuts hidden on touch", "Lime send and mode buttons in dark; ink buttons with lime text in light"],
+    native: ["Setup app: two-item live checklist (ON / NOT SET) and a single command button"],
+    same: ["Every flow and control; light mode kept and contrast checked"],
+  },
+  {
+    n: 4, dir: "option-4", name: "Deal Hunter", sw: ["#fff6e5", "#c2410c", "#ffd34d", "#1b1712", "#17130e"],
+    why: "Coupons are Scout's sharpest feature, so make the whole app a cheerful shopping sidekick. Cream paper, tangerine and marigold, chunky rounded type, sticker cards with ink outlines, and coupon codes as tear-off tickets where the winner is a gold ticket. Find coupons becomes the first big button on the new chat screen.",
+    mac: ["Bold \"Scout\" header over an ink rule", "New chat: \"What are we hunting?\" with a big Find coupons tile", "Yellow question bubbles; marker-highlighted key facts", "Find coupons as tickets; best code in gold", "Settings as sticker cards"],
+    ios: ["Big tiles fit thumb reach above the composer", "Page button becomes a yellow sticker truck"],
+    native: ["Setup app: \"Let's get you saving.\" with sticker step cards"],
+    same: ["Flows and controls; chat still works for any question"],
+  },
+  {
+    n: 5, dir: "option-5", name: "Ink & Paper", sw: ["#fbfaf7", "#141414", "#8a2c0d", "#e3e0d8", "#131211"],
+    why: "Most of what people do is read answers, so make them a pleasure to read. Answers are set like a good article in a serif (New York on Apple), the interface steps back into small sans capitals, controls are ink black, one oxblood accent marks links and the winning code, and hairlines replace boxes. No chat bubbles: your question becomes a quiet kicker above the answer.",
+    mac: ["Serif \"Scout\" masthead header", "New chat: \"What would you like to know?\" with a numbered index", "\"You asked\" kicker, serif answer, ruled table", "Find coupons as a ledger with a BEST tag", "Settings as a serif table of contents"],
+    ios: ["Serif reading at a comfortable size; same index above the composer"],
+    native: ["Setup app: editorial headline and two numbered steps"],
+    same: ["Flows and controls; system sans for all controls"],
+  },
+];
+
+let plat = "mac", scheme = "light";
+const src = (dir, shot) => `${dir}/${plat}-${scheme}-${shot}.png`;
+function render() {
+  const grid = document.getElementById("grid");
+  grid.innerHTML = '<div></div>' + OPTIONS.map((o) => `<div class="colhead">${o.name}<small>${o.sub}</small></div>`).join("");
+  for (const [shot, label] of ROWS) {
+    grid.insertAdjacentHTML("beforeend", `<div class="rowhead">${label}</div>` + OPTIONS.map((o) => `<figure><img loading="lazy" src="${src(o.dir, shot)}" alt="${o.name}: ${label}, ${plat}, ${scheme}"></figure>`).join(""));
+  }
+  document.getElementById("gallery").innerHTML = BEFORE
+    .filter(([s]) => !(plat === "iphone" && s === "15-page"))
+    .map(([s, l]) => `<figure><img loading="lazy" src="${src("before", s)}" alt="Before: ${l}"><figcaption>${l}</figcaption></figure>`).join("");
+  document.getElementById("dirs").innerHTML = DIRS.map((d) => `
+    <article class="card dir${d.rec ? " rec" : ""}" aria-labelledby="d${d.n}">
+      <div>
+        <div class="num">Option ${d.n}${d.rec ? ' <span class="badge">Recommended</span>' : ""}</div>
+        <h3 id="d${d.n}">${d.name}</h3>
+        <div class="swatches" aria-hidden="true">${d.sw.map((c) => `<i style="background:${c}"></i>`).join("")}</div>
+        <p>${d.why}</p>
+        <div class="label">Mac (panel and Scout page)</div><ul>${d.mac.map((x) => `<li>${x}</li>`).join("")}</ul>
+        <div class="label">iPhone and iPad</div><ul>${d.ios.map((x) => `<li>${x}</li>`).join("")}</ul>
+        <div class="label">Mac and iPhone setup app</div><ul>${d.native.map((x) => `<li>${x}</li>`).join("")}</ul>
+        <div class="label">Stays the same</div><ul>${d.same.map((x) => `<li>${x}</li>`).join("")}</ul>
+      </div>
+      <div class="shots">${["02-new-chat", "04-answer", "08-coupons", "20-setup-app"].map((s) => `<img loading="lazy" src="${src(d.dir, s)}" alt="${d.name}: ${s.slice(3).replace("-", " ")}">`).join("")}</div>
+    </article>`).join("");
+}
+for (const b of document.querySelectorAll("[data-plat],[data-scheme]")) {
+  b.addEventListener("click", () => {
+    if (b.dataset.plat) plat = b.dataset.plat; else scheme = b.dataset.scheme;
+    for (const x of document.querySelectorAll(b.dataset.plat ? "[data-plat]" : "[data-scheme]")) x.setAttribute("aria-pressed", String(x === b));
+    render();
+  });
+}
+const zoom = document.getElementById("zoom");
+document.addEventListener("click", (e) => {
+  const img = e.target.closest("main img");
+  if (img) { zoom.querySelector("img").src = img.src; zoom.querySelector("img").alt = img.alt; zoom.querySelector("p").textContent = img.alt; zoom.showModal(); }
+  else if (e.target === zoom || e.target.closest("dialog")) zoom.close();
+});
+render();
+</script>
+</body>
+</html>
