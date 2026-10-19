@@ -28,6 +28,8 @@ export interface PageBrowser {
   /** Closes the tab and any tab the page opened from it. */
   close(tab: number): Promise<void>;
   wait(ms: number): Promise<void>;
+  /** Pages are downloaded, not rendered (src/coupons/quiet-read.ts): read once, nothing pressed. */
+  quiet?: boolean;
 }
 
 /** Why a page went to the browser. */
@@ -260,7 +262,7 @@ export async function browserRead(targets: BrowserTarget[], browser: PageBrowser
         let snap: Snapshot | null = null;
         while (!stopped() && now() < pageEnd) {
           snap = await browser.read(tab).catch(() => null);
-          if (snap && snap.text.trim().length >= MIN_TEXT) break;
+          if (browser.quiet || (snap && snap.text.trim().length >= MIN_TEXT)) break;
           await browser.wait(LOAD_POLL_MS);
         }
         if (stopped()) page.outcome = "stopped";
@@ -269,8 +271,10 @@ export async function browserRead(targets: BrowserTarget[], browser: PageBrowser
         else if (detectCaptcha(snap)) page.outcome = "captcha";
         else {
           // Settled once more: lists that fill in after the first paint.
-          await browser.wait(SETTLE_MS);
-          snap = (await browser.read(tab).catch(() => null)) ?? snap;
+          if (!browser.quiet) {
+            await browser.wait(SETTLE_MS);
+            snap = (await browser.read(tab).catch(() => null)) ?? snap;
+          }
           text = snap.text;
           const landed = snap.url || target.url;
           for (const c of codesWithContext(snap.text, 20)) addCode({ code: c.code, url: target.url, context: c.context, how: "printed" });
@@ -282,7 +286,7 @@ export async function browserRead(targets: BrowserTarget[], browser: PageBrowser
           const skipped = new Map<string, number>();
           const nameOf = (e: SnapElement): string => e.name.trim().toLowerCase();
           const maxClicks = opts.maxClicks ?? BROWSER_MAX_CLICKS;
-          while (page.clicks.length < maxClicks && !stopped() && now() < pageEnd) {
+          while (!browser.quiet && page.clicks.length < maxClicks && !stopped() && now() < pageEnd) {
             const controls = couponControls(snap);
             const seenNames = new Map<string, number>();
             const next = controls.find((e) => {
