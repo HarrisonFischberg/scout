@@ -42,7 +42,6 @@ function fake(page: CouponPage) {
   const overlay: OverlayRequest[] = [];
   const saved: Array<{ conv: string; question: string; answer: string }> = [];
   const posted: Array<Record<string, unknown>> = [];
-  let panelOpens = 0;
   const host = new CouponHost({
     provider: async () => quiet,
     page: async () => page,
@@ -50,11 +49,10 @@ function fake(page: CouponPage) {
     allowBrowser: async () => false,
     overlay: async (_tab, req) => void overlay.push(req),
     save: async (e) => void saved.push(e),
-    openPanel: async () => void panelOpens++,
     now: () => 1000,
   });
   const port = { postMessage: (m: unknown) => void posted.push((m as { payload: Record<string, unknown> }).payload) };
-  return { host, overlay, saved, posted, port, opens: () => panelOpens };
+  return { host, overlay, saved, posted, port };
 }
 
 const until = async (ok: () => boolean, ms = 20_000): Promise<void> => {
@@ -72,15 +70,15 @@ describe("coupon host", () => {
     expect(f.overlay[0]).toMatchObject({ type: "overlay:show", taskId: "coupons:1", state: "running" });
     // Nobody is watching: the code is tested and the question waits, with the page still glowing.
     await until(() => !!f.host.status(1).run?.prompt_id);
-    expect(f.opens()).toBe(1);
-    expect(f.overlay.at(-1)).toMatchObject({ type: "overlay:state", state: "waiting" });
+    // The host never brings the panel up itself: on iPhone that left Safari unable to open it (owner report 2026-10-19).
+    expect(f.overlay[f.overlay.length - 1]).toMatchObject({ type: "overlay:state", state: "waiting" });
     // The panel opens: everything so far, in order, without diagnostics stages.
     const run = f.host.status(1).run!;
     expect(run.done).toBe(false);
     const kinds = run.events.map((e) => e.kind);
     expect(kinds).toContain("say");
     expect(kinds).toContain("attempt");
-    expect(kinds.at(-1)).toBe("ask");
+    expect(kinds[kinds.length - 1]).toBe("ask");
     expect(kinds).not.toContain("trace");
     expect(run.events.map((e) => e.seq)).toEqual([...run.events.map((e) => e.seq)].sort((a, b) => a - b));
     expect(run.events.find((e) => e.kind === "attempt")?.attempt).toMatchObject({ code: "SYNTH5", accepted: false });
@@ -91,7 +89,7 @@ describe("coupon host", () => {
     const done = f.posted.find((e) => e.kind === "done")!;
     expect(done).toMatchObject({ tab_id: 1, tone: "assistant", outcome: "done" });
     expect(f.posted.some((e) => e.kind === "answered")).toBe(true);
-    expect(f.overlay.at(-1)).toEqual({ type: "overlay:hide" });
+    expect(f.overlay[f.overlay.length - 1]).toEqual({ type: "overlay:hide" });
     await until(() => f.saved.length === 1);
     expect(f.saved[0]).toMatchObject({ conv: "c1", question: COUPON_QUESTION, answer: done.summary });
   }, 30_000);
@@ -103,7 +101,7 @@ describe("coupon host", () => {
     expect(() => f.host.stop(1, { kind: "content", raw: { tab: { id: 2 } } })).toThrow(BridgeError);
     expect(f.host.stop(7)).toEqual({ ok: false });
     expect(f.host.stop(1, { kind: "content", raw: { tab: { id: 1 } } })).toEqual({ ok: true });
-    expect(f.overlay.at(-1)).toEqual({ type: "overlay:hide" });
+    expect(f.overlay[f.overlay.length - 1]).toEqual({ type: "overlay:hide" });
   });
 
   it("a page it cannot reach does not start", async () => {

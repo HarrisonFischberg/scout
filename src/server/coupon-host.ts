@@ -25,8 +25,6 @@ export interface CouponHostDeps {
   storage?: { get(key: string): Promise<Record<string, unknown>>; set(items: Record<string, unknown>): Promise<void> };
   overlay(tabId: number, req: OverlayRequest): Promise<unknown>;
   save(entry: { at: number; conv: string; question: string; answer: string }): Promise<void>;
-  /** Brings the panel up when the question waits and no panel is open (best effort). */
-  openPanel(): Promise<void>;
   now(): number;
   /** How long a finished run stays available for coupons.status. Default 2 minutes. */
   keepMs?: number;
@@ -177,7 +175,6 @@ export class CouponHost {
       if (signal.aborted) return done(false);
       signal.addEventListener("abort", no, { once: true });
       timeout = this.timer(no, this.deps.askTimeoutMs ?? ASK_TIMEOUT_MS);
-      if (!this.watchers.get(r.tab_id)?.size) void this.deps.openPanel().catch(() => undefined);
     });
   }
 
