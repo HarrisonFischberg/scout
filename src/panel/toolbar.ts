@@ -12,18 +12,43 @@ export function toolbarIcon(dark: boolean, active = false): Record<string, strin
   return Object.fromEntries(TOOLBAR_SIZES.map((s) => [String(s), `icons/${name}-${s}.png`]));
 }
 
+/** Waits before trying `openPopup` again after Safari refuses it. */
+export const OPEN_RETRY_MS = [250, 600] as const;
+
+export interface PanelOpened {
+  opened: boolean;
+  /** Safari's reason for the last refusal (its error text, no page data). */
+  reason?: string;
+  /** How many times `openPopup` was called. */
+  tries: number;
+}
+
 /**
  * Opens the toolbar panel: a popover on Mac, Safari's sheet over the page on
  * iPhone and iPad. Used by the page button (src/edge.ts), which must never run
  * the panel inside the page: Safari loads such a frame in the page's process
  * and kills it when the frame uses extension APIs (owner report 2026-10-16).
+ *
+ * Safari sometimes refuses with "Another popup is already open" right after a
+ * sheet closes (owner report 2026-10-19: the page button would not open Scout
+ * until he went through the extensions menu), so a refusal is retried twice
+ * after short waits before the tab says it could not open.
  */
-export async function openPanel(action: { openPopup?(): Promise<void> } | undefined): Promise<{ opened: boolean }> {
-  if (!action?.openPopup) return { opened: false };
-  try {
-    await action.openPopup();
-    return { opened: true };
-  } catch {
-    return { opened: false };
+export async function openPanel(
+  action: { openPopup?(): Promise<void> } | undefined,
+  wait: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+): Promise<PanelOpened> {
+  if (!action?.openPopup) return { opened: false, reason: "openPopup unavailable", tries: 0 };
+  let reason = "";
+  for (let tries = 1; ; tries++) {
+    try {
+      await action.openPopup();
+      return { opened: true, tries };
+    } catch (err) {
+      reason = err instanceof Error ? err.message : String(err);
+    }
+    const ms = OPEN_RETRY_MS[tries - 1];
+    if (ms === undefined) return { opened: false, reason: reason.slice(0, 200), tries };
+    await wait(ms);
   }
 }

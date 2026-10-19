@@ -14,7 +14,7 @@ import { formatMoney } from "./coupons/money";
 import { originLabel } from "./coupons/candidates";
 import { couponStatusText } from "./coupons/finder";
 import { formatCostLine } from "./cost";
-import { buildReport, describeBrowser, Diagnostics, disabledRun, type RunHandle, type RunKind } from "./diagnostics";
+import { BUTTON_KEY, buildReport, describeBrowser, Diagnostics, disabledRun, loadButtonFailures, type ButtonFailure, type RunHandle, type RunKind } from "./diagnostics";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { BridgeError, envelope, newRequestId, request, type Envelope } from "./bridge/messages";
 import { connectPanelPort, type PanelPort } from "./bridge/port";
@@ -171,6 +171,8 @@ async function activeTab(): Promise<ActiveTab> {
 // never content.
 let diag: Diagnostics | null = null;
 let current: RunHandle = disabledRun;
+/** Times the page button could not open Scout (recorded by the worker). */
+let buttonFailures: ButtonFailure[] = [];
 
 function startRun(kind: RunKind, meta: { provider?: string; model?: string; question?: string; mock?: boolean } = {}): RunHandle {
   current = diag ? diag.start(kind, meta) : disabledRun;
@@ -191,7 +193,7 @@ function diagnosticsReport(): string {
     build: __SCOUT_DEBUG__ ? "debug" : "release",
     browser: describeBrowser(navigator.userAgent),
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  });
+  }, buttonFailures);
 }
 
 // Copies the report. If the clipboard is refused, shows it selected in a
@@ -373,7 +375,10 @@ async function main(): Promise<void> {
   // before Settings is opened. No network call here. Debug builds load their
   // diagnostics in the same round.
   const mockRead = __SCOUT_DEBUG__ && storage ? storage.get(DEV_MOCK_KEY).catch(() => none) : Promise.resolve(none);
-  if (__SCOUT_DEBUG__) diag = new Diagnostics(storage);
+  if (__SCOUT_DEBUG__) {
+    diag = new Diagnostics(storage);
+    void loadButtonFailures(storage).then((f) => (buttonFailures = f));
+  }
   [conv] = await Promise.all([
     convRead,
     diag?.load(),
@@ -414,6 +419,8 @@ async function main(): Promise<void> {
       });
     });
     el("diag-clear").addEventListener("click", () => {
+      buttonFailures = [];
+      void storage?.set({ [BUTTON_KEY]: [] }).catch(() => undefined);
       void diag?.clear().then(() => (diagStatus.textContent = "Diagnostics cleared."));
     });
     diagBox.hidden = false;
@@ -2536,6 +2543,11 @@ async function main(): Promise<void> {
     couponBuffer = null;
     const r = got?.run;
     if (!r || r.done || couponRun) return;
+    // Its own diagnostics run, so the outcome is not filed under this panel's
+    // startup (owner report 2026-10-19 showed a "startup → no_form").
+    const s = session;
+    startRun("coupons", s ? { provider: s.settings.provider, model: s.settings.model, ...(s.mock ? { mock: true } : {}) } : {});
+    current.page(tab.url);
     addMessage("user", COUPON_QUESTION, { mode: "Find coupons" });
     showCouponRun(r.started_at);
     trace("coupons:resumed");
