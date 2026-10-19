@@ -39,7 +39,7 @@ export function aboveSheetScroll(top: number, bottom: number, viewportHeight: nu
 
 const STYLE_TEXT = `
 :host { all: initial; }
-.layer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.layer { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; overflow: visible; }
 .arrow {
   position: absolute; left: 0; top: 0; width: 26px; height: 32px; pointer-events: none;
   opacity: 0; transition: opacity 200ms ease;
@@ -68,11 +68,19 @@ const ARROW =
   '<path d="M3 2 L3 25 L8.6 19.8 L12.4 28.6 L16.4 26.9 L12.7 18.2 L20.5 18.2 Z" fill="#111" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>' +
   "</svg>";
 
+// A zero-size box at the top-left corner, drawing outside itself: iPhone
+// Safari 26 paints a solid strip under its bottom bar while a page has a
+// see-through fixed box over the whole screen (owner bug report 2026-10-19;
+// see src/panel/edge.ts topLayerTab). Arrow positions are viewport coordinates either way.
 const HOST_STYLE = [
   "all: initial",
   "display: block",
   "position: fixed",
-  "inset: 0",
+  "left: 0",
+  "top: 0",
+  "width: 0",
+  "height: 0",
+  "overflow: visible",
   "pointer-events: none",
   "z-index: 2147483647",
   "visibility: visible",

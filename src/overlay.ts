@@ -24,29 +24,36 @@ const g = globalThis as unknown as Record<string, unknown>;
 // green; the owner chose blue.
 const BLUES = "#0A84FF, #1A9BE8, #2BBCE6, #33CCF0, #22B4E0, #1496D9, #0E88E0, #1FA8E6, #2EC1EA, #0A84FF";
 // How much of the wash shows: center of the page, halfway out, the edges, the corners.
+// Owner, 2026-10-19: "increase the glow and motion" (seen on iPhone with the
+// panel closed, now that coupon runs outlive it). Stronger at every distance,
+// a faster sweep, and a slow pulse. The middle stays light, so the page reads.
 export const GLOW_CENTER = "28%";
-export const GLOW_MID = "36%";
-export const GLOW_EDGE = "78%";
-export const GLOW_CORNER = "95%";
-// iPhone shows the glow at three quarters strength (owner, 2026-10-18: on top
-// of the panel's page blur the full wash was too heavy). Mac stays at full.
-export const PHONE_GLOW_SCALE = 0.75;
+export const GLOW_MID = "40%";
+export const GLOW_EDGE = "88%";
+export const GLOW_CORNER = "100%";
+// iPhone used to show three quarters (2026-10-18, on top of the panel's page
+// blur, since removed); full strength now, like Mac.
+export const PHONE_GLOW_SCALE = 1;
+/** iPhone: the overlay stops this far above the bottom edge (see hostStyle). */
+export const PHONE_BOTTOM_GAP_PX = 120;
 // Many close stops, so the fade is smooth rather than banded.
 const MASK_STOPS = [
   "rgb(0 0 0 / " + GLOW_CENTER + ") 0%",
-  "rgb(0 0 0 / 31%) 25%",
+  "rgb(0 0 0 / 33%) 25%",
   "rgb(0 0 0 / " + GLOW_MID + ") 45%",
-  "rgb(0 0 0 / 46%) 58%",
-  "rgb(0 0 0 / 58%) 70%",
-  "rgb(0 0 0 / 68%) 78%",
+  "rgb(0 0 0 / 56%) 58%",
+  "rgb(0 0 0 / 68%) 70%",
+  "rgb(0 0 0 / 78%) 78%",
   "rgb(0 0 0 / " + GLOW_EDGE + ") 86%",
-  "rgb(0 0 0 / 88%) 94%",
+  "rgb(0 0 0 / 96%) 94%",
   "rgb(0 0 0 / " + GLOW_CORNER + ") 100%",
 ].join(", ");
 
 export const FADE_IN_MS = 600;
 export const FADE_OUT_MS = 400;
-export const SWEEP_MS = 2500;
+export const SWEEP_MS = 1500;
+/** The glow brightens and dims once per this long. */
+export const PULSE_MS = 1800;
 export const RIPPLE_MS = 450;
 
 // The sweep animates a registered custom property. @property rules are ignored
@@ -75,7 +82,7 @@ function registerAngle(): void {
 
 const STYLE_TEXT = `
 :host { all: initial; }
-.layer { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity ${FADE_OUT_MS}ms ease; overflow: hidden; }
+.layer { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity ${FADE_OUT_MS}ms ease; overflow: hidden; }
 .layer.on { opacity: 1; transition-duration: ${FADE_IN_MS}ms; }
 /* A soft wash over the whole page (owner, 2026-10-17): strongest at the edges,
    lighter but never gone in the middle, so the page reads as "being scouted".
@@ -86,13 +93,17 @@ const STYLE_TEXT = `
   background: conic-gradient(from var(--scout-angle), ${BLUES});
   -webkit-mask-image: radial-gradient(ellipse at center, ${MASK_STOPS});
   mask-image: radial-gradient(ellipse at center, ${MASK_STOPS});
-  filter: blur(26px); animation: scout-sweep ${SWEEP_MS}ms linear infinite;
+  filter: blur(26px); animation: scout-sweep ${SWEEP_MS}ms linear infinite, scout-pulse ${PULSE_MS}ms ease-in-out infinite alternate;
 }
 .layer.paused .glow { opacity: 0.5; }
 .layer.phone .glow { opacity: ${PHONE_GLOW_SCALE}; }
+.wash { position: absolute; inset: 0; pointer-events: none; }
+/* iPhone: the layer stops above Safari's bar (hostStyle); the wash's last 48 px fade out instead of a hard edge. */
+.layer.phone .wash { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent); }
 .layer.phone.paused .glow { opacity: ${PHONE_GLOW_SCALE * 0.5}; }
 .layer.hidden-tab .glow { animation-play-state: paused; }
 @keyframes scout-sweep { to { --scout-angle: 360deg; } }
+@keyframes scout-pulse { from { filter: blur(26px) brightness(0.85); } to { filter: blur(22px) brightness(1.25); } }
 .ripple {
   position: absolute; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; pointer-events: none;
   border: 2px solid #2BBCE6; box-shadow: 0 0 0 2px rgb(43 188 230 / 35%); opacity: 0.95;
@@ -126,32 +137,40 @@ const STYLE_TEXT = `
 }
 `;
 
-const HOST_STYLE = [
-  "all: initial",
-  "display: block",
-  "position: fixed",
-  "inset: 0",
-  "margin: 0",
-  "padding: 0",
-  "border: 0",
-  "width: auto",
-  "height: auto",
-  "max-width: none",
-  "max-height: none",
-  "overflow: visible",
-  "background: transparent",
-  "pointer-events: none",
-  "z-index: 2147483647",
-  "opacity: 1",
-  "visibility: visible",
-  "transform: none",
-  "filter: none",
-  "clip-path: none",
-  "contain: none",
-  "color-scheme: normal",
-]
-  .map((d) => d + " !important")
-  .join("; ");
+// iPhone (owner bug report 2026-10-19, as in src/panel/edge.ts topLayerTab):
+// Safari 26 takes a see-through fixed box over the whole screen, or a top-layer
+// element's full-screen ::backdrop, as a dimming layer and paints a solid strip
+// under its bottom bar. Coupon runs now go on with the panel closed, so the bar
+// shows. On a phone the overlay is a plain fixed box that stops above the
+// bottom edge, and it does not use the top layer.
+const hostStyle = (phone: boolean): string =>
+  [
+    "all: initial",
+    "display: block",
+    "position: fixed",
+    ...(phone ? ["top: 0", "left: 0", "right: 0", "bottom: " + PHONE_BOTTOM_GAP_PX + "px"] : ["inset: 0"]),
+    "margin: 0",
+    "padding: 0",
+    "border: 0",
+    "width: auto",
+    "height: auto",
+    "max-width: none",
+    "max-height: none",
+    "overflow: visible",
+    "background: transparent",
+    "pointer-events: none",
+    "z-index: 2147483647",
+    "opacity: 1",
+    "visibility: visible",
+    "transform: none",
+    "filter: none",
+    "clip-path: none",
+    "contain: none",
+    "color-scheme: normal",
+  ]
+    .map((d) => d + " !important")
+    .join("; ");
+const onPhone = (): boolean => isPhoneScreen(matchMedia("(pointer: coarse)").matches, screen.width);
 
   '<circle class="lens" cx="17" cy="44" r="8"/><circle class="lens" cx="47" cy="44" r="8"/></svg>';
 
@@ -188,13 +207,13 @@ if (!g[FLAG]) {
     registerAngle();
     host = document.createElement("div");
     host.setAttribute("data-scout-overlay", "");
-    host.setAttribute("style", HOST_STYLE);
+    host.setAttribute("style", hostStyle(onPhone()));
     // The page can inspect the overlay; it cannot press its buttons (trusted events only).
     const root = host.attachShadow({ mode: "open" });
     const style = document.createElement("style");
     style.textContent = STYLE_TEXT;
     layer = document.createElement("div");
-    layer.className = isPhoneScreen(matchMedia("(pointer: coarse)").matches, screen.width) ? "layer phone" : "layer";
+    layer.className = onPhone() ? "layer phone" : "layer";
     layer.setAttribute("role", "group");
     layer.setAttribute("aria-label", "Scout for Safari is controlling this page");
     const glow = document.createElement("div");
@@ -225,7 +244,11 @@ if (!g[FLAG]) {
       hide();
     });
     pill.append(label, sep, stopBtn);
-    layer.append(glow, ripples, pill);
+    const wash = document.createElement("div");
+    wash.className = "wash";
+    wash.setAttribute("aria-hidden", "true");
+    wash.append(glow);
+    layer.append(wash, ripples, pill);
     root.append(style, layer);
     document.addEventListener("visibilitychange", () => layer?.classList.toggle("hidden-tab", document.hidden));
   };
@@ -233,11 +256,12 @@ if (!g[FLAG]) {
   // Attached the way the page button is (src/edge.ts, checked in Safari): the
   // popover attribute set before the host joins the document, on the root
   // element, then shown into the top layer so page z-indexes cannot cover the pill.
+  // Not on iPhone (hostStyle): there it is a fixed box with the top z-index.
   const mount = (): void => {
     build();
     const h = host as HTMLElement & { showPopover?(): void };
     if (h.isConnected) return;
-    const usePopover = typeof h.showPopover === "function";
+    const usePopover = typeof h.showPopover === "function" && !onPhone();
     if (usePopover) h.setAttribute("popover", "manual");
     document.documentElement.appendChild(h);
     if (usePopover) {
