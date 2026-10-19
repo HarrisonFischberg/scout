@@ -50,6 +50,7 @@ import {
   DEFAULT_MODEL,
   deleteAllData,
   deleteReportText,
+  HISTORY_KEY,
   loadConversation,
   loadHistory,
   loadRatings,
@@ -818,6 +819,15 @@ async function main(): Promise<void> {
     history.length = 0;
     updateEmpty();
   }
+
+  // Chat history cleared from another Scout window (the Mac page or another
+  // window's panel): this thread goes too, unless an answer or run is still going.
+  browser.storage?.onChanged?.addListener((changes, area) => {
+    const change = changes[HISTORY_KEY];
+    if (area !== "local" || !change || !Array.isArray(change.newValue) || change.newValue.length) return;
+    if (activeChat || task || couponRun || !turns.length) return;
+    clearThread();
+  });
 
   // ---------- Session (provider + key) ----------
   let fallbackNotice: HTMLElement | null = null;
@@ -3190,13 +3200,27 @@ async function main(): Promise<void> {
       });
   });
 
+  // Owner bug 2026-10-19: Clear chat history seemed to do nothing on Mac and
+  // iPhone. A failed write now says so, and this tab starts a new
+  // conversation, so nothing saved under the old one can show again.
   el("history-clear").addEventListener("click", () => {
-    if (!storage) return;
-    void clearHistory(storage).then(async () => {
-      clearThread();
-      savedMsg.textContent = "Chat history cleared.";
-      await refreshSettings();
-    });
+    if (!storage) {
+      savedMsg.textContent = "Could not clear chat history. Try again.";
+      return;
+    }
+    savedMsg.textContent = "";
+    void clearHistory(storage)
+      .then(async () => {
+        clearThread();
+        conv = await startNewConversation(storage, tab.id, Date.now(), tab.incognito).catch(() => conv);
+        trace("history:cleared");
+        savedMsg.textContent = "Chat history cleared.";
+      })
+      .catch((err: unknown) => {
+        trace("history:clear-failed " + (err instanceof Error ? err.name : "unknown"));
+        savedMsg.textContent = "Could not clear chat history. Try again.";
+      })
+      .then(refreshSettings);
   });
 
   const deleteBtn = el<HTMLButtonElement>("delete-all");
