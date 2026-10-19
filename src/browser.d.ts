@@ -91,6 +91,7 @@ declare const browser: {
       get(keys: string | string[]): Promise<Record<string, unknown>>;
       set(items: Record<string, unknown>): Promise<void>;
       clear(): Promise<void>;
+      remove?(keys: string[]): Promise<void>;
     };
     onChanged?: {
       addListener(fn: (changes: Record<string, { oldValue?: unknown; newValue?: unknown }>, area: string) => void): void;

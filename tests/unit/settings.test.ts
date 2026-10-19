@@ -199,6 +199,26 @@ describe("conversation", () => {
     expect(await loadConversation(s, "7", 4000, "c-b")).toEqual([]);
   });
 
+  it("clears by removing the keys when storage can remove (Safari), so no empty values are written", async () => {
+    const s = fakeStorage({ history: [{ at: 1, question: "q", answer: "a", conv: "c" }], ratings: { k: "up" }, settings: { provider: "anthropic" } });
+    const removed: string[][] = [];
+    const written: Array<Record<string, unknown>> = [];
+    const set = s.set.bind(s);
+    s.set = async (items) => {
+      written.push(items);
+      await set(items);
+    };
+    s.remove = async (keys) => {
+      removed.push(keys);
+      for (const k of keys) delete s.data[k];
+    };
+    await clearHistory(s);
+    expect(removed).toEqual([["history", "ratings"]]);
+    expect(written).toEqual([]);
+    expect(s.data).toEqual({ settings: { provider: "anthropic" } });
+    expect(await loadConversation(s, "7", 2, "c")).toEqual([]);
+  });
+
   it("keeps an answer's numbered sources and drops malformed ones", async () => {
     const s = fakeStorage({
       history: [
