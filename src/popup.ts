@@ -50,6 +50,7 @@ import {
   DEFAULT_MODEL,
   deleteAllData,
   deleteReportText,
+  HISTORY_KEY,
   loadConversation,
   loadHistory,
   loadRatings,
@@ -273,6 +274,8 @@ function syncSegmented(inputs: HTMLInputElement[]): void {
 }
 
 const CONTEXT_TURNS = 10;
+/** Clear chat history gives up and says so when storage has not answered by then. */
+const CLEAR_TIMEOUT_MS = 5_000;
 
 /** The moving "processing" indicator: coupon milestones, a Working card's head, and an answer before its first words. */
 const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></span>';
@@ -818,6 +821,16 @@ async function main(): Promise<void> {
     history.length = 0;
     updateEmpty();
   }
+
+  // Chat history cleared from another Scout window (the Mac page or another
+  // window's panel): this thread goes too, unless an answer or run is still going.
+  browser.storage?.onChanged?.addListener((changes, area) => {
+    const change = changes[HISTORY_KEY];
+    const emptied = change && (change.newValue === undefined || (Array.isArray(change.newValue) && !change.newValue.length));
+    if (area !== "local" || !emptied) return;
+    if (activeChat || task || couponRun || !turns.length) return;
+    clearThread();
+  });
 
   // ---------- Session (provider + key) ----------
   let fallbackNotice: HTMLElement | null = null;
@@ -2562,6 +2575,8 @@ async function main(): Promise<void> {
     current.page(tab.url);
     addMessage("user", COUPON_QUESTION, { mode: "Find coupons" });
     showCouponRun(r.started_at);
+    // The caught-up run gets a diagnostics run of its own, so a report copied now shows it, not the panel opening.
+    startRun("coupons", { provider: session?.settings.provider, model: session?.settings.model });
     trace("coupons:resumed");
     for (const e of r.events) onCouponEvent({ ...e, tab_id: tab.id }, true);
     for (const e of buffered) onCouponEvent({ ...e, tab_id: tab.id });
@@ -3294,13 +3309,34 @@ async function main(): Promise<void> {
       });
   });
 
+  // Owner bug 2026-10-19: Clear chat history showed nothing at all on Mac
+  // and iPhone. The saved history is removed first and the result always
+  // shows: cleared, or could not clear (also when storage never answers). The
+  // tab then starts a new conversation, so nothing saved under the old one
+  // can show again.
   el("history-clear").addEventListener("click", () => {
-    if (!storage) return;
-    void clearHistory(storage).then(async () => {
-      clearThread();
-      savedMsg.textContent = "Chat history cleared.";
-      await refreshSettings();
-    });
+    savedMsg.textContent = "";
+    trace("history:clear");
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), CLEAR_TIMEOUT_MS));
+    void (storage ? Promise.race([clearHistory(storage), timeout]) : Promise.reject(new Error("no storage")))
+      .then(
+        async () => {
+          trace("history:cleared");
+          savedMsg.textContent = "Chat history cleared.";
+          try {
+            clearThread();
+          } catch {
+            trace("history:thread-not-cleared");
+          }
+          if (storage) conv = await startNewConversation(storage, tab.id, Date.now(), tab.incognito).catch(() => conv);
+        },
+        (err: unknown) => {
+          trace("history:clear-failed " + (err instanceof Error ? err.message.slice(0, 60) : "unknown"));
+          savedMsg.textContent = "Could not clear chat history. Try again.";
+        },
+      )
+      .then(refreshSettings)
+      .catch(() => undefined);
   });
 
   const deleteBtn = el<HTMLButtonElement>("delete-all");
