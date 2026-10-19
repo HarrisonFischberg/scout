@@ -101,6 +101,21 @@ describe("coupon host", () => {
     expect(f.saved[0]).toMatchObject({ conv: "c1", question: COUPON_QUESTION, answer: done.summary });
   }, 30_000);
 
+  it("lists every tab's run for the chats menu, with its chat and store, and saves the store with the outcome", async () => {
+    const f = fake(cartPage());
+    expect(f.host.list()).toEqual({ runs: [] });
+    await f.host.start({ tab_id: 1, provider: "anthropic", model: "m", conv: "c1", site: "shop.test" });
+    await until(() => !!f.host.status(1).run?.prompt_id);
+    const [run] = f.host.list().runs;
+    expect(run).toMatchObject({ tab_id: 1, conv: "c1", site: "shop.test", done: false });
+    expect(run!.prompt_id).toBeTruthy();
+    expect(run).not.toHaveProperty("events");
+    f.host.answer({ tab_id: 1, prompt_id: run!.prompt_id!, more: false });
+    await until(() => f.saved.length === 1);
+    expect(f.saved[0]).toMatchObject({ conv: "c1", site: "shop.test" });
+    expect(f.host.list().runs[0]).toMatchObject({ done: true });
+  }, 30_000);
+
   it("Stop comes from the panel or the overlay in the run's own tab, hides the overlay at once, and one run per tab", async () => {
     const f = fake(cartPage({ hang: true }));
     await f.host.start({ tab_id: 1, provider: "anthropic", model: "m" });

@@ -155,6 +155,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
         answer: e.answer,
         kind: "chat",
         conv: e.conv,
+        ...(e.site ? { site: e.site } : {}),
         ...(e.shared.length ? { shared: e.shared } : {}),
         // Addresses without query or fragment, which can hold session tokens.
         ...(e.sources.length ? { sources: e.sources.map((x) => ({ ...x, url: savedUrl(x.url) })).filter((x) => x.url) } : {}),
@@ -202,16 +203,25 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     save: async (e) => {
       if (!storage) return;
       const { retention } = await loadSettings(storage);
-      await appendHistory(storage, retention, { at: e.at, question: e.question, answer: e.answer, kind: "coupons", ...(e.conv ? { conv: e.conv } : {}) });
+      await appendHistory(storage, retention, { at: e.at, question: e.question, answer: e.answer, kind: "coupons", ...(e.conv ? { conv: e.conv } : {}), ...(e.site ? { site: e.site } : {}) });
     },
     now: () => Date.now(),
   });
 
   const handlers = {
-    "coupons.start": (p: { tab_id: number; window_id?: number; provider: Provider; model: string; effort?: Effort; conv?: string; phone?: boolean }) => couponHost.start(p),
+    "coupons.start": (p: { tab_id: number; window_id?: number; provider: Provider; model: string; effort?: Effort; conv?: string; phone?: boolean; site?: string }) => couponHost.start(p),
     "coupons.stop": (p: { tab_id: number }) => couponHost.stop(p.tab_id),
     "coupons.answer": (p: { tab_id: number; prompt_id: string; more: boolean }) => couponHost.answer(p),
     "coupons.status": (p: { tab_id: number }) => couponHost.status(p.tab_id),
+    "coupons.list": () => couponHost.list(),
+    "tabs.show": async (p: { tab_id: number }) => {
+      if (!browser.tabs.update) return { ok: false };
+      await browser.tabs.update(p.tab_id, { active: true });
+      // The panel that asked has closed itself; Safari opens one popup at a time.
+      await new Promise((r) => setTimeout(r, 300));
+      await (options.openPanel ?? (async () => undefined))().catch(() => undefined);
+      return { ok: true };
+    },
     "task.start": (p: { tab_id: number; goal: string; conv?: string; source?: "panel" | "chat" }) => taskHost.start(p),
     "task.control": (p: { task_id: string; command: "pause" | "resume" | "stop" }, sender: { kind: SenderKind; raw: MessageSender }) => {
       // The overlay toast's Stop during a coupon run ("coupons:<tab>").
