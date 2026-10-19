@@ -879,6 +879,9 @@
       :root[data-look="ink"] .greeting { margin-top: 0; }
       :root[data-look="nightops"] .greeting { margin-top: 0; }
       .greeting span:empty { display: none; }
+      /* Car and title together at the bottom left, just above the starters, in every look (owner 2026-10-19). */
+      :root[data-look] #empty .scout-mark { margin: auto 0 8px 4px; }
+      :root[data-look] .greeting { margin: 0 4px 12px; text-align: left; }
       /* A short sheet (iPhone at its middle stop, a small Mac window): a smaller title, so nothing is cut off. */
       @media (max-height: 620px) {
         .greeting b { font-size: 19px; }

@@ -114,6 +114,9 @@ test("every look shows only Summarize and Explain, each on one line, with nothin
     expect(car.height, id).toBeLessThanOrEqual(40);
     const first = (await page.locator("#starters button:visible").first().boundingBox())!;
     expect(car.y + car.height, id).toBeLessThanOrEqual(first.y);
+    // Bottom left, just above the starters (owner 2026-10-19).
+    expect(car.x, id).toBeLessThan(40);
+    expect(first.y - (car.y + car.height), id).toBeLessThan(120);
     await expect(page.locator("#greeting-sub")).toBeHidden();
     await page.close();
   }
