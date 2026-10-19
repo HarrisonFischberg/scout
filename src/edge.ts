@@ -231,14 +231,16 @@ function mount(initial: PageButton, save: (side: Side, y: number) => void, hidde
     // Only a real tap or key press opens Scout; page scripts cannot.
     if (!e.isTrusted || opening) return;
     opening = true;
-    void request<{ opened?: boolean }>((m) => browser.runtime.sendMessage(m), "panel.open", {})
+    void request<{ opened?: boolean; reason?: string }>((m) => browser.runtime.sendMessage(m), "panel.open", {})
       .then(
-        (r) => r.opened === true,
-        () => false,
+        (r) => ({ opened: r.opened === true, reason: r.reason }),
+        // No answer from the worker at all (its own diagnostics cannot see this).
+        (err: unknown) => ({ opened: false, reason: "no answer from Scout: " + (err instanceof Error ? err.message : String(err)) }),
       )
-      .then((opened) => {
+      .then(({ opened, reason }) => {
         opening = false;
-        if (!opened) toast(CANT_OPEN);
+        // Debug builds: Safari's reason, so a screenshot of the tab says why.
+        if (!opened) toast(CANT_OPEN + (__SCOUT_DEBUG__ && reason ? " (" + reason.slice(0, 120) + ")" : ""));
       });
   });
 

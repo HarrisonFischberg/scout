@@ -12,6 +12,7 @@ import { clearTabStates, forgetTab, loadTabStates, setPanelOpen, tabKey } from "
 import { openPanel, toolbarIcon, TITLE_CLOSE, TITLE_OPEN } from "./panel/toolbar";
 import { createWarmer } from "./panel/warm";
 import { nativeSend } from "./keychain";
+import { recordButtonFailure } from "./diagnostics";
 
 const self = (): Self => ({ id: browser.runtime.id ?? "", baseUrl: browser.runtime.getURL?.("") ?? "" });
 const storage = browser.storage?.local;
@@ -45,7 +46,12 @@ const route = createRouter(
       return states[tabKey(p.tabId)] ?? {};
     },
     // Page button (src/edge.ts): Safari's own panel, never a frame in the page.
-    "panel.open": () => openPanel(browser.action),
+    // Debug builds keep Safari's reason when it refuses (src/diagnostics.ts).
+    "panel.open": async () => {
+      const r = await openPanel(browser.action);
+      if (__SCOUT_DEBUG__ && !r.opened) await recordButtonFailure(storage, { at: Date.now(), reason: r.reason ?? "", tries: r.tries });
+      return r;
+    },
     // Page button loaded or touched: answer at once, warm in the background.
     "panel.warm": () => {
       void warmNative();
