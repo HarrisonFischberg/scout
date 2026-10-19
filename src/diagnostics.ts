@@ -187,10 +187,24 @@ export function describeBrowser(ua: string): string {
   return (v ? "Safari " + v : "Safari (version unknown)") + " on " + os;
 }
 
-/** Markdown the user pastes as "Actual behavior". Most recent run in full, earlier runs summarised. */
+/** A panel opening that went fine: nothing to report on its own. */
+const quietStartup = (r: DiagRun): boolean => r.kind === "startup" && r.outcome?.status === "ready" && r.errors.length === 0;
+
+/**
+ * The run a report shows in full: the most recent one that is not a quiet
+ * panel opening. Opening the panel to copy the report starts a run of its
+ * own, which used to push the coupon run out of view (owner report
+ * 2026-10-19, run #227). Falls back to the most recent run.
+ */
+export function reportedRun(runs: readonly DiagRun[]): DiagRun | undefined {
+  for (let i = runs.length - 1; i >= 0; i--) if (!quietStartup(runs[i]!)) return runs[i];
+  return runs[runs.length - 1];
+}
+
+/** Markdown the user pastes as "Actual behavior". The reported run (see `reportedRun`) in full, the others summarised. */
 export function buildReport(runs: readonly DiagRun[], env: ReportEnv): string {
   const lines: string[] = ["## Scout for Safari diagnostics — Actual behavior", ""];
-  const last = runs[runs.length - 1];
+  const last = reportedRun(runs);
   if (!last) {
     lines.push("No runs recorded yet. Use Scout for Safari, then copy diagnostics again.");
     return lines.join("\n");
@@ -213,9 +227,9 @@ export function buildReport(runs: readonly DiagRun[], env: ReportEnv): string {
   if (last.events.length === 0) lines.push("(no stages recorded)");
   for (const e of last.events) lines.push(`+${(e.t / 1000).toFixed(2)}s  ${e.stage}`);
   lines.push("```");
-  const earlier = runs.slice(0, -1).reverse();
+  const earlier = runs.filter((r) => r !== last).reverse();
   if (earlier.length) {
-    lines.push("", "### Earlier runs");
+    lines.push("", "### Other runs");
     for (const r of earlier) {
       lines.push(`- #${r.id} ${r.kind} at ${clock(r.startedAt)} → ${r.outcome ? r.outcome.status : "unfinished"}${r.errors.length ? ` (${r.errors.length} error)` : ""}`);
     }

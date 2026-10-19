@@ -97,6 +97,25 @@ describe("buildReport", () => {
     expect(text).toContain("not recorded (opt in under Diagnostics)");
   });
 
+  // Owner report 2026-10-19 (run #227): opening the panel to copy the report
+  // started a run of its own, and the coupon run was only listed below it.
+  it("shows the latest run that is more than a quiet panel opening", () => {
+    const d = new Diagnostics(undefined, () => 0);
+    const c = d.start("coupons", { provider: "anthropic", model: "m" });
+    c.stage("coupons:attempt 1 rejected expired from wethrift.com");
+    c.finish("done", "No code lowered the total.");
+    d.start("startup").finish("ready", "Ready.");
+    d.start("startup").finish("ready", "Ready.");
+    const text = buildReport(d.runs, ENV);
+    expect(text).toContain("- Run: coupons (#1)");
+    expect(text).toContain("coupons:attempt 1 rejected expired from wethrift.com");
+    expect(text).toContain("### Other runs");
+    expect(text).toContain("- #3 startup at");
+    // A panel opening that went wrong is still the one shown.
+    d.start("startup").finish("error", "No key.");
+    expect(buildReport(d.runs, ENV)).toContain("- Run: startup (#4)");
+  });
+
   it("says when nothing has been recorded", () => {
     expect(buildReport([], ENV)).toContain("No runs recorded yet.");
   });
