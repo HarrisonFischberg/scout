@@ -28,7 +28,7 @@ import { DEV_MOCK_KEY, DEV_MOCK_URL, mockServerUrl } from "./server/dev";
 import { fromWire } from "./server/protocol";
 import type { ToolDecision, ToolResult } from "./tools/host";
 import { ALL_SITES, PAGE_BUTTON_KEY, pageButtonOffered, parsePageButton, platformOs, reachText, type PageButton } from "./panel/edge";
-import { conversationForTab, startNewConversation } from "./panel/state";
+import { conversationForTab, reopenConversation, startNewConversation } from "./panel/state";
 import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/consent";
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
@@ -2159,6 +2159,11 @@ async function main(): Promise<void> {
     const trimmed = goal.trim();
     await sessionReady();
     if (!trimmed || activeChat || couponRun || task || !session) return;
+    // Both would use the page at once.
+    if (couponAway && couponAway.state !== "done") {
+      status.textContent = "Scout mode can start once Find coupons finishes on this page.";
+      return;
+    }
     const s = session;
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     // No per-task question (owner decision 2026-10-17): sending the task starts it.
@@ -2427,7 +2432,8 @@ async function main(): Promise<void> {
     if (p.tab_id !== tab.id) return;
     const run = couponRun;
     if (!run) {
-      couponBuffer?.push(p);
+      if (couponBuffer) couponBuffer.push(p);
+      else if (couponAway) onAwayEvent(couponAway, p);
       return;
     }
     const seq = Number(p.seq ?? 0);
@@ -2497,8 +2503,14 @@ async function main(): Promise<void> {
   }
 
   async function runCoupons(): Promise<void> {
+    // One run per tab: Find coupons goes back to the one New chat left running.
+    if (couponAway && couponAway.state !== "done") return backToCoupons();
     await sessionReady();
     if (activeChat || task || couponRun || !session || tab.id === undefined) return;
+    if (couponAway) {
+      couponAway = null;
+      renderCouponChip();
+    }
     const s = session;
     askSiteAccessOnce();
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
@@ -2541,21 +2553,21 @@ async function main(): Promise<void> {
     }
   }
 
-  /** A reopened panel: the coupon run still going on this tab, caught up to where it is. */
-  async function resumeCoupons(): Promise<void> {
-    if (tab.id === undefined || !port || couponRun) return;
+  type CouponRunView = { started_at: number; conv?: string; events: Array<Record<string, unknown>>; done: boolean; prompt_id?: string };
+
+  /** The worker's run on this tab (running or just finished), and live events that came while asking. */
+  async function readCouponRun(): Promise<{ run: CouponRunView; buffered: Array<Record<string, unknown>> } | null> {
+    if (tab.id === undefined || !port) return null;
     couponBuffer = [];
     watchTab();
-    const got = await request<{ run?: { started_at: number; events: Array<Record<string, unknown>>; done: boolean } }>(
-      toWorker,
-      "coupons.status",
-      { tab_id: tab.id },
-      { timeoutMs: 3_000 },
-    ).catch(() => null);
+    const got = await request<{ run?: CouponRunView }>(toWorker, "coupons.status", { tab_id: tab.id }, { timeoutMs: 3_000 }).catch(() => null);
     const buffered = couponBuffer;
     couponBuffer = null;
-    const r = got?.run;
-    if (!r || r.done || couponRun) return;
+    return got?.run ? { run: got.run, buffered } : null;
+  }
+
+  /** Shows a run in the chat and replays its events so far (a finished run ends with its summary). */
+  function replayCouponRun(r: CouponRunView, buffered: Array<Record<string, unknown>>): void {
     // Its own diagnostics run, so the outcome is not filed under this panel's
     // startup (owner report 2026-10-19 showed a "startup → no_form").
     const s = session;
@@ -2569,6 +2581,96 @@ async function main(): Promise<void> {
     for (const e of r.events) onCouponEvent({ ...e, tab_id: tab.id }, true);
     for (const e of buffered) onCouponEvent({ ...e, tab_id: tab.id });
   }
+
+  /** A reopened panel: the coupon run still going on this tab, caught up to where it is. */
+  async function resumeCoupons(): Promise<void> {
+    if (couponRun) return;
+    const got = await readCouponRun();
+    if (!got || couponRun) return;
+    const r = got.run;
+    // The run belongs to a chat New chat left: the chip leads back to it.
+    if (r.conv && conv && r.conv !== conv) {
+      sendCouponAway(r.conv, r.done ? "done" : r.prompt_id ? "ask" : "running");
+      for (const e of got.buffered) if (couponAway) onAwayEvent(couponAway, e);
+      return;
+    }
+    if (r.done) return;
+    replayCouponRun(r, got.buffered);
+  }
+
+  // ---------- Find coupons in the background (owner choice 2026-10-19) ----------
+  // New chat no longer waits for a coupon run. The run keeps going in the
+  // worker and saves its summary to the chat it started in; a chip above the
+  // composer says so and goes back to that chat.
+  interface CouponAway {
+    conv: string;
+    state: "running" | "ask" | "done";
+  }
+  let couponAway: CouponAway | null = null;
+  const couponChip = el<HTMLButtonElement>("coupon-chip");
+
+  function renderCouponChip(): void {
+    const a = couponAway;
+    couponChip.hidden = !a;
+    if (!a) return;
+    const words = a.state === "done" ? "Coupon search finished" : a.state === "ask" ? "Find coupons needs your answer" : "Finding coupons…";
+    couponChip.innerHTML = a.state === "done" ? DONE_MARK : PULSE;
+    const text = document.createElement("span");
+    text.textContent = words;
+    const go = document.createElement("span");
+    go.className = "go";
+    go.textContent = "Show";
+    couponChip.append(text, go);
+    couponChip.setAttribute("aria-label", words + " Show the coupon chat.");
+  }
+
+  /** The run's chat leaves the view; the run goes on in the worker. */
+  function sendCouponAway(runConv: string, state: CouponAway["state"]): void {
+    const run = couponRun;
+    if (run) {
+      clearInterval(run.timer);
+      couponRun = null;
+      syncComposer();
+      plus.disabled = modelPill.disabled = false;
+      for (const i of modeInputs) i.disabled = false;
+    }
+    couponAway = { conv: runConv, state };
+    renderCouponChip();
+    trace("coupons:away " + state);
+  }
+
+  function onAwayEvent(away: CouponAway, p: Record<string, unknown>): void {
+    const next = p.kind === "done" ? "done" : p.kind === "ask" ? "ask" : p.kind === "answered" && away.state === "ask" ? "running" : away.state;
+    if (next === away.state) return;
+    away.state = next;
+    renderCouponChip();
+  }
+
+  /** The chip: back to the chat that holds the coupon run, caught up (or with its summary). */
+  async function backToCoupons(): Promise<void> {
+    const away = couponAway;
+    if (!away) return;
+    if (activeChat || task || couponRun) {
+      status.textContent = "Wait until Scout for Safari finishes, then go back to the coupon search.";
+      return;
+    }
+    couponAway = null;
+    renderCouponChip();
+    clearThread();
+    conv = away.conv;
+    if (storage && conv) await reopenConversation(storage, tab.id, conv, Date.now(), tab.incognito).catch(() => undefined);
+    const got = await readCouponRun();
+    const r = got && (!got.run.conv || got.run.conv === conv) ? got.run : null;
+    const entries = storage && conv ? await loadConversation(storage, settings.retention, Date.now(), conv).catch(() => []) : [];
+    // A run the worker still has is replayed whole, so its saved summary is not shown twice.
+    showEntries(r ? entries.filter((e) => !(e.kind === "coupons" && e.at >= r.started_at)) : entries);
+    if (r && got) replayCouponRun(r, got.buffered);
+    status.textContent = "";
+    updateEmpty();
+    trace("coupons:back");
+    scrollToEnd();
+  }
+  couponChip.addEventListener("click", () => void backToCoupons());
 
   // ---------- Wiring ----------
   composer.addEventListener("submit", (event) => {
@@ -2655,7 +2757,9 @@ async function main(): Promise<void> {
     });
   });
   el("new-chat").addEventListener("click", () => {
-    if (activeChat || couponRun || task) return;
+    if (activeChat || task) return;
+    // Find coupons keeps going in the background (owner choice 2026-10-19).
+    if (couponRun) sendCouponAway(conv, couponRun.ask ? "ask" : "running");
     clearThread();
     if (storage) {
       void startNewConversation(storage, tab.id, Date.now(), tab.incognito)

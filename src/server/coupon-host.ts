@@ -41,6 +41,8 @@ export type CouponWire = Record<string, unknown> & { kind: CouponEvent["kind"]; 
 export interface CouponRunView {
   tab_id: number;
   started_at: number;
+  /** The chat the run belongs to, where its summary is saved. */
+  conv: string;
   events: CouponWire[];
   /** The question still waiting for an answer, if any. */
   prompt_id?: string;
@@ -80,7 +82,7 @@ export class CouponHost {
   status(tabId: number): { run?: CouponRunView } {
     const r = this.runs.get(tabId);
     if (!r) return {};
-    return { run: { tab_id: r.tab_id, started_at: r.started_at, events: [...r.events], done: r.done, ...(r.pending ? { prompt_id: r.pending.prompt_id } : {}) } };
+    return { run: { tab_id: r.tab_id, started_at: r.started_at, conv: r.conv, events: [...r.events], done: r.done, ...(r.pending ? { prompt_id: r.pending.prompt_id } : {}) } };
   }
 
   running(tabId: number): boolean {
@@ -108,7 +110,7 @@ export class CouponHost {
   async start(p: { tab_id: number; window_id?: number; provider: Provider; model: string; effort?: Effort; conv?: string; phone?: boolean }): Promise<{ started_at: number }> {
     if (this.running(p.tab_id)) throw new BridgeError("blocked-by-user", "Scout is already finding coupons on this tab.");
     const control = new AgentControl();
-    const r: RunRecord = { tab_id: p.tab_id, started_at: this.deps.now(), events: [], done: false, control, seq: 0 };
+    const r: RunRecord = { tab_id: p.tab_id, started_at: this.deps.now(), conv: p.conv ?? "", events: [], done: false, control, seq: 0 };
     this.runs.set(p.tab_id, r);
     const trace = (stage: string): void => this.emit(r, { kind: "trace", stage });
     let client: ProviderClient;
