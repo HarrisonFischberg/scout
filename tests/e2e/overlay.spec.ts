@@ -228,11 +228,12 @@ test("task actions act on the real page: fill, type, key, scroll, drag, and a pr
 
 // Owner bug report 2026-10-19: with coupon runs going on after the panel closes,
 // Safari's bottom bar went solid on iPhone. Safari 26 does that while a page has
-// a see-through fixed box over the whole screen or a top-layer ::backdrop.
+// a top-layer ::backdrop, so iPhone skips the top layer. The glow still covers
+// the whole page with Working at the very bottom (owner, 2026-10-19).
 test.describe("on iPhone", () => {
   test.use({ viewport: { width: 390, height: 664 }, screen: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
 
-  test("the glow and the pointer cover nothing full-screen: no top layer, and the glow stops above the bottom edge", async ({ page }) => {
+  test("the glow covers the whole page outside the top layer, and the pill sits at the very bottom", async ({ page }) => {
     await load(page, "/shop.html");
     await overlay(page, { type: "overlay:show", taskId: "coupons:1", state: "running" });
     const snap = await content<{ elements: Array<{ ref: string; name: string }> }>(page, { type: "scout:snapshot" });
@@ -248,14 +249,15 @@ test.describe("on iPhone", () => {
       return { overlay: r(o), pointer: r(p), height: window.innerHeight };
     });
     expect(boxes.overlay.topLayer).toBe(false);
-    expect(boxes.overlay.bottom).toBeLessThanOrEqual(boxes.height - 100);
+    expect(boxes.overlay.bottom).toBe(boxes.height);
     expect(boxes.pointer).toMatchObject({ w: 0, h: 0, topLayer: false });
-    // The pill is still on screen, above Safari's bar.
+    // The pill is on screen, at the very bottom.
     const pill = await inShadow(page, (root) => {
       const b = (root.querySelector(".pill") as HTMLElement).getBoundingClientRect();
       return { top: b.top, bottom: b.bottom };
     });
     expect(pill.top).toBeGreaterThan(0);
-    expect(pill.bottom).toBeLessThan(boxes.height - 100);
+    expect(pill.bottom).toBeGreaterThan(boxes.height - 40);
+    expect(pill.bottom).toBeLessThanOrEqual(boxes.height);
   });
 });

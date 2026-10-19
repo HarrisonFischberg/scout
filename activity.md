@@ -1829,3 +1829,11 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - (3) Likely cause (inferred, not reproduced): with the panel closed, "search again?" made the worker call `action.openPopup()` without a tap. The coupon host no longer opens the panel itself; the overlay pill says "Waiting for you" and the question waits for the panel (2 minutes, then "Stop here").
 - (1) Glow stronger at the edges (center unchanged), sweep 2.5 s → 1.5 s, a 1.8 s pulse; iPhone at full strength (was 75%). Preview: /mnt/project-files/coupon-glow/before-after.png (Chromium, iPhone size).
 - Evidence: unit 473/474 (known Take control failure); e2e overlay (new iPhone layout test), actions, coupons, checkout pass in Chromium; full Chromium suite 139 passed, the same 20 failures as `main`. `npm run check:release` clean. Not checked: real iPhone.
+
+## 2026-10-19 — iPhone glow back over the whole page
+
+- Actual (owner, on device after #56): the blue glow was missing from the bottom quarter of the page, and the solid strip under Safari's bar was still there.
+- Expected: the glow fills the whole page with "Working…" at the very bottom.
+- Cause: #56 stopped the overlay 120 px above the bottom on iPhone to clear the strip. It did not clear it, so the strip comes from something else.
+- Fix: `src/overlay.ts` covers the whole screen on every device again. iPhone still skips the top layer (a top-layer `::backdrop` is what made Safari's bar solid in #27).
+- Evidence: `tests/e2e/overlay.spec.ts` "on iPhone" asserts the overlay reaches the bottom edge, is not in the top layer, and the pill sits at the bottom. Build, typecheck, lint, and the overlay/actions/coupons/checkout e2e pass (Chromium, 26/26).
