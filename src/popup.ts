@@ -28,7 +28,8 @@ import { DEV_MOCK_KEY, DEV_MOCK_URL, mockServerUrl } from "./server/dev";
 import { fromWire } from "./server/protocol";
 import type { ToolDecision, ToolResult } from "./tools/host";
 import { ALL_SITES, PAGE_BUTTON_KEY, pageButtonOffered, parsePageButton, platformOs, reachText, type PageButton } from "./panel/edge";
-import { conversationForTab, reopenConversation, startNewConversation } from "./panel/state";
+import { conversationForTab, parsePrivateConvs, PRIVATE_CONVS_KEY, reopenConversation, startNewConversation, tabKey } from "./panel/state";
+import { summarizeChats, whenText } from "./chat/list";
 import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/consent";
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
@@ -49,6 +50,7 @@ import {
   DEFAULT_EFFORT,
   DEFAULT_MODEL,
   deleteAllData,
+  deleteConversation,
   deleteReportText,
   HISTORY_KEY,
   loadConversation,
@@ -59,6 +61,7 @@ import {
   ratingKey,
   saveRating,
   saveSettings,
+  siteOf,
   summarizeShared,
   type EffortSetting,
   type HistoryEntry,
@@ -334,6 +337,8 @@ async function main(): Promise<void> {
     storage ? storage.get([KEY_HINT_KEY, COUPON_BROWSER_KEY]).catch(() => none) : none,
   ]);
   settings = loaded;
+  /** Saved with each answer to title the chat in the chats menu (host only). */
+  const pageSite = STANDALONE ? undefined : siteOf(tab.url);
   /** Which providers had a saved key last time (src/panel/warm.ts). */
   let keyHint: KeyHint = parseKeyHint(early[KEY_HINT_KEY]);
   const providerFetch = gatedFetch((p) => consent.has(p), (i, init) => fetch(i, init));
@@ -1809,6 +1814,7 @@ async function main(): Promise<void> {
           history: cont ? [...past, { role: "user", content: cont.question }, { role: "assistant", content: cont.partial }] : past,
           pages,
           shared: v.shared,
+          ...(pageSite ? { site: pageSite } : {}),
           ...(cont
             ? { display_question: cont.question, answer_prefix: v.prefix, prefix_sources: cont.sources.map((x) => ({ url: x.url, title: x.title ?? "" })) }
             : {}),
@@ -2539,6 +2545,7 @@ async function main(): Promise<void> {
           model: s.settings.model,
           ...(s.effort ? { effort: s.effort } : {}),
           ...(conv ? { conv } : {}),
+          ...(pageSite ? { site: pageSite } : {}),
           // iPhone: the pointer works above the panel's sheet (src/actions/pointer.ts).
           ...(isPhoneScreen(matchMedia("(pointer: coarse)").matches, screen.width) ? { phone: true } : {}),
         },
@@ -2648,29 +2655,172 @@ async function main(): Promise<void> {
 
   /** The chip: back to the chat that holds the coupon run, caught up (or with its summary). */
   async function backToCoupons(): Promise<void> {
-    const away = couponAway;
-    if (!away) return;
-    if (activeChat || task || couponRun) {
-      status.textContent = "Wait until Scout for Safari finishes, then go back to the coupon search.";
+    if (couponAway) await openChat(couponAway.conv);
+  }
+
+  /**
+   * Shows an earlier chat on this tab (the chats menu, or the coupon chip). A
+   * coupon run this panel is showing goes on in the background, as with New
+   * chat; a run that belongs to the chat is replayed, caught up.
+   */
+  async function openChat(target: string): Promise<void> {
+    if (activeChat || task) {
+      status.textContent = "Wait until Scout for Safari finishes, then open another chat.";
       return;
     }
-    couponAway = null;
-    renderCouponChip();
+    if (couponRun) {
+      if (target === conv) return;
+      sendCouponAway(conv, couponRun.ask ? "ask" : "running");
+    }
+    if (couponAway?.conv === target) {
+      couponAway = null;
+      renderCouponChip();
+    }
     clearThread();
-    conv = away.conv;
-    if (storage && conv) await reopenConversation(storage, tab.id, conv, Date.now(), tab.incognito).catch(() => undefined);
+    conv = target;
+    if (storage) await reopenConversation(storage, tab.id, conv, Date.now(), tab.incognito).catch(() => undefined);
     const got = await readCouponRun();
     const r = got && (!got.run.conv || got.run.conv === conv) ? got.run : null;
-    const entries = storage && conv ? await loadConversation(storage, settings.retention, Date.now(), conv).catch(() => []) : [];
+    const entries = storage ? await loadConversation(storage, settings.retention, Date.now(), conv).catch(() => []) : [];
     // A run the worker still has is replayed whole, so its saved summary is not shown twice.
     showEntries(r ? entries.filter((e) => !(e.kind === "coupons" && e.at >= r.started_at)) : entries);
     if (r && got) replayCouponRun(r, got.buffered);
+    else if (got && !got.run.done && !couponAway) sendCouponAway(got.run.conv ?? "", got.run.prompt_id ? "ask" : "running");
     status.textContent = "";
     updateEmpty();
-    trace("coupons:back");
+    trace("conversation:open " + entries.length);
     scrollToEnd();
+    await resumeActive();
   }
   couponChip.addEventListener("click", () => void backToCoupons());
+
+  // ---------- Chats menu (owner request 2026-10-19) ----------
+  // Earlier chats from saved history, newest first; a coupon run still going
+  // (on this tab or another) is listed with its live state and opens caught up.
+  const chatsOpen = el<HTMLButtonElement>("chats-open");
+  const chatsPanel = el("chats");
+  const chatsBackdrop = el("chats-backdrop");
+  const chatsList = el("chats-list");
+  const chatsEmpty = el("chats-empty");
+  type RunRow = { tab_id: number; conv: string; site?: string; started_at: number; done: boolean; prompt_id?: string };
+
+  /** Private Browsing chats show only in their own tab; elsewhere they are left out. */
+  async function visibleConvs(): Promise<(c: string) => boolean> {
+    if (!storage) return () => true;
+    const got = await storage.get(PRIVATE_CONVS_KEY).catch(() => none);
+    const all = parsePrivateConvs(got[PRIVATE_CONVS_KEY]);
+    const mine = new Set(all[tabKey(tab.id)] ?? []);
+    if (tab.incognito) return (c) => mine.has(c);
+    const priv = new Set(Object.values(all).flat());
+    return (c) => !priv.has(c);
+  }
+
+  async function renderChats(): Promise<void> {
+    const [entries, runs, visible] = await Promise.all([
+      storage ? loadHistory(storage, settings.retention, Date.now()).catch(() => []) : [],
+      port ? request<{ runs: RunRow[] }>(toWorker, "coupons.list", {}, { timeoutMs: 3_000 }).then((r) => r.runs).catch(() => []) : [],
+      visibleConvs(),
+    ]);
+    const chats = summarizeChats(entries, {
+      summarize: (q) => q === SUMMARIZE_QUESTION || LEGACY_SUMMARIZE_QUESTIONS.includes(q),
+      coupons: "Find coupons",
+      agent: "Scout mode",
+    });
+    const live = new Map<string, RunRow>();
+    for (const r of runs) if (r.conv && !r.done) live.set(r.conv, r);
+    // A run's summary is saved when it ends, so a chat that is only a running search has no entry yet.
+    for (const r of live.values()) {
+      const c = chats.find((x) => x.conv === r.conv);
+      if (c) c.at = Math.max(c.at, r.started_at);
+      else chats.push({ conv: r.conv, title: "Find coupons", at: r.started_at, count: 0, ...(r.site ? { site: r.site } : {}) });
+    }
+    const shown = chats.filter((c) => visible(c.conv)).sort((a, b) => (live.has(b.conv) ? 1 : 0) - (live.has(a.conv) ? 1 : 0) || b.at - a.at);
+    chatsList.replaceChildren();
+    const now = Date.now();
+    for (const c of shown) {
+      const run = live.get(c.conv);
+      const li = document.createElement("li");
+      if (c.conv === conv) li.setAttribute("aria-current", "true");
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "chat-open";
+      const title = document.createElement("span");
+      title.className = "chat-title";
+      title.textContent = c.title;
+      const meta = document.createElement("span");
+      meta.className = "chat-meta" + (run ? " live" : "");
+      if (run) {
+        meta.innerHTML = PULSE;
+        const words = run.prompt_id ? "Needs your answer" : "Finding coupons…";
+        meta.append(document.createTextNode(words + (run.tab_id !== tab.id ? " · other tab" : "")));
+      } else meta.textContent = [c.site, whenText(c.at, now)].filter(Boolean).join(" · ");
+      open.append(title, meta);
+      open.addEventListener("click", () => void pickChat(c.conv, run));
+      li.appendChild(open);
+      if (!run) {
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "icon-btn chat-delete";
+        del.setAttribute("aria-label", "Delete chat: " + c.title);
+        del.title = "Delete chat";
+        del.innerHTML = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
+        del.addEventListener("click", () => void removeChat(c.conv));
+        li.appendChild(del);
+      }
+      chatsList.appendChild(li);
+    }
+    chatsEmpty.hidden = shown.length > 0;
+    chatsEmpty.textContent =
+      settings.retention === "off" ? "Chat history is off. Turn it on in Settings to see earlier chats here." : "No earlier chats yet.";
+  }
+
+  function showChats(on: boolean): void {
+    chatsPanel.hidden = chatsBackdrop.hidden = !on;
+    chatsOpen.setAttribute("aria-expanded", String(on));
+    if (on) {
+      void renderChats().then(() => (chatsList.querySelector<HTMLElement>('[aria-current="true"] .chat-open') ?? el("chats-new")).focus());
+      trace("ui:chats");
+    } else chatsOpen.focus();
+  }
+
+  async function pickChat(target: string, run: RunRow | undefined): Promise<void> {
+    // A coupon run on another tab: go to that tab, where its panel catches up.
+    if (run && run.tab_id !== tab.id) {
+      trace("chats:other-tab");
+      void request(toWorker, "tabs.show", { tab_id: run.tab_id }, { timeoutMs: 5_000 }).catch(() => undefined);
+      if (!STANDALONE) window.close();
+      return;
+    }
+    showChats(false);
+    await openChat(target);
+  }
+
+  async function removeChat(target: string): Promise<void> {
+    if (!storage) return;
+    await deleteConversation(storage, target).catch(() => undefined);
+    trace("chats:delete");
+    // The chat on screen: this tab starts a new one.
+    if (target === conv && !activeChat && !task && !couponRun) {
+      clearThread();
+      conv = await startNewConversation(storage, tab.id, Date.now(), tab.incognito).catch(() => conv);
+    }
+    await renderChats();
+    (chatsList.querySelector<HTMLElement>(".chat-open") ?? el("chats-new")).focus();
+  }
+
+  chatsOpen.addEventListener("click", () => showChats(chatsPanel.hidden !== false));
+  el("chats-close").addEventListener("click", () => showChats(false));
+  chatsBackdrop.addEventListener("click", () => showChats(false));
+  el("chats-new").addEventListener("click", () => {
+    showChats(false);
+    el("new-chat").click();
+  });
+  chatsPanel.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      showChats(false);
+    }
+  });
 
   // ---------- Wiring ----------
   composer.addEventListener("submit", (event) => {

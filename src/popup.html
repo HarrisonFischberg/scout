@@ -81,6 +81,37 @@
       }
       .icon-btn:hover { background: var(--bg-subtle); color: var(--text-primary); }
 
+      /* Chats menu (owner request 2026-10-19): slides in from the left over the chat. */
+      #chats-backdrop { position: absolute; inset: 0; z-index: 30; background: rgb(0 0 0 / 25%); }
+      #chats {
+        position: absolute; top: 0; bottom: 0; left: 0; z-index: 31; width: min(320px, 86%);
+        display: flex; flex-direction: column; background: var(--bg-surface); box-shadow: var(--shadow);
+        border-right: 1px solid var(--hairline);
+      }
+      .chats-head { display: flex; align-items: center; gap: 8px; padding: 10px 8px 6px 16px; }
+      .chats-head h2 { flex: 1; margin: 0; font-size: 15px; font-weight: 600; }
+      .chats-new {
+        display: flex; align-items: center; gap: 10px; margin: 0 8px 6px; padding: 8px 10px; border: 0; border-radius: 10px;
+        background: transparent; text-align: left; font-weight: 600;
+      }
+      .chats-new:hover { background: var(--bg-subtle); }
+      #chats-list { list-style: none; margin: 0; padding: 0 8px 12px; overflow-y: auto; flex: 1; }
+      #chats-list li { display: flex; align-items: center; border-radius: 10px; }
+      #chats-list li:hover, #chats-list li[aria-current="true"] { background: var(--selected); }
+      #chats-list .chat-open { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 7px 4px 7px 10px; border: 0; background: transparent; text-align: left; }
+      #chats-list .chat-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      #chats-list .chat-meta { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+      #chats-list .chat-meta.live { color: var(--accent-text); font-weight: 600; }
+      #chats-list .chat-delete { opacity: 0; color: var(--text-muted); }
+      #chats-list li:hover .chat-delete, #chats-list .chat-delete:focus-visible { opacity: 1; }
+      #chats-list .group { padding: 10px 10px 4px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+      #chats-list .group:hover { background: none; }
+      #chats-empty { padding: 8px 18px; }
+      @media (prefers-reduced-motion: no-preference) {
+        #chats:not([hidden]) { animation: chats-in 160ms ease-out; }
+        @keyframes chats-in { from { transform: translateX(-100%); } }
+      }
+
       /* Thread */
       #thread { flex: 1; overflow-y: auto; padding: 12px 14px 4px; display: flex; flex-direction: column; gap: 12px; }
       #log { display: flex; flex-direction: column; gap: 12px; }
@@ -471,6 +502,13 @@
         /* Safari's own sheet bar already shows the name (owner item 6, 2026-10-17):
            the chat header keeps only New chat and Settings, the title stays for VoiceOver. */
         #chat-view > header { justify-content: flex-end; padding: 4px 12px; border-bottom: 0; }
+        /* Chats on the left, New chat and Settings on the right. */
+        #chats-open { margin-right: auto; }
+        #chats-list .chat-open { min-height: 52px; }
+        #chats-list .chat-title { font-size: 16px; }
+        #chats-list .chat-meta { font-size: 13px; }
+        /* No hover on touch: delete stays visible. */
+        #chats-list .chat-delete { opacity: 1; min-width: 44px; height: 44px; }
         #chat-view > header picture { display: none; }
         /* Scout as its own page is for Mac Safari only (owner 2026-10-18). */
         #open-page { display: none; }
@@ -487,6 +525,9 @@
     <!-- Chat view -->
     <div id="chat-view" class="view">
       <header>
+        <button id="chats-open" class="icon-btn" type="button" aria-label="Chats" title="Chats" aria-expanded="false" aria-controls="chats">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
         <picture>
           <source srcset="icons/toolbar-dark-64.png" media="(prefers-color-scheme: dark)" />
           <img src="icons/toolbar-64.png" alt="" />
@@ -502,6 +543,23 @@
           <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
         </button>
       </header>
+
+      <!-- Chats menu (owner request 2026-10-19): earlier chats, newest first, from saved history (src/chat/list.ts). -->
+      <div id="chats-backdrop" hidden></div>
+      <aside id="chats" aria-label="Chats" hidden>
+        <div class="chats-head">
+          <h2>Chats</h2>
+          <button id="chats-close" class="icon-btn" type="button" aria-label="Close chats">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <button id="chats-new" class="chats-new" type="button">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          New chat
+        </button>
+        <ul id="chats-list"></ul>
+        <p id="chats-empty" class="hint" hidden></p>
+      </aside>
 
       <div id="thread">
         <section id="no-key" class="center" aria-labelledby="no-key-title" hidden>
