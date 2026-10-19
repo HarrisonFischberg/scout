@@ -164,6 +164,48 @@ export class Diagnostics {
   }
 }
 
+// ---------- Page button failures ----------
+// The page button (src/edge.ts) asks the worker to open the panel. When Safari
+// refuses, no panel opens, so no run is recorded; the worker keeps the reason
+// here instead (debug builds only) and the next report lists it.
+
+export const BUTTON_KEY = "diagnosticsButton";
+export const MAX_BUTTON_FAILURES = 5;
+
+export interface ButtonFailure {
+  at: number;
+  /** Safari's error text, scrubbed. */
+  reason: string;
+  tries: number;
+}
+
+export function parseButtonFailures(raw: unknown): ButtonFailure[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((f): f is ButtonFailure => !!f && typeof f === "object" && typeof f.at === "number" && typeof f.reason === "string" && typeof f.tries === "number")
+    .slice(-MAX_BUTTON_FAILURES);
+}
+
+export async function loadButtonFailures(store: StorageArea | undefined): Promise<ButtonFailure[]> {
+  if (!store) return [];
+  try {
+    return parseButtonFailures((await store.get(BUTTON_KEY))[BUTTON_KEY]);
+  } catch {
+    return [];
+  }
+}
+
+export async function recordButtonFailure(store: StorageArea | undefined, failure: ButtonFailure): Promise<void> {
+  if (!store) return;
+  try {
+    const list = await loadButtonFailures(store);
+    list.push({ at: failure.at, reason: scrub(failure.reason), tries: failure.tries });
+    await store.set({ [BUTTON_KEY]: list.slice(-MAX_BUTTON_FAILURES) });
+  } catch {
+    // Best effort.
+  }
+}
+
 /** A recorder that does nothing; used by release builds. */
 export const disabledRun = NOOP;
 
@@ -202,11 +244,19 @@ export function reportedRun(runs: readonly DiagRun[]): DiagRun | undefined {
 }
 
 /** Markdown the user pastes as "Actual behavior". The reported run (see `reportedRun`) in full, the others summarised. */
-export function buildReport(runs: readonly DiagRun[], env: ReportEnv): string {
+export function buildReport(runs: readonly DiagRun[], env: ReportEnv, buttonFailures: readonly ButtonFailure[] = []): string {
   const lines: string[] = ["## Scout for Safari diagnostics — Actual behavior", ""];
   const last = reportedRun(runs);
+  const button = (): void => {
+    if (!buttonFailures.length) return;
+    lines.push("", "### Page button could not open Scout");
+    for (const f of [...buttonFailures].reverse()) {
+      lines.push(`- ${clock(f.at)} after ${f.tries} ${f.tries === 1 ? "try" : "tries"}: "${f.reason}"`);
+    }
+  };
   if (!last) {
     lines.push("No runs recorded yet. Use Scout for Safari, then copy diagnostics again.");
+    button();
     return lines.join("\n");
   }
   lines.push(
@@ -231,9 +281,12 @@ export function buildReport(runs: readonly DiagRun[], env: ReportEnv): string {
   if (earlier.length) {
     lines.push("", "### Other runs");
     for (const r of earlier) {
-      lines.push(`- #${r.id} ${r.kind} at ${clock(r.startedAt)} → ${r.outcome ? r.outcome.status : "unfinished"}${r.errors.length ? ` (${r.errors.length} error)` : ""}`);
+      const where = r.pageHost ? ` on ${r.pageHost}` : "";
+      const errors = r.errors.length ? ` (${r.errors.length} error${r.errors.length === 1 ? "" : "s"}: "${r.errors[r.errors.length - 1]}")` : "";
+      lines.push(`- #${r.id} ${r.kind}${where} at ${clock(r.startedAt)} → ${r.outcome ? r.outcome.status : "unfinished"}${errors}`);
     }
   }
+  button();
   lines.push("", "_Recorded locally by a debug build. No page text, keys, or form values are included._");
   return lines.join("\n");
 }

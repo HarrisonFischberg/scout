@@ -1860,6 +1860,15 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Evidence: unit 484/485 (known Take control failure), new `tests/unit/coupon-wide.test.ts` (Birdcall reply groups, BEEFY15/GETBEEFY guesses from a "15% Off" title, a whole getbeefy-like run that tests the creator code first, applies BEEFY15 and tries it first next time, parallel angles, partial failure). Typecheck, lint, build, `npm run check:release` clean. e2e in Chromium (WebKit not installed in the cloud sandbox): coupons, cart, checkout, coupon-browser 13/13 with updated expectations (37 codes = 5 found + 32 guesses; store's words on refused codes); full suite 139 passed, the same 20 failures as `main`.
 - Not checked: a live run with a real key (the 56-store suite on the owner's Mac, plus getbeefy.co and order.eatbirdcall.com); rate limits on low-tier keys with four requests at once; checkout confirmation of a cart winner (step 3 of the plan, not built).
 
+## 2026-10-19 — Page button "Couldn't open Scout for Safari here" (owner bug report, iPhone)
+
+- Actual (owner): the page button kept showing "Couldn't open Scout for Safari here" and would not open Scout until he opened it from Safari's extensions menu. Not during a coupon run. His diagnostics did not show it (no panel opened, so no run was recorded).
+- Expected: a tap on the page button opens Scout.
+- Cause (inferred, not reproduced on device): Safari refuses `action.openPopup()` with "Another popup is already open" while a sheet it just closed is still going away, the same refusal seen in the Simulator on 2026-10-16 (launch blocker 22). The button tried once and gave up.
+- Fix: `openPanel` (`src/panel/toolbar.ts`) tries twice more after 250 ms and 600 ms. Debug builds: the worker stores Safari's reason (`diagnosticsButton`, last 5, scrubbed) and the report lists it under "Page button could not open Scout"; the tab's message adds the reason; a failure to reach the worker at all is shown too.
+- Also from the same report: a coupon run the panel caught up with after reopening was recorded under the panel's startup run ("startup → no_form"); it now gets its own coupons run. Earlier runs in the report name their site and last error.
+- Evidence: new tests in `tests/unit/edge.test.ts` (retry after "Another popup is already open", gives up after 3 tries in under 1 s) and `tests/unit/diagnostics.test.ts` fail on `main` and pass. Unit 490/491 (known Take control failure), typecheck, lint, build, `npm run check:release` clean. e2e Chromium (WebKit not in the cloud sandbox): 139 passed, the same 20 failures as `main`. Not checked: real iPhone.
+
 ## 2026-10-19 — Find coupons missed a creator's code on getbeefy.co; diagnostics showed the wrong run (owner report)
 
 - Actual (owner, iPhone, build with #58): getbeefy.co found and applied GETBEEFY, but not KETOVORENURSE, which the owner's other tool found on a creator's Linktree. The copied diagnostics (#227) showed a panel opening, not the coupon run (#225 "unfinished", listed below it).

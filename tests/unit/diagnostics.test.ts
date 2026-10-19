@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildReport, describeBrowser, Diagnostics, DIAG_KEY, MAX_RUNS, scrub } from "../../src/diagnostics";
+import { BUTTON_KEY, buildReport, describeBrowser, Diagnostics, DIAG_KEY, loadButtonFailures, MAX_BUTTON_FAILURES, MAX_RUNS, recordButtonFailure, scrub } from "../../src/diagnostics";
 import type { StorageArea } from "../../src/settings/settings";
 
 function memStore(): StorageArea & { data: Record<string, unknown> } {
@@ -116,6 +116,33 @@ describe("buildReport", () => {
     expect(buildReport(d.runs, ENV)).toContain("- Run: startup (#4)");
   });
 
+  // Owner report 2026-10-19: earlier runs said "no_form (1 error)" with no
+  // site or message, so it could not be told what failed or where.
+  it("names the site and the error of earlier runs", () => {
+    const d = new Diagnostics(undefined, () => 0);
+    const c = d.start("coupons");
+    c.page("https://shop.test/cart?id=9");
+    c.error("No coupon box found on this page. Open the cart or checkout page first.");
+    c.finish("no_form", "No coupon box found on this page.");
+    d.start("ask").finish("done", "ok");
+    const text = buildReport(d.runs, ENV);
+    expect(text).toContain('- #1 coupons on shop.test at');
+    expect(text).toContain('→ no_form (1 error: "No coupon box found on this page. Open the cart or checkout page first.")');
+  });
+
+  it("lists times the page button could not open Scout, newest first", () => {
+    const d = new Diagnostics(undefined, () => 0);
+    d.start("startup").finish("ready", "Ready.");
+    const text = buildReport(d.runs, ENV, [
+      { at: 0, reason: "Another popup is already open.", tries: 3 },
+      { at: 1000, reason: "no answer from Scout: panel.open got no answer", tries: 0 },
+    ]);
+    expect(text).toContain("### Page button could not open Scout");
+    expect(text.indexOf("no answer from Scout")).toBeLessThan(text.indexOf("Another popup"));
+    expect(text).toContain('after 3 tries: "Another popup is already open."');
+    expect(buildReport([], ENV, [{ at: 0, reason: "x", tries: 1 }])).toContain('after 1 try: "x"');
+  });
+
   it("says when nothing has been recorded", () => {
     expect(buildReport([], ENV)).toContain("No runs recorded yet.");
   });
@@ -135,5 +162,21 @@ describe("describeBrowser", () => {
     expect(
       describeBrowser("Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0 Mobile/15E148 Safari/604.1"),
     ).toBe("Safari 27.0 on iOS");
+  });
+});
+
+describe("page button failures", () => {
+  it("are kept scrubbed and capped in storage", async () => {
+    const store = memStore();
+    for (let i = 0; i < MAX_BUTTON_FAILURES + 2; i++) await recordButtonFailure(store, { at: i, reason: "failed at https://shop.test/cart?x=" + i, tries: 3 });
+    const got = await loadButtonFailures(store);
+    expect(got).toHaveLength(MAX_BUTTON_FAILURES);
+    expect(got[got.length - 1]).toEqual({ at: MAX_BUTTON_FAILURES + 1, reason: "failed at shop.test", tries: 3 });
+  });
+
+  it("ignores malformed stored data", async () => {
+    const store = memStore();
+    store.data[BUTTON_KEY] = [{ at: "x" }, null, { at: 1, reason: "ok", tries: 1 }];
+    expect(await loadButtonFailures(store)).toEqual([{ at: 1, reason: "ok", tries: 1 }]);
   });
 });
