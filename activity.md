@@ -1921,3 +1921,11 @@ Owner saved test keys in the host app on "AssistAnt Test iPhone". Fixture site o
 - Cause (inferred, not reproduced in Safari): while that hidden panel is still loaded, Safari does not show a new one on the same tab, so the button does nothing. Before #55 the run died with the panel, so this never came up.
 - Fix: on Mac (not touch screens, not the standalone page) the panel closes itself when Safari hides it (`visibilitychange` to hidden, `src/panel/dismiss.ts`). The next click opens a fresh panel, which catches up with the run in the worker. Debug builds trace `panel:visibility` and `panel:close-hidden`, so the next report shows whether Safari sends the signal.
 - Evidence: `tests/unit/dismiss.test.ts`. Unit 508/509 (known Take control failure), typecheck, lint, build, `check:release` clean. e2e Chromium: 145 passed, the same 20 failures as `main`. Not checked: real Mac Safari.
+
+## 2026-10-19 — Mac: Scout would not open after the chats menu jumped to the coupon tab (owner report)
+
+- Actual (owner, Mac, build with #65): checkout page, Find coupons, go to another tab, open Scout, ☰ chats, tap the coupon search; Safari switches to the coupon tab, then clicking Scout there does nothing.
+- Expected: clicking Scout on that tab opens it and shows the search.
+- Cause (inferred, not reproduced in Safari): after switching tabs, the worker called `action.openPopup()` with no click behind it (#64's `tabs.show`). On Mac that popover never showed, and Safari then would not open Scout on that tab.
+- Fix: on Mac `tabs.show` only switches the tab (`reopensAfterSwitch` in `src/panel/toolbar.ts`); the owner clicks Scout there, which opens a fresh panel that catches up with the run. iPhone and iPad keep opening the panel after the switch.
+- Evidence: new unit test in `tests/unit/edge.test.ts`. Unit 509/510 (known Take control failure), typecheck, lint, build, `check:release` clean. e2e Chromium: 145 passed, the same 20 failures as `main`. Not checked: real Mac Safari.
