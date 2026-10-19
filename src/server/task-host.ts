@@ -95,6 +95,12 @@ export class TaskHost {
     return undefined;
   }
 
+  /** Whether this task is still going on this tab (src/bridge/run-port.ts). */
+  alive(taskId: string, tabId: number): boolean {
+    const t = this.tasks.get(taskId);
+    return !!t && !t.done && t.tab_id === tabId;
+  }
+
   /** A reopened panel: the task on this tab, running or recently finished. */
   status(tabId: number): { task?: TaskView } {
     let best: TaskRecord | undefined;

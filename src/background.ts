@@ -7,6 +7,7 @@
 // runs there, and a closed tab ends its task.
 import { PANEL_EVENTS, PANEL_PORT, checkSchema, classifySender, createRouter, envelope, parseEnvelope, type MessageSender, type Self } from "./bridge/messages";
 import { createScoutWorker } from "./server/worker";
+import { RUN_PORT, serveRunPort } from "./bridge/run-port";
 import { edgeMatches, EDGE_RUN_AT, EDGE_SCRIPT_ID, PAGE_BUTTON_KEY, pageButtonOffered, parsePageButton, platformOs, sameMatches } from "./panel/edge";
 import { clearTabStates, forgetTab, loadTabStates, setPanelOpen, tabKey } from "./panel/state";
 import { openPanel, toolbarIcon, TITLE_CLOSE, TITLE_OPEN } from "./panel/toolbar";
@@ -74,6 +75,12 @@ browser.runtime.onMessage.addListener((message: unknown, sender?: MessageSender)
 // 2026-10-18, replacing Part 1's reopen on tab switch).
 
 browser.runtime.onConnect?.addListener((port) => {
+  // A page glowing for a run holds this port while the panel is closed, so
+  // Safari keeps the worker and the run alive (src/bridge/run-port.ts).
+  if (port.name === RUN_PORT && classifySender(port.sender, self()) === "content" && port.sender?.tab?.id !== undefined) {
+    serveRunPort(port, port.sender.tab.id, scout.runAlive);
+    return;
+  }
   if (port.name !== PANEL_PORT || classifySender(port.sender, self()) !== "panel") {
     port.disconnect();
     return;
