@@ -4,7 +4,7 @@
 // panel or the overlay in the run's own tab only, and the outcome is saved.
 // Fake tab and cart, synthetic codes; no provider call leaves the test.
 import { describe, expect, it } from "vitest";
-import { BridgeError } from "../../src/bridge/messages";
+import { BridgeError, checkSchema, WORKER_EVENTS } from "../../src/bridge/messages";
 import type { OverlayRequest } from "../../src/content-api";
 import type { CartState } from "../../src/coupons/finder";
 import type { CouponPage } from "../../src/coupons/tab-page";
@@ -132,4 +132,17 @@ describe("coupon host", () => {
     await expect(host.start({ tab_id: 3, provider: "anthropic", model: "m" })).rejects.toBeInstanceOf(BridgeError);
     expect(host.status(3)).toEqual({});
   });
+  // Owner report 2026-10-19 (run #203): a coupon run's report showed no stages,
+  // only the panel's own "port:reconnecting". The worker stamps each stage with
+  // its time in the run, and the panel's port dropped every event that carried it.
+  it("every event a watching panel receives passes the panel's message check, stages included", async () => {
+    const f = fake(cartPage());
+    f.host.watch(f.port, 3);
+    await f.host.start({ tab_id: 3, provider: "anthropic", model: "m", conv: "c3" });
+    await until(() => !!f.host.status(3).run?.prompt_id);
+    f.host.answer({ tab_id: 3, prompt_id: f.host.status(3).run!.prompt_id!, more: false });
+    await until(() => f.posted.some((p) => p.kind === "done"));
+    expect(f.posted.some((p) => p.kind === "trace")).toBe(true);
+    for (const p of f.posted) expect(checkSchema(WORKER_EVENTS["coupons.event"], p), String(p.kind)).toBeNull();
+  }, 30_000);
 });

@@ -80,7 +80,9 @@ export function guessCodes(input: GuessInput): CouponCandidate[] {
     out.push({ code, origin: "guess", sourceUrl: "", context: why });
   };
   const tokens = brandTokens(input.merchant);
-  const hinted = (input.percents ?? []).slice(0, 2);
+  // Store codes are almost always 10 to 40% off; a "5% off 3+ bags" or "up to
+  // 50% off" hint made BEEFY5 and BEEFY50 the first guesses (live run 2026-10-19).
+  const hinted = (input.percents ?? []).filter((p) => p >= 10 && p <= 40).slice(0, 2);
   const percents = [...new Set([...hinted, ...PERCENTS])];
   // 1. Smart: the store's name with the percentages pages hint at, then on its own.
   for (const p of hinted) for (const t of tokens) add(t + p, "a guess: the store's name with the " + p + "% that coupon sites mention");
