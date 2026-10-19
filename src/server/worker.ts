@@ -27,6 +27,8 @@ import { toWire } from "./protocol";
 import { TaskHost } from "./task-host";
 import { CouponHost } from "./coupon-host";
 import { allowBrowserPages, backgroundTabs, tabCouponPage } from "../coupons/tab-page";
+import { platformOs } from "../panel/edge";
+import { reopensAfterSwitch } from "../panel/toolbar";
 
 const POLICY_TTL_MS = 5 * 60_000;
 
@@ -217,10 +219,14 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     "tabs.show": async (p: { tab_id: number }) => {
       if (!browser.tabs.update) return { ok: false };
       await browser.tabs.update(p.tab_id, { active: true });
+      // Mac: only the switch. A popover opened from here, with no click behind
+      // it, never showed, and Scout's button then did nothing on that tab
+      // (owner report 2026-10-19); the user clicks Scout there instead.
+      if (!reopensAfterSwitch(await platformOs())) return { ok: true, opened: false };
       // The panel that asked has closed itself; Safari opens one popup at a time.
       await new Promise((r) => setTimeout(r, 300));
       await (options.openPanel ?? (async () => undefined))().catch(() => undefined);
-      return { ok: true };
+      return { ok: true, opened: true };
     },
     "task.start": (p: { tab_id: number; goal: string; conv?: string; source?: "panel" | "chat" }) => taskHost.start(p),
     "task.control": (p: { task_id: string; command: "pause" | "resume" | "stop" }, sender: { kind: SenderKind; raw: MessageSender }) => {
