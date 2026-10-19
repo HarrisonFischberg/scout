@@ -101,14 +101,43 @@ describe("where the edge script runs", () => {
 describe("page button opens Scout's own panel", () => {
   it("opens the toolbar panel through Safari", async () => {
     let calls = 0;
-    expect(await openPanel({ openPopup: async () => void (calls += 1) })).toEqual({ opened: true });
+    expect(await openPanel({ openPopup: async () => void (calls += 1) })).toEqual({ opened: true, tries: 1 });
     expect(calls).toBe(1);
   });
 
   it("reports when Safari cannot open it, so the tab can point to the page menu", async () => {
-    expect(await openPanel(undefined)).toEqual({ opened: false });
-    expect(await openPanel({})).toEqual({ opened: false });
-    expect(await openPanel({ openPopup: async () => Promise.reject(new Error("no window")) })).toEqual({ opened: false });
+    const noWait = async (): Promise<void> => undefined;
+    expect(await openPanel(undefined)).toMatchObject({ opened: false });
+    expect(await openPanel({})).toMatchObject({ opened: false });
+    expect(await openPanel({ openPopup: async () => Promise.reject(new Error("no window")) }, noWait)).toEqual({ opened: false, reason: "no window", tries: 3 });
+  });
+
+  // Owner bug report 2026-10-19 (iPhone): the page button said "Couldn't open
+  // Scout for Safari here" until he opened Scout from the extensions menu.
+  // Safari refuses openPopup with "Another popup is already open" while a
+  // sheet it just closed is still going away (activity.md, T032).
+  // Expected: a tap on the button opens Scout.
+  it("tries again when Safari says another popup is still open", async () => {
+    let calls = 0;
+    const waits: number[] = [];
+    const r = await openPanel(
+      {
+        openPopup: async () => {
+          calls += 1;
+          if (calls === 1) throw new Error("Invalid call to action.openPopup(). Another popup is already open.");
+        },
+      },
+      async (ms) => void waits.push(ms),
+    );
+    expect(r).toEqual({ opened: true, tries: 2 });
+    expect(waits).toEqual([250]);
+  });
+
+  it("gives up after three tries, within about a second", async () => {
+    const waits: number[] = [];
+    const r = await openPanel({ openPopup: async () => Promise.reject(new Error("Another popup is already open.")) }, async (ms) => void waits.push(ms));
+    expect(r).toEqual({ opened: false, reason: "Another popup is already open.", tries: 3 });
+    expect(waits.reduce((a, b) => a + b, 0)).toBeLessThan(1000);
   });
 
   it("exposes no extension page to websites", () => {
