@@ -6,6 +6,7 @@ import {
   conversationForTab,
   forgetTab,
   loadTabStates,
+  reopenConversation,
   setPanelOpen,
   startNewConversation,
 } from "../../src/panel/state";
@@ -50,6 +51,16 @@ describe("per-tab conversations", () => {
     expect(a2).not.toBe(a);
     expect(await conversationForTab(s, 1, 3000)).toBe(a2);
     expect(await conversationForTab(s, 2, 3000)).toBe(b);
+  });
+
+  it("goes back to an earlier conversation on that tab (the Find coupons chip after New chat)", async () => {
+    const s = fakeStorage();
+    const a = await conversationForTab(s, 1, 1000);
+    await setPanelOpen(s, 1, true, 1500);
+    await startNewConversation(s, 1, 2000);
+    expect(await reopenConversation(s, 1, a, 3000)).toBe(a);
+    expect(await conversationForTab(s, 1, 4000)).toBe(a);
+    expect((await loadTabStates(s))["1"]).toMatchObject({ conv: a, open: true });
   });
 
   it("moves the conversation saved before per-tab chats to the first tab, once", async () => {
