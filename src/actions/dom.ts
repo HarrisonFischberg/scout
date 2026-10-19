@@ -1,14 +1,15 @@
 // DOM adapter for the action executor (T009). Content script only; exercised
 // by Playwright (tests/e2e/actions.spec.ts), not Vitest (no DOM there).
 import type { ActionEl, ActionPage } from "./executor";
-import type { Pointer } from "./pointer";
+import { aboveSheetScroll, type Pointer } from "./pointer";
 
 function fireInput(el: Element): void {
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
-function wrap(el: Element, pointer?: Pointer): ActionEl {
+/** `aboveSheet`: iPhone, where Safari's sheet covers the bottom half of the page (pointer.ts). */
+function wrap(el: Element, pointer?: Pointer, aboveSheet = false): ActionEl {
   const input = el as HTMLInputElement;
   const setValue = (value: string): void => {
     // Use the prototype setter so frameworks that track the value see it.
@@ -66,17 +67,24 @@ function wrap(el: Element, pointer?: Pointer): ActionEl {
       fireInput(el);
       return true;
     },
-    scrollIntoView: () => (el as HTMLElement).scrollIntoView({ block: "center" }),
+    scrollIntoView() {
+      if (!aboveSheet) return (el as HTMLElement).scrollIntoView({ block: "center" });
+      // Instant, so the box is measured where it ends up (a page may scroll smoothly by default).
+      (el as HTMLElement).scrollIntoView({ block: "center", behavior: "instant" });
+      const r = el.getBoundingClientRect();
+      const by = aboveSheetScroll(r.top, r.bottom, el.ownerDocument.defaultView?.innerHeight ?? 0);
+      if (by) el.ownerDocument.defaultView?.scrollBy({ top: by, behavior: "instant" });
+    },
   };
 }
 
 /** `pointer`: coupon runs show a pointer moving, pressing and typing on the page. */
-export function domPage(refs: Map<string, Element>, win: Window, pointer?: Pointer): ActionPage {
+export function domPage(refs: Map<string, Element>, win: Window, pointer?: Pointer, aboveSheet = false): ActionPage {
   return {
     baseUrl: win.location.href,
     resolve(ref) {
       const el = refs.get(ref);
-      return el ? wrap(el, pointer) : undefined;
+      return el ? wrap(el, pointer, aboveSheet) : undefined;
     },
     scroll(direction) {
       const h = win.document.documentElement.scrollHeight;

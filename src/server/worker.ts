@@ -25,6 +25,8 @@ import { DEV_MOCK_KEY, mockServerUrl } from "./dev";
 import { ScoutServer, type SharedRef } from "./engine";
 import { toWire } from "./protocol";
 import { TaskHost } from "./task-host";
+import { CouponHost } from "./coupon-host";
+import { allowBrowserPages, backgroundTabs, tabCouponPage } from "../coupons/tab-page";
 
 const POLICY_TTL_MS = 5 * 60_000;
 
@@ -189,9 +191,35 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     now: () => Date.now(),
   });
 
+  // ---------- Find coupons: runs here, so it outlives the panel (owner request 2026-10-19) ----------
+  const couponHost = new CouponHost({
+    provider,
+    page: (tabId, opts) => tabCouponPage(tabId, opts),
+    tabs: backgroundTabs,
+    allowBrowser: allowBrowserPages,
+    ...(storage ? { storage } : {}),
+    overlay: (tabId, req: OverlayRequest) => callInjected(tabId, "overlay.js", OVERLAY_HANDLER, req),
+    openPanel: options.openPanel ?? (async () => undefined),
+    save: async (e) => {
+      if (!storage) return;
+      const { retention } = await loadSettings(storage);
+      await appendHistory(storage, retention, { at: e.at, question: e.question, answer: e.answer, kind: "coupons", ...(e.conv ? { conv: e.conv } : {}) });
+    },
+    now: () => Date.now(),
+  });
+
   const handlers = {
+    "coupons.start": (p: { tab_id: number; window_id?: number; provider: Provider; model: string; effort?: Effort; conv?: string; phone?: boolean }) => couponHost.start(p),
+    "coupons.stop": (p: { tab_id: number }) => couponHost.stop(p.tab_id),
+    "coupons.answer": (p: { tab_id: number; prompt_id: string; more: boolean }) => couponHost.answer(p),
+    "coupons.status": (p: { tab_id: number }) => couponHost.status(p.tab_id),
     "task.start": (p: { tab_id: number; goal: string; conv?: string; source?: "panel" | "chat" }) => taskHost.start(p),
-    "task.control": (p: { task_id: string; command: "pause" | "resume" | "stop" }, sender: { kind: SenderKind; raw: MessageSender }) => taskHost.control(p, sender),
+    "task.control": (p: { task_id: string; command: "pause" | "resume" | "stop" }, sender: { kind: SenderKind; raw: MessageSender }) => {
+      // The overlay toast's Stop during a coupon run ("coupons:<tab>").
+      const coupons = /^coupons:(\d+)$/.exec(p.task_id);
+      if (coupons) return p.command === "stop" ? couponHost.stop(Number(coupons[1]), sender) : { ok: false };
+      return taskHost.control(p, sender);
+    },
     "task.decide": (p: { task_id: string; prompt_id: string; decision: "once" | "always" | "deny" }) => taskHost.decide(p),
     "task.status": (p: { tab_id: number }) => taskHost.status(p.tab_id),
     "context.read": async (p: { current_tab?: number; attached: number[]; include_current: boolean }) => {
@@ -257,7 +285,13 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     return (env) => {
       if (env.type === "task.watch" && !checkSchema(PANEL_EVENTS["task.watch"], env.payload)) {
         unwatch?.();
-        unwatch = taskHost.watch(port, (env.payload as { tab_id: number }).tab_id);
+        const tabId = (env.payload as { tab_id: number }).tab_id;
+        const offTask = taskHost.watch(port, tabId);
+        const offCoupons = couponHost.watch(port, tabId);
+        unwatch = () => {
+          offTask();
+          offCoupons();
+        };
         return true;
       }
       if (env.type !== "chat.subscribe" || checkSchema(PANEL_EVENTS["chat.subscribe"], env.payload)) return false;
@@ -273,5 +307,5 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     };
   }
 
-  return { handlers, attachChatPort, server, toolLog, taskHost };
+  return { handlers, attachChatPort, server, toolLog, taskHost, couponHost };
 }

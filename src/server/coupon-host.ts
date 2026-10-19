@@ -1,0 +1,219 @@
+// Find coupons host, run by the background worker. One run per tab (src/coupons/job.ts).
+// The run used to live in the panel, so swiping the iPhone panel away ended it
+// mid-way and left the page glowing (owner report 2026-10-19). Here it keeps
+// going with the panel closed: the overlay and pointer stay on the page, and
+// a reopened panel gets every event so far (coupons.status) and the rest live
+// on its port, including a question still waiting for an answer.
+import { AgentControl } from "../agent/control";
+import { BridgeError, envelope, type MessageSender } from "../bridge/messages";
+import type { PortLike } from "../bridge/port";
+import type { OverlayRequest } from "../content-api";
+import type { BrowserTarget, PageBrowser } from "../coupons/browser-read";
+import { runCouponJob, type CouponEvent } from "../coupons/job";
+import type { CouponPage } from "../coupons/tab-page";
+import type { Provider } from "../keychain";
+import type { Effort, ProviderClient } from "../providers/types";
+
+/** No answer to "search again?" within this time counts as Stop here. */
+export const ASK_TIMEOUT_MS = 120_000;
+
+export interface CouponHostDeps {
+  provider(p: Provider, model: string): Promise<ProviderClient>;
+  page(tabId: number, opts: { aboveSheet: boolean; trace: (stage: string) => void }): Promise<CouponPage>;
+  tabs(windowId: number | undefined): PageBrowser;
+  allowBrowser(pages: BrowserTarget[], trace: (stage: string) => void): Promise<boolean>;
+  storage?: { get(key: string): Promise<Record<string, unknown>>; set(items: Record<string, unknown>): Promise<void> };
+  overlay(tabId: number, req: OverlayRequest): Promise<unknown>;
+  save(entry: { at: number; conv: string; question: string; answer: string }): Promise<void>;
+  /** Brings the panel up when the question waits and no panel is open (best effort). */
+  openPanel(): Promise<void>;
+  now(): number;
+  /** How long a finished run stays available for coupons.status. Default 2 minutes. */
+  keepMs?: number;
+  askTimeoutMs?: number;
+  setTimer?: (fn: () => void, ms: number) => unknown;
+  clearTimer?: (h: unknown) => void;
+}
+
+export const COUPON_QUESTION = "Find the best coupon for this cart.";
+
+/** One event on the port: flat fields (see `flat`), numbered per run. */
+export type CouponWire = Record<string, unknown> & { kind: CouponEvent["kind"]; seq: number };
+
+export interface CouponRunView {
+  tab_id: number;
+  started_at: number;
+  events: CouponWire[];
+  /** The question still waiting for an answer, if any. */
+  prompt_id?: string;
+  done: boolean;
+}
+
+interface RunRecord extends CouponRunView {
+  control: AgentControl;
+  seq: number;
+  pending?: { prompt_id: string; resolve: (more: boolean) => void };
+}
+
+let counter = 0;
+
+export class CouponHost {
+  private readonly runs = new Map<number, RunRecord>();
+  private readonly watchers = new Map<number, Set<Pick<PortLike, "postMessage">>>();
+
+  constructor(private readonly deps: CouponHostDeps) {}
+
+  private timer(fn: () => void, ms: number): unknown {
+    return (this.deps.setTimer ?? ((f, t) => setTimeout(f, t)))(fn, ms);
+  }
+
+  /** Ports that show a tab get its coupon events (after task.watch). */
+  watch(port: Pick<PortLike, "postMessage">, tabId: number): () => void {
+    let set = this.watchers.get(tabId);
+    if (!set) this.watchers.set(tabId, (set = new Set()));
+    set.add(port);
+    return () => {
+      set!.delete(port);
+      if (set!.size === 0) this.watchers.delete(tabId);
+    };
+  }
+
+  /** The run on a tab, running or recently finished, with every event so far. */
+  status(tabId: number): { run?: CouponRunView } {
+    const r = this.runs.get(tabId);
+    if (!r) return {};
+    return { run: { tab_id: r.tab_id, started_at: r.started_at, events: [...r.events], done: r.done, ...(r.pending ? { prompt_id: r.pending.prompt_id } : {}) } };
+  }
+
+  running(tabId: number): boolean {
+    const r = this.runs.get(tabId);
+    return !!r && !r.done;
+  }
+
+  private emit(r: RunRecord, e: CouponEvent): void {
+    const wire: CouponWire = { ...flat(e), kind: e.kind, seq: ++r.seq };
+    // Diagnostics stages go to a watching panel only; a reopened one does not replay them.
+    if (e.kind !== "trace" && e.kind !== "page") r.events.push(wire);
+    const payload = { tab_id: r.tab_id, ...wire };
+    for (const port of [...(this.watchers.get(r.tab_id) ?? [])]) {
+      try {
+        port.postMessage(envelope("coupons.event", payload));
+      } catch {
+        this.watchers.get(r.tab_id)?.delete(port);
+      }
+    }
+  }
+
+  /** Starts a run on a tab. The panel has already checked consent and the key. */
+  async start(p: { tab_id: number; window_id?: number; provider: Provider; model: string; effort?: Effort; conv?: string; phone?: boolean }): Promise<{ started_at: number }> {
+    if (this.running(p.tab_id)) throw new BridgeError("blocked-by-user", "Scout is already finding coupons on this tab.");
+    const control = new AgentControl();
+    const r: RunRecord = { tab_id: p.tab_id, started_at: this.deps.now(), events: [], done: false, control, seq: 0 };
+    this.runs.set(p.tab_id, r);
+    const trace = (stage: string): void => this.emit(r, { kind: "trace", stage });
+    let client: ProviderClient;
+    let page: CouponPage;
+    try {
+      client = await this.deps.provider(p.provider, p.model);
+      page = await this.deps.page(p.tab_id, { aboveSheet: p.phone === true, trace });
+    } catch (err) {
+      this.runs.delete(p.tab_id);
+      if (err instanceof BridgeError) throw err;
+      throw new BridgeError("unhandled", "Could not reach this page. Reload it and try again.");
+    }
+    const overlay = (req: OverlayRequest): void => {
+      void this.deps.overlay(p.tab_id, req).catch(() => trace("coupons:overlay-failed"));
+    };
+    overlay({ type: "overlay:show", taskId: "coupons:" + p.tab_id, state: "running" });
+    void runCouponJob({
+      page,
+      provider: client,
+      model: p.model,
+      ...(p.effort ? { effort: p.effort } : {}),
+      control,
+      tabs: this.deps.tabs(p.window_id),
+      allowBrowser: (pages) => this.deps.allowBrowser(pages, trace),
+      ...(this.deps.storage ? { storage: this.deps.storage } : {}),
+      askMore: (state, signal) => {
+        overlay({ type: "overlay:state", state: "waiting" });
+        return this.ask(r, state.tried, signal).then((more) => {
+          overlay({ type: "overlay:state", state: "running" });
+          return more;
+        });
+      },
+      emit: (e) => this.emit(r, e),
+    })
+      .then(async (done) => {
+        r.done = true;
+        overlay({ type: "overlay:hide" });
+        await this.deps.save({ at: this.deps.now(), conv: p.conv ?? "", question: COUPON_QUESTION, answer: done.summary }).catch(() => undefined);
+      })
+      .finally(() => {
+        r.done = true;
+        this.timer(() => {
+          if (this.runs.get(p.tab_id) === r) this.runs.delete(p.tab_id);
+        }, this.deps.keepMs ?? 120_000);
+      });
+    return { started_at: r.started_at };
+  }
+
+  private ask(r: RunRecord, tried: number, signal: AbortSignal): Promise<boolean> {
+    const prompt_id = "more-" + (++counter).toString(36);
+    return new Promise((resolve) => {
+      let timeout: unknown;
+      const done = (more: boolean): void => {
+        if (r.pending?.prompt_id !== prompt_id) return;
+        r.pending = undefined;
+        signal.removeEventListener("abort", no);
+        (this.deps.clearTimer ?? ((h) => clearTimeout(h as ReturnType<typeof setTimeout>)))(timeout);
+        this.emit(r, { kind: "trace", stage: "coupons:more " + (more ? "yes" : "no") });
+        this.emit(r, { kind: "answered", prompt_id });
+        resolve(more);
+      };
+      const no = (): void => done(false);
+      r.pending = { prompt_id, resolve: done };
+      this.emit(r, { kind: "trace", stage: "coupons:ask-more tried=" + tried });
+      this.emit(r, { kind: "ask", prompt_id, tried });
+      if (signal.aborted) return done(false);
+      signal.addEventListener("abort", no, { once: true });
+      timeout = this.timer(no, this.deps.askTimeoutMs ?? ASK_TIMEOUT_MS);
+      if (!this.watchers.get(r.tab_id)?.size) void this.deps.openPanel().catch(() => undefined);
+    });
+  }
+
+  /** The panel's answer to "search again?". */
+  answer(p: { tab_id: number; prompt_id: string; more: boolean }): { accepted: boolean } {
+    const r = this.runs.get(p.tab_id);
+    if (!r?.pending || r.pending.prompt_id !== p.prompt_id) return { accepted: false };
+    r.pending.resolve(p.more);
+    return { accepted: true };
+  }
+
+  /**
+   * Stop, from the panel or from the overlay toast in the run's own tab. The
+   * overlay goes at once, before the run winds down.
+   */
+  stop(tabId: number, sender?: { kind: "panel" | "content"; raw: MessageSender }): { ok: boolean } {
+    if (sender?.kind === "content" && sender.raw.tab?.id !== tabId) throw new BridgeError("schema-error", "not this tab's run");
+    const r = this.runs.get(tabId);
+    if (!r || r.done) return { ok: false };
+    this.emit(r, { kind: "trace", stage: "ui:stop-click coupons" });
+    r.control.stop();
+    void this.deps.overlay(tabId, { type: "overlay:hide" }).catch(() => undefined);
+    return { ok: true };
+  }
+
+  /** A closed tab ends its run. */
+  stopForTab(tabId: number): void {
+    this.runs.get(tabId)?.control.stop();
+  }
+}
+
+/** One event as flat port fields: the attempt row and usage are nested objects. */
+function flat(w: CouponEvent): Record<string, unknown> {
+  if (w.kind === "done") {
+    const { usage, ...rest } = w;
+    return { ...rest, input_tokens: usage.inputTokens, output_tokens: usage.outputTokens, ...(usage.webSearches ? { web_searches: usage.webSearches } : {}) };
+  }
+  return { ...w };
+}

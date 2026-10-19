@@ -114,6 +114,25 @@ test("coupon runs show a pointer that presses Apply and types the code one chara
   await expect(page.locator("#order-status")).toHaveText("Order placed.");
 });
 
+test("on iPhone the pointer works above the panel's sheet: the coupon box is scrolled into the top part of the page", async ({ page }) => {
+  await load(page, "/shop.html");
+  // A long page, with the coupon box far down.
+  await page.evaluate(() => {
+    document.body.style.paddingTop = "1500px";
+    document.body.style.paddingBottom = "1500px";
+  });
+  const snap = await send<Snap>(page, { type: "scout:snapshot" });
+  const typed = await send<Result>(page, { type: "scout:act", action: { type: "type", ref: refFor(snap, "Coupon code"), text: "SAVE20" }, show: true, aboveSheet: true });
+  expect(typed.ok).toBe(true);
+  const box = await page.evaluate(() => {
+    const r = document.getElementById("coupon")!.getBoundingClientRect();
+    return { top: r.top, bottom: r.bottom, height: window.innerHeight };
+  });
+  // Above the half-height sheet (src/actions/pointer.ts ABOVE_SHEET), not behind it.
+  expect(box.top).toBeGreaterThan(0);
+  expect(box.bottom).toBeLessThanOrEqual(box.height * 0.42);
+});
+
 test("without show, actions stay instant and draw nothing", async ({ page }) => {
   await load(page, "/shop.html");
   const snap = await send<Snap>(page, { type: "scout:snapshot" });

@@ -8,7 +8,8 @@ export type ContentRequest =
   // Coupon runs ask for more of the page (order summaries sit late in it); the content script caps both.
   | { type: "scout:snapshot"; maxElements?: number; maxTextChars?: number }
   // `show`: coupon runs draw a pointer that moves to, presses and types into the element.
-  | { type: "scout:act"; action: Action; show?: boolean }
+  // `aboveSheet`: iPhone, where the panel's sheet covers the bottom half; the element goes to the top part.
+  | { type: "scout:act"; action: Action; show?: boolean; aboveSheet?: boolean }
   // Part 3 Scout mode (src/actions/task-dom.ts): what is at a target, and one allow-listed action.
   | { type: "scout:task-probe"; target: Target | "focused" }
   | { type: "scout:task-act"; action: TaskAction }

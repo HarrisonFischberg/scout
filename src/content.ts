@@ -63,7 +63,7 @@ if (!g[FLAG]) {
     if (req.type === "scout:snapshot") return snapshot({ maxElements: req.maxElements, maxTextChars: req.maxTextChars });
     if (req.type === "scout:act") {
       const shown = req.show === true ? (pointer ??= pagePointer(window)) : undefined;
-      return executeAction(domPage(refs, window, shown), req.action) as Promise<ActionResult>;
+      return executeAction(domPage(refs, window, shown, shown !== undefined && req.aboveSheet === true), req.action) as Promise<ActionResult>;
     }
     if (req.type === "scout:task-probe") return taskDomPage(refs, window).probe(req.target);
     if (req.type === "scout:task-act") return performTaskAction(taskDomPage(refs, window), req.action);
