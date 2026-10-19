@@ -306,5 +306,12 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     };
   }
 
-  return { handlers, attachChatPort, server, toolLog, taskHost, couponHost };
+  /** Whether the run behind a page's overlay is still going here (src/bridge/run-port.ts). */
+  function runAlive(taskId: string, tabId: number): boolean {
+    const coupons = /^coupons:(\d+)$/.exec(taskId);
+    if (coupons) return Number(coupons[1]) === tabId && couponHost.running(tabId);
+    return taskHost.alive(taskId, tabId);
+  }
+
+  return { handlers, attachChatPort, server, toolLog, taskHost, couponHost, runAlive };
 }
