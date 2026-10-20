@@ -34,7 +34,7 @@ import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/cons
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
-import { joinDictation, Listener, micErrorText, recognitionCtor } from "./panel/voice";
+import { joinDictation, Listener, micBlocked, micBlockedHere, micErrorText, recognitionCtor, rememberMic } from "./panel/voice";
 import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
 import { probeDrag } from "./panel/drag-probe";
 import { COUPON_QUESTION } from "./server/coupon-host";
@@ -1000,6 +1000,8 @@ async function main(): Promise<void> {
   const speechLang = navigator.language || "en-US";
   const dictation = new Listener(recognitionCtor(window), speechLang);
   let dictating = false;
+  // After one refusal the next tap opens the keyboard, whose own mic works (iPhone, 2026-10-20).
+  const micMemory = lookCache;
   function setDictating(on: boolean): void {
     dictating = on;
     mic.setAttribute("aria-pressed", String(on));
@@ -1014,6 +1016,13 @@ async function main(): Promise<void> {
       dictation.stop();
       return;
     }
+    if (phone && micBlockedHere(micMemory, navigator.userAgent)) {
+      // Focusing inside the tap raises the keyboard with its own mic.
+      question.focus();
+      status.textContent = micErrorText("not-allowed", phone);
+      trace("voice:keyboard");
+      return;
+    }
     const typed = question.value;
     setDictating(true);
     status.textContent = "Listening…";
@@ -1026,6 +1035,8 @@ async function main(): Promise<void> {
         },
         onEnd: (error) => {
           setDictating(false);
+          if (micBlocked(error)) rememberMic(micMemory, navigator.userAgent, true);
+          else if (question.value !== typed) rememberMic(micMemory, navigator.userAgent, false);
           if (error && !(error === "no-speech" && question.value !== typed)) {
             status.textContent = micErrorText(error, phone);
             trace("voice:error " + error);
