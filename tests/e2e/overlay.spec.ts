@@ -218,7 +218,10 @@ test("task actions act on the real page: fill, type, key, scroll, drag, and a pr
   expect(at).toMatchObject({ name: "Email", role: "textbox" });
   expect(await content(page, { type: "scout:task-probe", target: { ref: "e999" } })).toBeNull();
   // Unknown action types never reach the page's executor as anything but a failure.
-  expect(await content<{ ok: boolean; error: string }>(page, { type: "scout:task-act", action: { type: "navigate", url: "https://x.test" } })).toMatchObject({ ok: false, error: "unknown_action" });
+  expect(await content<{ ok: boolean; error: string }>(page, { type: "scout:task-act", action: { type: "open_tab", url: "https://x.test" } })).toMatchObject({ ok: false, error: "unknown_action" });
+  // navigate is opened by the worker through the tab, never from inside the page.
+  expect(await content<{ ok: boolean; error: string }>(page, { type: "scout:task-act", action: { type: "navigate", url: "https://x.test" } })).toMatchObject({ ok: false, error: "skipped" });
+  expect(page.url()).toContain("/forms.html");
   await page.evaluate(() => (document.body.style.minHeight = "4000px"));
   expect((await content<{ ok: boolean }>(page, { type: "scout:task-act", action: { type: "scroll", direction: "bottom" } })).ok).toBe(true);
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(1000);

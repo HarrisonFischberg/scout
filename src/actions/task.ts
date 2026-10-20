@@ -119,6 +119,9 @@ export function performTaskAction(page: TaskPage, action: TaskAction): TaskActio
         return { ok: true, action: name, message: "Waited " + Math.min(action.ms, MAX_WAIT_MS) + " ms." };
       case "screenshot":
         return { ok: true, action: name, message: "A screenshot comes with the next observation." };
+      case "navigate":
+        // Opened by the worker through the tab (src/agent/task.ts), never from inside the page.
+        return fail(name, "skipped", "navigate is not run inside the page.");
       default:
         return fail(String((action as { type?: unknown }).type), "unknown_action", "Unknown action.");
     }

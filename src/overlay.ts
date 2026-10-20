@@ -234,7 +234,7 @@ if (!g[FLAG]) {
     stopBtn.className = "stop";
     stopBtn.setAttribute("aria-label", "Stop Scout");
     stopBtn.title = "Stop";
-    // Take control lives in the panel; the toast keeps one control, Stop.
+    // The toast keeps one control, Stop (the panel has Stop too; no Take control, owner 2026-10-20).
     stopBtn.addEventListener("click", (e) => {
       if (!e.isTrusted) return;
       send("stop");
