@@ -1053,7 +1053,37 @@ async function main(): Promise<void> {
     if (via instanceof Listener) via.start(handlers, { continuous: true });
     else via.start(handlers);
   }
+  // iPhone and iPad (owner choice 2026-10-20): Safari never lets an extension
+  // use the microphone there, so the mic brings up the keyboard, whose own mic
+  // works, and stays lit while the keyboard is up.
+  const KEYBOARD_HINT = "Tap the mic on your keyboard to talk.";
+  let keyboardMic = false;
+  function setKeyboardMic(on: boolean): void {
+    keyboardMic = on;
+    mic.setAttribute("aria-pressed", String(on));
+    if (on) status.textContent = KEYBOARD_HINT;
+    else if (status.textContent === KEYBOARD_HINT) status.textContent = "";
+  }
+  if (phone) {
+    // Keep the box focused (and the keyboard up) when the mic is tapped.
+    mic.addEventListener("pointerdown", (e) => e.preventDefault());
+    question.addEventListener("blur", () => {
+      if (keyboardMic) setKeyboardMic(false);
+    });
+  }
   mic.addEventListener("click", () => {
+    if (phone) {
+      if (keyboardMic) {
+        setKeyboardMic(false);
+        question.blur();
+        return;
+      }
+      trace("voice:keyboard");
+      // Focusing inside the tap raises the keyboard.
+      question.focus();
+      setKeyboardMic(true);
+      return;
+    }
     if (dictating) {
       dictation.stop();
       return;
