@@ -1,5 +1,10 @@
 # Beta testers via TestFlight: Scout for Safari (and NightCast)
 
+> 2026-10-20: the owner decided to skip TestFlight and submit straight to the
+> App Store. The signing and upload steps here still apply (App Store Connect
+> takes the same upload); the submission itself is in
+> `docs/app-store-submission.md`.
+
 Written 2026-10-17 against `main` (1d51dd3) plus the TestFlight prep branch.
 
 ## Short answer

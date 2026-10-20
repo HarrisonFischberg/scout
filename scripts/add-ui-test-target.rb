@@ -1,20 +1,8 @@
-# Adds the iOS UI-test bundle (SafariScoutUITests) that drives the host app,
-# bundles docs/legal/*.md into both App targets for the S09 sheet, and
-# writes a shared scheme for the UI tests. Idempotent.
+# Adds the iOS UI-test bundle (SafariScoutUITests) that drives the host app
+# and writes a shared scheme for the UI tests. Idempotent.
 require 'xcodeproj'
 path = File.expand_path('../apple/SafariScout.xcodeproj', __dir__)
 project = Xcodeproj::Project.open(path)
-
-legal = project.main_group.find_subpath('Legal', true)
-legal.set_source_tree('<group>')
-legal.set_path('../docs/legal')
-%w[privacy-policy.md terms.md].each do |f|
-  ref = legal.files.find { |r| r.path == f } || legal.new_reference(f)
-  ['Scout for Safari (macOS)', 'Scout for Safari (iOS)'].each do |name|
-    t = project.targets.find { |x| x.name == name }
-    t.add_resources([ref]) unless t.resources_build_phase.files_references.include?(ref)
-  end
-end
 
 unless project.targets.any? { |t| t.name == 'SafariScoutUITests' }
   app = project.targets.find { |t| t.name == 'Scout for Safari (iOS)' }

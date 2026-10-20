@@ -72,15 +72,12 @@ final class HostAppAccessibilityUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Test key"].exists)
     }
 
-    func testLegalSheetOpensAndCloses() throws {
+    // Guideline 5.1.1(i): the published privacy policy is linked from the app.
+    func testPrivacyPolicyLinkIsShown() throws {
         let app = launch(.light)
-        let privacy = app.buttons["Privacy policy (draft)"]
+        let privacy = app.links["Privacy policy"]
         if !privacy.isHittable { app.swipeUp() }
-        privacy.tap()
-        XCTAssertTrue(app.staticTexts["DRAFT. Not approved by legal review."].waitForExistence(timeout: 5))
-        attachScreenshot("T006-ios-legal-sheet")
-        try audit(app, "legal-sheet")
-        app.buttons["Done"].tap()
-        XCTAssertTrue(app.staticTexts["Set up Scout AI Assistant"].waitForExistence(timeout: 5))
+        XCTAssertTrue(privacy.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Legal (DRAFT)"].exists)
     }
 }

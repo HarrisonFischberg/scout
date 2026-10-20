@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		0B61B16B770EC3A7178C62D6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B4986E15F6D4CE7B6EBDAC66 /* Assets.xcassets */; };
 		133B8E56268CB0592DBD7CC3 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */; };
-		19F5593FC25FE6CABB131D2F /* privacy-policy.md in Resources */ = {isa = PBXBuildFile; fileRef = 2A2DD59678E293865FEF9520 /* privacy-policy.md */; };
 		2574AB3AD256B028946D68D4 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 2EACFEFE046C585EEC22A075 /* manifest.json */; };
 		2DCE22FAAA4B8AA6634699DB /* icons in Resources */ = {isa = PBXBuildFile; fileRef = 334A0CB4A03F106FEB4E1814 /* icons */; };
 		2E0506CD04E8191BAFA1EB6F /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 42362C08488648B56DDCF27B /* popup.html */; };
@@ -18,11 +17,9 @@
 		37F5710F2FD7EB8858B63030 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */; };
 		3CA34DA466AB0F3599D4F3D1 /* SafariScoutApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFF3A7A6FFAC4C38E60D00F /* SafariScoutApp.swift */; };
 		3CD8CE5019B39AB4ADF32A7B /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A44912843C812B2B1960158 /* Cocoa.framework */; };
-		418444F5EF38AA1A10A19813 /* terms.md in Resources */ = {isa = PBXBuildFile; fileRef = 826B6B632BCAB1F014E23696 /* terms.md */; };
 		4202761E19E3D5DF570469CA /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 2EACFEFE046C585EEC22A075 /* manifest.json */; };
 		432C9AE3398D8889519FDAFD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6984060B5995FB15A70F7EB /* ContentView.swift */; };
 		44591AF1303D7DE7A9594AF2 /* SafariScoutApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFF3A7A6FFAC4C38E60D00F /* SafariScoutApp.swift */; };
-		4B8DECDD083E4E0D24B435E1 /* privacy.html in Resources */ = {isa = PBXBuildFile; fileRef = 3DE806274580B227D3995289 /* privacy.html */; };
 		4E60E6E0B9430202633CB4A2 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 028B5C712BE52F47B902E1D5 /* PrivacyInfo.xcprivacy */; };
 		523BC8C08DFDAB1AA8A16FAE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6984060B5995FB15A70F7EB /* ContentView.swift */; };
 		54402E0BD5CABDE383CC2812 /* content.js in Resources */ = {isa = PBXBuildFile; fileRef = 0E1A0E7A1B227ADF88A1B413 /* content.js */; };
@@ -31,8 +28,6 @@
 		67689D34836E23C7D42532BB /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 42362C08488648B56DDCF27B /* popup.html */; };
 		68EFD9AC48B2EC8AACAA8530 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */; };
 		6CF0181488D921CF9F0B9750 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = 9C7921F29DCF66058FC8BE1C /* background.js */; };
-		6EA542403783ECDEBEC6053B /* privacy.html in Resources */ = {isa = PBXBuildFile; fileRef = 3DE806274580B227D3995289 /* privacy.html */; };
-		70FC8B3D8AC5270477A9D58C /* terms.html in Resources */ = {isa = PBXBuildFile; fileRef = E531573CE3C35CCBA2D4399C /* terms.html */; };
 		73269E726703913A34E07EC7 /* ManagedPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 017E778274AD8134FA1FAFD8 /* ManagedPolicy.swift */; };
 		7A1C0D4E2B9F46C3A8E5D1A1 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
 		7A1C0D4E2B9F46C3A8E5D1A2 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
@@ -42,7 +37,6 @@
 		7A1C0D4E2B9F46C3A8E5D1A7 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		7A1C0D4E2B9F46C3A8E5D1F1 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		7A1C0D4E2B9F46C3A8E5D1F2 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
-		7D806FF2F407994E4D28F1CF /* terms.html in Resources */ = {isa = PBXBuildFile; fileRef = E531573CE3C35CCBA2D4399C /* terms.html */; };
 		835D2EEF9233782755B3D00F /* Scout for Safari Extension (macOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5B36544F9C86B6EED546C345 /* Scout for Safari Extension (macOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8B2E1F4D6C3E5F7A9B0C1D2E /* overlay.js in Resources */ = {isa = PBXBuildFile; fileRef = 7A1F0E3C5B2D4E6F8A9B0C1D /* overlay.js */; };
 		8B9A6545AF27168729CA73E8 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
@@ -54,7 +48,6 @@
 		A9BCE9F420000BAEE4CBCF29 /* icons in Resources */ = {isa = PBXBuildFile; fileRef = 334A0CB4A03F106FEB4E1814 /* icons */; };
 		A9DCCCEEF09EC9973178027B /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 319A3602A9A92E9E704AEBCD /* popup.js */; };
 		B0F17D07F5D33A6B6AE0E129 /* edge.js in Resources */ = {isa = PBXBuildFile; fileRef = 4D16268A894074E1BF8D7243 /* edge.js */; };
-		B159672DCF20D4BDE70FA9BF /* terms.md in Resources */ = {isa = PBXBuildFile; fileRef = 826B6B632BCAB1F014E23696 /* terms.md */; };
 		B327455324A477C5E91BA4E5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 028B5C712BE52F47B902E1D5 /* PrivacyInfo.xcprivacy */; };
 		B69C0FFD3E4BBE351CF174FB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 04F7B8DE0E0129420C3451F7 /* PrivacyInfo.xcprivacy */; };
 		B892ED1F69C079AFB3202BAE /* ProviderSetupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB2AA781644909EFF76E9FC /* ProviderSetupTests.swift */; };
@@ -62,7 +55,6 @@
 		C3A53F9D6F7BA805B8F82363 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		C4705C78669FD7B254212BAB /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A44912843C812B2B1960158 /* Cocoa.framework */; };
 		CE59D31E55CE4ADCEC246F3A /* content.js in Resources */ = {isa = PBXBuildFile; fileRef = 0E1A0E7A1B227ADF88A1B413 /* content.js */; };
-		D5B993F4AB34FFCA20E95B69 /* privacy-policy.md in Resources */ = {isa = PBXBuildFile; fileRef = 2A2DD59678E293865FEF9520 /* privacy-policy.md */; };
 		EB459CC47E91A731AE502DD2 /* ManagedPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 017E778274AD8134FA1FAFD8 /* ManagedPolicy.swift */; };
 		ED15B721FFEBEB0A99F05233 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = 9C7921F29DCF66058FC8BE1C /* background.js */; };
 		EE5F07BE2F2AA2E880B14BDB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B4986E15F6D4CE7B6EBDAC66 /* Assets.xcassets */; };
@@ -127,11 +119,9 @@
 		1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
 		1FFF3A7A6FFAC4C38E60D00F /* SafariScoutApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafariScoutApp.swift; sourceTree = "<group>"; };
 		2737B9E90C2F5CB976A2DDF7 /* SafariScoutTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SafariScoutTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		2A2DD59678E293865FEF9520 /* privacy-policy.md */ = {isa = PBXFileReference; includeInIndex = 1; path = "privacy-policy.md"; sourceTree = "<group>"; };
 		2EACFEFE046C585EEC22A075 /* manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; path = manifest.json; sourceTree = "<group>"; };
 		319A3602A9A92E9E704AEBCD /* popup.js */ = {isa = PBXFileReference; includeInIndex = 1; path = popup.js; sourceTree = "<group>"; };
 		334A0CB4A03F106FEB4E1814 /* icons */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; path = icons; sourceTree = "<group>"; };
-		3DE806274580B227D3995289 /* privacy.html */ = {isa = PBXFileReference; includeInIndex = 1; path = privacy.html; sourceTree = "<group>"; };
 		42362C08488648B56DDCF27B /* popup.html */ = {isa = PBXFileReference; includeInIndex = 1; path = popup.html; sourceTree = "<group>"; };
 		49CA46C4964F64376FDFBEBA /* Scout for Safari (macOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Scout for Safari (macOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A2569CEA3796C446ACE0B72 /* Scout for Safari Extension (iOS).appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Scout for Safari Extension (iOS).appex"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -145,7 +135,6 @@
 		7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		7A1F0E3C5B2D4E6F8A9B0C1D /* overlay.js */ = {isa = PBXFileReference; includeInIndex = 1; path = overlay.js; sourceTree = "<group>"; };
-		826B6B632BCAB1F014E23696 /* terms.md */ = {isa = PBXFileReference; includeInIndex = 1; path = terms.md; sourceTree = "<group>"; };
 		899B4FA63AA1A90BAC21BB4C /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8E6C47A906B73CF54C895C3C /* ManagedPolicyTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ManagedPolicyTests.swift; sourceTree = "<group>"; };
 		9C7921F29DCF66058FC8BE1C /* background.js */ = {isa = PBXFileReference; includeInIndex = 1; path = background.js; sourceTree = "<group>"; };
@@ -156,7 +145,6 @@
 		BA52935E29A00BF86685A3B8 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D6984060B5995FB15A70F7EB /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		D979F8F918F26FE818AFE57A /* HostAppAccessibilityUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HostAppAccessibilityUITests.swift; sourceTree = "<group>"; };
-		E531573CE3C35CCBA2D4399C /* terms.html */ = {isa = PBXFileReference; includeInIndex = 1; path = terms.html; sourceTree = "<group>"; };
 		FFE46ABD9E4B81390D9346BB /* SafariScout.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = SafariScout.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -273,7 +261,6 @@
 				CA7B7D07EAF849AAB1E1577D /* App */,
 				0E297AA71A6C84972C91F6FC /* Extension */,
 				E357AFF747FE264F92E5026C /* Tests */,
-				AF4C16FC0D7314F5C9455230 /* Legal */,
 				0808C775281A21B870B2E3F5 /* UITests */,
 			);
 			sourceTree = "<group>";
@@ -286,24 +273,12 @@
 				9C7921F29DCF66058FC8BE1C /* background.js */,
 				319A3602A9A92E9E704AEBCD /* popup.js */,
 				0E1A0E7A1B227ADF88A1B413 /* content.js */,
-				3DE806274580B227D3995289 /* privacy.html */,
-				E531573CE3C35CCBA2D4399C /* terms.html */,
 				334A0CB4A03F106FEB4E1814 /* icons */,
 				4D16268A894074E1BF8D7243 /* edge.js */,
 				7A1F0E3C5B2D4E6F8A9B0C1D /* overlay.js */,
 			);
 			name = Resources;
 			path = Resources;
-			sourceTree = "<group>";
-		};
-		AF4C16FC0D7314F5C9455230 /* Legal */ = {
-			isa = PBXGroup;
-			children = (
-				2A2DD59678E293865FEF9520 /* privacy-policy.md */,
-				826B6B632BCAB1F014E23696 /* terms.md */,
-			);
-			name = Legal;
-			path = ../docs/legal;
 			sourceTree = "<group>";
 		};
 		CA7B7D07EAF849AAB1E1577D /* App */ = {
@@ -494,8 +469,6 @@
 				6CF0181488D921CF9F0B9750 /* background.js in Resources */,
 				A9DCCCEEF09EC9973178027B /* popup.js in Resources */,
 				CE59D31E55CE4ADCEC246F3A /* content.js in Resources */,
-				6EA542403783ECDEBEC6053B /* privacy.html in Resources */,
-				70FC8B3D8AC5270477A9D58C /* terms.html in Resources */,
 				A9BCE9F420000BAEE4CBCF29 /* icons in Resources */,
 				B0F17D07F5D33A6B6AE0E129 /* edge.js in Resources */,
 				9C3F2A5E7D4F6A8B0C1D2E3F /* overlay.js in Resources */,
@@ -514,8 +487,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D5B993F4AB34FFCA20E95B69 /* privacy-policy.md in Resources */,
-				418444F5EF38AA1A10A19813 /* terms.md in Resources */,
 				EE5F07BE2F2AA2E880B14BDB /* Assets.xcassets in Resources */,
 				8D7D9B0716DBF1217C50A15E /* PrivacyInfo.xcprivacy in Resources */,
 			);
@@ -525,8 +496,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				19F5593FC25FE6CABB131D2F /* privacy-policy.md in Resources */,
-				B159672DCF20D4BDE70FA9BF /* terms.md in Resources */,
 				0B61B16B770EC3A7178C62D6 /* Assets.xcassets in Resources */,
 				B69C0FFD3E4BBE351CF174FB /* PrivacyInfo.xcprivacy in Resources */,
 			);
@@ -541,8 +510,6 @@
 				ED15B721FFEBEB0A99F05233 /* background.js in Resources */,
 				997FBCCB476F2CD0AAAEE239 /* popup.js in Resources */,
 				54402E0BD5CABDE383CC2812 /* content.js in Resources */,
-				4B8DECDD083E4E0D24B435E1 /* privacy.html in Resources */,
-				7D806FF2F407994E4D28F1CF /* terms.html in Resources */,
 				2DCE22FAAA4B8AA6634699DB /* icons in Resources */,
 				982764464B6865F0DAF9415B /* edge.js in Resources */,
 				8B2E1F4D6C3E5F7A9B0C1D2E /* overlay.js in Resources */,
