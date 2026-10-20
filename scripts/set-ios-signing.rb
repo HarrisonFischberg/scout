@@ -1,7 +1,7 @@
 # iOS app, extension and UI tests: owner's team and bundle ID prefix, so
 # Xcode's automatic signing can install on a device (launch-blockers 2, 11).
-# macOS targets keep com.example.* on purpose: changing them would orphan the
-# saved API key and re-register Safari's extension as new. Idempotent.
+# macOS targets moved to the same IDs in scripts/prepare-testflight.rb.
+# Idempotent.
 require 'xcodeproj'
 TEAM = 'KTV2G3Z883'
 PREFIX = 'com.harrisonfischberg'
