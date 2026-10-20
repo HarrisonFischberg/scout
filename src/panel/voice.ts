@@ -15,6 +15,8 @@ export interface RecognitionLike {
   onresult: ((event: RecognitionEventLike) => void) | null;
   onerror: ((event: { error: string }) => void) | null;
   onend: (() => void) | null;
+  /** Fires once the recognizer really has the microphone. */
+  onstart?: (() => void) | null;
   start(): void;
   stop(): void;
   abort(): void;
@@ -41,6 +43,8 @@ export function micErrorText(code: string, phone: boolean): string {
       return browserName() + " didn't allow the microphone here. " + keyboard;
     case "unsupported":
       return "This version of " + browserName() + " can't listen from Scout. " + keyboard;
+    case "no-start":
+      return browserName() + " didn't let Scout use the microphone. " + keyboard;
     case "no-speech":
       return "Didn't hear anything. Tap the mic and try again.";
     case "audio-capture":
@@ -67,12 +71,64 @@ export interface ListenHandlers {
   onEnd(error?: string): void;
 }
 
-/** One listening session; with `continuous` it keeps going until stopped. */
+function quietAbort(rec: RecognitionLike): void {
+  try {
+    rec.abort();
+  } catch {
+    // Already ended.
+  }
+}
+
+/** Codes that mean this browser won't let Scout listen at all (not a one-off miss). */
+export function micBlocked(code: string | undefined): boolean {
+  return code === "not-allowed" || code === "service-not-allowed" || code === "unsupported" || code === "no-start" || code === "audio-capture";
+}
+
+const MIC_BLOCKED_KEY = "scout.micBlocked";
+
+/**
+ * Whether this browser already refused to listen. Keyed by user agent, so a
+ * Safari update tries the recognizer again. `store` is the page cache (look.ts).
+ */
+export function micBlockedHere(store: Pick<Storage, "getItem"> | undefined, agent: string): boolean {
+  try {
+    return store?.getItem(MIC_BLOCKED_KEY) === agent;
+  } catch {
+    return false;
+  }
+}
+
+export function rememberMic(store: Pick<Storage, "setItem" | "removeItem"> | undefined, agent: string, blocked: boolean): void {
+  try {
+    if (blocked) store?.setItem(MIC_BLOCKED_KEY, agent);
+    else store?.removeItem(MIC_BLOCKED_KEY);
+  } catch {
+    // Storage unavailable; the recognizer is simply tried again next time.
+  }
+}
+
+/** How long the recognizer gets to start before Scout gives up (iPhone Safari can hang silently). */
+export const START_TIMEOUT_MS = 4000;
+/** How long after an error Scout waits for the recognizer's own end. */
+export const END_GRACE_MS = 800;
+
+/**
+ * One listening session; with `continuous` it keeps going until stopped.
+ * onEnd always fires exactly once per start (unless cancelled): Safari on
+ * iPhone can leave a recognizer that never starts, or errors without ending,
+ * so timers end it here instead of leaving the mic button stuck on.
+ */
 export class Listener {
   private rec: RecognitionLike | null = null;
   private error: string | undefined;
+  private timer: ReturnType<typeof setTimeout> | undefined;
+  private finish: ((error?: string) => void) | null = null;
 
-  constructor(private readonly ctor: RecognitionCtor | null, private readonly lang: string) {}
+  constructor(
+    private readonly ctor: RecognitionCtor | null,
+    private readonly lang: string,
+    private readonly startTimeoutMs = START_TIMEOUT_MS,
+  ) {}
 
   get active(): boolean {
     return this.rec !== null;
@@ -97,6 +153,8 @@ export class Listener {
     rec.interimResults = true;
     rec.onresult = (event) => {
       if (this.rec !== rec) return;
+      // Hearing anything proves it started, even if onstart never came.
+      if (this.error === undefined) this.clearTimer();
       let text = "";
       let final = true;
       for (let i = 0; i < event.results.length; i++) {
@@ -107,36 +165,71 @@ export class Listener {
       }
       handlers.onText(text.replace(/\s+/g, " ").trim(), final);
     };
-    rec.onerror = (event) => {
-      if (this.rec === rec && event.error !== "aborted") this.error = event.error;
-    };
-    rec.onend = () => {
+    const end = (error?: string): void => {
       if (this.rec !== rec) return;
+      this.clearTimer();
       this.rec = null;
-      handlers.onEnd(this.error);
+      this.finish = null;
+      handlers.onEnd(error);
     };
+    rec.onstart = () => {
+      if (this.rec === rec) this.clearTimer();
+    };
+    rec.onerror = (event) => {
+      if (this.rec !== rec || event.error === "aborted") return;
+      this.error = event.error;
+      // Some Safari builds report the error and never end; end it ourselves.
+      this.clearTimer();
+      this.timer = setTimeout(() => {
+        end(this.error);
+        quietAbort(rec);
+      }, END_GRACE_MS);
+    };
+    rec.onend = () => end(this.error);
     this.rec = rec;
+    this.finish = end;
+    this.timer = setTimeout(() => {
+      end("no-start");
+      quietAbort(rec);
+    }, this.startTimeoutMs);
     try {
       rec.start();
     } catch {
-      this.rec = null;
-      handlers.onEnd("not-allowed");
+      end("not-allowed");
     }
+  }
+
+  private clearTimer(): void {
+    if (this.timer !== undefined) clearTimeout(this.timer);
+    this.timer = undefined;
   }
 
   /** Stops listening and keeps what was heard; onEnd still fires. */
   stop(): void {
+    const rec = this.rec;
+    const finish = this.finish;
+    if (!rec) return;
     try {
-      this.rec?.stop();
+      rec.stop();
     } catch {
       // Already ended.
+    }
+    // A recognizer that never started may never end either: settle it now.
+    if (this.rec === rec && finish) {
+      this.clearTimer();
+      this.timer = setTimeout(() => {
+        finish(this.error);
+        quietAbort(rec);
+      }, END_GRACE_MS);
     }
   }
 
   /** Stops listening without a final onEnd. */
   cancel(): void {
     const rec = this.rec;
+    this.clearTimer();
     this.rec = null;
+    this.finish = null;
     try {
       rec?.abort();
     } catch {
