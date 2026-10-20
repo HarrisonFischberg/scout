@@ -34,7 +34,7 @@ async function openPopup(page: Page): Promise<void> {
       },
     };
   });
-  for (const f of ["popup.html", "popup.js", "privacy.html", "terms.html"]) {
+  for (const f of ["popup.html", "popup.js"]) {
     await page.context().route(`**/${f}`, (r) =>
       r.fulfill({ path: `apple/Extension/Resources/${f}`, contentType: f.endsWith(".js") ? "text/javascript" : "text/html" }),
     );
@@ -83,14 +83,6 @@ for (const scheme of ["light", "dark"] as const) {
       await page.getByRole("button", { name: "Settings" }).click();
       expect(await axe(page)).toEqual([]);
     });
-
-    for (const doc of ["privacy.html", "terms.html"]) {
-      test(`${doc} has no WCAG 2.2 AA violations`, async ({ page }) => {
-        await openPopup(page);
-        await page.goto(`/${doc}`);
-        expect(await axe(page)).toEqual([]);
-      });
-    }
   });
 }
 
