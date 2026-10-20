@@ -127,7 +127,8 @@ export function classifyAction(action: Action, snap: Snapshot): Classification {
 
 /**
  * Classifies a Scout mode action from what the page reports about its target.
- * Scrolling, waiting, screenshots, and dragging never need confirmation.
+ * Scrolling, waiting, screenshots, dragging, and opening an address never
+ * need confirmation (blocked sites are refused before navigate runs).
  * Typing into a password, card, or similar field does; so does Enter inside a
  * form, which submits it. A missing target acts on nothing, so it needs no
  * confirmation either (the executor reports no_target).

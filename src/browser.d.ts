@@ -48,10 +48,10 @@ declare const browser: {
       Array<{ id?: number; windowId?: number; title?: string; url?: string; active?: boolean; incognito?: boolean; favIconUrl?: string }>
     >;
     // Part 2 tool host. Optional where the e2e stubs leave them out.
-    get?(tabId: number): Promise<{ id?: number; windowId?: number; title?: string; url?: string; active?: boolean; incognito?: boolean }>;
+    get?(tabId: number): Promise<{ id?: number; windowId?: number; title?: string; url?: string; active?: boolean; incognito?: boolean; status?: string }>;
     create?(props: { url: string; active?: boolean; windowId?: number }): Promise<{ id?: number; windowId?: number; title?: string; url?: string }>;
     remove?(tabIds: number | number[]): Promise<void>;
-    update?(tabId: number, props: { active?: boolean }): Promise<unknown>;
+    update?(tabId: number, props: { active?: boolean; url?: string }): Promise<unknown>;
     captureVisibleTab?(windowId?: number, options?: { format?: "jpeg" | "png"; quality?: number }): Promise<string>;
     // Not in Safari (MDN browser-compat-data); kept so the host can use them where they exist.
     group?(options: { tabIds: number[] }): Promise<number>;

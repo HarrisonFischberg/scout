@@ -17,6 +17,7 @@ export const ACTION_TYPES = [
   "fill_field",
   "wait",
   "screenshot",
+  "navigate",
 ] as const;
 
 export type ActionType = (typeof ACTION_TYPES)[number];
@@ -37,7 +38,9 @@ export type TaskAction =
   /** Replaces the field's value (clears first). */
   | { type: "fill_field"; target: Target; value: string }
   | { type: "wait"; ms: number }
-  | { type: "screenshot" };
+  | { type: "screenshot" }
+  /** Opens an address in the tab Scout controls (the worker sets the tab's URL; page keys cannot reach the address bar). */
+  | { type: "navigate"; url: string };
 
 export const KEY_MODIFIERS = ["shift", "control", "alt", "meta"] as const;
 export type KeyModifier = (typeof KEY_MODIFIERS)[number];
@@ -51,6 +54,25 @@ export const KEY_NAMES = new Set([
   "Enter", "Tab", "Escape", "Backspace", "Delete", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
   "Home", "End", "PageUp", "PageDown", "Space", " ",
 ]);
+
+/**
+ * An address the model gave ("google.com", "https://example.com/a") as an
+ * http or https URL, or null. Bare hosts get https://.
+ */
+export function navigableUrl(raw: string): string | null {
+  const text = raw.trim();
+  if (!text || text.length > 2048 || /\s/.test(text)) return null;
+  const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(text) && !/^[^/:]+:\d+(\/|$)/.test(text);
+  let url: URL;
+  try {
+    url = new URL(hasScheme ? text : "https://" + text.replace(/^\/\//, ""));
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  if (!url.hostname || (!hasScheme && !url.hostname.includes(".") && url.hostname !== "localhost")) return null;
+  return url.href;
+}
 
 export type ParsedAction =
   | {
@@ -136,6 +158,12 @@ export function parseTaskAction(raw: unknown): ParsedAction {
     }
     case "screenshot":
       return done({ type: "screenshot" });
+    case "navigate": {
+      if (typeof raw.url !== "string" || raw.url.trim() === "") return bad(type, "navigate needs a url, for example https://www.google.com.");
+      const url = navigableUrl(raw.url);
+      if (!url) return bad(type, "navigate can open only http and https addresses, for example https://www.google.com.");
+      return done({ type: "navigate", url });
+    }
   }
 }
 
@@ -188,6 +216,14 @@ export function scaleToViewport(
   };
 }
 
+function shortHost(url: string): string | null {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "") || null;
+  } catch {
+    return null;
+  }
+}
+
 const quote = (s: string): string => '“' + s.replace(/\s+/g, " ").trim().slice(0, 60) + '”';
 
 /** Plain-language description for the action log and the confirmation prompt. */
@@ -216,5 +252,7 @@ export function describeAction(action: TaskAction, targetName?: string): string 
       return "wait " + (action.ms >= 1000 ? (action.ms / 1000).toFixed(1).replace(/\.0$/, "") + " s" : action.ms + " ms");
     case "screenshot":
       return "take a screenshot";
+    case "navigate":
+      return "go to " + (shortHost(action.url) ?? action.url.slice(0, 60));
   }
 }
