@@ -242,21 +242,11 @@ test("when the page refuses too, the mic turns off and says why", async ({ page 
 
 test.describe("on iPhone (owner choice 2026-10-20)", () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 393, height: 700 } });
-  test("the mic brings up the keyboard, stays lit while it's up, and starts no recognizer", async ({ page }) => {
+  test("Scout's mic is hidden and Send still fits", async ({ page }) => {
     await stubSpeech(page);
     await openPopup(page, { keys: { anthropic: GOOD_KEY } });
-    const mic = foot(page).getByRole("button", { name: "Dictate" });
-    await mic.tap();
-    await expect(page.locator("#question")).toBeFocused();
-    await expect(mic).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator("#status")).toHaveText("Tap the mic on your keyboard to talk.");
-    expect(await page.evaluate(() => (window as unknown as { __starts?: number }).__starts ?? 0)).toBe(0);
-    await mic.tap();
-    await expect(mic).toHaveAttribute("aria-pressed", "false");
-    await expect(page.locator("#status")).toHaveText("");
-    await mic.tap();
-    await expect(mic).toHaveAttribute("aria-pressed", "true");
-    await page.locator("#question").evaluate((n) => (n as HTMLElement).blur());
-    await expect(mic).toHaveAttribute("aria-pressed", "false");
+    await expect(foot(page).getByRole("button", { name: "Send" })).toBeVisible();
+    await expect(page.locator("#mic")).toBeHidden();
+    expect(await foot(page).evaluate((n) => n.scrollWidth - n.clientWidth)).toBe(0);
   });
 });
