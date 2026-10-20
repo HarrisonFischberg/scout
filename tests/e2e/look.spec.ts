@@ -137,6 +137,23 @@ test.describe("iPhone", () => {
     expect((await car.boundingBox())!.y).toBeLessThan((await page.locator("#greeting").boundingBox())!.y);
   });
 
+  test("the car and title stay put when a status line shows (mic, New chat)", async ({ page }) => {
+    await openPopup(page, { look: "trailhead" });
+    await expect.poll(() => look(page)).toBe("trailhead");
+    const where = async () => {
+      const car = (await page.locator("#empty .scout-mark").boundingBox())!;
+      const title = (await page.locator("#greeting").boundingBox())!;
+      return [Math.round(car.y), Math.round(title.y)];
+    };
+    await page.evaluate(() => (document.getElementById("status")!.textContent = ""));
+    const before = await where();
+    await page.getByRole("button", { name: "New chat" }).click();
+    await page.evaluate(() => (document.getElementById("status")!.textContent = "Listening…"));
+    expect(await where()).toEqual(before);
+    await page.evaluate(() => (document.getElementById("status")!.textContent = ""));
+    expect(await where()).toEqual(before);
+  });
+
   test("Delete all data goes back to Pure Apple, and a chosen look is kept", async ({ page }) => {
     await openPopup(page, { look: "trailhead" });
     await expect.poll(() => look(page)).toBe("trailhead");
