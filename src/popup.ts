@@ -35,6 +35,7 @@ import { createProvider, textOf, type ChatMessage, type Effort, type ProviderCli
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
 import { joinDictation, Listener, micBlocked, micBlockedHere, micErrorText, recognitionCtor, rememberMic } from "./panel/voice";
+import { PageListener } from "./panel/page-listen";
 import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
 import { probeDrag } from "./panel/drag-probe";
 import { COUPON_QUESTION } from "./server/coupon-host";
@@ -998,9 +999,20 @@ async function main(): Promise<void> {
   // Speech to text into the box, nothing more: the user sends it with Send.
   const phone = matchMedia("(pointer: coarse)").matches;
   const speechLang = navigator.language || "en-US";
-  const dictation = new Listener(recognitionCtor(window), speechLang);
+  const panelVoice = new Listener(recognitionCtor(window), speechLang);
+  // Safari on iPhone won't let the panel itself hear anything, so Scout falls
+  // back to listening from the web page (src/panel/page-listen.ts). Once the
+  // panel has refused, later taps go straight to the page (owner, 2026-10-20).
+  const pageTabId = !STANDALONE && tab.id !== undefined && /^https?:/.test(tab.url ?? "") ? tab.id : undefined;
+  const pageVoice =
+    pageTabId !== undefined
+      ? new PageListener(async (func, args) => {
+          const [res] = await browser.scripting.executeScript({ target: { tabId: pageTabId }, func: func as unknown as (...a: never[]) => unknown, args });
+          return res?.result as Awaited<ReturnType<typeof func>> | undefined;
+        }, speechLang)
+      : null;
+  let dictation: Listener | PageListener = panelVoice;
   let dictating = false;
-  // After one refusal the next tap opens the keyboard, whose own mic works (iPhone, 2026-10-20).
   const micMemory = lookCache;
   function setDictating(on: boolean): void {
     dictating = on;
@@ -1011,41 +1023,44 @@ async function main(): Promise<void> {
   function stopDictation(): void {
     if (dictating) dictation.stop();
   }
+  function listen(via: Listener | PageListener, typed: string): void {
+    dictation = via;
+    trace(via === pageVoice ? "voice:page" : "voice:dictate");
+    const handlers = {
+      onText: (heard: string) => {
+        question.value = joinDictation(typed, heard);
+        autosize();
+      },
+      onEnd: (error?: string) => {
+        if (via === panelVoice) {
+          if (micBlocked(error)) rememberMic(micMemory, navigator.userAgent, true);
+          else if (question.value !== typed) rememberMic(micMemory, navigator.userAgent, false);
+          // The panel was refused before anything was heard: try the page, mic still on.
+          if (micBlocked(error) && pageVoice && question.value === typed) {
+            trace("voice:panel-refused " + error);
+            listen(pageVoice, typed);
+            return;
+          }
+        }
+        setDictating(false);
+        if (error && !(error === "no-speech" && question.value !== typed)) {
+          status.textContent = micErrorText(error, phone);
+          trace("voice:error " + error);
+        } else if (status.textContent === "Listening…") status.textContent = "";
+        question.focus();
+      },
+    };
+    if (via instanceof Listener) via.start(handlers, { continuous: true });
+    else via.start(handlers);
+  }
   mic.addEventListener("click", () => {
     if (dictating) {
       dictation.stop();
       return;
     }
-    if (phone && micBlockedHere(micMemory, navigator.userAgent)) {
-      // Focusing inside the tap raises the keyboard with its own mic.
-      question.focus();
-      status.textContent = micErrorText("not-allowed", phone);
-      trace("voice:keyboard");
-      return;
-    }
-    const typed = question.value;
     setDictating(true);
     status.textContent = "Listening…";
-    trace("voice:dictate");
-    dictation.start(
-      {
-        onText: (heard) => {
-          question.value = joinDictation(typed, heard);
-          autosize();
-        },
-        onEnd: (error) => {
-          setDictating(false);
-          if (micBlocked(error)) rememberMic(micMemory, navigator.userAgent, true);
-          else if (question.value !== typed) rememberMic(micMemory, navigator.userAgent, false);
-          if (error && !(error === "no-speech" && question.value !== typed)) {
-            status.textContent = micErrorText(error, phone);
-            trace("voice:error " + error);
-          } else if (status.textContent === "Listening…") status.textContent = "";
-          question.focus();
-        },
-      },
-      { continuous: true },
-    );
+    listen(pageVoice && micBlockedHere(micMemory, navigator.userAgent) ? pageVoice : panelVoice, question.value);
   });
 
 

@@ -45,6 +45,8 @@ export function micErrorText(code: string, phone: boolean): string {
       return "This version of " + browserName() + " can't listen from Scout. " + keyboard;
     case "no-start":
       return browserName() + " didn't let Scout use the microphone. " + keyboard;
+    case "page-unavailable":
+      return "Scout can't listen on this page. " + keyboard;
     case "no-speech":
       return "Didn't hear anything. Tap the mic and try again.";
     case "audio-capture":
@@ -122,7 +124,7 @@ export class Listener {
   private rec: RecognitionLike | null = null;
   private error: string | undefined;
   private timer: ReturnType<typeof setTimeout> | undefined;
-  private finish: ((error?: string) => void) | null = null;
+  private finish: ((error?: string, abort?: boolean) => void) | null = null;
 
   constructor(
     private readonly ctor: RecognitionCtor | null,
@@ -165,11 +167,13 @@ export class Listener {
       }
       handlers.onText(text.replace(/\s+/g, " ").trim(), final);
     };
-    const end = (error?: string): void => {
+    // `abort`: also abort the recognizer, before onEnd so a new session started there is untouched.
+    const end = (error?: string, abort = false): void => {
       if (this.rec !== rec) return;
       this.clearTimer();
       this.rec = null;
       this.finish = null;
+      if (abort) quietAbort(rec);
       handlers.onEnd(error);
     };
     rec.onstart = () => {
@@ -180,18 +184,12 @@ export class Listener {
       this.error = event.error;
       // Some Safari builds report the error and never end; end it ourselves.
       this.clearTimer();
-      this.timer = setTimeout(() => {
-        end(this.error);
-        quietAbort(rec);
-      }, END_GRACE_MS);
+      this.timer = setTimeout(() => end(this.error, true), END_GRACE_MS);
     };
     rec.onend = () => end(this.error);
     this.rec = rec;
     this.finish = end;
-    this.timer = setTimeout(() => {
-      end("no-start");
-      quietAbort(rec);
-    }, this.startTimeoutMs);
+    this.timer = setTimeout(() => end("no-start", true), this.startTimeoutMs);
     try {
       rec.start();
     } catch {
@@ -217,10 +215,7 @@ export class Listener {
     // A recognizer that never started may never end either: settle it now.
     if (this.rec === rec && finish) {
       this.clearTimer();
-      this.timer = setTimeout(() => {
-        finish(this.error);
-        quietAbort(rec);
-      }, END_GRACE_MS);
+      this.timer = setTimeout(() => finish(this.error, true), END_GRACE_MS);
     }
   }
 
