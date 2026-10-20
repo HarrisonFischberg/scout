@@ -159,26 +159,16 @@ test("Delete all data needs a confirm, then clears storage, Keychain, and site a
   expect(after.origins).toEqual(["https://api.anthropic.com/*"]);
 });
 
-test("legal drafts open from settings by keyboard and are marked DRAFT", async ({ page, context }) => {
+test("settings links to the published privacy policy, with no drafts", async ({ page }) => {
   await openPopup(page);
-  // The links open new tabs, so route on the context, not the popup page.
-  await context.route("**/privacy.html", (r) => r.fulfill({ path: "apple/Extension/Resources/privacy.html", contentType: "text/html" }));
-  await context.route("**/terms.html", (r) => r.fulfill({ path: "apple/Extension/Resources/terms.html", contentType: "text/html" }));
   await page.getByRole("button", { name: "Settings" }).click();
-  for (const [name, heading] of [
-    ["Privacy policy (draft)", /Privacy/i],
-    ["Terms of service (draft)", /Terms/i],
-  ] as const) {
-    const link = page.getByRole("link", { name });
-    await link.focus();
-    await expect(link).toBeFocused();
-    const popup = context.waitForEvent("page");
-    await page.keyboard.press("Enter");
-    const legal = await popup;
-    await expect(legal.getByText("DRAFT. Not approved by legal review.")).toBeVisible();
-    await expect(legal.getByRole("heading", { level: 1 })).toHaveText(heading);
-    await legal.close();
-  }
+  const link = page.getByRole("link", { name: "Privacy policy" });
+  await link.focus();
+  await expect(link).toBeFocused();
+  await expect(link).toHaveAttribute("href", "https://rarecreatures.app/apps/scout/privacy/");
+  await expect(link).toHaveAttribute("target", "_blank");
+  await expect(page.getByRole("link", { name: /Terms of service/ })).toHaveCount(0);
+  await expect(page.getByText(/draft/i)).toHaveCount(0);
 });
 
 // iOS opens a <select>'s picker as soon as it gets focus (seen in T018), so

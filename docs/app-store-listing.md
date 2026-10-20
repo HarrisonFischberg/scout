@@ -2,9 +2,9 @@
 
 Names and short copy decided by the owner on 2026-10-16; renamed to Scout AI
 Assistant on 2026-10-19 (owner, so the same name works on Chrome and Firefox;
-their listings are in `docs/store-listings.md`). Other listing
-fields (description, keywords, screenshots, support and privacy URLs) are not
-written yet; they wait on launch-blockers 1 and 8.
+their listings are in `docs/store-listings.md`). The full App Store
+listing (description, keywords, URLs, privacy label, age rating, review notes,
+screenshots) is in `docs/app-store-submission.md` (2026-10-20).
 
 | Field | Text | Length / limit | Where it is set |
 | --- | --- | --- | --- |
