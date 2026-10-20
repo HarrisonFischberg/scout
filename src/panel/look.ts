@@ -59,7 +59,7 @@ export function applyLook(doc: Document, id: LookId): void {
   if (box) box.hidden = !g.title;
 }
 
-/** The page's localStorage, which holds only the look id; undefined where blocked. */
+/** The page's localStorage, which holds only the look id and the mic-refused flag (voice.ts); undefined where blocked. */
 export function pageCache(): Storage | undefined {
   try {
     return globalThis.localStorage;
