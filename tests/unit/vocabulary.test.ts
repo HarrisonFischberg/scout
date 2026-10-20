@@ -5,12 +5,12 @@ import { performTaskAction, type ProbeResult, type TaskPage } from "../../src/ac
 import { ACTION_TYPES, describeAction, parseBatch, parseTaskAction, scaleToViewport, targetOf } from "../../src/actions/vocabulary";
 
 describe("action vocabulary", () => {
-  it("lists exactly the eleven allowed actions", () => {
-    expect([...ACTION_TYPES]).toEqual(["click", "double_click", "right_click", "type", "key", "scroll", "scroll_to_element", "drag", "fill_field", "wait", "screenshot"]);
+  it("lists exactly the twelve allowed actions", () => {
+    expect([...ACTION_TYPES]).toEqual(["click", "double_click", "right_click", "type", "key", "scroll", "scroll_to_element", "drag", "fill_field", "wait", "screenshot", "navigate"]);
   });
 
   it("rejects unknown actions and malformed ones", () => {
-    expect(parseTaskAction({ type: "navigate", url: "https://x.test" })).toMatchObject({ ok: false, reason: "unknown_action", type: "navigate" });
+    expect(parseTaskAction({ type: "open_tab", url: "https://x.test" })).toMatchObject({ ok: false, reason: "unknown_action", type: "open_tab" });
     expect(parseTaskAction({ type: "run_shell", cmd: "rm" })).toMatchObject({ ok: false, reason: "unknown_action" });
     expect(parseTaskAction("click")).toMatchObject({ ok: false, reason: "unknown_action" });
     expect(parseTaskAction(null)).toMatchObject({ ok: false, reason: "unknown_action" });
@@ -39,6 +39,21 @@ describe("action vocabulary", () => {
     expect(parseTaskAction({ type: "screenshot" })).toMatchObject({ ok: true, action: { type: "screenshot" } });
     const long = parseTaskAction({ type: "type", text: "x".repeat(9000) });
     expect(long.ok && long.action.type === "type" ? long.action.text.length : 0).toBe(5000);
+  });
+
+  // Owner bug 2026-10-20: asked to go to Google.com, the agent could only try
+  // Control-L and Command-T, which never reach Safari's address bar.
+  it("accepts navigate to http and https addresses only, adding https to a bare host", () => {
+    expect(parseTaskAction({ type: "navigate", url: "google.com" })).toEqual({ ok: true, preapproved: false, action: { type: "navigate", url: "https://google.com/" } });
+    expect(parseTaskAction({ type: "navigate", url: "https://www.google.com/search?q=a" })).toMatchObject({ ok: true, action: { url: "https://www.google.com/search?q=a" } });
+    expect(parseTaskAction({ type: "navigate", url: "http://localhost:4317/a" })).toMatchObject({ ok: true, action: { url: "http://localhost:4317/a" } });
+    expect(parseTaskAction({ type: "navigate", url: "localhost:4317" })).toMatchObject({ ok: true, action: { url: "https://localhost:4317/" } });
+    for (const url of ["javascript:alert(1)", "file:///etc/passwd", "data:text/html,hi", "about:blank", "", "google", "a b.com"]) {
+      expect(parseTaskAction({ type: "navigate", url })).toMatchObject({ ok: false, reason: "bad_args", type: "navigate" });
+    }
+    expect(parseTaskAction({ type: "navigate" })).toMatchObject({ ok: false, reason: "bad_args" });
+    expect(describeAction({ type: "navigate", url: "https://www.google.com/" })).toBe("go to google.com");
+    expect(targetOf({ type: "navigate", url: "https://google.com/" })).toBeUndefined();
   });
 
   it("notes a server pre-approval but never lets it into the action", () => {

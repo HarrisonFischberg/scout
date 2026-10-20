@@ -31,6 +31,25 @@ import { platformOs } from "../panel/edge";
 import { reopensAfterSwitch } from "../panel/toolbar";
 
 const POLICY_TTL_MS = 5 * 60_000;
+/** Scout mode's navigate: how long to wait for the new page before observing it anyway. */
+const NAVIGATE_WAIT_MS = 12_000;
+
+// Scout mode's navigate (owner bug report 2026-10-20): page key events never
+// reach Safari's address bar, so the worker sets the tab's URL itself, then
+// waits until the tab reports the new page loaded.
+async function navigateTab(tabId: number, url: string): Promise<void> {
+  if (!browser.tabs.update) throw new Error("tabs.update unavailable");
+  await browser.tabs.update(tabId, { url });
+  const until = Date.now() + NAVIGATE_WAIT_MS;
+  // Safari can report "complete" for the old page right after update; give it a moment to start loading.
+  await new Promise((r) => setTimeout(r, 250));
+  while (Date.now() < until) {
+    const t = await browser.tabs.get?.(tabId).catch(() => undefined);
+    if (!t) return;
+    if (t.status === "complete" && t.url && t.url !== "about:blank") return;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+}
 
 function toRef(t: { id?: number; url?: string; title?: string; windowId?: number; active?: boolean; incognito?: boolean } | undefined): TabRef | null {
   if (!t || t.id === undefined) return null;
@@ -173,6 +192,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     content: (tabId, req: ContentRequest) => callInjected(tabId, "content.js", CONTENT_HANDLER, req),
     overlay: (tabId, req: OverlayRequest) => callInjected(tabId, "overlay.js", OVERLAY_HANDLER, req),
     capture: toolDeps.capture,
+    navigate: (tabId, url) => navigateTab(tabId, url),
     access,
     admin,
     provider,

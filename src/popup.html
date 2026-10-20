@@ -447,7 +447,6 @@
       .trace .steps summary { cursor: pointer; }
       .trace .steps ol { margin: 4px 0 0; padding-left: 20px; }
       .trace .steps li[data-status="rejected"], .trace .steps li[data-status="denied"], .trace .steps li[data-status="failed"] { color: var(--danger); }
-      .trace .controls { display: flex; gap: 8px; margin-top: 8px; }
       .trace .more { margin-top: 8px; }
       /* Find coupons: one line per code as it is tested. */
       .trace .attempt { display: flex; align-items: baseline; gap: 6px; font-size: 14px; color: var(--text-secondary); }
@@ -674,7 +673,6 @@
       :root[data-look="apple"] .trace .attempt:first-child { border-top: 0; }
       :root[data-look="apple"] .trace .attempt .code { font-family: inherit; }
       :root[data-look="apple"] .trace .attempt.good .code { color: var(--ok); }
-      :root[data-look="apple"] .trace .controls { margin: 0; padding: 10px 14px; border-top: 0.5px solid var(--hairline); }
       :root[data-look="apple"] .btn { border: 0; border-radius: 999px; background: var(--bg-subtle); color: var(--accent-text); font-weight: 600; padding: 4px 14px; }
       :root[data-look="apple"] .btn.primary { background: var(--accent); color: #ffffff; }
       :root[data-look="apple"] .btn.danger { color: var(--danger); background: var(--bg-surface); }
@@ -1168,7 +1166,7 @@
               <option value="off">Off</option>
             </select>
           </label>
-          <p id="access-scout-help" class="hint">On: sending a task in Scout mode starts it at once, and the model may start one when you ask it to do something on the page. While it works, the page glows and shows Take control and Stop; it still asks before anything sensitive. Off also hides the run_task tool from the model.</p>
+          <p id="access-scout-help" class="hint">On: sending a task in Scout mode starts it at once, and the model may start one when you ask it to do something on the page. While it works, the page glows and shows Stop; it still asks before anything sensitive. Off also hides the run_task tool from the model.</p>
           <h4>Sensitive-action confirmation</h4>
           <label class="check"><input id="access-sensitive" type="checkbox" checked disabled aria-describedby="access-sensitive-help" />Ask before submitting, buying, sending, deleting, signing in, changing account settings, or downloading</label>
           <p id="access-sensitive-help" class="hint">Always on. It cannot be turned off. The check runs on this device from the action and its target, even when the model marks an action as approved.</p>

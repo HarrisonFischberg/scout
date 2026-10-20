@@ -118,7 +118,7 @@ test("Scout mode shows a bold chip and switches the send action", async ({ page 
   expect(colors[0]).toBe(colors[1]);
   expect(colors[2]).toBe(colors[0]);
   await expect(page.getByRole("button", { name: "Start task" })).toBeVisible();
-  await expect(page.getByLabel("Ask about this page")).toHaveAttribute("placeholder", "Tell Scout what to do on this page…");
+  await expect(page.getByLabel("Ask about this page")).toHaveAttribute("placeholder", "Tell Scout what to do");
   await page.getByRole("button", { name: "Back to Chat mode" }).click();
   await expect(page.locator("#mode-chip")).toBeHidden();
   await expect(page.getByRole("radio", { name: "Chat" })).toBeChecked();
