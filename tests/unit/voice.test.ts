@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { joinDictation, Listener, micErrorText, recognitionCtor, type RecognitionEventLike, type RecognitionLike } from "../../src/panel/voice";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { END_GRACE_MS, joinDictation, Listener, micBlocked, micErrorText, START_TIMEOUT_MS, micBlockedHere, rememberMic, recognitionCtor, type RecognitionEventLike, type RecognitionLike } from "../../src/panel/voice";
 
 /** A recognizer the test drives by hand. */
 class FakeRecognition implements RecognitionLike {
@@ -10,17 +10,25 @@ class FakeRecognition implements RecognitionLike {
   onresult: ((event: RecognitionEventLike) => void) | null = null;
   onerror: ((event: { error: string }) => void) | null = null;
   onend: (() => void) | null = null;
+  onstart: (() => void) | null = null;
   started = false;
+  aborted = false;
+  /** iPhone Safari in the panel: start() returns but nothing ever happens. */
+  static silent = false;
+  /** Reports errors but never ends. */
+  static noEnd = false;
   constructor() {
     FakeRecognition.last = this;
   }
   start(): void {
     this.started = true;
+    if (!FakeRecognition.silent) this.onstart?.();
   }
   stop(): void {
-    this.onend?.();
+    if (!FakeRecognition.silent) this.onend?.();
   }
   abort(): void {
+    this.aborted = true;
     this.onerror?.({ error: "aborted" });
     this.onend?.();
   }
@@ -29,7 +37,7 @@ class FakeRecognition implements RecognitionLike {
   }
   fail(error: string): void {
     this.onerror?.({ error });
-    this.onend?.();
+    if (!FakeRecognition.noEnd) this.onend?.();
   }
 }
 
@@ -80,4 +88,85 @@ describe("mic button: speech to text (owner, 2026-10-17)", () => {
     expect(ended).toBe("unsupported");
   });
 
+});
+
+describe("mic button never stays stuck on (iPhone bug, 2026-10-20)", () => {
+  afterEach(() => {
+    FakeRecognition.silent = false;
+    FakeRecognition.noEnd = false;
+    vi.useRealTimers();
+  });
+
+  it("a recognizer that never starts ends with no-start and is aborted", () => {
+    vi.useFakeTimers();
+    FakeRecognition.silent = true;
+    const l = new Listener(FakeRecognition, "en-US");
+    const ends: Array<string | undefined> = [];
+    l.start({ onText: () => undefined, onEnd: (e) => ends.push(e) }, { continuous: true });
+    expect(l.active).toBe(true);
+    vi.advanceTimersByTime(START_TIMEOUT_MS);
+    expect(ends).toEqual(["no-start"]);
+    expect(l.active).toBe(false);
+    expect(FakeRecognition.last!.aborted).toBe(true);
+    expect(micErrorText("no-start", true)).toMatch(/mic on your keyboard/);
+  });
+
+  it("an error with no end still ends, once", () => {
+    vi.useFakeTimers();
+    FakeRecognition.noEnd = true;
+    const l = new Listener(FakeRecognition, "en-US");
+    const ends: Array<string | undefined> = [];
+    l.start({ onText: () => undefined, onEnd: (e) => ends.push(e) }, { continuous: true });
+    FakeRecognition.last!.fail("not-allowed");
+    expect(ends).toEqual([]);
+    vi.advanceTimersByTime(END_GRACE_MS);
+    expect(ends).toEqual(["not-allowed"]);
+    vi.advanceTimersByTime(START_TIMEOUT_MS);
+    expect(ends).toEqual(["not-allowed"]);
+  });
+
+  it("tapping stop on a recognizer that never started still turns the mic off", () => {
+    vi.useFakeTimers();
+    FakeRecognition.silent = true;
+    const l = new Listener(FakeRecognition, "en-US");
+    const ends: Array<string | undefined> = [];
+    l.start({ onText: () => undefined, onEnd: (e) => ends.push(e) }, { continuous: true });
+    l.stop();
+    vi.advanceTimersByTime(END_GRACE_MS);
+    expect(ends).toEqual([undefined]);
+    expect(l.active).toBe(false);
+  });
+
+  it("a recognizer that started keeps listening past the start timeout", () => {
+    vi.useFakeTimers();
+    const l = new Listener(FakeRecognition, "en-US");
+    const ends: Array<string | undefined> = [];
+    l.start({ onText: () => undefined, onEnd: (e) => ends.push(e) }, { continuous: true });
+    vi.advanceTimersByTime(START_TIMEOUT_MS * 3);
+    expect(ends).toEqual([]);
+    expect(l.active).toBe(true);
+    l.stop();
+    expect(ends).toEqual([undefined]);
+  });
+
+  it("only refusals count as blocked, not a quiet moment", () => {
+    expect(micBlocked("not-allowed")).toBe(true);
+    expect(micBlocked("no-start")).toBe(true);
+    expect(micBlocked("unsupported")).toBe(true);
+    expect(micBlocked("no-speech")).toBe(false);
+    expect(micBlocked("network")).toBe(false);
+    expect(micBlocked(undefined)).toBe(false);
+  });
+
+  it("remembers a refusal per browser version, and forgets it once dictation works", () => {
+    const m = new Map<string, string>();
+    const store = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
+    expect(micBlockedHere(store, "iOS 26.0")).toBe(false);
+    rememberMic(store, "iOS 26.0", true);
+    expect(micBlockedHere(store, "iOS 26.0")).toBe(true);
+    expect(micBlockedHere(store, "iOS 26.1")).toBe(false);
+    rememberMic(store, "iOS 26.0", false);
+    expect(micBlockedHere(store, "iOS 26.0")).toBe(false);
+    expect(micBlockedHere(undefined, "x")).toBe(false);
+  });
 });

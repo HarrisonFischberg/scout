@@ -8,8 +8,8 @@ const PAGE = { url: "https://shop.test/a", title: "Test shop", text: "Widget cos
 const GOOD_KEY = "sk-ant-test-synthetic-GOODKEY-0000";
 
 /** Stub recognizer: __hear(text, final) feeds text, __endListening(error?) ends it. */
-async function stubSpeech(page: Page, opts: { refuse?: boolean; none?: boolean } = {}): Promise<void> {
-  await page.addInitScript(({ refuse, none }) => {
+async function stubSpeech(page: Page, opts: { refuse?: boolean; none?: boolean; silent?: boolean } = {}): Promise<void> {
+  await page.addInitScript(({ refuse, none, silent }) => {
     const g = globalThis as unknown as Record<string, unknown>;
     g.__listening = false;
     let current: Record<string, unknown> | null = null;
@@ -20,14 +20,21 @@ async function stubSpeech(page: Page, opts: { refuse?: boolean; none?: boolean }
       onresult: ((e: unknown) => void) | null = null;
       onerror: ((e: unknown) => void) | null = null;
       onend: (() => void) | null = null;
+      onstart: (() => void) | null = null;
       start(): void {
         current = this as unknown as Record<string, unknown>;
+        g.__starts = ((g.__starts as number) ?? 0) + 1;
+        if (silent) {
+          g.__listening = true;
+          return;
+        }
+        setTimeout(() => this.onstart?.(), 0);
         g.__listening = true;
         g.__continuous = this.continuous;
         if (refuse) setTimeout(() => (g.__endListening as (e?: string) => void)("not-allowed"), 10);
       }
       stop(): void {
-        (g.__endListening as () => void)();
+        if (!silent) (g.__endListening as () => void)();
       }
       abort(): void {
         (g.__endListening as (e?: string) => void)("aborted");
@@ -52,7 +59,7 @@ async function stubSpeech(page: Page, opts: { refuse?: boolean; none?: boolean }
       g.webkitSpeechRecognition = Rec;
       g.SpeechRecognition = undefined;
     }
-  }, { refuse: opts.refuse === true, none: opts.none === true });
+  }, { refuse: opts.refuse === true, none: opts.none === true, silent: opts.silent === true });
 }
 
 function sse(text: string): string {
@@ -165,4 +172,39 @@ test("without a recognizer the mic explains keyboard dictation", async ({ page }
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
   await foot(page).getByRole("button", { name: "Dictate" }).click();
   await expect(page.locator("#status")).toContainText("to dictate instead");
+});
+
+test("a mic that never starts (iPhone Safari) turns itself off with a message", async ({ page }) => {
+  await stubSpeech(page, { silent: true });
+  await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+  await foot(page).getByRole("button", { name: "Dictate" }).click();
+  await expect(foot(page).getByRole("button", { name: "Stop dictating" })).toHaveAttribute("aria-pressed", "true");
+  await expect(foot(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false", { timeout: 8000 });
+  await expect(page.locator("#status")).toContainText("didn't let Scout use the microphone");
+  await expect(page.locator("#status")).toContainText("to dictate instead");
+});
+
+test("tapping a stuck mic again turns it off", async ({ page }) => {
+  await stubSpeech(page, { silent: true });
+  await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+  await foot(page).getByRole("button", { name: "Dictate" }).click();
+  await foot(page).getByRole("button", { name: "Stop dictating" }).click();
+  await expect(foot(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false", { timeout: 2000 });
+});
+
+test.describe("on a phone", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 700 } });
+  test("after one refusal the mic goes straight to the keyboard's own dictation", async ({ page }) => {
+    await stubSpeech(page, { refuse: true });
+    await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+    await foot(page).getByRole("button", { name: "Dictate" }).click();
+    await expect(page.locator("#status")).toContainText("Tap the mic on your keyboard");
+    await page.evaluate(() => ((document.getElementById("status") as HTMLElement).textContent = ""));
+    await page.locator("#question").evaluate((n) => (n as HTMLElement).blur());
+    await foot(page).getByRole("button", { name: "Dictate" }).click();
+    await expect(page.locator("#status")).toContainText("Tap the mic on your keyboard");
+    await expect(foot(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false");
+    await expect(page.locator("#question")).toBeFocused();
+    expect(await page.evaluate(() => (window as unknown as { __starts: number }).__starts)).toBe(1);
+  });
 });
