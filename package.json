@@ -14,7 +14,8 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "check:release": "bash scripts/check-release-bundle.sh",
-    "check:rename": "bash scripts/check-rename.sh"
+    "check:rename": "bash scripts/check-rename.sh",
+    "check:screenshots": "node scripts/check-store-screenshots.mjs"
   },
   "repository": {
     "type": "git",
