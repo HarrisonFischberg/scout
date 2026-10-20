@@ -31,7 +31,9 @@ async function stubSpeech(page: Page, opts: { refuse?: boolean; none?: boolean; 
         setTimeout(() => this.onstart?.(), 0);
         g.__listening = true;
         g.__continuous = this.continuous;
-        if (refuse) setTimeout(() => (g.__endListening as (e?: string) => void)("not-allowed"), 10);
+        // `refuse` refuses only the panel's own recognizer; the page's (g.__inPage) works.
+        if (refuse && !g.__inPage) setTimeout(() => (g.__endListening as (e?: string) => void)("not-allowed"), 10);
+        else if (g.__pageRefuses && g.__inPage) setTimeout(() => (g.__endListening as (e?: string) => void)("not-allowed"), 10);
       }
       stop(): void {
         if (!silent) (g.__endListening as () => void)();
@@ -97,7 +99,19 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
         },
         tabs: { query: async () => [{ id: 1, url: pageData.url, title: pageData.title, active: true, favIconUrl: (pageData as { favIconUrl?: string }).favIconUrl }] },
         permissions: { request: async () => true, getAll: async () => ({ origins: [] }), remove: async () => true },
-        scripting: { executeScript: async () => [{ result: pageData }] },
+        scripting: {
+          // The mic's page fallback runs here as if in the page (src/panel/page-listen.ts).
+          executeScript: async (inj: { func?: (...a: unknown[]) => unknown; args?: unknown[] }) => {
+            if (!inj.func || !/^pageListen/.test(inj.func.name)) return [{ result: pageData }];
+            g.__pageCalls = ((g.__pageCalls as number) ?? 0) + 1;
+            g.__inPage = true;
+            try {
+              return [{ result: inj.func(...(inj.args ?? [])) }];
+            } finally {
+              g.__inPage = false;
+            }
+          },
+        },
         storage: {
           local: {
             get: async (k: string | string[]) => {
@@ -158,15 +172,6 @@ test("the mic types what was said after what was typed, sends nothing, and Send 
   await expect(page.locator(".msg.assistant").last()).toContainText("The widget costs $10.");
 });
 
-test("a refused microphone says how to dictate with the keyboard", async ({ page }) => {
-  await stubSpeech(page, { refuse: true });
-  await openPopup(page, { keys: { anthropic: GOOD_KEY } });
-  await foot(page).getByRole("button", { name: "Dictate" }).click();
-  await expect(page.locator("#status")).toContainText("Safari didn't allow the microphone here.");
-  await expect(foot(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false");
-  await expect(foot(page).getByRole("button", { name: "Send" })).toBeVisible();
-});
-
 test("without a recognizer the mic explains keyboard dictation", async ({ page }) => {
   await stubSpeech(page, { none: true });
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
@@ -175,11 +180,13 @@ test("without a recognizer the mic explains keyboard dictation", async ({ page }
 });
 
 test("a mic that never starts (iPhone Safari) turns itself off with a message", async ({ page }) => {
+  test.setTimeout(45000);
   await stubSpeech(page, { silent: true });
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
   await foot(page).getByRole("button", { name: "Dictate" }).click();
   await expect(foot(page).getByRole("button", { name: "Stop dictating" })).toHaveAttribute("aria-pressed", "true");
-  await expect(foot(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false", { timeout: 8000 });
+  // 4 s for the panel, then up to 15 s for the page's microphone question.
+  await expect(foot(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false", { timeout: 25000 });
   await expect(page.locator("#status")).toContainText("didn't let Scout use the microphone");
   await expect(page.locator("#status")).toContainText("to dictate instead");
 });
@@ -192,19 +199,43 @@ test("tapping a stuck mic again turns it off", async ({ page }) => {
   await expect(foot(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false", { timeout: 2000 });
 });
 
-test.describe("on a phone", () => {
-  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 700 } });
-  test("after one refusal the mic goes straight to the keyboard's own dictation", async ({ page }) => {
-    await stubSpeech(page, { refuse: true });
-    await openPopup(page, { keys: { anthropic: GOOD_KEY } });
-    await foot(page).getByRole("button", { name: "Dictate" }).click();
-    await expect(page.locator("#status")).toContainText("Tap the mic on your keyboard");
-    await page.evaluate(() => ((document.getElementById("status") as HTMLElement).textContent = ""));
-    await page.locator("#question").evaluate((n) => (n as HTMLElement).blur());
-    await foot(page).getByRole("button", { name: "Dictate" }).click();
-    await expect(page.locator("#status")).toContainText("Tap the mic on your keyboard");
-    await expect(foot(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false");
-    await expect(page.locator("#question")).toBeFocused();
-    expect(await page.evaluate(() => (window as unknown as { __starts: number }).__starts)).toBe(1);
-  });
+test("when Safari refuses the panel's mic, Scout listens from the page and the mic stays on", async ({ page }) => {
+  await stubSpeech(page, { refuse: true });
+  await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+  const box = page.getByLabel("Ask about this page");
+  await box.fill("Find");
+  await foot(page).getByRole("button", { name: "Dictate" }).click();
+  await expect(page.locator("#status")).toHaveText("Listening…");
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __pageCalls?: number }).__pageCalls ?? 0)).toBeGreaterThan(1);
+  await expect(foot(page).getByRole("button", { name: "Stop dictating" })).toHaveAttribute("aria-pressed", "true");
+  await page.evaluate(() => (window as unknown as { __hear: (t: string, f: boolean) => void }).__hear("cheap shoes", true));
+  await expect(box).toHaveValue("Find cheap shoes");
+  await foot(page).getByRole("button", { name: "Stop dictating" }).click();
+  await expect(foot(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false");
+  await expect(box).toHaveValue("Find cheap shoes");
+  await expect(page.locator("#status")).toHaveText("");
+});
+
+test("after one refusal the mic still lights up and goes straight to the page", async ({ page }) => {
+  await stubSpeech(page, { refuse: true });
+  await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+  await foot(page).getByRole("button", { name: "Dictate" }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __pageCalls?: number }).__pageCalls ?? 0)).toBeGreaterThan(0);
+  await foot(page).getByRole("button", { name: "Stop dictating" }).click();
+  await expect(foot(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false");
+  await page.reload();
+  await foot(page).getByRole("button", { name: "Dictate" }).click();
+  await expect(foot(page).getByRole("button", { name: "Stop dictating" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#status")).toHaveText("Listening…");
+  await page.evaluate(() => (window as unknown as { __hear: (t: string, f: boolean) => void }).__hear("hello", true));
+  await expect(page.getByLabel("Ask about this page")).toHaveValue("hello");
+});
+
+test("when the page refuses too, the mic turns off and says why", async ({ page }) => {
+  await stubSpeech(page, { refuse: true });
+  await page.addInitScript(() => ((globalThis as unknown as Record<string, unknown>).__pageRefuses = true));
+  await openPopup(page, { keys: { anthropic: GOOD_KEY } });
+  await foot(page).getByRole("button", { name: "Dictate" }).click();
+  await expect(page.locator("#status")).toContainText("Safari didn't allow the microphone here.");
+  await expect(foot(page).getByRole("button", { name: "Dictate" })).toHaveAttribute("aria-pressed", "false");
 });
