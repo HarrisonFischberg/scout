@@ -3,7 +3,7 @@
 // Part 1: the Scout panel ("scout-panel"). One conversation per tab, a port to
 // the background worker while open; Private Browsing chats go when the tab closes.
 // Part 3: Scout mode runs in the worker (src/server/task-host.ts); the panel
-// shows its action log, Take control, and the sensitive-action confirmation
+// shows its action log, Stop, and the sensitive-action confirmation
 // (Stop is the composer's button), and the Permissions screen in Settings.
 import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { chipSources, renderMarkdown } from "./chat/markdown";
@@ -980,7 +980,7 @@ async function main(): Promise<void> {
     for (const i of modeInputs) i.checked = i.value === next;
     syncSegmented(modeInputs);
     modeChip.hidden = next !== "scout";
-    question.placeholder = next === "scout" ? "Tell Scout what to do on this page…" : ASK_HINT;
+    question.placeholder = next === "scout" ? "Tell Scout what to do" : ASK_HINT;
     send.setAttribute("aria-label", next === "scout" ? "Start task" : "Send");
   }
   for (const i of modeInputs) i.addEventListener("change", () => setMode(mode()));
@@ -1946,8 +1946,8 @@ async function main(): Promise<void> {
   // The trace sits inline in the thread under the user's message (owner
   // reference 2026-10-17): a "Working 11s" line, the model's own short
   // narration, muted "Browsed" rows for each batch of actions, rejected or
-  // denied actions in red, and Take control while it runs (Stop is the
-  // composer's button, next to the model picker). When the task ends the line becomes "Finished 1m 43s" with a chevron that folds
+  // denied actions in red. Stop is the composer's button, next to the model
+  // picker; there is no Take control button (owner, 2026-10-20: Stop is enough). When the task ends the line becomes "Finished 1m 43s" with a chevron that folds
   // the trace, and the outcome follows as a normal message. The plain-language
   // action log (spec 8.5) is kept under a collapsed "Steps" row. Events arrive
   // on the port (task.event) for this tab; a reopened panel catches up with
@@ -1967,8 +1967,6 @@ async function main(): Promise<void> {
     body: HTMLElement;
     stepsList: HTMLOListElement;
     stepsSummary: HTMLElement;
-    controls: HTMLElement;
-    take: HTMLButtonElement;
     /** The current "Browsed" row, while consecutive actions are grouped into it. */
     group: { row: HTMLElement; label: HTMLElement; count: number } | null;
     state: string;
@@ -2053,7 +2051,7 @@ async function main(): Promise<void> {
   }
 
   /** Builds the inline trace under the user's message and returns it. */
-  function buildTrace(entries: Entry[], state: string, startedAt: number, opts: { takeControl?: boolean } = {}): Omit<TaskUi, "id" | "goal" | "source" | "promptId" | "resolve" | "finished"> {
+  function buildTrace(entries: Entry[], state: string, startedAt: number, opts: { steps?: boolean } = {}): Omit<TaskUi, "id" | "goal" | "source" | "promptId" | "resolve" | "finished"> {
     const node = document.createElement("div");
     node.className = "trace";
     node.id = "task";
@@ -2075,25 +2073,16 @@ async function main(): Promise<void> {
     });
     const steps = document.createElement("details");
     steps.className = "steps";
-    if (opts.takeControl === false) steps.hidden = true;
+    if (opts.steps === false) steps.hidden = true;
     const stepsSummary = document.createElement("summary");
     stepsSummary.textContent = "Steps (0)";
     const stepsList = document.createElement("ol");
     stepsList.setAttribute("aria-label", "Action log");
     steps.append(stepsSummary, stepsList);
-    const controls = document.createElement("div");
-    controls.className = "controls";
-    const take = document.createElement("button");
-    take.type = "button";
-    take.className = "btn";
-    take.textContent = state === "paused" ? "Resume" : "Take control";
-    controls.append(take);
     body.append(steps);
-    // Controls sit outside the folded part, so they are always reachable.
     node.append(head, body);
-    if (opts.takeControl !== false) node.append(controls);
     log.appendChild(node);
-    const t = { entries: [] as Entry[], startedAt, node, head, headText, body, stepsList, stepsSummary, controls, take, group: null, state, timer: null } as Omit<TaskUi, "id" | "goal" | "source" | "promptId" | "resolve" | "finished">;
+    const t = { entries: [] as Entry[], startedAt, node, head, headText, body, stepsList, stepsSummary, group: null, state, timer: null } as Omit<TaskUi, "id" | "goal" | "source" | "promptId" | "resolve" | "finished">;
     for (const e of entries) {
       t.entries.push(e);
       renderEntry(t as TaskUi, e);
@@ -2107,7 +2096,6 @@ async function main(): Promise<void> {
     t.head.insertAdjacentHTML("afterbegin", PULSE);
     refreshHead();
     t.timer = setInterval(refreshHead, 1000);
-    t.take.addEventListener("click", onTakeControl);
     syncComposer();
     plus.disabled = modelPill.disabled = true;
     for (const i of modeInputs) i.disabled = true;
@@ -2124,7 +2112,6 @@ async function main(): Promise<void> {
     const word = statusOf === "done" ? "Finished" : statusOf === "stopped" ? "Stopped" : "Ended";
     t.head.querySelector(".pulse")?.remove();
     t.headText.textContent = word + " " + elapsedText(Date.now() - t.startedAt);
-    t.controls.remove();
     hideConfirm();
     // A task asked for mid-answer (run_task) ends while the answer still streams: the composer stays busy then.
     const busy = !!activeChat;
@@ -2137,7 +2124,6 @@ async function main(): Promise<void> {
   function setTaskState(state: string): void {
     if (!task) return;
     task.state = state;
-    task.take.textContent = state === "paused" ? "Resume" : "Take control";
     refreshHead();
   }
 
@@ -2209,13 +2195,6 @@ async function main(): Promise<void> {
     }
   }
 
-  function onTakeControl(): void {
-    if (!task) return;
-    const pausing = task.state !== "paused";
-    trace("ui:" + (pausing ? "take-control" : "resume"));
-    setTaskState(pausing ? "paused" : "running");
-    void request(toWorker, "task.control", { task_id: task.id, command: pausing ? "pause" : "resume" }).catch(() => undefined);
-  }
   function onStopTask(): void {
     if (!task) return;
     trace("ui:stop-click task");
@@ -2488,7 +2467,7 @@ async function main(): Promise<void> {
 
   /** The Working card and milestones for a coupon run on this tab (new, or caught up after a reopen). */
   function showCouponRun(startedAt: number): CouponRun {
-    const t = buildTrace([], "running", startedAt, { takeControl: false });
+    const t = buildTrace([], "running", startedAt, { steps: false });
     const run: CouponRun = {
       tabId: tab.id!,
       t,

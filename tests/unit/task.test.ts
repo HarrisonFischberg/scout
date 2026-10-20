@@ -47,6 +47,7 @@ const usage = (i: number, o: number): StreamEvent => ({ type: "usage", usage: { 
 interface Harness {
   deps: TaskDeps;
   acts: TaskAction[];
+  opened: string[];
   overlay: OverlayCommand[];
   events: TaskEvent[];
   logs: Array<{ tool: string; site: string; ms: number; status: string }>;
@@ -58,9 +59,9 @@ interface Harness {
 
 function harness(
   provider: ProviderClient,
-  opts: { confirm?: (r: ConfirmRequest) => Promise<ConfirmDecision>; access?: Partial<PageAccess>; url?: string; screenshot?: boolean; onAct?: (a: TaskAction) => void } = {},
+  opts: { confirm?: (r: ConfirmRequest) => Promise<ConfirmDecision>; access?: Partial<PageAccess>; url?: string; screenshot?: boolean; onAct?: (a: TaskAction) => void; navigate?: (url: string) => Promise<void> } = {},
 ): Harness {
-  const h: Harness = { acts: [], overlay: [], events: [], logs: [], icons: [], asked: [], timeline: [], control: new AgentControl(), deps: undefined as never };
+  const h: Harness = { acts: [], opened: [], overlay: [], events: [], logs: [], icons: [], asked: [], timeline: [], control: new AgentControl(), deps: undefined as never };
   let access = parsePageAccess(opts.access ?? {});
   const t0 = Date.now();
   const mark = (what: string): number => h.timeline.push({ at: Date.now() - t0, what });
@@ -84,6 +85,11 @@ function harness(
       },
       screenshot: async () => (opts.screenshot === false ? null : { image: { mediaType: "image/jpeg", data: "AAAA" }, width: 800, height: 600 }),
       url: async () => opts.url ?? SNAP.url,
+      navigate: async (url) => {
+        h.opened.push(url);
+        mark("navigate");
+        await opts.navigate?.(url);
+      },
     },
     access: async () => access,
     admin: async () => [],
@@ -134,7 +140,7 @@ describe("Scout mode runner", () => {
 
   it("rejects unknown actions and bad arguments, logs them, and never performs them", async () => {
     const provider = scripted([
-      [act([{ type: "navigate", url: "https://evil.test" }, { type: "click", target: { ref: "e3" } }])],
+      [act([{ type: "open_tab", url: "https://evil.test" }, { type: "click", target: { ref: "e3" } }])],
       [act([{ type: "click", target: { ref: "nope" } }])],
       [{ type: "tool_call", id: "x", name: "delete_everything", input: {} }],
       [finish("gave up")],
@@ -144,12 +150,64 @@ describe("Scout mode runner", () => {
     expect(out.status).toBe("done");
     expect(h.acts).toHaveLength(0);
     expect(logLines(h).filter((l) => l.startsWith("rejected"))).toEqual([
-      "rejected: Rejected unknown action \u201cnavigate\u201d",
+      "rejected: Rejected unknown action \u201copen_tab\u201d",
       "rejected: Rejected action click: click needs a target: an element ref like e12, or x and y in screenshot pixels.",
       "rejected: Rejected unknown action \u201cdelete_everything\u201d",
     ]);
-    expect(h.logs.filter((l) => l.status === "rejected").map((l) => l.tool)).toEqual(["action:navigate", "action:click", "action:delete_everything"]);
+    expect(h.logs.filter((l) => l.status === "rejected").map((l) => l.tool)).toEqual(["action:open_tab", "action:click", "action:delete_everything"]);
     expect(textOf(provider.seen[1]!.messages[2]!.content)).toContain("unknown_action");
+  });
+
+  // Owner bug 2026-10-20 (iPhone, Take control): "go to Google.com" failed
+  // because the agent could only press Control-L / Command-T on the page.
+  it("opens an address through the tab, shows the overlay again, and skips the rest of the batch", async () => {
+    const provider = scripted([
+      [act([{ type: "navigate", url: "google.com" }, { type: "click", target: { ref: "e3" } }])],
+      [finish("On Google.")],
+    ]);
+    const h = harness(provider);
+    const out = await runTask(h.deps);
+    expect(out).toMatchObject({ status: "done", summary: "On Google." });
+    expect(h.opened).toEqual(["https://google.com/"]);
+    expect(h.acts).toHaveLength(0);
+    expect(h.asked).toHaveLength(0);
+    const shows = h.overlay.filter((c) => c.type === "show");
+    expect(shows).toHaveLength(2);
+    expect(h.timeline.findIndex((t) => t.what === "navigate")).toBeLessThan(h.timeline.map((t) => t.what).lastIndexOf("overlay:show"));
+    expect(logLines(h)).toContain("ok: Did: go to google.com");
+    expect(textOf(provider.seen[1]!.messages[2]!.content)).toContain('"action":"navigate","message":"Opened https://google.com/."');
+    const actTool = provider.seen[0]!.tools!.find((t) => t.name === "act")!;
+    expect(JSON.stringify(actTool.parameters)).toContain('"navigate"');
+    expect(provider.seen[0]!.system).toContain("navigate");
+  });
+
+  it("refuses to open a blocked site and says why, without touching the tab", async () => {
+    const provider = scripted([[act([{ type: "navigate", url: "https://blocked.test/a" }])], [finish("Could not open it.")]]);
+    const h = harness(provider, { access: { blocked: ["blocked.test"] } });
+    const out = await runTask(h.deps);
+    expect(out.status).toBe("done");
+    expect(h.opened).toEqual([]);
+    expect(textOf(provider.seen[1]!.messages[2]!.content)).toContain("blocked.test is blocked in Settings");
+  });
+
+  it("reports a failed navigation instead of hanging", async () => {
+    const provider = scripted([[act([{ type: "navigate", url: "https://google.com" }])], [finish("x")]]);
+    const h = harness(provider, { navigate: async () => Promise.reject(new Error("tabs.update unavailable")) });
+    await runTask(h.deps);
+    expect(textOf(provider.seen[1]!.messages[2]!.content)).toContain("Scout could not open that address in this tab.");
+  });
+
+  it("tells the model that browser shortcuts like Control-L never reach the address bar, without pressing them", async () => {
+    const provider = scripted([
+      [act([{ type: "key", key: "l", modifiers: ["control"] }, { type: "type", text: "google.com" }])],
+      [act([{ type: "key", key: "t", modifiers: ["meta"] }])],
+      [finish("x")],
+    ]);
+    const h = harness(provider);
+    await runTask(h.deps);
+    expect(h.acts).toHaveLength(0);
+    expect(textOf(provider.seen[1]!.messages[2]!.content)).toContain("use navigate");
+    expect(logLines(h).filter((l) => l.startsWith("rejected"))).toHaveLength(2);
   });
 
   it("asks before a sensitive action even when the server marks it pre-approved, and a denial stops the batch", async () => {

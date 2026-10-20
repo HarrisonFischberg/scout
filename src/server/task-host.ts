@@ -30,6 +30,8 @@ export interface TaskHostDeps {
   /** Injects the overlay script if needed and calls its handler. */
   overlay(tabId: number, req: OverlayRequest): Promise<unknown>;
   capture(tab: TabRef): Promise<SizedImage>;
+  /** Sets the tab's address (tabs.update) and resolves once it has loaded or a time limit passed. */
+  navigate(tabId: number, url: string): Promise<void>;
   access(): Promise<PageAccess>;
   admin(): Promise<readonly string[]>;
   provider(p: Provider, model: string): Promise<ProviderClient>;
@@ -232,6 +234,7 @@ export class TaskHost {
           return img.width && img.height ? { image: { mediaType: img.mediaType, data: img.data }, width: img.width, height: img.height } : null;
         },
         url: async () => (await deps.tab(tabId))?.url ?? "",
+        navigate: (url) => deps.navigate(tabId, url),
       },
       access: deps.access,
       admin: deps.admin,

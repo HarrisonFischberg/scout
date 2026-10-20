@@ -284,23 +284,12 @@ test("Allow once performs the action; Always allow on this site is remembered, l
   await expect(allowed).toContainText("No sites always allowed.");
 });
 
-test("Take control stops actions within 250 ms, Resume continues, and Stop removes the overlay within 500 ms", async ({ page }) => {
+test("no Take control button in the panel; Stop removes the overlay within 500 ms", async ({ page }) => {
   await openPopup(page, [act([{ type: "click", target: { ref: "e3" } }, { type: "wait", ms: 1500 }, { type: "click", target: { ref: "e3" } }]), act([{ type: "wait", ms: 8000 }, { type: "click", target: { ref: "e3" } }]), finish("never")]);
   await startTask(page, "Apply codes");
   await expect(taskLog(page)).toContainText("Did: click “Apply”");
-  const clickedAt = await page.evaluate(() => performance.now());
-  await page.getByRole("button", { name: "Take control" }).click();
-  await expect(page.getByRole("button", { name: "Resume" })).toBeVisible();
-  await expect(traceHead(page)).toContainText("Paused");
-  await page.waitForTimeout(400);
-  let f = await fake(page);
-  expect(f.rec.filter((r) => r.what === "act")).toHaveLength(1);
-  const paused = f.rec.find((r) => r.what === "overlay:state" && (r.detail as { state: string }).state === "paused")!;
-  expect(paused).toBeDefined();
-  // Same clock as the click: the overlay was told "paused" within 250 ms of Take control.
-  expect(paused.at + f.t0 - clickedAt).toBeLessThan(250);
-  // Resume finishes the wait, then the batch goes on.
-  await page.getByRole("button", { name: "Resume" }).click();
+  // Owner, 2026-10-20: the composer's Stop button is enough; no Take control pop-up.
+  await expect(page.getByRole("button", { name: "Take control" })).toHaveCount(0);
   await expect.poll(async () => (await acts(page)).length, { timeout: 8000 }).toBe(2);
   await expect(taskLog(page)).toContainText("Did: wait 1.5 s");
   // The next batch starts with an 8 s wait: Stop ends it and the overlay goes at once.
@@ -314,7 +303,7 @@ test("Take control stops actions within 250 ms, Resume continues, and Stop remov
   // Stop just stops: the trace says so, with no error card under it (owner, 2026-10-17).
   await expect(page.locator(".msg.error")).toHaveCount(0);
   await expect(page.getByRole("log", { name: "Conversation" }).getByText("Stopped.", { exact: true })).toHaveCount(0);
-  f = await fake(page);
+  const f = await fake(page);
   const stopClick = f.rec.find((r) => r.what === "overlay:hide")!;
   expect(stopClick).toBeDefined();
   expect(f.rec.filter((r) => r.what === "act")).toHaveLength(2);

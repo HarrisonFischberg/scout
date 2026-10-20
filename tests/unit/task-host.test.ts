@@ -53,6 +53,7 @@ interface Fake {
   saved: Array<{ conv: string; question: string; answer: string }>;
   panelOpens: number;
   posted: Array<Record<string, unknown>>;
+  navigated: Array<[number, string]>;
   port: { postMessage(m: unknown): void };
 }
 
@@ -60,7 +61,7 @@ function fake(provider: ProviderClient, opts: { tabs?: TabRef[]; access?: Partia
   const storage = memStorage();
   storage.data.pageAccess = parsePageAccess(opts.access ?? {});
   const tabs = opts.tabs ?? [{ id: 1, url: "https://shop.test/a", title: "Shop", windowId: 1, active: true }];
-  const f: Fake = { host: undefined as never, storage, content: [], overlay: [], icons: [], saved: [], panelOpens: 0, posted: [], port: { postMessage: (m) => f.posted.push((m as { payload: Record<string, unknown> }).payload) } };
+  const f: Fake = { host: undefined as never, storage, content: [], overlay: [], icons: [], saved: [], panelOpens: 0, posted: [], navigated: [], port: { postMessage: (m) => f.posted.push((m as { payload: Record<string, unknown> }).payload) } };
   const deps: TaskHostDeps = {
     storage,
     tab: async (id) => tabs.find((t) => t.id === id) ?? null,
@@ -76,6 +77,7 @@ function fake(provider: ProviderClient, opts: { tabs?: TabRef[]; access?: Partia
     },
     overlay: async (_tab, req) => void f.overlay.push(req),
     capture: async () => ({ mediaType: "image/jpeg", data: "AAAA", width: 800, height: 600 }),
+    navigate: async (tabId, url) => void f.navigated.push([tabId, url]),
     access: async () => parsePageAccess((await storage.get("pageAccess")).pageAccess),
     admin: async () => [],
     provider: async () => provider,
@@ -110,6 +112,14 @@ describe("task host", () => {
     const empty = fake(scripted([[finish("x")]]));
     await expect(empty.host.start({ tab_id: 1, goal: "  " })).rejects.toBeInstanceOf(BridgeError);
     for (const f of [off, blocked, local, empty]) expect(f.content).toHaveLength(0);
+  });
+
+  it("opens an address the agent asks for through the task's own tab, not a page key", async () => {
+    const f = fake(scripted([[act([{ type: "navigate", url: "google.com" }])], [finish("On Google.")]]));
+    const { task_id } = await f.host.start({ tab_id: 1, goal: "Go to Google.com" });
+    await f.host.outcome(task_id);
+    expect(f.navigated).toEqual([[1, "https://google.com/"]]);
+    expect(f.content.filter((r) => r.type === "scout:task-act")).toHaveLength(0);
   });
 
   it("runs a task, streams its events to a watching port, switches the icon, and saves the outcome", async () => {
