@@ -10,7 +10,8 @@
 // does (src/agent/loop.ts), so no provider-specific reasoning blocks have to
 // be echoed between rounds.
 import { BridgeError } from "../bridge/messages";
-import { buildMessages, SYSTEM_PROMPT, TOOL_RULES, type PageContext } from "../chat/prompt";
+import type { QuestionScope } from "../chat/intent";
+import { buildMessages, chatSystemPrompt, type PageContext } from "../chat/prompt";
 import { CHAT_MAX_TOKENS } from "../chat/session";
 import type { Provider } from "../keychain";
 import { ProviderError } from "../providers/errors";
@@ -42,7 +43,12 @@ export interface StartRequest {
   prefix_sources?: Array<{ url: string; title: string }>;
   /** Host of the page the chat is on (the chats menu). */
   site?: string;
+  /** "general": the panel judged the message unrelated to the page and sent none (src/chat/intent.ts). */
+  scope?: QuestionScope;
 }
+
+/** Most web searches one chat answer may run (each is billed by the provider). */
+export const CHAT_WEB_SEARCHES = 3;
 
 /** A numbered source saved with the answer: a shared page, then web citations. */
 export interface SourceRef {
@@ -208,13 +214,16 @@ export class ScoutServer {
       for (let round = 0; round < maxRounds && !signal.aborted; round++) {
         // The last round offers no tools, so the model has to answer.
         const offer = tools.length > 0 && round < maxRounds - 1;
+        // The search budget is for the whole answer, not each round.
+        const searchesLeft = CHAT_WEB_SEARCHES - (usage.webSearches ?? 0);
         let roundText = "";
         const calls: Array<{ id: string; name: string; input: unknown }> = [];
         for await (const ev of provider.stream({
           model: req.model,
-          system: tools.length ? SYSTEM_PROMPT + " " + TOOL_RULES : SYSTEM_PROMPT,
+          system: chatSystemPrompt({ scope: req.scope, tools: tools.length > 0, webSearch: searchesLeft > 0 }),
           messages,
           ...(offer ? { tools } : {}),
+          ...(searchesLeft > 0 ? { webSearch: true, webSearchMaxUses: searchesLeft } : {}),
           maxTokens: CHAT_MAX_TOKENS,
           ...(req.effort ? { effort: req.effort } : {}),
           signal,

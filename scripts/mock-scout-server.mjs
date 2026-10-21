@@ -326,7 +326,10 @@ createServer(async (req, res) => {
     return res.writeHead(400, CORS).end("{}");
   }
   if (process.env.MOCK_LOG) appendFileSync(process.env.MOCK_LOG, JSON.stringify({ at: new Date().toISOString(), body }) + "\n");
-  if (Array.isArray(body.tools) && body.tools.some((t) => String(t?.type).startsWith("web_search"))) return couponStream(res, body);
+  // Coupon searches offer web search with the coupon finder's prompt; chat
+  // answers offer it too (2026-10-21) and get the usual chat scenarios.
+  const searches = Array.isArray(body.tools) && body.tools.some((t) => String(t?.type).startsWith("web_search"));
+  if (searches && /coupon, promo, and discount codes/.test(String(body.system ?? ""))) return couponStream(res, body);
   const p = Array.isArray(body.tools) && body.tools.some((t) => t?.name === "act") ? taskPlan(body) : plan(body);
   if (p.status) return res.writeHead(p.status, { ...CORS, "content-type": "application/json" }).end("{}");
   await stream(res, p);
