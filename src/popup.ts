@@ -5,6 +5,7 @@
 // Part 3: Scout mode runs in the worker (src/server/task-host.ts); the panel
 // shows its action log, Stop, and the sensitive-action confirmation
 // (Stop is the composer's button), and the Permissions screen in Settings.
+import { classifyQuestion, pageWords, type QuestionScope } from "./chat/intent";
 import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
 import { chipSources, renderMarkdown } from "./chat/markdown";
 import { answerText, fillSourceCard, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
@@ -154,6 +155,7 @@ interface ActiveTab {
   id?: number;
   windowId?: number;
   url?: string;
+  title?: string;
   favIconUrl?: string;
   incognito: boolean;
 }
@@ -165,6 +167,7 @@ async function activeTab(): Promise<ActiveTab> {
       ...(tab?.id !== undefined ? { id: tab.id } : {}),
       ...(tab?.windowId !== undefined ? { windowId: tab.windowId } : {}),
       ...(tab?.url ? { url: tab.url } : {}),
+      ...(tab?.title ? { title: tab.title } : {}),
       ...(tab?.favIconUrl ? { favIconUrl: tab.favIconUrl } : {}),
       incognito: tab?.incognito === true || browser.extension?.inIncognitoContext === true,
     };
@@ -465,6 +468,8 @@ async function main(): Promise<void> {
    */
   let connecting: Promise<void> | null = null;
   const history: ChatMessage[] = [];
+  /** Was the last message about the page? A short follow-up keeps its topic. */
+  let lastScope: QuestionScope | undefined;
   /** The answer streaming now (Part 2), if any. */
   let activeChat: string | null = null;
   let others: TabInfo[] = [];
@@ -879,6 +884,8 @@ async function main(): Promise<void> {
       turns.push(chat ? { bubble: answer, entry: e } : { entry: e });
     }
     history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
+    const lastChat = [...entries].reverse().find((e) => !e.kind || e.kind === "chat");
+    lastScope = lastChat ? ((lastChat.sources ?? []).some((x) => x.kind === "page") ? "page" : "general") : undefined;
   }
 
   function clearThread(): void {
@@ -889,6 +896,7 @@ async function main(): Promise<void> {
     log.replaceChildren();
     confirmBox.hidden = true;
     history.length = 0;
+    lastScope = undefined;
     updateEmpty();
   }
 
@@ -1829,6 +1837,18 @@ async function main(): Promise<void> {
       granted = await browser.permissions.request({ origins }).catch(() => false);
     }
     const isSummary = trimmed === SUMMARIZE_QUESTION;
+    // A general question goes without the page (src/chat/intent.ts); the page
+    // stays shared with the answer, so read_page can still fetch it.
+    // The standalone page has no page to send; it keeps the usual prompt.
+    const scope: QuestionScope = cont
+      ? (lastScope ?? "page")
+      : STANDALONE
+        ? "page"
+        : isSummary
+          ? "page"
+          : classifyQuestion({ question: trimmed, pageTitle: pageWords(tab.title, tab.url), attachedTabs: extra.length, ...(lastScope ? { previous: lastScope } : {}) });
+    lastScope = scope;
+    trace("scope:" + scope);
     startRun(isSummary ? "summarize" : "ask", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model, question: cont ? cont.question : trimmed });
     if (!port) {
       addMessage("error", "Scout's background worker is not running. Close Scout and open it again.");
@@ -1849,7 +1869,7 @@ async function main(): Promise<void> {
     }
     const v = newView(id, bubble, cont ? cont.question : trimmed, s.settings.model, cont ? cont.partial + (/\s$/.test(cont.partial) ? "" : " ") : "");
     renderView(id);
-    status.textContent = cont ? "Finishing the answer." : STANDALONE ? "Waiting for the answer." : "Reading the page and waiting for the answer.";
+    status.textContent = cont ? "Finishing the answer." : STANDALONE || scope === "general" ? "Waiting for the answer." : "Reading the page and waiting for the answer.";
     setBusy(true);
     if (!storage) conv = conv || "";
     else if (!conv) conv = await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "");
@@ -1864,7 +1884,7 @@ async function main(): Promise<void> {
       const ctx = await request<ContextReply>(
         toWorker,
         "context.read",
-        { ...(tab.id !== undefined ? { current_tab: tab.id } : {}), attached: granted ? extra.map((t) => t.id) : [], include_current: !STANDALONE },
+        { ...(tab.id !== undefined ? { current_tab: tab.id } : {}), attached: granted ? extra.map((t) => t.id) : [], include_current: !STANDALONE && scope === "page" },
         { timeoutMs: 15_000 },
       ).catch(() => null);
       pages = ctx?.pages ?? [];
@@ -1872,8 +1892,8 @@ async function main(): Promise<void> {
       const shared = ctx?.shared ?? [];
       const cur = shared.find((t) => t.tab_id === tab.id);
       current.page(readOk(cur?.status) ? pages[0]?.url : undefined);
-      trace(readOk(cur?.status) ? "page:read ok" : "page:read failed");
-      if (!STANDALONE && ctx?.read_current !== false && !readOk(cur?.status)) status.textContent = "Could not read this page. Answering without it.";
+      trace(scope === "general" ? "page:not needed" : readOk(cur?.status) ? "page:read ok" : "page:read failed");
+      if (!STANDALONE && scope === "page" && ctx?.read_current !== false && !readOk(cur?.status)) status.textContent = "Could not read this page. Answering without it.";
       v.scope = [...(!STANDALONE && ctx?.read_current !== false && tab.id !== undefined ? [tab.id] : []), ...extra.map((t) => t.id)];
       v.sources = pages.map((p) => ({ url: p.url, title: p.title, kind: "page", snippet: snippetOf(p.text) }));
       v.shared = shared.map((t) => ({ title: attached.get(t.tab_id)?.title || t.title, host: t.host, status: t.status }));
@@ -1909,6 +1929,7 @@ async function main(): Promise<void> {
           pages,
           shared: v.shared,
           ...(pageSite ? { site: pageSite } : {}),
+          scope,
           ...(cont
             ? { display_question: cont.question, answer_prefix: v.prefix, prefix_sources: cont.sources.map((x) => ({ url: x.url, title: x.title ?? "" })) }
             : {}),
