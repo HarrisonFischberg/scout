@@ -8,7 +8,7 @@ row against runtime behavior before any safeguard PASS.
 | Provider API key | call the user's chosen AI provider | S03 key field | macOS/iOS Keychain (app group); never in `storage.local`, logs, or prompts | until user removes | S08 Remove key / Delete all data |
 | Provider API key, Chrome and Firefox (2026-10-19, owner's choice) | call the user's chosen AI provider | Settings key field | the browser's local extension storage on that computer (`apiKey:<provider>`, `createStorageSend` in `src/keychain.ts`); never synced (`storage.sync` unused), never in logs or prompts; Safari builds compile this out (`check:release`) | until user removes or uninstalls the extension | Settings Remove key / Delete all data / uninstall |
 | Provider, model, and effort choice | route requests | S03 / S08 | `browser.storage.local` key `settings`; key `modelMigration` marks the one-time switch to Haiku 5.5 High (2026-10-17) as done | until changed | Delete all data |
-| Permission to share with each AI provider (provider, time allowed, disclosure version; no content) | App Store Review Guideline 5.1.2(i): nothing goes to a provider before the user allows it (2026-10-16) | consent dialog (Allow) before the first request to that provider: chat, Summarize, Scout mode, Find coupons, key test, live model list; iOS host app consent sheet before Test key (removed from the setup screen 2026-10-17) | `browser.storage.local` key `aiConsent`; iOS host app `UserDefaults` keys `aiConsent.anthropic` / `aiConsent.openai` (version number only; separate from the extension, which asks again) | until withdrawn, or `CONSENT_VERSION` changes | Settings > Sharing with AI providers > Withdraw, Delete all data; iOS setup screen Withdraw permission; deleting the app |
+| Permission to share with each AI provider (provider, time allowed, disclosure version; no content) | App Store Review Guideline 5.1.2(i): nothing goes to a provider before the user allows it (2026-10-16) | consent dialog (Allow) before the first request to that provider: chat, Summarize, Scout mode, Find coupons, key test, live model list. The iOS host app's own consent sheet before Test key was removed from the setup screen 2026-10-17 and its code on 2026-10-21 | `browser.storage.local` key `aiConsent` | until withdrawn, or `CONSENT_VERSION` changes | Settings > Sharing with AI providers > Withdraw, Delete all data |
 | Model list (model ids, display names, supported effort levels; no key, no usage) | fill the Settings model and effort dropdowns (2026-10-16) | read-only `GET /v1/models` to the chosen provider with the user's key in a header, when Settings opens and the cached list is over a day old, or on Refresh model list; only after the user allowed sharing with that provider (else the built-in list) | `browser.storage.local` key `modelCache` | replaced after a day | Delete all data |
 | Per-tab panel state (tab id, conversation id, panel open flag, timestamp; no page content) | reopen each tab's own conversation (spec Part 1, 2026-10-16) | popup on open, New chat; background worker on panel open/close | `browser.storage.local` key `tabState`; chat entries carry the conversation id | until the tab closes, or Safari restarts | tab close, Safari restart, Delete all data |
 | Page content snapshot (text, structure; password and card fields redacted) | plan agent actions (Scout mode, Find coupons) | content script on user request only | sent to Anthropic or OpenAI (user's own account) | provider's retention under user's account terms | provider-side: user's provider account; local: not stored beyond conversation |
@@ -93,13 +93,11 @@ Scout for Safari. Any addition needs a new row and owner approval first.
 Vendors (user-selected, BYOK): Anthropic (Messages API), OpenAI (Responses
 API). Apple (App Store distribution) once released.
 
-Key test (T006, `apple/App/ProviderSetup.swift`): no longer reachable since
-2026-10-17, when the setup screen stopped asking for the key (the key is added
-in the extension's own Settings on iOS as on Mac); the code below is kept until
-a Mac build can remove it. Before that, the host app sent one
-read-only GET to `api.anthropic.com/v1/models` or `api.openai.com/v1/models`
-with the user's key in a header, when the user presses "Test key", and only
-after the user chose Allow on the consent sheet for that provider. Nothing is
-logged or stored from the response; only the status code is used. The key is
-then written to Keychain on "Save key". No new recipient beyond the vendors
-above. The app sandbox gained `com.apple.security.network.client` for this.
+Key test (T006): removed 2026-10-21 with `apple/App/ProviderSetup.swift`
+(its key test, setup model and consent record). The setup screen stopped
+asking for the key on 2026-10-17 (the key is added in the extension's own
+Settings on iOS as on Mac), so the host app sends nothing to any provider and
+no longer stores `aiConsent.anthropic` / `aiConsent.openai` in UserDefaults
+(a value left by an earlier build is never read). The Mac app sandbox no
+longer has `com.apple.security.network.client`: the host app makes no network
+requests; links open in the browser.

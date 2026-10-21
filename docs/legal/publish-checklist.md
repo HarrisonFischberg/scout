@@ -1,5 +1,26 @@
 # Legal pages: what is left before publishing
 
+## Status on 2026-10-21 (supersedes the 2026-10-16 status below)
+
+- Privacy policy: **published** at https://rarecreatures.app/apps/scout/privacy/
+  (last updated 19 October 2026; names Rare Creatures LLC and an email
+  contact; no UNKNOWN or draft text; source in the website repository). The
+  app and the extension link to it; the bundled drafts were removed
+  (`scripts/remove-legal-drafts.rb`, PR #76). `privacy-policy.md` here is a
+  superseded draft. Not recorded: counsel's review of the published page
+  (launch blocker 8). Behind the app on chat web search, Private Browsing
+  chats, the Mac microphone and remembered or guessed coupon codes (launch
+  blocker 36).
+- Terms: not published; the App Store uses Apple's standard EULA.
+  `terms.md` stays a draft.
+- Consent wording: counsel reviewed version 1; the app shows version 2
+  (`consent-v2-review.md`, launch blockers 23, 32, 34, 36).
+- Sections A to C below describe the original plan. Steps C2 to C4 are done
+  for the privacy policy; C5 is updated in `docs/compliance-checklist.md`
+  and `docs/launch-blockers.md`.
+
+## Earlier plan (2026-10-16)
+
 Status on 2026-10-16:
 
 - Consent wording (`docs/legal/consent-review.md`): reviewed by counsel,
