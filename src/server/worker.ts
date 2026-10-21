@@ -280,6 +280,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
       display_question?: string;
       answer_prefix?: string;
       prefix_sources?: Array<{ url: string; title: string }>;
+      scope?: "page" | "general";
     }) => {
       server.start(p);
       return { message_id: p.message_id };

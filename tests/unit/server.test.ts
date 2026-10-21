@@ -105,6 +105,46 @@ describe("ScoutServer", () => {
     ]);
   });
 
+  it("offers web search with a budget for the whole answer, and tells the model when to use it", async () => {
+    const provider = scripted([
+      [{ type: "tool_call", id: "t", name: "read_page", input: {} }, { type: "usage", usage: { inputTokens: 1, outputTokens: 1, webSearches: 2 } }],
+      [text("ok"), { type: "usage", usage: { inputTokens: 1, outputTokens: 1, webSearches: 1 } }],
+    ]);
+    const { s } = server(provider);
+    s.start(REQ);
+    const done = new Promise<void>((resolve) =>
+      s.subscribe("m1", 0, (n) => {
+        if (n.event.kind === "tool_request") s.toolResult("m1", n.event.request_id, { status: "ok", text: "page" });
+        if (n.event.kind === "done") resolve();
+      }),
+    );
+    await done;
+    expect(provider.seen[0]).toMatchObject({ webSearch: true, webSearchMaxUses: 3 });
+    expect(provider.seen[0]?.system).toContain("You can search the web.");
+    expect(provider.seen[1]).toMatchObject({ webSearch: true, webSearchMaxUses: 1 });
+  });
+
+  it("sends a general question with the general rules, which never name the page", async () => {
+    const provider = scripted([[text("Try Martha & Bros."), { type: "done" }]]);
+    const { s } = server(provider);
+    s.start({ ...REQ, question: "Best coffee shop in Noe Valley?", pages: [], shared: [], scope: "general" });
+    await collect(s, "m1");
+    const req = provider.seen[0]!;
+    expect(req.system).toContain("the page was not included");
+    expect(req.system).toContain("Do not mention the page");
+    expect(req.system).not.toContain("is included with each message");
+    expect(textOf(last(req.messages)!.content)).toBe("Best coffee shop in Noe Valley?");
+  });
+
+  it("keeps the page rules for a page question", async () => {
+    const provider = scripted([[text("$10."), { type: "done" }]]);
+    const { s } = server(provider);
+    s.start({ ...REQ, scope: "page" });
+    await collect(s, "m1");
+    expect(provider.seen[0]?.system).toContain("is included with each message");
+    expect(textOf(last(provider.seen[0]!.messages)!.content)).toContain("<untrusted_page_content>");
+  });
+
   it("refuses a reused message id", () => {
     const { s } = server(scripted([[text("x")]]));
     s.start(REQ);
