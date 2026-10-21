@@ -1,5 +1,11 @@
 # Scout AI Assistant Terms of Service (DRAFT)
 
+> **Not published, not needed for the App Store submission (2026-10-21).**
+> The App Store listing uses Apple's standard EULA
+> (`docs/app-store-submission.md`), and the app shows no terms of its own.
+> This draft stays unchanged for a later decision; its open placeholders block
+> nothing until the owner decides to publish terms.
+
 > DRAFT for qualified legal review. Not approved. Not for publication.
 > Items marked **UNKNOWN** are missing facts the owner must supply
 > (`docs/launch-blockers.md`, blocker 1).

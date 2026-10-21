@@ -9,11 +9,11 @@ target = project.new_target(:unit_test_bundle, 'SafariScoutTests', :osx, '14.0')
 group = project.main_group.find_subpath('Tests', true)
 group.set_source_tree('<group>')
 group.set_path('Tests')
-%w[KeychainStoreTests.swift ProviderSetupTests.swift].each do |f|
+%w[KeychainStoreTests.swift].each do |f|
   target.add_file_references([group.new_reference(f)])
 end
 # Code under test is compiled in directly (no host app, no @testable import).
-project.files.select { |f| %w[KeychainStore.swift ProviderSetup.swift].include?(f.path.to_s.split('/').last) }
+project.files.select { |f| %w[KeychainStore.swift].include?(f.path.to_s.split('/').last) }
        .uniq { |f| f.path.to_s.split('/').last }
        .each { |ref| target.source_build_phase.add_file_reference(ref) }
 target.build_configurations.each do |c|

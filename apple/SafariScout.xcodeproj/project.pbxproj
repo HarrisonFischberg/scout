@@ -29,8 +29,6 @@
 		68EFD9AC48B2EC8AACAA8530 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */; };
 		6CF0181488D921CF9F0B9750 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = 9C7921F29DCF66058FC8BE1C /* background.js */; };
 		73269E726703913A34E07EC7 /* ManagedPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 017E778274AD8134FA1FAFD8 /* ManagedPolicy.swift */; };
-		7A1C0D4E2B9F46C3A8E5D1A1 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
-		7A1C0D4E2B9F46C3A8E5D1A2 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
 		7A1C0D4E2B9F46C3A8E5D1A3 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */; };
 		7A1C0D4E2B9F46C3A8E5D1A4 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */; };
 		7A1C0D4E2B9F46C3A8E5D1A6 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
@@ -39,7 +37,6 @@
 		7A1C0D4E2B9F46C3A8E5D1F2 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		835D2EEF9233782755B3D00F /* Scout for Safari Extension (macOS).appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5B36544F9C86B6EED546C345 /* Scout for Safari Extension (macOS).appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8B2E1F4D6C3E5F7A9B0C1D2E /* overlay.js in Resources */ = {isa = PBXBuildFile; fileRef = 7A1F0E3C5B2D4E6F8A9B0C1D /* overlay.js */; };
-		8B9A6545AF27168729CA73E8 /* ProviderSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */; };
 		8D7D9B0716DBF1217C50A15E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 04F7B8DE0E0129420C3451F7 /* PrivacyInfo.xcprivacy */; };
 		8F23322DBF642A0F901134D4 /* ManagedPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E6C47A906B73CF54C895C3C /* ManagedPolicyTests.swift */; };
 		982764464B6865F0DAF9415B /* edge.js in Resources */ = {isa = PBXBuildFile; fileRef = 4D16268A894074E1BF8D7243 /* edge.js */; };
@@ -50,7 +47,6 @@
 		B0F17D07F5D33A6B6AE0E129 /* edge.js in Resources */ = {isa = PBXBuildFile; fileRef = 4D16268A894074E1BF8D7243 /* edge.js */; };
 		B327455324A477C5E91BA4E5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 028B5C712BE52F47B902E1D5 /* PrivacyInfo.xcprivacy */; };
 		B69C0FFD3E4BBE351CF174FB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 04F7B8DE0E0129420C3451F7 /* PrivacyInfo.xcprivacy */; };
-		B892ED1F69C079AFB3202BAE /* ProviderSetupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB2AA781644909EFF76E9FC /* ProviderSetupTests.swift */; };
 		C0C7388EAF345F982393C9EE /* KeychainStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67857510C6E847756D3CEA9F /* KeychainStoreTests.swift */; };
 		C3A53F9D6F7BA805B8F82363 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */; };
 		C4705C78669FD7B254212BAB /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A44912843C812B2B1960158 /* Cocoa.framework */; };
@@ -131,7 +127,6 @@
 		67857510C6E847756D3CEA9F /* KeychainStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeychainStoreTests.swift; sourceTree = "<group>"; };
 		6BD6F66D11844DC065A72B17 /* SafariScoutExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = SafariScoutExtension.entitlements; sourceTree = "<group>"; };
 		77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS14.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
-		7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSetup.swift; sourceTree = "<group>"; };
 		7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		7A1F0E3C5B2D4E6F8A9B0C1D /* overlay.js */ = {isa = PBXFileReference; includeInIndex = 1; path = overlay.js; sourceTree = "<group>"; };
@@ -139,7 +134,6 @@
 		8E6C47A906B73CF54C895C3C /* ManagedPolicyTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ManagedPolicyTests.swift; sourceTree = "<group>"; };
 		9C7921F29DCF66058FC8BE1C /* background.js */ = {isa = PBXFileReference; includeInIndex = 1; path = background.js; sourceTree = "<group>"; };
 		A957567A8D34C49A032E09C6 /* Scout for Safari (iOS).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Scout for Safari (iOS).app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		AFB2AA781644909EFF76E9FC /* ProviderSetupTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSetupTests.swift; sourceTree = "<group>"; };
 		B208F2A517C1376FC6C7DC97 /* SafariScoutUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SafariScoutUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B4986E15F6D4CE7B6EBDAC66 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BA52935E29A00BF86685A3B8 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -286,7 +280,6 @@
 			children = (
 				1FFF3A7A6FFAC4C38E60D00F /* SafariScoutApp.swift */,
 				D6984060B5995FB15A70F7EB /* ContentView.swift */,
-				7A1C0D4E2B9F46C3A8E5D1A0 /* ProviderSetup.swift */,
 				7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */,
 				899B4FA63AA1A90BAC21BB4C /* Info.plist */,
 				FFE46ABD9E4B81390D9346BB /* SafariScout.entitlements */,
@@ -310,7 +303,6 @@
 			isa = PBXGroup;
 			children = (
 				67857510C6E847756D3CEA9F /* KeychainStoreTests.swift */,
-				AFB2AA781644909EFF76E9FC /* ProviderSetupTests.swift */,
 				8E6C47A906B73CF54C895C3C /* ManagedPolicyTests.swift */,
 			);
 			name = Tests;
@@ -543,7 +535,6 @@
 			files = (
 				44591AF1303D7DE7A9594AF2 /* SafariScoutApp.swift in Sources */,
 				432C9AE3398D8889519FDAFD /* ContentView.swift in Sources */,
-				7A1C0D4E2B9F46C3A8E5D1A1 /* ProviderSetup.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1A3 /* OnboardingView.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1A6 /* KeychainStore.swift in Sources */,
 			);
@@ -555,7 +546,6 @@
 			files = (
 				3CA34DA466AB0F3599D4F3D1 /* SafariScoutApp.swift in Sources */,
 				523BC8C08DFDAB1AA8A16FAE /* ContentView.swift in Sources */,
-				7A1C0D4E2B9F46C3A8E5D1A2 /* ProviderSetup.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1A4 /* OnboardingView.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1A7 /* KeychainStore.swift in Sources */,
 			);
@@ -566,8 +556,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				C0C7388EAF345F982393C9EE /* KeychainStoreTests.swift in Sources */,
-				B892ED1F69C079AFB3202BAE /* ProviderSetupTests.swift in Sources */,
-				8B9A6545AF27168729CA73E8 /* ProviderSetup.swift in Sources */,
 				C3A53F9D6F7BA805B8F82363 /* KeychainStore.swift in Sources */,
 				73269E726703913A34E07EC7 /* ManagedPolicy.swift in Sources */,
 				8F23322DBF642A0F901134D4 /* ManagedPolicyTests.swift in Sources */,

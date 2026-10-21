@@ -6,6 +6,10 @@ the privacy policy and terms are still drafts (`publish-checklist.md`).
 Prepared 2026-10-16 from the code at commit `015eaeb` plus the link change
 recorded in `activity.md` the same day. Not bundled into the app.
 
+What goes back to counsel now (2026-10-21): `consent-v2-review.md`. Section 4
+below (iPhone setup app sheet) no longer applies: the setup app has no key
+entry or consent sheet since 2026-10-17, and the code was removed 2026-10-21.
+
 Changed after review (Part 2, 2026-10-16): the extension's consent wording
 is now version 2 (`src/settings/consent.ts`): it adds the page description,
 says form entries, password fields, and hidden fields are left out and secrets

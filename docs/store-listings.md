@@ -1,6 +1,6 @@
 # Store listings: Chrome Web Store and Firefox Add-ons
 
-Draft text for Harold to paste. Written 2026-10-19. Uses the name
+Draft text for the owner to paste. Written 2026-10-19. Uses the name
 "Scout AI Assistant". Nothing here is submitted by Claude:
 each store submission waits for the owner's go-ahead. Safari/App Store fields stay
 in `docs/app-store-listing.md`.
@@ -80,7 +80,7 @@ Both are release builds (no diagnostics code). The Firefox add-on ID is
 
 Chrome: 1 to 5 at 1280x800 (or 640x400), plus a 440x280 small promo tile. Firefox: up to 10, any size, 1280x800 recommended. To take after the rename and Trailhead look merge: summarize, ask, Scout mode, Find coupons, Settings with the key field.
 
-## What only Harold can do
+## What only the owner can do
 
 1. Chrome: sign up at https://chrome.google.com/webstore/devconsole (one-time $5 fee, Google account, 2-step verification). Upload the zip, paste the text above, add screenshots, submit.
 2. Firefox: sign in at https://addons.mozilla.org/developers/ with a Mozilla account (free). Submit a new add-on, "On this site", upload the zip and the source zip, paste the text, submit.

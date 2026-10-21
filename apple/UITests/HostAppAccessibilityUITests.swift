@@ -11,7 +11,7 @@ final class HostAppAccessibilityUITests: XCTestCase {
 
     private func launch(_ scheme: Scheme) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments += ["-UITestColorScheme", scheme.rawValue, "-UITestResetConsent", "YES"]
+        app.launchArguments += ["-UITestColorScheme", scheme.rawValue]
         app.launch()
         XCTAssertTrue(app.staticTexts["Set up Scout AI Assistant"].waitForExistence(timeout: 10))
         // Prove the scheme took effect: sample the top-left background pixel.
