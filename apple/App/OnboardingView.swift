@@ -22,8 +22,12 @@ struct OnboardingView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                // 64 pt, not 84: with the privacy link as a one-line footer the
+                // whole screen fits on an iPhone 17 Pro at the default text size,
+                // so no text sits half cut off at the bottom edge (the light
+                // accessibility audit failed on a clipped "Legal" heading).
                 SunriseBadge()
-                    .frame(width: 84, height: 84)
+                    .frame(width: 64, height: 64)
                     .padding(.bottom, 4)
                     .accessibilityHidden(true)
                 Text("Set up Scout AI Assistant")
@@ -185,13 +189,7 @@ private struct ScoutTruck: Shape {
 
 extension OnboardingView {
     fileprivate var legalSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Legal")
-                .font(.system(.title3, design: .rounded).weight(.heavy))
-                .foregroundStyle(Color.trailInk)
-                .accessibilityAddTraits(.isHeader)
-            Link("Privacy policy", destination: Self.privacyPolicyURL)
-        }
+        Link("Privacy policy", destination: Self.privacyPolicyURL)
     }
 }
 

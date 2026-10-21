@@ -2050,3 +2050,10 @@ Owner after #79: "it brings up the keyboard but doesnt activate the microphone".
 - `docs/app-store-submission.md` and `docs/store-listings.md` say "the owner" instead of a first name.
 - Removed the unused host-app key test, setup model and consent record (`apple/App/ProviderSetup.swift`, `apple/Tests/ProviderSetupTests.swift`) and the Mac app's `network.client` entitlement (the app makes no requests).
 - Evidence: unit 607/608 (known Take control failure); typecheck, lint, build, `check:release` clean. e2e: WebKit is not installed in the cloud session; Chromium 166 passed, 21 failed, all Chromium-only keyboard and Part 2 mock specs already failing on `main` (no `src/` or `tests/` change in this branch). Xcode build, XCTest and the iOS UI audit wait for the Mac.
+
+## 2026-10-21 iPhone setup screen: light accessibility audit (Legal contrast)
+
+- Actual: `testSetupScreenAuditLight` failed, "setup-light: Contrast failed — 48 'Legal'" (device check of `main` 5722dd3). Dark passed.
+- Cause: on the iPhone 17 Pro Simulator the screen is taller than the display; the run's own screenshot shows only the top few pixels of the "Legal" heading at the bottom edge (card ends at 845 pt, heading starts at 868 pt of 874). The audit reads that clipped sliver as low contrast; the colors themselves are #1F2A1F on #F6F1E7. Present since the Legal section was added (#76), not caused by #84.
+- Fix: the screen now fits without scrolling at the default text size: the sunrise badge is 64 pt instead of 84, and the "Legal" heading is gone; the privacy policy link stays as a one-line footer. The audit and its test are unchanged.
+- Evidence: needs the iOS UI audit on the Mac (cloud session has no Xcode).
