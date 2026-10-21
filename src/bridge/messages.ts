@@ -158,8 +158,10 @@ export const REQUESTS = {
         prefix_sources: { array: { object: { url: "string", title: "string" } } },
         /** Host of the page the chat is on, saved to title it in the chats menu. */
         site: "string",
+        /** "general": judged unrelated to the page, sent without it (src/chat/intent.ts). */
+        scope: { enum: ["page", "general"] },
       },
-      optional: ["effort", "shared", "display_question", "answer_prefix", "prefix_sources", "site"],
+      optional: ["effort", "shared", "display_question", "answer_prefix", "prefix_sources", "site", "scope"],
     },
   },
   "chat.stop": { senders: ["panel"], payload: { object: { message_id: "string" } } },

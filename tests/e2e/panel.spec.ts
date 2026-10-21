@@ -112,7 +112,7 @@ test("each tab keeps its own conversation, restored when the panel reopens on it
   ]);
 });
 
-test("an off-page question goes out as a normal chat message, with the page only as optional context", async ({ page }) => {
+test("an off-page question goes out as a normal chat message, without the page", async ({ page }) => {
   let body: { system?: string; messages?: Array<{ content: string }> } = {};
   await page.route("https://api.anthropic.com/v1/messages", (r) => {
     body = JSON.parse(r.request().postData() ?? "{}");
@@ -122,8 +122,10 @@ test("an off-page question goes out as a normal chat message, with the page only
   await page.getByLabel("Ask about this page").fill("hey, I want to take vitamin D");
   await page.getByLabel("Ask about this page").press("Enter");
   await expect(page.getByRole("log").getByText("How old are you?")).toBeVisible();
-  expect(body.system).toContain("answer it like a normal chat assistant from your own knowledge");
-  expect(body.messages?.[body.messages.length - 1]?.content).toContain("User message: hey, I want to take vitamin D");
+  // Owner request 2026-10-21: a general question is sent without the page, and the model is told not to mention it.
+  expect(body.system).toContain("Answer it as a general question");
+  expect(body.messages?.[body.messages.length - 1]?.content).toBe("hey, I want to take vitamin D");
+  expect(JSON.stringify(body.messages)).not.toContain("untrusted_page_content");
 });
 
 test("the panel works in Private Browsing like in any other tab, and marks the chat as private", async ({ page }) => {
