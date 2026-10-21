@@ -3,13 +3,13 @@
 Prepared 2026-10-20 so the public App Store submission is ready the day the
 D-U-N-S letter arrives and the Apple developer account is converted to an
 Organization (Rare Creatures LLC). Nothing here has been submitted. Claude
-never signs in to App Store Connect and never handles Harold's Apple
-credentials; every App Store Connect step is Harold's.
+never signs in to App Store Connect and never handles the owner's Apple
+credentials; every App Store Connect step is the owner's.
 
 Owner decisions this kit follows:
 
 - Skip TestFlight and go straight to App Store review (2026-10-20).
-- The public listing shows the LLC, never Harold's personal name or address
+- The public listing shows the LLC, never the owner's personal name or address
   (2026-10-20). So nothing is submitted before the Organization conversion.
 - Free app, no in-app purchases; users bring their own AI key.
 
@@ -165,7 +165,7 @@ Answer the questionnaire as follows, then override.
 
 - **Sign-in required:** No (there is no account). Leave user name and
   password empty.
-- **Contact:** Harold's name, phone and email as App Review's private
+- **Contact:** the owner's name, phone and email as App Review's private
   contact. This is not shown on the App Store.
 - **Notes** (paste, then replace the bracketed key line):
 
@@ -211,7 +211,7 @@ Answer the questionnaire as follows, then override.
 | Question | Answer |
 | --- | --- |
 | Export compliance | Uses encryption only through the system's HTTPS: exempt (the Info.plist flag answers it on upload) |
-| Content rights: contains, shows or accesses third-party content? | Yes: it reads web pages the user opens and shows AI answers about them. Confirm you have the rights to do so (like any browser extension). Harold attests to this, not Claude |
+| Content rights: contains, shows or accesses third-party content? | Yes: it reads web pages the user opens and shows AI answers about them. Confirm you have the rights to do so (like any browser extension). The owner attests to this, not Claude |
 | Advertising identifier (IDFA) | No |
 | Price | Free (Tier 0), no in-app purchases |
 | Availability | All countries except China mainland (recommended: AI chat apps there need a government generative-AI approval Apple enforces) |
@@ -245,7 +245,7 @@ Shot list, same five on each device, light appearance, default looks
 
 Put them in `build/app-store-screenshots/iphone`, `ipad` and `mac`, then run
 `npm run check:screenshots`; it names any wrong size, transparency or count.
-These are taken in the combined Mac + iPhone device check, not by Harold by
+These are taken in the combined Mac + iPhone device check, not by the owner by
 hand.
 
 Coming later: Apple will require iPhone Duo screenshots for every submission
@@ -258,19 +258,19 @@ are not needed for the first release.
 | --- | --- | --- |
 | 5.1.2(i) third-party AI | data shared with AI without clear consent | Covered: consent dialog per provider before anything is sent, privacy policy names both providers, label declares the data, review notes say so |
 | 5.1.1(i) privacy policy in app | link must be inside the app and easy to find | Fixed in this branch: the app's setup screen and the extension's Settings link to the published policy; the "DRAFT" legal pages are gone from both |
-| 2.1 completeness | reviewers can't test without a key | Harold adds a capped test key to the notes at submission |
+| 2.1 completeness | reviewers can't test without a key | The owner adds a capped test key to the notes at submission |
 | 2.1 / 2.3 placeholder content | "draft" or UNKNOWN text visible in the app | Fixed in this branch (the bundled draft policy and terms are no longer in the app) |
 | 4.4.2 Safari extensions | "should not claim access to more websites than strictly necessary" | Site access is optional and asked for only when the user turns it on; explained in the notes |
 | 2.5.14 recording user activity | Scout mode screenshots and page reading | Clear on-screen glow and Stop button; screenshots asked per site |
-| 5.2.2 third-party sites | trying coupon codes on stores whose terms may forbid automated entry, including guessed codes | Open: launch blocker 4 (merchant terms legal review). Harold's call before Submit |
-| Private Browsing | consent text counsel reviewed said Scout is off in Private Browsing; it now works there | Open: launch blocker 34 (counsel). Harold's call before Submit |
+| 5.2.2 third-party sites | trying coupon codes on stores whose terms may forbid automated entry, including guessed codes | Open: launch blocker 4 (merchant terms legal review). The owner's call before Submit |
+| Private Browsing | consent text counsel reviewed said Scout is off in Private Browsing; it now works there | Open: launch blocker 34 (counsel). The owner's call before Submit |
 | 2.3.10 other platforms | the panel's code carries Chrome and Firefox wording that Safari never shows | Low: nothing visible names them; the App Store text doesn't either |
 | 5.2.1 / 4.1(c) names | "Safari" in the subtitle, the Mac app file still named "Scout for Safari.app" | Low: names the browser it works in; fallback subtitle in section 2; renaming the Mac file is a separate decision |
 | 1.2 user-generated content | AI apps sometimes get asked about content filtering | Low: Scout shares nothing between users; 1.2 targets apps where users share content |
 
-## 9. Harold's checklist
+## 9. Owner's checklist
 
-Only Harold can do these. Do them in order; nothing goes public until step 9.
+Only the owner can do these. Do them in order; nothing goes public until step 9.
 
 **While waiting for the D-U-N-S letter**
 

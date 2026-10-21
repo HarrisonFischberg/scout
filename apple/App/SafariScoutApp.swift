@@ -24,10 +24,6 @@ struct SafariScoutApp: App {
         if UserDefaults.standard.bool(forKey: "SeedSyntheticKey") {
             try? KeychainStore().set("sk-test-synthetic-sharing-check", account: "anthropic")
         }
-        // UI tests pass `-UITestResetConsent YES` so the consent sheet always shows.
-        if UserDefaults.standard.bool(forKey: "UITestResetConsent") {
-            ConsentStore().withdrawAll()
-        }
         #endif
     }
 

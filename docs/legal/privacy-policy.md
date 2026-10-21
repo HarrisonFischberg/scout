@@ -1,5 +1,14 @@
 # Scout AI Assistant Privacy Policy (DRAFT)
 
+> **Superseded (2026-10-21).** The published policy at
+> https://rarecreatures.app/apps/scout/privacy/ (last updated 19 October 2026,
+> Rare Creatures LLC) is the source of truth: the app, the extension's
+> Settings and the App Store listing link to it. Its source lives in the
+> website repository (HarrisonFischberg/studio-site), not here. This draft is
+> kept unchanged as the record of what was prepared for counsel; it is not
+> maintained. No record shows counsel reviewed the published page (launch
+> blocker 8), and it is behind the app in places (launch blocker 36).
+
 > DRAFT for qualified legal review. Not approved. Not for publication.
 > Items marked **UNKNOWN** are missing facts the owner must supply
 > (`docs/launch-blockers.md`, blocker 1). Nothing here is invented.
