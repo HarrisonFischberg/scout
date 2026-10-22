@@ -2,7 +2,7 @@
 # Archives the Release build for macOS and iOS and uploads both to App Store
 # Connect for TestFlight (docs/testflight.md). Run on the owner's Mac, with
 # Xcode signed in to the Apple ID of team KTV2G3Z883 (Xcode > Settings >
-# Accounts) and the App Store Connect record for com.harrisonfischberg.SafariScout
+# Accounts) and the App Store Connect record for com.harrisonfischberg.Scoutai
 # already created. Uploads go to Apple: owner's approval only.
 # Build number: SCOUT_BUILD_NUMBER, default a timestamp, so every upload is higher.
 # SCOUT_PLATFORMS="macOS iOS" (default both) picks platforms; --no-upload
