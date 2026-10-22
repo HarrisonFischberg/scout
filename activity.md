@@ -2057,3 +2057,9 @@ Owner after #79: "it brings up the keyboard but doesnt activate the microphone".
 - Cause: on the iPhone 17 Pro Simulator the screen is taller than the display; the run's own screenshot shows only the top few pixels of the "Legal" heading at the bottom edge (card ends at 845 pt, heading starts at 868 pt of 874). The audit reads that clipped sliver as low contrast; the colors themselves are #1F2A1F on #F6F1E7. Present since the Legal section was added (#76), not caused by #84.
 - Fix: the screen now fits without scrolling at the default text size: the sunrise badge is 64 pt instead of 84, and the "Legal" heading is gone; the privacy policy link stays as a one-line footer. The audit and its test are unchanged.
 - Evidence: needs the iOS UI audit on the Mac (cloud session has no Xcode).
+
+## 2026-10-22 — bundle ID renamed to com.harrisonfischberg.Scoutai
+
+- Owner asked to rename the bundle ID from `com.harrisonfischberg.SafariScout` to `com.harrisonfischberg.Scoutai`, before the first App Store Connect upload (no app record existed for the old ID).
+- Renamed the app, extension (`.Extension`), shared keychain group (`.shared`) and UI test bundle (`ScoutaiUITests`) in the Xcode project, entitlements, `OnboardingView.swift`, the TestFlight and keychain scripts, and the docs. Older log entries above keep the old ID as history.
+- Effect on devices: the installed apps count as new apps, so the API key must be entered again on Mac and iPhone and the extension switched on again in Safari. The old app can be deleted.

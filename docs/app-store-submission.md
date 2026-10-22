@@ -21,8 +21,8 @@ the week of submission if more than a month has passed.
 ## 1. What gets submitted
 
 One App Store Connect app record with two platforms, iOS (iPhone and iPad)
-and macOS, under bundle ID `com.harrisonfischberg.SafariScout`. The Safari
-extension (`com.harrisonfischberg.SafariScout.Extension`) ships inside each
+and macOS, under bundle ID `com.harrisonfischberg.Scoutai`. The Safari
+extension (`com.harrisonfischberg.Scoutai.Extension`) ships inside each
 app; it is not listed separately.
 
 | | iOS / iPadOS | macOS |
@@ -305,7 +305,7 @@ at a time)
 **In App Store Connect** (all clicks are yours)
 
 6. Apps > + > New App: platforms iOS and macOS, name "Scout AI Assistant",
-   bundle ID `com.harrisonfischberg.SafariScout`, SKU `scout-ai-assistant`,
+   bundle ID `com.harrisonfischberg.Scoutai`, SKU `scout-ai-assistant`,
    primary language English (U.S.).
 7. Fill in sections 2 to 6 of this document, upload the screenshots, and pick
    the uploaded build for each platform.
