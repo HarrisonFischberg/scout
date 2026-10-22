@@ -612,7 +612,7 @@
 				DEVELOPMENT_TEAM = KTV2G3Z883;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScoutUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.ScoutaiUITests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -638,7 +638,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.Scoutai;
 				PRODUCT_NAME = "Scout for Safari";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -664,7 +664,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.Scoutai;
 				PRODUCT_NAME = "Scout for Safari";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -701,10 +701,10 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.harrisonfischberg.SafariScout.shared";
+				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.harrisonfischberg.Scoutai.shared";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.Scoutai;
 				PRODUCT_NAME = "Scout for Safari";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -792,9 +792,9 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Extension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.harrisonfischberg.SafariScout.shared";
+				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.harrisonfischberg.Scoutai.shared";
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout.Extension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.Scoutai.Extension;
 				PRODUCT_NAME = "Scout for Safari Extension";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -820,10 +820,10 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.harrisonfischberg.SafariScout.shared";
+				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.harrisonfischberg.Scoutai.shared";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.Scoutai;
 				PRODUCT_NAME = "Scout for Safari";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -843,7 +843,7 @@
 				INFOPLIST_FILE = Extension/Info.plist;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout.Extension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.Scoutai.Extension;
 				PRODUCT_NAME = "Scout for Safari Extension";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -920,7 +920,7 @@
 				DEVELOPMENT_TEAM = KTV2G3Z883;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScoutUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.ScoutaiUITests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -940,9 +940,9 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Extension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.harrisonfischberg.SafariScout.shared";
+				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)com.harrisonfischberg.Scoutai.shared";
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout.Extension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.Scoutai.Extension;
 				PRODUCT_NAME = "Scout for Safari Extension";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -962,7 +962,7 @@
 				INFOPLIST_FILE = Extension/Info.plist;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.SafariScout.Extension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonfischberg.Scoutai.Extension;
 				PRODUCT_NAME = "Scout for Safari Extension";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;

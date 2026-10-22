@@ -25,14 +25,14 @@ The Safari extension ships inside the app, so it comes along automatically.
 ## What you already have
 
 - Paid Apple Developer Program, Individual team `KTV2G3Z883` (launch blocker 2).
-- iOS targets already use `com.harrisonfischberg.SafariScout` and
-  `com.harrisonfischberg.SafariScout.Extension`, signed by that team.
+- iOS targets already use `com.harrisonfischberg.Scoutai` and
+  `com.harrisonfischberg.Scoutai.Extension`, signed by that team.
 - Archives use the Release configuration, which contains no diagnostics code
   (`npm run check:release`).
 
 ## Repo side (done in `scripts/prepare-testflight.rb`, 2026-10-17)
 
-1. Mac app and extension use `com.harrisonfischberg.SafariScout` (+ `.Extension`) and
+1. Mac app and extension use `com.harrisonfischberg.Scoutai` (+ `.Extension`) and
    team `KTV2G3Z883`, like iOS, so one App Store Connect record covers iPhone and Mac.
    `apple/App/OnboardingView.swift` names the new extension ID. Side effect: the
    installed Mac build forgets its saved API key once, and Safari re-registers the
@@ -52,11 +52,11 @@ The Safari extension ships inside the app, so it comes along automatically.
 
 ## What only you can do (Apple account and Mac)
 
-1. **developer.apple.com → Identifiers:** confirm `com.harrisonfischberg.SafariScout`
+1. **developer.apple.com → Identifiers:** confirm `com.harrisonfischberg.Scoutai`
    and `.Extension` exist as explicit App IDs (Xcode may have made them already for
    your iPhone builds).
 2. **App Store Connect → Apps → +:** New App, platforms iOS and macOS, bundle ID
-   `com.harrisonfischberg.SafariScout`, name "Scout for Safari" (the name must be
+   `com.harrisonfischberg.Scoutai`, name "Scout for Safari" (the name must be
    unused on the App Store).
 3. **TestFlight → Test Information:** beta description, feedback email, and a
    privacy policy URL. Your website can host `docs/legal/privacy-policy.md`.

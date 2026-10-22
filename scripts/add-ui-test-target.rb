@@ -13,7 +13,7 @@ unless project.targets.any? { |t| t.name == 'SafariScoutUITests' }
   target.add_file_references([group.new_reference('HostAppAccessibilityUITests.swift')])
   target.add_dependency(app)
   target.build_configurations.each do |c|
-    c.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.harrisonfischberg.SafariScoutUITests'
+    c.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.harrisonfischberg.ScoutaiUITests'
     c.build_settings['TEST_TARGET_NAME'] = app.name
     c.build_settings['SWIFT_VERSION'] = '5.0'
     c.build_settings['GENERATE_INFOPLIST_FILE'] = 'YES'
