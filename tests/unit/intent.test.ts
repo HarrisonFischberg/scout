@@ -1,6 +1,6 @@
 // General question or page question? (owner request 2026-10-21)
 import { describe, expect, it } from "vitest";
-import { classifyQuestion, pageWords } from "../../src/chat/intent";
+import { classifyQuestion, isSearchResultsPage, pageWords } from "../../src/chat/intent";
 import { SUMMARIZE_QUESTION } from "../../src/chat/prompt";
 import { SHOPPING_SUGGESTIONS } from "../../src/panel/suggestions";
 
@@ -81,6 +81,30 @@ describe("classifyQuestion", () => {
   it("is general with no page at all", () => {
     expect(classifyQuestion({ question: "Best ramen in Tokyo?" })).toBe("general");
     expect(classifyQuestion({ question: "   " })).toBe("general");
+  });
+});
+
+describe("search results pages", () => {
+  const GOOGLE = pageWords("Hannah Marie Kelly - Google Search", "https://www.google.com/search?q=Hannah+Marie+Kelly");
+
+  it("does not treat the user's own search words as a page question", () => {
+    expect(isSearchResultsPage("https://www.google.com/search?q=Hannah+Marie+Kelly")).toBe(true);
+    expect(isSearchResultsPage("https://duckduckgo.com/?q=coffee")).toBe(true);
+    expect(isSearchResultsPage("https://www.bing.com/search?q=coffee")).toBe(true);
+    expect(isSearchResultsPage("https://maps.google.com/maps/place/x")).toBe(false);
+    expect(isSearchResultsPage("https://www.google.com/")).toBe(false);
+    expect(isSearchResultsPage("https://www.homedepot.com/s/toilets?q=toilet")).toBe(false);
+    expect(
+      classifyQuestion({
+        question: "I'm looking for Hannah Marie Kelly, and the song has something about the words smile on your face",
+        pageTitle: GOOGLE,
+      }),
+    ).toBe("general");
+  });
+
+  it("still sends the page when the message points at it", () => {
+    expect(classifyQuestion({ question: "Which of these results is official?", pageTitle: GOOGLE })).toBe("page");
+    expect(classifyQuestion({ question: "summarize the results here", pageTitle: GOOGLE })).toBe("page");
   });
 });
 
