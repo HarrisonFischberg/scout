@@ -1,0 +1,22 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T14-59-16",
+  "results": [
+    {
+      "name": "Nomad",
+      "url": "https://nomadgoods.com",
+      "group": "gear",
+      "outcome": "error: (intermediate value) is not iterable",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T14:59:16.219Z",
+      "errorStack": "TypeError: (intermediate value) is not iterable |     at firstProductLink (file:///Users/harrison/projects/safari-scout/scripts/live-suite.mjs:178:19) |     at async addToCart (file:///Users/harrison/projects/safari-scout/scripts/live-suite.mjs:235:21) |     at async runMerchant (file:///Users/harrison/projects/safari-scout/scripts/live-suite.mjs:425:19)",
+      "seconds": 3
+    }
+  ]
+}

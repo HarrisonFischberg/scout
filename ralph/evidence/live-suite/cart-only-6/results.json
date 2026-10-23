@@ -1,0 +1,63 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T15-03-18",
+  "results": [
+    {
+      "name": "Lineage Provisions",
+      "url": "https://lineageprovisions.com",
+      "group": "food",
+      "outcome": "cart ok (shopify cart api, shopify cart 0)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:03:18.428Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://lineageprovisions.com/cart"
+      },
+      "cartBefore": {
+        "total": 0,
+        "codes": [],
+        "fields": {
+          "items": 0,
+          "subtotal": 0,
+          "original": 0,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "seconds": 6
+    },
+    {
+      "name": "WORN",
+      "url": "https://wornbrand.com",
+      "group": "apparel",
+      "outcome": "cart ok (shopify cart api, shopify cart 0)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:03:27.760Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://wornbrand.com/cart"
+      },
+      "cartBefore": {
+        "total": 0,
+        "codes": [],
+        "fields": {
+          "items": 0,
+          "subtotal": 0,
+          "original": 0,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "seconds": 6
+    }
+  ]
+}

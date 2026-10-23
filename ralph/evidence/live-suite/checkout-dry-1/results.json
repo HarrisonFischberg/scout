@@ -1,0 +1,69 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T14-57-57",
+  "results": [
+    {
+      "name": "Javvy Coffee",
+      "url": "https://javvycoffee.com",
+      "group": "food",
+      "outcome": "error: (intermediate value) is not iterable",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T14:57:57.284Z",
+      "seconds": 5
+    },
+    {
+      "name": "Cuts",
+      "url": "https://www.cutsclothing.com",
+      "group": "apparel",
+      "outcome": "error: (intermediate value) is not iterable",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T14:58:05.025Z",
+      "seconds": 4
+    },
+    {
+      "name": "Nomad",
+      "url": "https://nomadgoods.com",
+      "group": "gear",
+      "outcome": "error: (intermediate value) is not iterable",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T14:58:11.802Z",
+      "seconds": 3
+    },
+    {
+      "name": "Pura",
+      "url": "https://pura.com",
+      "group": "home",
+      "outcome": "error: (intermediate value) is not iterable",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T14:58:18.057Z",
+      "seconds": 4
+    },
+    {
+      "name": "Chubbies",
+      "url": "https://www.chubbiesshorts.com",
+      "group": "extra",
+      "outcome": "error: (intermediate value) is not iterable",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T14:58:24.893Z",
+      "seconds": 3
+    }
+  ]
+}

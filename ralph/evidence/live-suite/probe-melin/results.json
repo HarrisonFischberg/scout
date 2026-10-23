@@ -1,0 +1,98 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T13-22-10",
+  "results": [
+    {
+      "name": "Melin",
+      "url": "https://melin.com",
+      "group": "apparel",
+      "outcome": "discovery failed",
+      "notes": [],
+      "stages": [
+        "key:anthropic found",
+        "coupons:overlay-failed",
+        "coupons:merchant store-host named",
+        "coupons:method shopify",
+        "coupons:store-codes 0",
+        "coupons:search",
+        "coupons:search-error bad_request",
+        "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=0",
+        "coupons:status search_failed",
+        "coupons:overlay-failed"
+      ],
+      "timeline": [
+        {
+          "t": 5.9,
+          "stage": "key:anthropic found"
+        },
+        {
+          "t": 6,
+          "stage": "coupons:overlay-failed"
+        },
+        {
+          "t": 6,
+          "stage": "coupons:merchant store-host named"
+        },
+        {
+          "t": 6.2,
+          "stage": "coupons:method shopify"
+        },
+        {
+          "t": 6.8,
+          "stage": "coupons:store-codes 0"
+        },
+        {
+          "t": 6.8,
+          "stage": "coupons:search"
+        },
+        {
+          "t": 7.3,
+          "stage": "coupons:search-error bad_request"
+        },
+        {
+          "t": 7.3,
+          "stage": "coupons:candidates store=0 verified=0 reported=0 dropped=0 masked=0"
+        },
+        {
+          "t": 7.4,
+          "stage": "coupons:status search_failed"
+        },
+        {
+          "t": 7.4,
+          "stage": "coupons:overlay-failed"
+        }
+      ],
+      "startedAt": "2026-10-17T13:22:10.272Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://melin.com/cart"
+      },
+      "cartBefore": {
+        "total": 89,
+        "codes": []
+      },
+      "apiErrors": [
+        {
+          "status": 400,
+          "body": "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011Cg7t1BKQx54yL7RQPqhEr\"}"
+        }
+      ],
+      "summary": "The web search ended early (The web search failed. The provider rejected the request). No code posted for melin could be found. Nothing was tested, and your cart is unchanged.\nCopy diagnostics",
+      "secondPass": false,
+      "trace": [
+        "Looking for the coupon box on this page…",
+        "Reached the store's cart. Searching the web for melin codes…",
+        "The web search ended early (The web search failed. The provider rejected the request). No code posted for melin could be found."
+      ],
+      "attempts": [],
+      "cartAfter": {
+        "total": 89,
+        "codes": []
+      },
+      "seconds": 11
+    }
+  ]
+}

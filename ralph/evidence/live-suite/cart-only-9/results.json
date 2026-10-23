@@ -1,0 +1,68 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T15-10-07",
+  "results": [
+    {
+      "name": "Lineage Provisions",
+      "url": "https://lineageprovisions.com",
+      "group": "food",
+      "outcome": "cart ok (shopify cart api, shopify cart 49)",
+      "notes": [
+        "the cart page's /cart.js was empty after adding (an app's /cart/update.js); item added again from the cart page",
+        "the store removed the API-added item again; adding through its own Add to cart button"
+      ],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:10:07.931Z",
+      "cart": {
+        "how": "shopify product json",
+        "url": "https://lineageprovisions.com/cart"
+      },
+      "cartBefore": {
+        "total": 49,
+        "codes": [],
+        "fields": {
+          "items": 1,
+          "subtotal": 4900,
+          "original": 4900,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "seconds": 17
+    },
+    {
+      "name": "WORN",
+      "url": "https://wornbrand.com",
+      "group": "apparel",
+      "outcome": "cart ok (shopify cart api, shopify cart 0.95)",
+      "notes": [
+        "the cart page's /cart.js was empty after adding (an app's /cart/update.js); item added again from the cart page"
+      ],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:10:28.467Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://wornbrand.com/cart"
+      },
+      "cartBefore": {
+        "total": 0.95,
+        "codes": [],
+        "fields": {
+          "items": 1,
+          "subtotal": 95,
+          "original": 95,
+          "discount": 0,
+          "currency": "USD"
+        }
+      },
+      "seconds": 9
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T13-31-57",
+  "results": [
+    {
+      "name": "Paleovalley",
+      "url": "https://paleovalley.com",
+      "group": "food",
+      "outcome": "cart ok (clicked add to cart, no shopify cart)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "startedAt": "2026-10-17T13:31:57.245Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://paleovalley.com/store"
+      },
+      "seconds": 23
+    }
+  ]
+}

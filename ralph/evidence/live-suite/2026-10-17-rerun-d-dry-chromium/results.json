@@ -1,0 +1,197 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T15-26-55",
+  "results": [
+    {
+      "name": "Paleovalley",
+      "url": "https://paleovalley.com",
+      "group": "food",
+      "outcome": "blocked: no Checkout button on the cart",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:26:55.722Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://paleovalley.com/store"
+      },
+      "checkout": {
+        "ok": false,
+        "reason": "no Checkout button on the cart"
+      },
+      "seconds": 26
+    },
+    {
+      "name": "Javvy Coffee",
+      "url": "https://javvycoffee.com",
+      "group": "food",
+      "outcome": "blocked: no Checkout button on the cart",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:27:24.656Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://javvycoffee.com/?openCart=true"
+      },
+      "checkout": {
+        "ok": false,
+        "reason": "no Checkout button on the cart"
+      },
+      "seconds": 18
+    },
+    {
+      "name": "BYLT Basics",
+      "url": "https://byltbasics.com",
+      "group": "apparel",
+      "outcome": "blocked: no Checkout button on the cart",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:27:46.005Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://byltbasics.com/cart"
+      },
+      "checkout": {
+        "ok": false,
+        "reason": "no Checkout button on the cart"
+      },
+      "seconds": 20
+    },
+    {
+      "name": "Cuts",
+      "url": "https://www.cutsclothing.com",
+      "group": "apparel",
+      "outcome": "cart ok (clicked add to cart, no shopify cart; checkout information)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:28:09.440Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.cutsclothing.com/cart"
+      },
+      "checkout": {
+        "ok": true,
+        "url": "https://shop.cutsclothing.com/checkouts/cn/hWNI4yfKlq5tHvtcxBsEOiVl/en-us?_r=AQAB9zMWd2GD5C9N7knAdP_ejI-Hv3cNrs0SWKSVvy0NUzQiBzq_&_s=e3aa10db-ee16-4c88-becc-71aec98697a5&_y=7b80cb9d-5ee4-4001-b29b-2c4fb1b1d4df&auto_redirect=false&edge_redirect=true&skip_shop_pay=true",
+        "step": "information"
+      },
+      "seconds": 27
+    },
+    {
+      "name": "Nomad",
+      "url": "https://nomadgoods.com",
+      "group": "gear",
+      "outcome": "cart ok (clicked add to cart, no shopify cart; checkout information)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:28:39.795Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://nomadgoods.com/"
+      },
+      "checkout": {
+        "ok": true,
+        "url": "https://checkout.nomadgoods.com/checkouts/cn/hWNI4yhwLcRqsSVekA1Ykng1/en-us?_r=AQABJMZMosHZ-ENXZlW8mnYcDd4UN8F6lmpkrdsm-N-qxmz9dzMr&_s=2a850a48-b536-41b0-8e58-383204edfb80&_y=227a30a7-dc49-419d-9050-993e83db67f7&auto_redirect=false&edge_redirect=true&skip_shop_pay=true",
+        "step": "information"
+      },
+      "seconds": 22
+    },
+    {
+      "name": "Peak Design",
+      "url": "https://www.peakdesign.com",
+      "group": "gear",
+      "outcome": "blocked: no Checkout button on the cart",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:29:04.510Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.peakdesign.com/?show=cart"
+      },
+      "checkout": {
+        "ok": false,
+        "reason": "no Checkout button on the cart"
+      },
+      "seconds": 17
+    },
+    {
+      "name": "Pura",
+      "url": "https://pura.com",
+      "group": "home",
+      "outcome": "blocked: could not add to cart (no Add to cart button on the product page)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:29:24.661Z",
+      "seconds": 31
+    },
+    {
+      "name": "Chubbies",
+      "url": "https://www.chubbiesshorts.com",
+      "group": "extra",
+      "outcome": "blocked: could not add to cart (the Add to cart click did not put the item in the cart)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:29:58.655Z",
+      "seconds": 42
+    },
+    {
+      "name": "Caraway",
+      "url": "https://www.carawayhome.com",
+      "group": "extra",
+      "outcome": "cart ok (clicked add to cart, no shopify cart; checkout information)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:30:43.491Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.carawayhome.com/cart"
+      },
+      "checkout": {
+        "ok": true,
+        "url": "https://shop.carawayhome.com/checkouts/cn/hWNI4yuFIqXu86aCgWc8Y7g9/en-us/information?_r=AQAB5FC94g85aKeHR-2R6U8JNLcLG9t5VaTpa-_YSJziJAN7Yk0Q&_s=74ed5b52-a328-4755-aee0-41ad0fd5fa8c&_y=78580b8c-5e99-4ed1-846b-e101ccc598e3&auto_redirect=false&edge_redirect=true&skip_shop_pay=true",
+        "step": "information"
+      },
+      "seconds": 22
+    },
+    {
+      "name": "Bombas",
+      "url": "https://bombas.com",
+      "group": "extra",
+      "outcome": "cart ok (clicked add to cart, no shopify cart; checkout information)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:31:08.790Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://bombas.com/cart"
+      },
+      "checkout": {
+        "ok": true,
+        "url": "https://shop.bombas.com/checkouts/cn/hWNI4ywrqCpgZAY9RdPIG0Y5/en-us?_r=AQABlJvatxZQMezGCtwnluBd7w6V_xZkx4kdBv6juNIAVGPm2tcA&skip_shop_pay=true",
+        "step": "information"
+      },
+      "seconds": 22
+    }
+  ]
+}

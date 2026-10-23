@@ -1,0 +1,88 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T13-29-04",
+  "results": [
+    {
+      "name": "Chomps",
+      "url": "https://chomps.com",
+      "group": "food",
+      "outcome": "cart ok (shopify cart api, shopify cart 30)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "startedAt": "2026-10-17T13:29:04.727Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://chomps.com/?viewcart=true"
+      },
+      "cartBefore": {
+        "total": 30,
+        "codes": []
+      },
+      "seconds": 6
+    },
+    {
+      "name": "Perfect Keto",
+      "url": "https://perfectketo.com",
+      "group": "food",
+      "outcome": "cart ok (shopify cart api, shopify cart 11.99)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "startedAt": "2026-10-17T13:29:14.052Z",
+      "cart": {
+        "how": "shopify cart api",
+        "url": "https://shop.perfectketo.com/cart"
+      },
+      "cartBefore": {
+        "total": 11.99,
+        "codes": []
+      },
+      "seconds": 10
+    },
+    {
+      "name": "Paleovalley",
+      "url": "https://paleovalley.com",
+      "group": "food",
+      "outcome": "blocked: could not add to cart (no product link found on the home page)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "startedAt": "2026-10-17T13:29:26.749Z",
+      "seconds": 7
+    },
+    {
+      "name": "BYLT Basics",
+      "url": "https://byltbasics.com",
+      "group": "apparel",
+      "outcome": "cart ok (clicked add to cart, no shopify cart)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "startedAt": "2026-10-17T13:29:37.060Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://byltbasics.com/cart"
+      },
+      "seconds": 17
+    },
+    {
+      "name": "Cuts",
+      "url": "https://www.cutsclothing.com",
+      "group": "apparel",
+      "outcome": "cart ok (clicked add to cart, no shopify cart)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "startedAt": "2026-10-17T13:29:57.507Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.cutsclothing.com/cart"
+      },
+      "seconds": 17
+    }
+  ]
+}
