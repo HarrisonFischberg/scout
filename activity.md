@@ -2063,3 +2063,9 @@ Owner after #79: "it brings up the keyboard but doesnt activate the microphone".
 - Owner asked to rename the bundle ID from `com.harrisonfischberg.SafariScout` to `com.harrisonfischberg.Scoutai`, before the first App Store Connect upload (no app record existed for the old ID).
 - Renamed the app, extension (`.Extension`), shared keychain group (`.shared`) and UI test bundle (`ScoutaiUITests`) in the Xcode project, entitlements, `OnboardingView.swift`, the TestFlight and keychain scripts, and the docs. Older log entries above keep the old ID as history.
 - Effect on devices: the installed apps count as new apps, so the API key must be entered again on Mac and iPhone and the extension switched on again in Safari. The old app can be deleted.
+
+## 2026-10-23 — manifest description shortened for App Store Connect
+
+- First TestFlight upload of Scout (macOS build 20261023.0025) was rejected: "The description field must be present, of string type, and 112 or fewer characters long" for the Safari web extension manifest.
+- Cause: `src/manifest.json` description was 129 characters.
+- Fix: shortened it to 104 characters; added `tests/unit/manifest.test.ts` so it stays at 112 or fewer.
