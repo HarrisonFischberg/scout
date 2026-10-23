@@ -2075,3 +2075,11 @@ Owner after #79: "it brings up the keyboard but doesnt activate the microphone".
 - macOS build 20261023.0033 (main d98c655) uploaded to App Store Connect for "Scout AI Browser Assistant" (com.harrisonfischberg.Scoutai).
 - iOS build 20261023.0033 was rejected: "No orientations were specified in the com.harrisonfischberg.Scoutai bundle. To support iPad multitasking, specify ... UISupportedInterfaceOrientations".
 - Fix: `apple/App/Info.plist` now lists all four orientations (macOS ignores the key).
+
+## 2026-10-23: song lookup from a lyric on a Google results page
+
+- Actual: on Google results for "Hannah Marie Kelly", asking "I'm looking for Hannah Marie Kelly, and the song has something about the words smile on your face" (Haiku 5.5) got "the Google results page doesn't name the song", a TikTok caption, and unrelated songs titled "The Smile on Your Face".
+- Expected: "When You Say Nothing at All" (Hannah Marie Kelley with Roy Caudill; line "The smile on your face lets me know that you need me"), as another assistant answered in one prompt.
+- Cause: the question repeated the words of the Google page title (the user's own search), so `src/chat/intent.ts` judged it a page question; the page rules then had the model answer from the results page and say it lacked the answer. The prompt never told the model to use its own knowledge of well-known songs or to retry a missed search, and the 3-search budget left little room to retry.
+- Fix: search results pages (Google, Bing, DuckDuckGo and others) no longer count title words as a page match; "these results"/"here" still send the page. New prompt rules: a results page is only the user's search, never say it lacks the answer; for identify-this lookups (song from a lyric, film from a plot) think of well-known candidates and covers first, treat names and lyrics as possibly misspelled, and search again with new wording before giving up. Chat search budget 3 → 5 per answer.
+- Evidence: `tests/unit/intent.test.ts` (search results pages), `tests/unit/server.test.ts` (budget and rules). No live model run in this session (no API key here); needs a real-device check on Haiku 5.5.
