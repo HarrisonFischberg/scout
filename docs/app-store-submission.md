@@ -1,4 +1,4 @@
-# App Store submission kit: Scout AI Assistant (iPhone, iPad, Mac)
+# App Store submission kit: Scout AI Browser Assistant (iPhone, iPad, Mac)
 
 Prepared 2026-10-20 so the public App Store submission is ready the day the
 D-U-N-S letter arrives and the Apple developer account is converted to an
@@ -47,53 +47,42 @@ Paste these as they are. The App Store copy must not name Chrome, Firefox or
 any other platform (guideline 2.3.10), and must not promise that coupons work
 on every store (launch blocker 29).
 
-- **Name** (30 max): `Scout AI Assistant` (18)
-- **Subtitle** (30 max): `AI assistant for Safari` (23). "for Safari" names the
-  browser it works in, the way Apple's own trademark rules allow "for iPhone".
-  If App Review objects, use `Summaries, answers, coupons` (27).
-- **Promotional text** (170 max, can change without a new review):
-  `Ask about any page, get a short summary, let Scout fill forms, and find coupon codes at checkout. Free, with your own Anthropic or OpenAI key.` (142)
-- **Keywords** (100 max, no repeats of name or subtitle words):
-  `summarize,chat,extension,browser agent,coupon,promo code,questions,forms,answers,reader,shopping` (96).
-  No competitor or AI brand names (2.3.7).
-- **Description** (4000 max):
+The listing name is **Scout AI Browser Assistant** (owner, App Store Connect record
+created 2026-10-22). The extension and Mac app still call themselves "Scout AI Assistant";
+the iPhone home screen says "Scout". Paste-ready copies of this text and the screenshots are
+in the project files at `app-store/listing-text.md`.
 
-> Scout AI Assistant puts a friendly AI helper in Safari. Open Scout from the
-> Safari toolbar on any page and:
+- **Name** (30 max): `Scout AI Browser Assistant` (26)
+- **Subtitle** (30 max): `Summaries, answers, coupons` (27). The old subtitle,
+  "AI assistant for Safari", repeats words now in the name.
+- **Promotional text** (170 max, can change without a new review):
+  `Ask about any page, get the short version, let Scout fill out forms, and find coupon codes at checkout. Free, with your own Anthropic or OpenAI key.` (148)
+- **Keywords** (100 max, no repeats of name or subtitle words):
+  `summarize,extension,chat,agent,promo code,questions,forms,reader,shopping,tabs,deals,discount,helper` (100).
+  No competitor or AI brand names (2.3.7).
+- **Description** (4000 max, 1,807 used):
+
+> Scout AI Browser Assistant puts a friendly AI helper in Safari. Open Scout from the Safari toolbar on any page and:
 >
-> - Summarize a long article into the short version
-> - Ask questions about what you're reading, with the sources it used
-> - Compare information across your open tabs (Mac)
-> - Let Scout mode click, type and fill out forms for you, with a Stop button
->   always on screen and a check with you before anything like buying,
->   signing in or sending
-> - Find coupon codes at checkout: Scout looks for codes posted online, adds
->   a few common codes marked as guesses, tries them in the store's own
->   coupon box, and keeps the one that saves the most
-> - Talk instead of type with the microphone button
+> • Get the short version of a long article, recipe or report
+> • Ask questions about what you're reading
+> • Compare information across your open tabs (Mac)
+> • Let Scout mode click, type and fill out forms for you, with a Stop button always on screen and a check with you before anything like buying, signing in or sending
+> • Find coupon codes at checkout: Scout looks for codes posted online, adds a few common codes marked as guesses, tries them in the store's own coupon box, and keeps the one that saves the most
+> • Talk instead of type with the microphone button (Mac)
 >
-> Bring your own key. Scout works with your own Anthropic or OpenAI API key,
-> and you pay your provider directly for what you use. Scout shows an
-> estimated cost after each answer. Scout itself is free, with no
-> subscription and no in-app purchases.
+> BRING YOUR OWN KEY
+> Scout works with your own Anthropic or OpenAI API key, and you pay your provider directly for what you use. Scout shows an estimated cost after each answer. Scout itself is free, with no subscription and no in-app purchases.
 >
-> Private by design. There is no Scout account and no Scout server. Scout asks
-> before it sends anything to an AI provider, and then your question and the
-> page you ask about go straight from your device to the provider you picked.
-> Your key stays in your Keychain. No analytics, no ads, no tracking.
+> PRIVATE BY DESIGN
+> There is no Scout account and no Scout server. Scout asks before it sends anything to an AI provider, and then your question and the page you ask about go straight from your device to the provider you picked. Your key stays in your Keychain. No analytics, no ads, no tracking.
 >
-> How it works: Scout is a Safari extension. After installing, open the Scout
-> app once and follow the steps to turn Scout on in Safari. On iPhone and
-> iPad that's Settings > Apps > Safari > Extensions; on Mac, Safari >
-> Settings > Extensions. Then tap Scout in Safari's toolbar and add your key
-> in Scout's Settings.
+> HOW IT WORKS
+> Scout is a Safari extension. After installing, open the Scout app once and follow the steps to turn Scout on in Safari. On iPhone and iPad that's Settings > Apps > Safari > Extensions; on Mac, Safari > Settings > Extensions. Then tap Scout in Safari's toolbar and add your key in Scout's Settings.
 >
-> Coupons depend on each store: some stores don't have a coupon box Scout can
-> reach, and some block automated entry, so not every checkout will find a
-> saving.
+> Coupons depend on each store: some stores don't have a coupon box Scout can reach, and some block automated entry, so not every checkout will find a saving.
 >
-> Scout AI Assistant is made by Rare Creatures LLC. It is not made by or
-> connected to Anthropic or OpenAI.
+> Scout AI Browser Assistant is made by Rare Creatures LLC. It is not made by or connected to Anthropic or OpenAI.
 
 - **Support URL:** https://rarecreatures.app/support/
 - **Marketing URL:** https://rarecreatures.app/apps/scout/
@@ -169,7 +158,7 @@ Answer the questionnaire as follows, then override.
   contact. This is not shown on the App Store.
 - **Notes** (paste, then replace the bracketed key line):
 
-> Scout AI Assistant is a Safari web extension with a small host app. The
+> Scout AI Browser Assistant is a Safari web extension with a small host app. The
 > host app shows how to turn the extension on; everything else happens in
 > Safari.
 >
@@ -248,6 +237,15 @@ Put them in `build/app-store-screenshots/iphone`, `ipad` and `mac`, then run
 These are taken in the combined Mac + iPhone device check, not by the owner by
 hand.
 
+**First release set (2026-10-23):** a designed set of five per device, made from
+the release build's panel with synthetic pages and stores, is in the project files at
+`app-store/screenshots/` (Mac 2880 x 1800, iPhone 1206 x 2622, iPad 2064 x 2752) with an
+optional iOS header image in `app-store/header/`. The panels come from
+`impeccable-review/tools/appstore.capture.ts`
+(`npx playwright test -c impeccable-review/tools/appstore.config.ts`, after
+`npm run build:release`); the layout and headlines are in `app-store/art-source/`. Real
+device captures from the shot list above can replace them later.
+
 Coming later: Apple will require iPhone Duo screenshots for every submission
 from April 2027. Apple's new optional "creative assets" (guideline 2.3.14)
 are not needed for the first release.
@@ -304,7 +302,7 @@ at a time)
 
 **In App Store Connect** (all clicks are yours)
 
-6. Apps > + > New App: platforms iOS and macOS, name "Scout AI Assistant",
+6. Apps > + > New App: platforms iOS and macOS, name "Scout AI Browser Assistant",
    bundle ID `com.harrisonfischberg.Scoutai`, SKU `scout-ai-assistant`,
    primary language English (U.S.).
 7. Fill in sections 2 to 6 of this document, upload the screenshots, and pick
