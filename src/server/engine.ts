@@ -11,7 +11,7 @@
 // be echoed between rounds.
 import { BridgeError } from "../bridge/messages";
 import type { QuestionScope } from "../chat/intent";
-import { buildMessages, chatSystemPrompt, type PageContext } from "../chat/prompt";
+import { buildMessages, chatSystemPrompt, fenceOpenPage, type PageContext } from "../chat/prompt";
 import { CHAT_MAX_TOKENS } from "../chat/session";
 import type { Provider } from "../keychain";
 import { ProviderError } from "../providers/errors";
@@ -45,10 +45,12 @@ export interface StartRequest {
   site?: string;
   /** "general": the panel judged the message unrelated to the page and sent none (src/chat/intent.ts). */
   scope?: QuestionScope;
+  /** A general message's open page: title and address only, so the model can tell when it is relevant. */
+  open_page?: { url: string; title: string };
 }
 
-/** Most web searches one chat answer may run (each is billed by the provider). */
-export const CHAT_WEB_SEARCHES = 3;
+/** Most web searches one chat answer may run (each is billed by the provider). Five leaves room to retry a lookup with new wording (2026-10-23). */
+export const CHAT_WEB_SEARCHES = 5;
 
 /** A numbered source saved with the answer: a shared page, then web citations. */
 export interface SourceRef {
@@ -209,7 +211,9 @@ export class ScoutServer {
     try {
       const provider = await this.deps.provider(req.provider, req.model);
       const tools = await this.deps.tools().catch(() => [] as ToolSpec[]);
-      const messages: ChatMessage[] = buildMessages(req.history, req.question, req.pages[0] ?? null, req.pages.slice(1));
+      const openPage = req.scope === "general" && req.pages.length === 0 && tools.length > 0 ? req.open_page : undefined;
+      const question = openPage ? fenceOpenPage(openPage) + "\n\nUser message: " + req.question : req.question;
+      const messages: ChatMessage[] = buildMessages(req.history, question, req.pages[0] ?? null, req.pages.slice(1));
       const maxRounds = this.deps.maxRounds ?? 6;
       for (let round = 0; round < maxRounds && !signal.aborted; round++) {
         // The last round offers no tools, so the model has to answer.
@@ -220,7 +224,7 @@ export class ScoutServer {
         const calls: Array<{ id: string; name: string; input: unknown }> = [];
         for await (const ev of provider.stream({
           model: req.model,
-          system: chatSystemPrompt({ scope: req.scope, tools: tools.length > 0, webSearch: searchesLeft > 0 }),
+          system: chatSystemPrompt({ scope: req.scope, tools: tools.length > 0, webSearch: searchesLeft > 0, openPage: !!openPage }),
           messages,
           ...(offer ? { tools } : {}),
           ...(searchesLeft > 0 ? { webSearch: true, webSearchMaxUses: searchesLeft } : {}),
