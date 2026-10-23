@@ -1930,6 +1930,7 @@ async function main(): Promise<void> {
           shared: v.shared,
           ...(pageSite ? { site: pageSite } : {}),
           scope,
+          ...(scope === "general" && !STANDALONE && !cont && tab.url && tab.title ? { open_page: { url: tab.url, title: tab.title } } : {}),
           ...(cont
             ? { display_question: cont.question, answer_prefix: v.prefix, prefix_sources: cont.sources.map((x) => ({ url: x.url, title: x.title ?? "" })) }
             : {}),
