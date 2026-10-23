@@ -46,6 +46,9 @@ The Safari extension ships inside the app, so it comes along automatically.
    extension bundle, archives the Release build for each platform with a timestamp build
    number (`20261017.2100`), and uploads with `scripts/ExportOptions-testflight.plist`.
    `--no-upload` stops after the archive; `SCOUT_PLATFORMS=iOS` does one platform.
+   On exit it unregisters the Release copies the archive leaves (DerivedData
+   ArchiveIntermediates, the `.xcarchive`, the export folder) and re-registers the dev
+   build, so Safari keeps using the working build instead of a blank-icon Release copy.
 5. Still to check on the Mac after the first team-signed Release build: the extension
    reads the key the app saved (launch blocker 14, Mac half). If it doesn't, the Mac
    targets need the shared Keychain access group iOS already has.
