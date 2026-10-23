@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const manifest = JSON.parse(readFileSync(new URL("../../src/manifest.json", import.meta.url), "utf8"));
+const manifest = JSON.parse(readFileSync(new URL("../../src/manifest.json", import.meta.url).pathname, "utf8"));
 
 describe("manifest", () => {
   it("has a description App Store Connect accepts", () => {
