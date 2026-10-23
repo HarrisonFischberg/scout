@@ -1,0 +1,20 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T13-24-48",
+  "results": [
+    {
+      "name": "Perfect Keto",
+      "url": "https://perfectketo.com",
+      "group": "food",
+      "outcome": "blocked: could not add to cart (cart page not found after adding)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "startedAt": "2026-10-17T13:24:48.292Z",
+      "seconds": 11
+    }
+  ]
+}

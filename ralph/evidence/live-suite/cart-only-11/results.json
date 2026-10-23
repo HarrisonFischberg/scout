@@ -1,0 +1,45 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T15-42-27",
+  "results": [
+    {
+      "name": "Paleovalley",
+      "url": "https://paleovalley.com",
+      "group": "food",
+      "outcome": "blocked: could not add to cart (the Add to cart click did not put the item in the cart)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "f3c5f1c539",
+      "startedAt": "2026-10-17T15:42:27.869Z",
+      "seconds": 119
+    },
+    {
+      "name": "Pura",
+      "url": "https://pura.com",
+      "group": "home",
+      "outcome": "blocked: could not add to cart (no Add to cart button on the product page)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "f3c5f1c539",
+      "startedAt": "2026-10-17T15:44:30.275Z",
+      "seconds": 32
+    },
+    {
+      "name": "Chubbies",
+      "url": "https://www.chubbiesshorts.com",
+      "group": "extra",
+      "outcome": "blocked: could not add to cart (the Add to cart click did not put the item in the cart)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "f3c5f1c539",
+      "startedAt": "2026-10-17T15:45:04.996Z",
+      "seconds": 61
+    }
+  ]
+}

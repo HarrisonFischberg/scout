@@ -1,0 +1,81 @@
+{
+  "browser": "chromium",
+  "model": "default",
+  "effort": "default",
+  "secondPass": true,
+  "startedAt": "2026-10-17T15-26-11",
+  "results": [
+    {
+      "name": "BYLT Basics",
+      "url": "https://byltbasics.com",
+      "group": "apparel",
+      "outcome": "cart ok (clicked add to cart, no shopify cart)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:26:12.024Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://byltbasics.com/cart"
+      },
+      "seconds": 21
+    },
+    {
+      "name": "Cuts",
+      "url": "https://www.cutsclothing.com",
+      "group": "apparel",
+      "outcome": "cart ok (clicked add to cart, no shopify cart)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:26:36.112Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.cutsclothing.com/cart"
+      },
+      "seconds": 20
+    },
+    {
+      "name": "Pura",
+      "url": "https://pura.com",
+      "group": "home",
+      "outcome": "blocked: could not add to cart (no Add to cart button on the product page)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:26:59.327Z",
+      "seconds": 31
+    },
+    {
+      "name": "Chubbies",
+      "url": "https://www.chubbiesshorts.com",
+      "group": "extra",
+      "outcome": "blocked: could not add to cart (the Add to cart click did not put the item in the cart)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:27:33.835Z",
+      "seconds": 45
+    },
+    {
+      "name": "Caraway",
+      "url": "https://www.carawayhome.com",
+      "group": "extra",
+      "outcome": "cart ok (clicked add to cart, no shopify cart)",
+      "notes": [],
+      "stages": [],
+      "timeline": [],
+      "build": "86113aba63",
+      "startedAt": "2026-10-17T15:28:21.855Z",
+      "cart": {
+        "how": "clicked add to cart",
+        "url": "https://www.carawayhome.com/cart"
+      },
+      "seconds": 13
+    }
+  ]
+}
