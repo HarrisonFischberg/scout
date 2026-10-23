@@ -2069,3 +2069,9 @@ Owner after #79: "it brings up the keyboard but doesnt activate the microphone".
 - First TestFlight upload of Scout (macOS build 20261023.0025) was rejected: "The description field must be present, of string type, and 112 or fewer characters long" for the Safari web extension manifest.
 - Cause: `src/manifest.json` description was 129 characters.
 - Fix: shortened it to 104 characters; added `tests/unit/manifest.test.ts` so it stays at 112 or fewer.
+
+## 2026-10-23 — first TestFlight upload: macOS accepted, iOS needed orientations
+
+- macOS build 20261023.0033 (main d98c655) uploaded to App Store Connect for "Scout AI Browser Assistant" (com.harrisonfischberg.Scoutai).
+- iOS build 20261023.0033 was rejected: "No orientations were specified in the com.harrisonfischberg.Scoutai bundle. To support iPad multitasking, specify ... UISupportedInterfaceOrientations".
+- Fix: `apple/App/Info.plist` now lists all four orientations (macOS ignores the key).
