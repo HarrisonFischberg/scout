@@ -8,8 +8,8 @@ screenshots) is in `docs/app-store-submission.md` (2026-10-20).
 
 | Field | Text | Length / limit | Where it is set |
 | --- | --- | --- | --- |
-| App name | Scout AI Assistant | 18 / 30 | App Store Connect (not in this repo) |
-| Subtitle | AI assistant for Safari | 23 / 30 | App Store Connect (not in this repo) |
+| App name (App Store listing, owner 2026-10-22) | Scout AI Browser Assistant | 26 / 30 | App Store Connect (not in this repo) |
+| Subtitle | Summaries, answers, coupons | 27 / 30 | App Store Connect (not in this repo) |
 | iOS home-screen name | Scout | 5 | `APP_DISPLAY_NAME` in the iOS app target, read by `apple/App/Info.plist` |
 | Mac app name (Dock, menu bar) | Scout AI Assistant | — | `APP_DISPLAY_NAME` in the macOS app target (`PRODUCT_NAME`, the built file name, is still "Scout for Safari") |
 | Extension name (Safari settings, toolbar) | Scout AI Assistant | — | `src/manifest.json` `name`, `apple/Extension/Info.plist` |
