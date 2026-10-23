@@ -119,9 +119,12 @@ describe("ScoutServer", () => {
       }),
     );
     await done;
-    expect(provider.seen[0]).toMatchObject({ webSearch: true, webSearchMaxUses: 3 });
+    expect(provider.seen[0]).toMatchObject({ webSearch: true, webSearchMaxUses: 5 });
     expect(provider.seen[0]?.system).toContain("You can search the web.");
-    expect(provider.seen[1]).toMatchObject({ webSearch: true, webSearchMaxUses: 1 });
+    // A lookup that misses is retried with new wording (owner report 2026-10-23, song from a lyric).
+    expect(provider.seen[0]?.system).toContain("search again with a different wording");
+    expect(provider.seen[0]?.system).toContain("search engine's results page is only the user's own search");
+    expect(provider.seen[1]).toMatchObject({ webSearch: true, webSearchMaxUses: 3 });
   });
 
   it("sends a general question with the general rules, which never name the page", async () => {

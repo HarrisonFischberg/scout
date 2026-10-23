@@ -47,8 +47,8 @@ export interface StartRequest {
   scope?: QuestionScope;
 }
 
-/** Most web searches one chat answer may run (each is billed by the provider). */
-export const CHAT_WEB_SEARCHES = 3;
+/** Most web searches one chat answer may run (each is billed by the provider). Five leaves room to retry a lookup with new wording (2026-10-23). */
+export const CHAT_WEB_SEARCHES = 5;
 
 /** A numbered source saved with the answer: a shared page, then web citations. */
 export interface SourceRef {
