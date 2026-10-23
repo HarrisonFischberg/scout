@@ -3,7 +3,7 @@
   "name": "Scout AI Assistant",
   "short_name": "Scout",
   "version": "0.1.0",
-  "description": "Your AI assistant in the browser: summarize pages, ask questions, compare tabs, fill forms and find coupons with your own AI key.",
+  "description": "AI assistant in your browser: summarize pages, ask questions, compare tabs, fill forms and find coupons.",
   "permissions": [
     "activeTab",
     "tabs",
