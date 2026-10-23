@@ -24,7 +24,7 @@ const PAGE_NOUNS =
   "page|site|website|web ?page|article|post|story|blog|product|item|listing|model|recipe|video|thread|review|reviews|comment|comments|" +
   "doc|document|pdf|paper|report|study|deal|offer|sale|price|one|ones|thing|stuff|text|paragraph|section|table|chart|graph|image|picture|photo|" +
   "list|guide|tutorial|course|job|role|position|house|home|apartment|property|car|book|song|album|movie|show|episode|game|app|company|event|" +
-  "menu|place|hotel|flight|ticket|tickets|form|email|message|code|error|author|writer|brand|store|shop|seller|plan|policy|terms|contract";
+  "menu|place|hotel|flight|ticket|tickets|form|email|message|code|error|author|writer|brand|store|shop|seller|plan|policy|terms|contract|result|results|link|links|search";
 const TIME_WORDS = "week|weekend|weekday|morning|afternoon|evening|night|year|month|season|summer|winter|spring|fall|autumn|time|moment|monday|tuesday|wednesday|thursday|friday|saturday|sunday";
 
 // Always about the page: "this article", "summarize", "here", "on the page".
@@ -95,8 +95,29 @@ export function classifyQuestion(input: ScopeInput): QuestionScope {
   return "general";
 }
 
-/** The words that say what a page is: its title and the words in its address path ("/b/Bath-Toilets"). */
+// A search engine's results page ("Hannah Marie Kelly - Google Search"):
+// its title is the user's own search, so a question repeating those words is
+// not about the page (owner report 2026-10-23: a song lookup on Google got
+// "the results page doesn't name the song" instead of the song).
+const SEARCH_ENGINES = /(^|\.)(google|bing|duckduckgo|yahoo|ecosia|startpage|brave|kagi|qwant|yandex|baidu)\.[a-z.]+$/i;
+
+export function isSearchResultsPage(url: string | undefined): boolean {
+  try {
+    const u = new URL(url ?? "");
+    if (!SEARCH_ENGINES.test(u.hostname)) return false;
+    return /^\/(search|web|s)?\/?$/i.test(u.pathname) && /[?&](q|p|query|wd|text)=[^&]/.test(u.search);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The words that say what a page is: its title and the words in its address
+ * path ("/b/Bath-Toilets"). None for a search results page, whose title is
+ * only the user's search.
+ */
 export function pageWords(title: string | undefined, url: string | undefined): string {
+  if (isSearchResultsPage(url)) return "";
   let path = "";
   try {
     path = decodeURIComponent(new URL(url ?? "").pathname).replace(/[^A-Za-z]+/g, " ");

@@ -119,9 +119,13 @@ describe("ScoutServer", () => {
       }),
     );
     await done;
-    expect(provider.seen[0]).toMatchObject({ webSearch: true, webSearchMaxUses: 3 });
+    expect(provider.seen[0]).toMatchObject({ webSearch: true, webSearchMaxUses: 5 });
     expect(provider.seen[0]?.system).toContain("You can search the web.");
-    expect(provider.seen[1]).toMatchObject({ webSearch: true, webSearchMaxUses: 1 });
+    // A lookup that misses is retried with new wording (owner report 2026-10-23, song from a lyric).
+    expect(provider.seen[0]?.system).toContain("search again with a different wording");
+    expect(provider.seen[0]?.system).toContain("Never answer that you could not find something after one search");
+    expect(provider.seen[0]?.system).toContain("search engine's results page is only the user's own search");
+    expect(provider.seen[1]).toMatchObject({ webSearch: true, webSearchMaxUses: 3 });
   });
 
   it("sends a general question with the general rules, which never name the page", async () => {
@@ -130,10 +134,32 @@ describe("ScoutServer", () => {
     s.start({ ...REQ, question: "Best coffee shop in Noe Valley?", pages: [], shared: [], scope: "general" });
     await collect(s, "m1");
     const req = provider.seen[0]!;
-    expect(req.system).toContain("the page was not included");
+    expect(req.system).toContain("the page text was not included");
     expect(req.system).toContain("Do not mention the page");
     expect(req.system).not.toContain("is included with each message");
     expect(textOf(last(req.messages)!.content)).toBe("Best coffee shop in Noe Valley?");
+  });
+
+  it("sends a general question with the open page's title and address only, so the model can tell when it is relevant", async () => {
+    const provider = scripted([[text("Officials said 12."), { type: "done" }]]);
+    const { s } = server(provider);
+    s.start({
+      ...REQ,
+      question: "How many people died?",
+      pages: [],
+      shared: [],
+      scope: "general",
+      open_page: { url: "https://news.example/2026/storm-hits-coast?utm=x", title: "Storm hits the coast" },
+    });
+    await collect(s, "m1");
+    const req = provider.seen[0]!;
+    expect(req.system).toContain("plausibly about the same subject");
+    expect(req.system).toContain("ignore the open page completely");
+    const content = textOf(last(req.messages)!.content);
+    expect(content).toContain("Title: Storm hits the coast");
+    expect(content).toContain("Address: news.example/2026/storm-hits-coast");
+    expect(content).not.toContain("utm=x");
+    expect(content).toMatch(/<\/untrusted_page_content>\n\nUser message: How many people died\?$/);
   });
 
   it("keeps the page rules for a page question", async () => {
