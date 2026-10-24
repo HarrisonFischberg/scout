@@ -66,7 +66,7 @@ export function targetLabel(target: Target | undefined): string {
 
 /**
  * Runs one action. `wait` is not performed here: the runner sleeps in the
- * worker so Take control and Stop can cut it short (src/agent/task.ts).
+ * worker so Stop can cut it short (src/agent/task.ts).
  * `screenshot` is answered by the runner too (the next observation carries one).
  */
 export function performTaskAction(page: TaskPage, action: TaskAction): TaskActionResult {

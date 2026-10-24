@@ -166,8 +166,7 @@ describe("task host", () => {
     const f = fake(scripted([[act([{ type: "click", target: { ref: "e1" } }])], [finish("ok")]]));
     const { task_id } = await f.host.start({ tab_id: 1, goal: "Buy it" });
     await settle(60);
-    await expect(f.host.control({ task_id, command: "pause" }, { kind: "content", raw: { tab: { id: 2 } } })).rejects.toBeInstanceOf(BridgeError);
-    expect(await f.host.control({ task_id, command: "pause" }, { kind: "content", raw: { tab: { id: 1 } } })).toEqual({ ok: true, state: "paused" });
+    await expect(f.host.control({ task_id, command: "stop" }, { kind: "content", raw: { tab: { id: 2 } } })).rejects.toBeInstanceOf(BridgeError);
     expect(await f.host.control({ task_id, command: "stop" }, { kind: "panel", raw: {} })).toEqual({ ok: true });
     expect(f.overlay.some((o) => o.type === "overlay:hide")).toBe(true);
     const out = await f.host.outcome(task_id);

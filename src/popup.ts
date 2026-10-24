@@ -2008,7 +2008,7 @@ async function main(): Promise<void> {
   }
 
   function stateLabel(state: string): string {
-    return state === "paused" ? "Paused" : state === "waiting" ? "Waiting for you" : "Working";
+    return state === "waiting" ? "Waiting for you" : "Working";
   }
 
   function refreshHead(): void {

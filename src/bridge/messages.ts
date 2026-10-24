@@ -219,8 +219,8 @@ export const REQUESTS = {
       optional: ["conv", "source"],
     },
   },
-  /** Take control (pause), Resume, Stop. From the panel, or from the overlay's pill in the task's own tab. */
-  "task.control": { senders: ["panel", "content"], payload: { object: { task_id: "string", command: { enum: ["pause", "resume", "stop"] } } } },
+  /** Stop. From the panel, or from the overlay's pill in the task's own tab. */
+  "task.control": { senders: ["panel", "content"], payload: { object: { task_id: "string", command: { enum: ["stop"] } } } },
   /** The user's answer to a sensitive-action confirmation. */
   "task.decide": { senders: ["panel"], payload: { object: { task_id: "string", prompt_id: "string", decision: { enum: ["once", "always", "deny"] } } } },
   /** The task on a tab, if any, with its log so far (a reopened panel catches up). */
@@ -340,7 +340,7 @@ export const WORKER_EVENTS = {
       seq: "number",
       kind: { enum: ["started", "state", "log", "confirm", "done"] },
       goal: "string",
-      state: { enum: ["running", "paused", "waiting"] },
+      state: { enum: ["running", "waiting"] },
       text: "string",
       status: "string",
       prompt_id: "string",
