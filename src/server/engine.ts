@@ -159,6 +159,11 @@ export class ScoutServer {
     return true;
   }
 
+  /** Delete all data: stops every answer (a stopped answer is not saved). */
+  stopAll(): void {
+    for (const id of this.runs.keys()) this.stop(id);
+  }
+
   /** Answers still running in a conversation, so a reopened panel can resume them. */
   active(conv: string): Array<{ message_id: string; question: string; last_seq: number }> {
     return [...this.runs.values()]

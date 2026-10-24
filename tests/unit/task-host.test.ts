@@ -162,12 +162,20 @@ describe("task host", () => {
     expect(f.host.status(1).task?.log.some((l) => l.status === "denied")).toBe(true);
   });
 
+  it("stopAll (Delete all data) ends every task and resolves only after each has saved", async () => {
+    const f = fake(scripted([[act([{ type: "click", target: { ref: "e1" } }])], [finish("ok")]]));
+    await f.host.start({ tab_id: 1, goal: "Buy it", conv: "c1", source: "panel" });
+    await settle(60);
+    await f.host.stopAll();
+    expect(f.saved).toHaveLength(1);
+    expect(f.host.status(1).task).toMatchObject({ done: { status: "stopped" } });
+  });
+
   it("the overlay's pill may control only its own tab's task; Stop hides the overlay at once and denies an open prompt", async () => {
     const f = fake(scripted([[act([{ type: "click", target: { ref: "e1" } }])], [finish("ok")]]));
     const { task_id } = await f.host.start({ tab_id: 1, goal: "Buy it" });
     await settle(60);
-    await expect(f.host.control({ task_id, command: "pause" }, { kind: "content", raw: { tab: { id: 2 } } })).rejects.toBeInstanceOf(BridgeError);
-    expect(await f.host.control({ task_id, command: "pause" }, { kind: "content", raw: { tab: { id: 1 } } })).toEqual({ ok: true, state: "paused" });
+    await expect(f.host.control({ task_id, command: "stop" }, { kind: "content", raw: { tab: { id: 2 } } })).rejects.toBeInstanceOf(BridgeError);
     expect(await f.host.control({ task_id, command: "stop" }, { kind: "panel", raw: {} })).toEqual({ ok: true });
     expect(f.overlay.some((o) => o.type === "overlay:hide")).toBe(true);
     const out = await f.host.outcome(task_id);

@@ -117,6 +117,15 @@ describe("coupon host", () => {
     expect(f.host.list().runs[0]).toMatchObject({ done: true });
   }, 30_000);
 
+  it("stopAll (Delete all data) ends every run and resolves only after each has saved", async () => {
+    const f = fake(cartPage());
+    await f.host.start({ tab_id: 1, provider: "anthropic", model: "m", conv: "c1" });
+    await until(() => !!f.host.status(1).run?.prompt_id);
+    await f.host.stopAll();
+    expect(f.saved).toHaveLength(1);
+    expect(f.host.status(1).run?.done).toBe(true);
+  }, 30_000);
+
   it("Stop comes from the panel or the overlay in the run's own tab, hides the overlay at once, and one run per tab", async () => {
     const f = fake(cartPage({ hang: true }));
     await f.host.start({ tab_id: 1, provider: "anthropic", model: "m" });
