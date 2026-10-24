@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { withLock } from "../../src/settings/lock";
 import {
   clearHistory,
   loadRatings,
@@ -112,6 +113,48 @@ describe("retention expiry", () => {
     const s = fakeStorage();
     await appendHistory(s, "off", entry(0));
     expect(s.data.history).toBeUndefined();
+  });
+
+  // Audit 2026-10-24: the worker and the panel save at the same time (a coupon
+  // run ends while a chat answer is saved); each read the old list, and the
+  // second write erased the first entry.
+  it("saves made at the same moment all land, and a branch saves several entries in one write", async () => {
+    const s = fakeStorage();
+    const slow: StorageArea = {
+      ...s,
+      get: async (k) => {
+        await new Promise((r) => setTimeout(r, 5));
+        return s.get(k);
+      },
+    };
+    await Promise.all([appendHistory(slow, "7", entry(0, "chat")), appendHistory(slow, "7", entry(0, "coupons")), appendHistory(slow, "7", [entry(0, "b1"), entry(0, "b2")])]);
+    expect((s.data.history as HistoryEntry[]).map((e) => e.question).sort()).toEqual(["b1", "b2", "chat", "coupons"]);
+  });
+
+  // Review 2026-10-24: a save that had read the old list wrote it all back after Clear history.
+  it("Clear history waits for a save already under way, so deleted entries do not come back", async () => {
+    const s = fakeStorage({ history: [entry(0, "old")] });
+    const slow: StorageArea = {
+      ...s,
+      remove: async (keys) => {
+        for (const k of keys) delete s.data[k];
+      },
+      get: async (k) => {
+        const got = await s.get(k);
+        await new Promise((r) => setTimeout(r, 10));
+        return got;
+      },
+    };
+    await Promise.all([appendHistory(slow, "7", entry(0, "new")), clearHistory(slow)]);
+    expect(s.data.history).toBeUndefined();
+  });
+
+  it("a save that never finishes lets go of the lock, so later saves still run", async () => {
+    const order: string[] = [];
+    const stuck = withLock("t", () => new Promise<void>(() => undefined), 20).catch(() => order.push("gave up"));
+    await withLock("t", async () => void order.push("next"), 20);
+    await stuck;
+    expect(order).toEqual(["gave up", "next"]);
   });
 
   it("an entry exactly at the cutoff is expired", () => {

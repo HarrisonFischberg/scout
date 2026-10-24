@@ -2,7 +2,7 @@
 // task per tab. It starts the runner (src/agent/task.ts) after the gate
 // agrees (Scout mode not off, site not blocked), keeps
 // its action log and any pending confirmation so a reopened panel catches up,
-// relays Take control / Resume / Stop from the panel or the overlay's pill,
+// relays Stop from the panel or the overlay's pill,
 // and saves the outcome to the conversation. The runner's page calls go
 // through the content scripts of that tab; nothing here touches page text.
 import { runTask, type ConfirmDecision, type ConfirmRequest, type OverlayCommand, type OverlayState, type TaskEvent, type TaskLogStatus, type TaskStatus } from "../agent/task";
@@ -221,6 +221,7 @@ export class TaskHost {
       model: settings.model,
       ...(settings.effort ? { effort: settings.effort } : {}),
       goal,
+      source: record.source,
       control,
       page: {
         snapshot: async () => (await deps.content(tabId, { type: "scout:snapshot" })) as never,
@@ -260,11 +261,12 @@ export class TaskHost {
       .then(async (out) => {
         record.pending = undefined;
         record.prompt = undefined;
-        resolveFinished(out);
         this.set(() => this.tasks.delete(task_id), deps.keepMs ?? 120_000);
         if (p.conv && record.source === "panel") {
           await deps.save({ at: deps.now(), conv: p.conv, question: goal, answer: out.summary }).catch(() => undefined);
         }
+        // After the save, so stopAll knows nothing more is written.
+        resolveFinished(out);
       });
     return { task_id };
   }
@@ -275,25 +277,20 @@ export class TaskHost {
   }
 
   /**
-   * Take control / Resume / Stop. From the overlay (a content sender), only
+   * Stop. From the overlay (a content sender), only
    * the task's own tab may control it. Stop hides the overlay at once, before
    * the runner winds down, and answers any open confirmation with deny.
    */
-  async control(p: { task_id: string; command: "pause" | "resume" | "stop" }, sender?: { kind: "panel" | "content"; raw: MessageSender }): Promise<{ ok: boolean; state?: OverlayState }> {
+  async control(p: { task_id: string; command: "stop" }, sender?: { kind: "panel" | "content"; raw: MessageSender }): Promise<{ ok: boolean }> {
     const task = this.tasks.get(p.task_id);
     if (!task || task.done) return { ok: false };
     if (sender?.kind === "content" && sender.raw.tab?.id !== task.tab_id) throw new BridgeError("schema-error", "not this tab's task");
-    if (p.command === "stop") {
-      task.control.stop();
-      task.pending?.resolve("deny");
-      task.pending = undefined;
-      task.prompt = undefined;
-      void this.deps.overlay(task.tab_id, { type: "overlay:hide" }).catch(() => undefined);
-      return { ok: true };
-    }
-    if (p.command === "pause") task.control.pause();
-    else task.control.resume();
-    return { ok: true, state: task.control.isPaused ? "paused" : "running" };
+    task.control.stop();
+    task.pending?.resolve("deny");
+    task.pending = undefined;
+    task.prompt = undefined;
+    void this.deps.overlay(task.tab_id, { type: "overlay:hide" }).catch(() => undefined);
+    return { ok: true };
   }
 
   decide(p: { task_id: string; prompt_id: string; decision: ConfirmDecision }): { accepted: boolean } {
@@ -304,6 +301,14 @@ export class TaskHost {
     task.prompt = undefined;
     resolve(p.decision);
     return { accepted: true };
+  }
+
+  /** Delete all data: ends every task and waits until each has saved, so nothing is written after the wipe. */
+  async stopAll(): Promise<void> {
+    const all = [...this.tasks.values()];
+    for (const t of all) if (!t.done) void this.control({ task_id: t.task_id, command: "stop" });
+    // A task marked done may still be saving its summary, so every one is waited on.
+    await Promise.all(all.map((t) => t.finished));
   }
 
   /** The tab closed: end its task. */

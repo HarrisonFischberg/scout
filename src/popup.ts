@@ -235,7 +235,7 @@ async function copyDiagnostics(anchor: HTMLElement, statusNode: HTMLElement): Pr
 /** Settings key: "asked" once Find coupons has asked Safari for access to every site (for the browser fallback). */
 const COUPON_BROWSER_KEY = "couponBrowser";
 
-// Granted site origins, minus the provider API hosts the manifest always holds.
+// Granted site origins; a provider API host is never listed as a site.
 async function listOrigins(): Promise<string[]> {
   try {
     const all = await browser.permissions.getAll();
@@ -729,13 +729,16 @@ async function main(): Promise<void> {
     clearThread();
     if (storage) {
       conv = await startNewConversation(storage, tab.id, Date.now(), tab.incognito).catch(() => conv);
-      for (const e of entries) {
-        await appendHistory(storage, settings.retention, {
+      // One write for the whole branch.
+      await appendHistory(
+        storage,
+        settings.retention,
+        entries.map((e) => ({
           ...e,
           conv,
           ...(e.sources ? { sources: e.sources.map((s) => ({ url: savedUrl(s.url), ...(s.title ? { title: s.title } : {}), ...(s.kind ? { kind: s.kind } : {}) })) } : {}),
-        }).catch(() => undefined);
-      }
+        })),
+      ).catch(() => undefined);
     }
     showEntries(entries);
     updateEmpty();
@@ -2008,7 +2011,7 @@ async function main(): Promise<void> {
   }
 
   function stateLabel(state: string): string {
-    return state === "paused" ? "Paused" : state === "waiting" ? "Waiting for you" : "Working";
+    return state === "waiting" ? "Waiting for you" : "Working";
   }
 
   function refreshHead(): void {
@@ -3605,26 +3608,32 @@ async function main(): Promise<void> {
   });
   confirmYes.addEventListener("click", () => {
     const none: StorageArea = { get: async () => ({}), set: async () => undefined, clear: async () => undefined };
-    void deleteAllData({
-      storage: storage ?? none,
-      deleteKey: (p) => keychain.deleteKey(p),
-      listGrantedOrigins: listOrigins,
-      removeOrigins: async (origins) => void (await browser.permissions.remove({ origins })),
-    }).then(async (report) => {
-      const text = deleteReportText(report);
-      deleteResult.textContent = text;
-      deleteConfirm.hidden = true;
-      deleteBtn.hidden = false;
-      settings = parseSettings(undefined);
-      consent.forget();
-      diag?.forget();
-      showLook(HOME_LOOK);
-      clearThread();
-      conv = "";
-      await connect(false);
-      status.textContent = text;
-      await refreshSettings();
-    });
+    // A job that ends after the wipe would save into the cleared storage; delete anyway if the worker does not answer.
+    void request(toWorker, "jobs.stop_all", {})
+      .catch(() => undefined)
+      .then(() =>
+        deleteAllData({
+          storage: storage ?? none,
+          deleteKey: (p) => keychain.deleteKey(p),
+          listGrantedOrigins: listOrigins,
+          removeOrigins: async (origins) => void (await browser.permissions.remove({ origins })),
+        }),
+      )
+      .then(async (report) => {
+        const text = deleteReportText(report);
+        deleteResult.textContent = text;
+        deleteConfirm.hidden = true;
+        deleteBtn.hidden = false;
+        settings = parseSettings(undefined);
+        consent.forget();
+        diag?.forget();
+        showLook(HOME_LOOK);
+        clearThread();
+        conv = "";
+        await connect(false);
+        status.textContent = text;
+        await refreshSettings();
+      });
   });
 
   // ---------- Start ----------

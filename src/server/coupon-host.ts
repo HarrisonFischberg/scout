@@ -20,6 +20,8 @@ export const ASK_TIMEOUT_MS = 120_000;
 export interface CouponHostDeps {
   provider(p: Provider, model: string): Promise<ProviderClient>;
   page(tabId: number, opts: { aboveSheet: boolean; trace: (stage: string) => void }): Promise<CouponPage>;
+  /** Why the tab's site may not be used (blocked in Settings or by the organization), or null. */
+  blocked?(tabId: number): Promise<string | null>;
   tabs(windowId: number | undefined): PageBrowser;
   allowBrowser(pages: BrowserTarget[], trace: (stage: string) => void): Promise<boolean>;
   storage?: { get(key: string): Promise<Record<string, unknown>>; set(items: Record<string, unknown>): Promise<void> };
@@ -55,6 +57,8 @@ interface RunRecord extends CouponRunView {
   control: AgentControl;
   seq: number;
   pending?: { prompt_id: string; resolve: (more: boolean) => void };
+  /** Settles once the run has ended and saved its summary. */
+  finished?: Promise<void>;
 }
 
 let counter = 0;
@@ -125,6 +129,9 @@ export class CouponHost {
   /** Starts a run on a tab. The panel has already checked consent and the key. */
   async start(p: { tab_id: number; window_id?: number; provider: Provider; model: string; effort?: Effort; conv?: string; phone?: boolean; site?: string }): Promise<{ started_at: number }> {
     if (this.running(p.tab_id)) throw new BridgeError("blocked-by-user", "Scout is already finding coupons on this tab.");
+    // Blocked sites are never read or acted on, the same rule as Scout mode (src/permissions/gate.ts).
+    const blocked = await this.deps.blocked?.(p.tab_id);
+    if (blocked) throw new BridgeError("blocked-by-user", blocked);
     const control = new AgentControl();
     const r: RunRecord = { tab_id: p.tab_id, started_at: this.deps.now(), conv: p.conv ?? "", ...(p.site ? { site: p.site } : {}), events: [], done: false, control, seq: 0 };
     this.runs.set(p.tab_id, r);
@@ -143,7 +150,7 @@ export class CouponHost {
       void this.deps.overlay(p.tab_id, req).catch(() => trace("coupons:overlay-failed"));
     };
     overlay({ type: "overlay:show", taskId: "coupons:" + p.tab_id, state: "running" });
-    void runCouponJob({
+    r.finished = runCouponJob({
       page,
       provider: client,
       model: p.model,
@@ -218,6 +225,14 @@ export class CouponHost {
     r.control.stop();
     void this.deps.overlay(tabId, { type: "overlay:hide" }).catch(() => undefined);
     return { ok: true };
+  }
+
+  /** Delete all data: ends every run and waits until each has saved, so nothing is written after the wipe. */
+  async stopAll(): Promise<void> {
+    const runs = [...this.runs.values()];
+    for (const r of runs) if (!r.done) this.stop(r.tab_id);
+    // A run marked done may still be saving its summary, so every one is waited on.
+    await Promise.all(runs.map((r) => r.finished));
   }
 
   /** A closed tab ends its run. */

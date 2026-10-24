@@ -11,7 +11,7 @@ import { callInjected } from "../content-call";
 import { extractPage } from "../context/extract";
 import { readTabs, readTab, type GatherDeps, type TabRef } from "../context/gather";
 import { createKeychain, nativeSend, type Provider } from "../keychain";
-import { loadPageAccess, parsePolicy, savePageAccess, type ScreenshotChoice } from "../permissions/gate";
+import { blockedBy, hostOf, loadPageAccess, parsePolicy, savePageAccess, type ScreenshotChoice } from "../permissions/gate";
 import { createProvider, ProviderError, type Effort } from "../providers";
 import { effortForId, loadModelList } from "../providers/models";
 import { Consent, gatedFetch } from "../settings/consent";
@@ -218,6 +218,13 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
   const couponHost = new CouponHost({
     provider,
     page: (tabId, opts) => tabCouponPage(tabId, opts),
+    blocked: async (tabId) => {
+      const url = (await tab(tabId))?.url ?? "";
+      const host = hostOf(url);
+      if (!host) return "Find coupons works on web pages only.";
+      const by = blockedBy(url, await access(), await admin());
+      return by === "admin" ? "Your organization blocks " + host + "." : by === "user" ? host + " is blocked in Settings, so Scout cannot act on it." : null;
+    },
     tabs: () => quietBrowser(),
     allowBrowser: allowBrowserPages,
     ...(storage ? { storage } : {}),
@@ -249,7 +256,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
       return { ok: true, opened: true };
     },
     "task.start": (p: { tab_id: number; goal: string; conv?: string; source?: "panel" | "chat" }) => taskHost.start(p),
-    "task.control": (p: { task_id: string; command: "pause" | "resume" | "stop" }, sender: { kind: SenderKind; raw: MessageSender }) => {
+    "task.control": (p: { task_id: string; command: "stop" }, sender: { kind: SenderKind; raw: MessageSender }) => {
       // The overlay toast's Stop during a coupon run ("coupons:<tab>").
       const coupons = /^coupons:(\d+)$/.exec(p.task_id);
       if (coupons) return p.command === "stop" ? couponHost.stop(Number(coupons[1]), sender) : { ok: false };
@@ -287,6 +294,10 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
       return { message_id: p.message_id };
     },
     "chat.stop": (p: { message_id: string }) => ({ stopped: server.stop(p.message_id) }),
+    "jobs.stop_all": async () => {
+      await Promise.all([server.stopAll(), taskHost.stopAll(), couponHost.stopAll()]);
+      return { ok: true };
+    },
     "chat.tool_result": (p: {
       message_id: string;
       request_id: string;
