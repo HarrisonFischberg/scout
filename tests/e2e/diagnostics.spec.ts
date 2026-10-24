@@ -12,6 +12,7 @@ async function openPopup(page: Page): Promise<void> {
   await page.addInitScript(
     ({ key, pageData }) => {
       // Sharing with the provider already allowed (consent.spec.ts covers asking).
+      const listeners: Array<(c: Record<string, { newValue?: unknown }>, area: string) => void> = [];
       const data: Record<string, unknown> = { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } } };
       (globalThis as unknown as { browser: unknown }).browser = {
         runtime: {
@@ -24,12 +25,18 @@ async function openPopup(page: Page): Promise<void> {
         permissions: { request: async () => true, getAll: async () => ({ origins: [] }), remove: async () => true },
         scripting: { executeScript: async () => [{ result: pageData }] },
         storage: {
+          // The panel keeps uncaught errors current from storage changes.
+          onChanged: { addListener: (l: (c: Record<string, { newValue?: unknown }>, area: string) => void) => listeners.push(l) },
           local: {
             get: async (k: string | string[]) => {
               const list = Array.isArray(k) ? k : [k];
               return JSON.parse(JSON.stringify(Object.fromEntries(list.filter((x) => x in data).map((x) => [x, data[x]]))));
             },
-            set: async (items: Record<string, unknown>) => void Object.assign(data, JSON.parse(JSON.stringify(items))),
+            set: async (items: Record<string, unknown>) => {
+              Object.assign(data, JSON.parse(JSON.stringify(items)));
+              const changes = Object.fromEntries(Object.keys(items).map((k) => [k, { newValue: JSON.parse(JSON.stringify(items[k])) }]));
+              for (const l of listeners) l(changes, "local");
+            },
             clear: async () => {
               for (const k of Object.keys(data)) delete data[k];
             },
@@ -98,9 +105,60 @@ test("the question is included only after opting in", async ({ page }) => {
 test("diagnostics controls are reachable and labeled", async ({ page }) => {
   await openPopup(page);
   await page.getByRole("button", { name: "Settings" }).click();
-  await expect(page.getByRole("heading", { name: "Diagnostics (debug build)" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Copy diagnostics" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Diagnostics" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Copy debug log" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Clear diagnostics" })).toBeVisible();
   await page.getByRole("button", { name: "Clear diagnostics" }).click();
   await expect(page.locator("#diag-status")).toHaveText("Diagnostics cleared.");
+});
+
+// Owner request 2026-10-24: one tap from the + menu copies the whole debug
+// log: every run's steps, uncaught errors, and the setup.
+test("the + menu copies the full debug log with unexpected errors and setup", async ({ page }) => {
+  await openPopup(page);
+  await page.getByLabel("Ask about this page").fill("What does the widget cost?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("The API key was rejected.")).toBeVisible();
+  // An uncaught error in the panel lands in the log.
+  await page.evaluate(() => setTimeout(() => {
+    throw new TypeError("synthetic-crash " + "sk-ant-api03-SYNTHETICKEY99");
+  }));
+  await page.evaluate(() => void Promise.reject(new Error("synthetic-rejection")));
+  await expect.poll(() => page.evaluate(async () => {
+    const got = await (globalThis as unknown as { browser: { storage: { local: { get(k: string): Promise<Record<string, unknown>> } } } }).browser.storage.local.get("diagnosticsCrashes");
+    return JSON.stringify(got.diagnosticsCrashes ?? []);
+  })).toContain("synthetic-rejection");
+
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("button", { name: "Copy debug log" }).click();
+  await expect(page.locator("#status")).toHaveText(/Diagnostics copied/);
+  await expect(page.locator("#plus-menu")).toBeHidden();
+
+  const report = await copied(page);
+  expect(report).toContain("## Scout AI Assistant diagnostics — Actual behavior");
+  expect(report).toContain("### Unexpected errors");
+  // withWorker runs the worker in this page too, so either may record it.
+  expect(report).toMatch(/(panel|worker): TypeError: synthetic-crash \[key\]/);
+  expect(report).toContain("synthetic-rejection");
+  expect(report).toContain("### Setup");
+  expect(report).toContain("- Settings: anthropic / claude-haiku-5-5");
+  expect(report).toContain("- Keys saved: Anthropic yes");
+  expect(report).toContain("- Page: shop.test");
+  expect(report).not.toContain("SYNTHETICKEY99");
+  expect(report).not.toContain(KEY);
+  expect(report).not.toContain("SECRET-PAGE-TEXT");
+});
+
+test("when the clipboard is refused the log is shown selected to copy by hand", async ({ page }) => {
+  await openPopup(page);
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: async () => Promise.reject(new Error("NotAllowedError")) }, configurable: true });
+    document.execCommand = () => false;
+  });
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("button", { name: "Copy debug log" }).click();
+  await expect(page.locator("#status")).toHaveText(/Could not copy automatically/);
+  const box = page.getByLabel("Diagnostics report to copy");
+  await expect(box).toBeVisible();
+  await expect(box).toHaveValue(/## Scout AI Assistant diagnostics/);
 });

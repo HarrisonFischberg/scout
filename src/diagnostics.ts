@@ -1,8 +1,9 @@
-// Debug-build diagnostics. Records what each run did (stages, user-visible
-// errors, outcome, tokens) so a failure can be pasted into a bug report as
-// "Actual behavior". Local only: kept in extension storage, never sent
-// anywhere, cleared by Delete all data. Release builds never create a
-// recorder (see __SCOUT_DEBUG__ in scripts/build.mjs).
+// The debug log. Records what each run did (stages, user-visible errors,
+// outcome, tokens) so a failure can be pasted into a bug report as "Actual
+// behavior". Local only: kept in extension storage, never sent anywhere by
+// the app, copied only when the user taps Copy, cleared by Delete all data.
+// In every build since 2026-10-24 (owner decision: he tests TestFlight
+// builds); the native console log and the mock server switch stay debug only.
 //
 // Never recorded: API keys, page text, form values, typed agent input. The
 // user's question is recorded only when they opt in.
@@ -41,7 +42,9 @@ interface Stored {
 }
 
 export const DIAG_KEY = "diagnostics";
-export const MAX_RUNS = 5;
+// Enough to cover a whole session of use, so a bug noticed a few runs later
+// is still in the log (owner request 2026-10-24: "much more robust").
+export const MAX_RUNS = 15;
 // A coupon run with two searches and 80 tested codes writes about 250 stages.
 export const MAX_EVENTS = 400;
 const MAX_TEXT = 300;
@@ -207,6 +210,90 @@ export async function recordButtonFailure(store: StorageArea | undefined, failur
   }
 }
 
+// ---------- Unexpected errors ----------
+// Uncaught exceptions and unhandled promise rejections in the panel and the
+// worker. Nothing else would show them: they never reach
+// the chat as an error message.
+
+export const CRASH_KEY = "diagnosticsCrashes";
+export const MAX_CRASHES = 20;
+
+export interface Crash {
+  at: number;
+  where: "panel" | "worker";
+  /** Error name, message and the first bundle frames, scrubbed. */
+  message: string;
+  /** The same error again right after: counted, not stored twice. */
+  count: number;
+}
+
+export function parseCrashes(raw: unknown): Crash[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((c): c is Crash => !!c && typeof c === "object" && typeof c.at === "number" && typeof c.message === "string" && (c.where === "panel" || c.where === "worker"))
+    .map((c) => ({ at: c.at, where: c.where, message: c.message, count: typeof c.count === "number" ? c.count : 1 }))
+    .slice(-MAX_CRASHES);
+}
+
+export async function loadCrashes(store: StorageArea | undefined): Promise<Crash[]> {
+  if (!store) return [];
+  try {
+    return parseCrashes((await store.get(CRASH_KEY))[CRASH_KEY]);
+  } catch {
+    return [];
+  }
+}
+
+/** "TypeError: x is undefined at popup.js:12:5": file names only, never a full path or page address. */
+export function describeCrash(error: unknown, file?: string, line?: number): string {
+  let text: string;
+  let stack = "";
+  if (error instanceof Error) {
+    text = error.name + ": " + error.message;
+    stack = error.stack ?? "";
+  } else text = typeof error === "string" ? error : (() => {
+    try {
+      return JSON.stringify(error) ?? String(error);
+    } catch {
+      return String(error);
+    }
+  })();
+  const frames = [...stack.matchAll(/([\w.-]+\.js):(\d+)(?::\d+)?/g)].slice(0, 3).map((m) => m[1] + ":" + m[2]);
+  if (!frames.length && file) frames.push((file.split("/").pop() ?? file) + (line ? ":" + line : ""));
+  return scrub(text + (frames.length ? " at " + frames.join(" < ") : ""));
+}
+
+export async function recordCrash(store: StorageArea | undefined, crash: Omit<Crash, "count">): Promise<void> {
+  if (!store) return;
+  try {
+    const list = await loadCrashes(store);
+    const last = list[list.length - 1];
+    const message = scrub(crash.message);
+    if (last && last.where === crash.where && last.message === message) {
+      last.count++;
+      last.at = crash.at;
+    } else list.push({ at: crash.at, where: crash.where, message, count: 1 });
+    await store.set({ [CRASH_KEY]: list.slice(-MAX_CRASHES) });
+  } catch {
+    // Best effort; never throw from an error handler.
+  }
+}
+
+interface ErrorTarget {
+  addEventListener(type: "error" | "unhandledrejection", listener: (e: Event) => void): void;
+}
+
+/** Records uncaught errors from `target` (a window or the worker's global). */
+export function watchCrashes(target: ErrorTarget, store: StorageArea | undefined, where: Crash["where"], now: () => number = () => Date.now()): void {
+  target.addEventListener("error", (e) => {
+    const ev = e as ErrorEvent;
+    void recordCrash(store, { at: now(), where, message: describeCrash(ev.error ?? ev.message, ev.filename, ev.lineno) });
+  });
+  target.addEventListener("unhandledrejection", (e) => {
+    void recordCrash(store, { at: now(), where, message: "Unhandled rejection: " + describeCrash((e as PromiseRejectionEvent).reason) });
+  });
+}
+
 /** A recorder that does nothing; used by release builds. */
 export const disabledRun = NOOP;
 
@@ -258,19 +345,46 @@ export function reportedRun(runs: readonly DiagRun[]): DiagRun | undefined {
 }
 
 /** Markdown the user pastes as "Actual behavior". The reported run (see `reportedRun`) in full, the others summarised. */
-export function buildReport(runs: readonly DiagRun[], env: ReportEnv, buttonFailures: readonly ButtonFailure[] = []): string {
+export interface ReportExtras {
+  /** "Name: value" lines describing the setup (surface, input, provider, keys saved yes/no). Never secrets. */
+  setup?: readonly string[];
+  crashes?: readonly Crash[];
+}
+
+const timeline = (lines: string[], events: readonly DiagEvent[]): void => {
+  lines.push("```");
+  if (events.length === 0) lines.push("(no stages recorded)");
+  for (const e of events) lines.push(`+${(e.t / 1000).toFixed(2)}s  ${e.stage}`);
+  lines.push("```");
+};
+
+/**
+ * Markdown the user pastes as "Actual behavior": the reported run (see
+ * `reportedRun`) in full, then every other run with its own timeline,
+ * unexpected errors, page button failures, and the setup.
+ */
+export function buildReport(runs: readonly DiagRun[], env: ReportEnv, buttonFailures: readonly ButtonFailure[] = [], extras: ReportExtras = {}): string {
   const lines: string[] = ["## Scout AI Assistant diagnostics — Actual behavior", ""];
   const last = reportedRun(runs);
-  const button = (): void => {
-    if (!buttonFailures.length) return;
-    lines.push("", "### Page button could not open Scout");
-    for (const f of [...buttonFailures].reverse()) {
-      lines.push(`- ${clock(f.at)} after ${f.tries} ${f.tries === 1 ? "try" : "tries"}: "${f.reason}"`);
+  const tail = (): void => {
+    if (extras.crashes?.length) {
+      lines.push("", "### Unexpected errors");
+      for (const c of [...extras.crashes].reverse()) {
+        lines.push(`- ${clock(c.at)} ${c.where}${c.count > 1 ? ` (×${c.count})` : ""}: ${c.message}`);
+      }
     }
+    if (buttonFailures.length) {
+      lines.push("", "### Page button could not open Scout");
+      for (const f of [...buttonFailures].reverse()) {
+        lines.push(`- ${clock(f.at)} after ${f.tries} ${f.tries === 1 ? "try" : "tries"}: "${f.reason}"`);
+      }
+    }
+    lines.push("", "### Setup", `- Build: Scout AI Assistant ${env.version} (${env.build}) · ${env.browser}${env.tz ? " · " + env.tz : ""}`);
+    for (const l of extras.setup ?? []) lines.push(`- ${scrub(l)}`);
   };
   if (!last) {
     lines.push("No runs recorded yet. Use Scout, then copy diagnostics again.");
-    button();
+    tail();
     return lines.join("\n");
   }
   lines.push(
@@ -286,11 +400,8 @@ export function buildReport(runs: readonly DiagRun[], env: ReportEnv, buttonFail
     `- Question: ${last.question !== undefined ? `"${last.question}"` : "not recorded (opt in under Diagnostics)"}`,
     "",
     "### Timeline",
-    "```",
   );
-  if (last.events.length === 0) lines.push("(no stages recorded)");
-  for (const e of last.events) lines.push(`+${(e.t / 1000).toFixed(2)}s  ${e.stage}`);
-  lines.push("```");
+  timeline(lines, last.events);
   const earlier = runs.filter((r) => r !== last).reverse();
   if (earlier.length) {
     lines.push("", "### Other runs");
@@ -298,9 +409,15 @@ export function buildReport(runs: readonly DiagRun[], env: ReportEnv, buttonFail
       const where = r.pageHost ? ` on ${r.pageHost}` : "";
       const errors = r.errors.length ? ` (${r.errors.length} error${r.errors.length === 1 ? "" : "s"}: "${r.errors[r.errors.length - 1]}")` : "";
       lines.push(`- #${r.id} ${r.kind}${where} at ${clock(r.startedAt)} → ${r.outcome ? r.outcome.status : "unfinished"}${errors}`);
+      // Quiet panel openings stay one line; every other run keeps its steps.
+      if (!quietStartup(r)) {
+        if (r.provider) lines.push(`  ${r.provider}${r.model ? " / " + r.model : ""}${r.mock ? " · local mock server" : ""}`);
+        if (r.outcome) lines.push(`  outcome: "${r.outcome.message}"`);
+        timeline(lines, r.events);
+      }
     }
   }
-  button();
+  tail();
   lines.push("", "_Recorded locally by a debug build. No page text, keys, or form values are included._");
   return lines.join("\n");
 }
