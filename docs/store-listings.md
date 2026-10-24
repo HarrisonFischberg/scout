@@ -12,7 +12,7 @@ in `docs/app-store-listing.md`.
 | Chrome Web Store (also Microsoft Edge Add-ons) | `dist/scout-chrome-<version>.zip` | `npm run build:chrome` |
 | Firefox Add-ons (AMO) | `dist/scout-firefox-<version>.zip` | `npm run build:firefox` |
 
-Both are release builds (no diagnostics code). The Firefox add-on ID is
+Both are release builds (no debug-only code; the on-device debug log is included). The Firefox add-on ID is
 `scout-ai-assistant@harrisonfischberg`; AMO ties the listing to it, so it never changes.
 
 ## Shared text
