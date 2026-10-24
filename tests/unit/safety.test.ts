@@ -57,6 +57,14 @@ describe("classifier", () => {
     expect(detectCaptcha(snapOf([], "x", "reCAPTCHA check"))).toBe(true);
     expect(detectCaptcha(snapOf([el("e1", "checkbox", "I'm not a robot")]))).toBe(true);
     expect(detectCaptcha(snapOf([el("e1", "button", "Apply coupon")]))).toBe(false);
+    // Amazon-style and hCaptcha-style human checks (owner report 2026-10-24).
+    expect(detectCaptcha(snapOf([], "x", "Human Verification"))).toBe(true);
+    expect(detectCaptcha(snapOf([el("e1", "checkbox", "I am human")]))).toBe(true);
+    expect(detectCaptcha(snapOf([], "Let\u2019s confirm you\u2019re human. Complete the security check before continuing."))).toBe(true);
+    expect(detectCaptcha(snapOf([el("e1", "button", "Press and hold")]))).toBe(true);
+    // The invisible reCAPTCHA badge on a sign-in form is not a check.
+    expect(detectCaptcha(snapOf([], "Sign in. This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply."))).toBe(false);
+    expect(detectCaptcha(snapOf([], "Flip Switch lever, 4.8 out of 5. Super Switch for human hands."))).toBe(false);
   });
 });
 
