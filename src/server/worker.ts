@@ -256,7 +256,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
       return { ok: true, opened: true };
     },
     "task.start": (p: { tab_id: number; goal: string; conv?: string; source?: "panel" | "chat" }) => taskHost.start(p),
-    "task.control": (p: { task_id: string; command: "pause" | "resume" | "stop" }, sender: { kind: SenderKind; raw: MessageSender }) => {
+    "task.control": (p: { task_id: string; command: "stop" }, sender: { kind: SenderKind; raw: MessageSender }) => {
       // The overlay toast's Stop during a coupon run ("coupons:<tab>").
       const coupons = /^coupons:(\d+)$/.exec(p.task_id);
       if (coupons) return p.command === "stop" ? couponHost.stop(Number(coupons[1]), sender) : { ok: false };
@@ -294,6 +294,11 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
       return { message_id: p.message_id };
     },
     "chat.stop": (p: { message_id: string }) => ({ stopped: server.stop(p.message_id) }),
+    "jobs.stop_all": async () => {
+      server.stopAll();
+      await Promise.all([taskHost.stopAll(), couponHost.stopAll()]);
+      return { ok: true };
+    },
     "chat.tool_result": (p: {
       message_id: string;
       request_id: string;

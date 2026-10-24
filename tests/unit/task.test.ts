@@ -304,30 +304,6 @@ describe("Scout mode runner", () => {
     expect(h.acts[1]).toEqual({ type: "click", target: { x: 200, y: 150 } });
   });
 
-  it("Take control stops the next action within 250 ms and Resume continues", async () => {
-    const provider = scripted([[act([{ type: "click", target: { ref: "e3" } }, { type: "wait", ms: 5000 }, { type: "click", target: { ref: "e3" } }])], [finish("ok")]]);
-    const h = harness(provider);
-    const run = runTask(h.deps);
-    // Pause as soon as the first click lands: the 5 s wait and the next click must not run.
-    await new Promise<void>((resolve) => {
-      const tick = (): void => (h.acts.length ? resolve() : void setTimeout(tick, 2));
-      tick();
-    });
-    const pausedAt = Date.now();
-    h.control.pause();
-    await new Promise((r) => setTimeout(r, 300));
-    expect(h.acts).toHaveLength(1);
-    expect(h.events.some((e) => e.kind === "state" && e.state === "paused")).toBe(true);
-    expect(h.overlay.some((c) => c.type === "state" && c.state === "paused")).toBe(true);
-    const pausedEvent = h.timeline.find((t) => t.what === "overlay:state" && t.at >= pausedAt - Date.now() - 1000);
-    expect(pausedEvent).toBeDefined();
-    h.control.resume();
-    const out = await run;
-    expect(out.status).toBe("done");
-    expect(h.acts).toHaveLength(2);
-    expect(h.overlay.filter((c) => c.type === "state").map((c) => (c as { state: string }).state)).toEqual(["paused", "running"]);
-  });
-
   it("Stop ends the task, hides the overlay at once, and restores the toolbar icon", async () => {
     const provider = scripted([[act([{ type: "click", target: { ref: "e3" } }, { type: "wait", ms: 9000 }])]]);
     const h = harness(provider, { onAct: () => h.control.stop() });
