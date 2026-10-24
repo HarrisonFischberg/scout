@@ -38,13 +38,14 @@ const cartPage = (opts: { hang?: boolean } = {}): CouponPage => {
   };
 };
 
-function fake(page: CouponPage) {
+function fake(page: CouponPage, blocked?: string) {
   const overlay: OverlayRequest[] = [];
   const saved: Array<{ conv: string; question: string; answer: string }> = [];
   const posted: Array<Record<string, unknown>> = [];
   const host = new CouponHost({
     provider: async () => quiet,
     page: async () => page,
+    ...(blocked ? { blocked: async () => blocked } : {}),
     tabs: () => ({ open: async () => null, read: async () => null, click: async () => false, close: async () => undefined, wait: async () => undefined }),
     allowBrowser: async () => false,
     overlay: async (_tab, req) => void overlay.push(req),
@@ -133,6 +134,16 @@ describe("coupon host", () => {
     expect(f.host.stop(7)).toEqual({ ok: false });
     expect(f.host.stop(1, { kind: "content", raw: { tab: { id: 1 } } })).toEqual({ ok: true });
     expect(f.overlay[f.overlay.length - 1]).toEqual({ type: "overlay:hide" });
+  });
+
+  it("a site blocked in Settings or by the organization does not start, and the page is never touched", async () => {
+    let touched = false;
+    const page = cartPage();
+    const f = fake({ ...page, snapshot: () => ((touched = true), page.snapshot()) }, "shop.test is blocked in Settings, so Scout cannot act on it.");
+    await expect(f.host.start({ tab_id: 3, provider: "anthropic", model: "m" })).rejects.toThrow(/blocked in Settings/);
+    expect(touched).toBe(false);
+    expect(f.overlay).toEqual([]);
+    expect(f.host.status(3).run).toBeFalsy();
   });
 
   it("a page it cannot reach does not start", async () => {

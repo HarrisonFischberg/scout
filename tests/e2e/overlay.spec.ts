@@ -216,6 +216,12 @@ test("task actions act on the real page: fill, type, key, scroll, drag, and a pr
   const box = await page.getByLabel("Email").boundingBox();
   const at = await content<{ name: string; role: string }>(page, { type: "scout:task-probe", target: { x: box!.x + 5, y: box!.y + 5 } });
   expect(at).toMatchObject({ name: "Email", role: "textbox" });
+  // A plain <button> in a form submits it: the probe says so, so the safety check asks before pressing it (audit 2026-10-24).
+  await page.evaluate(() => document.body.insertAdjacentHTML("afterbegin", '<form onsubmit="return false"><button id="transfer">Transfer</button><button id="plain" type="button">Show more</button></form>'));
+  const tb = await page.locator("#transfer").boundingBox();
+  expect(await content(page, { type: "scout:task-probe", target: { x: tb!.x + 5, y: tb!.y + 5 } })).toMatchObject({ name: "Transfer", type: "submit", inForm: true });
+  const pb = await page.locator("#plain").boundingBox();
+  expect(await content(page, { type: "scout:task-probe", target: { x: pb!.x + 5, y: pb!.y + 5 } })).toMatchObject({ name: "Show more", type: "button" });
   expect(await content(page, { type: "scout:task-probe", target: { ref: "e999" } })).toBeNull();
   // Unknown action types never reach the page's executor as anything but a failure.
   expect(await content<{ ok: boolean; error: string }>(page, { type: "scout:task-act", action: { type: "open_tab", url: "https://x.test" } })).toMatchObject({ ok: false, error: "unknown_action" });

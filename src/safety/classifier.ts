@@ -6,9 +6,10 @@
 // "pre-approved" flag never skips it.
 import type { Action } from "../actions/executor";
 import type { TaskAction } from "../actions/vocabulary";
+import { hostOf, normalizeSite, siteMatches } from "../permissions/gate";
 import type { SnapElement, Snapshot } from "../snapshot/snapshot";
 
-export type SensitiveKind = "payment" | "login" | "send" | "personal_data" | "destructive" | "download" | "account";
+export type SensitiveKind = "payment" | "login" | "send" | "personal_data" | "destructive" | "download" | "account" | "leave_site";
 
 export interface Classification {
   sensitive: boolean;
@@ -36,6 +37,7 @@ export const KIND_LABEL: Record<SensitiveKind, string> = {
   destructive: "deleting",
   download: "downloads",
   account: "account settings",
+  leave_site: "opening other sites",
 };
 
 const RULES: Array<{ kind: SensitiveKind; reason: string; test: RegExp }> = [
@@ -127,8 +129,9 @@ export function classifyAction(action: Action, snap: Snapshot): Classification {
 
 /**
  * Classifies a Scout mode action from what the page reports about its target.
- * Scrolling, waiting, screenshots, dragging, and opening an address never
- * need confirmation (blocked sites are refused before navigate runs).
+ * Scrolling, waiting, screenshots, and dragging never need confirmation;
+ * opening an address is checked by `classifyNavigation` (blocked sites are
+ * refused before navigate runs).
  * Typing into a password, card, or similar field does; so does Enter inside a
  * form, which submits it. A missing target acts on nothing, so it needs no
  * confirmation either (the executor reports no_target).
@@ -154,4 +157,29 @@ export function classifyTaskAction(action: TaskAction, target: TargetInfo | null
     return { sensitive: true, kind: "personal_data", reason: "Pressing Enter here submits the form." };
   }
   return { sensitive: false };
+}
+
+/** "www.shop.com" and "checkout.shop.com" are one site; "evil.example" is another. */
+function sameSite(host: string, known: string): boolean {
+  const a = host.replace(/^www\./, "");
+  const b = known.replace(/^www\./, "");
+  return siteMatches(a, b) || siteMatches(b, a);
+}
+
+/** Sites the user's own task names ("go to google.com"). */
+export function sitesNamed(goal: string): string[] {
+  return [...goal.matchAll(/[a-z0-9-]+(?:\.[a-z0-9-]+)+/gi)].flatMap((m) => normalizeSite(m[0]) ?? []);
+}
+
+/**
+ * Scout mode's navigate to an address the model chose. A page can hide
+ * instructions that put what Scout read into a link to another site (prompt
+ * injection), so opening a site other than the ones the task is already on,
+ * the user approved, or the task names is asked first (audit 2026-10-24).
+ */
+export function classifyNavigation(url: string, known: readonly string[], goal: string): Classification {
+  const host = hostOf(url);
+  if (!host) return { sensitive: false };
+  if ([...known, ...sitesNamed(goal)].some((k) => sameSite(host, k))) return { sensitive: false };
+  return { sensitive: true, kind: "leave_site", reason: "This opens " + host + ", another site. Pages can try to trick Scout into sending what it sees elsewhere." };
 }

