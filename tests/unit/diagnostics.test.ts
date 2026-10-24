@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUTTON_KEY, buildReport, describeBrowser, Diagnostics, DIAG_KEY, loadButtonFailures, MAX_BUTTON_FAILURES, MAX_RUNS, recordButtonFailure, scrub } from "../../src/diagnostics";
+import { BUTTON_KEY, buildReport, describeBrowser, describeCrash, Diagnostics, DIAG_KEY, loadButtonFailures, loadCrashes, MAX_BUTTON_FAILURES, MAX_CRASHES, MAX_RUNS, parseCrashes, recordButtonFailure, recordCrash, scrub, watchCrashes } from "../../src/diagnostics";
 import type { StorageArea } from "../../src/settings/settings";
 
 function memStore(): StorageArea & { data: Record<string, unknown> } {
@@ -188,5 +188,75 @@ describe("page button failures", () => {
     const store = memStore();
     store.data[BUTTON_KEY] = [{ at: "x" }, null, { at: 1, reason: "ok", tries: 1 }];
     expect(await loadButtonFailures(store)).toEqual([{ at: 1, reason: "ok", tries: 1 }]);
+  });
+});
+
+describe("unexpected errors", () => {
+  it("records crashes scrubbed, counts repeats, and keeps the last ones", async () => {
+    const store = memStore();
+    const err = new TypeError("bad sk-ant-api03-abcdefgh1234 at https://shop.test/x?y=1");
+    err.stack = "TypeError: bad\n    at run (safari-web-extension://ABC/popup.js:120:7)\n    at go (safari-web-extension://ABC/popup.js:9:1)";
+    const msg = describeCrash(err);
+    expect(msg).toBe("TypeError: bad [key] at shop.test at popup.js:120 < popup.js:9");
+    await recordCrash(store, { at: 1, where: "panel", message: msg });
+    await recordCrash(store, { at: 2, where: "panel", message: msg });
+    await recordCrash(store, { at: 3, where: "worker", message: describeCrash("plain", "safari-web-extension://ABC/background.js", 4) });
+    const list = await loadCrashes(store);
+    expect(list).toEqual([
+      { at: 2, where: "panel", message: msg, count: 2 },
+      { at: 3, where: "worker", message: "plain at background.js:4", count: 1 },
+    ]);
+    for (let i = 0; i < MAX_CRASHES + 5; i++) await recordCrash(store, { at: i, where: "worker", message: "e" + i });
+    expect(await loadCrashes(store)).toHaveLength(MAX_CRASHES);
+  });
+
+  it("watches error and unhandledrejection events", async () => {
+    const store = memStore();
+    const handlers: Record<string, (e: Event) => void> = {};
+    watchCrashes({ addEventListener: (t, l) => void (handlers[t] = l) }, store, "worker", () => 5);
+    const boom = Object.assign(new Error("boom"), { stack: "" });
+    handlers.error!({ error: boom, message: "boom" } as unknown as Event);
+    await new Promise((r) => setTimeout(r, 0));
+    handlers.unhandledrejection!({ reason: "nope" } as unknown as Event);
+    await new Promise((r) => setTimeout(r, 0));
+    const list = await loadCrashes(store);
+    expect(list.map((c) => c.message)).toEqual(["Error: boom", "Unhandled rejection: nope"]);
+  });
+
+  it("drops malformed stored entries", () => {
+    expect(parseCrashes([{ at: 1, where: "panel", message: "x" }, { at: "x" }, null, { at: 1, where: "elsewhere", message: "y" }])).toEqual([
+      { at: 1, where: "panel", message: "x", count: 1 },
+    ]);
+  });
+});
+
+describe("full debug log", () => {
+  it("keeps every run's steps, then unexpected errors and setup", () => {
+    const d = new Diagnostics(undefined, () => 0);
+    const a = d.start("agent", { provider: "anthropic", model: "m" });
+    a.stage("step:ok Did: click “See all reviews”");
+    a.finish("error", "Blocked by a human check.");
+    d.start("startup").finish("ready", "Ready.");
+    d.start("ask", { provider: "anthropic", model: "m" }).finish("done", "Answered.");
+    const text = buildReport(d.runs, ENV, [], {
+      crashes: [{ at: 0, where: "worker", message: "TypeError: x at background.js:3", count: 3 }],
+      setup: ["Surface: panel · touch", "Keys saved: Anthropic yes, OpenAI no"],
+    });
+    expect(text).toContain("- Run: ask (#3)");
+    // The earlier agent run keeps its outcome and timeline.
+    expect(text).toContain("- #1 agent at");
+    expect(text).toContain('  outcome: "Blocked by a human check."');
+    expect(text).toContain("+0.00s  step:ok Did: click “See all reviews”");
+    // A quiet panel opening stays one line.
+    expect(text).toMatch(/- #2 startup at .* → ready\n- #1/);
+    expect(text).toContain("### Unexpected errors\n- 1970");
+    expect(text).toContain("worker (×3): TypeError: x at background.js:3");
+    expect(text).toContain("### Setup\n- Build: Scout AI Assistant 0.1.0 (debug) · Safari 27 on macOS");
+    expect(text).toContain("- Keys saved: Anthropic yes, OpenAI no");
+    expect(text.indexOf("### Unexpected errors")).toBeLessThan(text.indexOf("### Setup"));
+  });
+
+  it("includes setup even before any run", () => {
+    expect(buildReport([], ENV, [], { setup: ["Mode: Chat"] })).toContain("### Setup");
   });
 });

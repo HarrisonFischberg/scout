@@ -13,10 +13,13 @@ import { clearTabStates, forgetTab, loadTabStates, setPanelOpen, tabKey } from "
 import { openPanel, toolbarIcon, TITLE_CLOSE, TITLE_OPEN } from "./panel/toolbar";
 import { createWarmer } from "./panel/warm";
 import { nativeSend } from "./keychain";
-import { recordButtonFailure } from "./diagnostics";
+import { recordButtonFailure, watchCrashes } from "./diagnostics";
 
 const self = (): Self => ({ id: browser.runtime.id ?? "", baseUrl: browser.runtime.getURL?.("") ?? "" });
 const storage = browser.storage?.local;
+// Debug builds: uncaught worker errors go into the debug log (src/diagnostics.ts).
+// Unit tests load this file without the build flag.
+if (typeof __SCOUT_DEBUG__ !== "undefined" && __SCOUT_DEBUG__ && typeof globalThis.addEventListener === "function") watchCrashes(globalThis, storage, "worker");
 
 // ---------- Toolbar icon follows the theme ----------
 const dark = typeof matchMedia === "function" ? matchMedia("(prefers-color-scheme: dark)") : null;
