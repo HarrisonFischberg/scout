@@ -27,8 +27,9 @@ The Safari extension ships inside the app, so it comes along automatically.
 - Paid Apple Developer Program, Individual team `KTV2G3Z883` (launch blocker 2).
 - iOS targets already use `com.harrisonfischberg.Scoutai` and
   `com.harrisonfischberg.Scoutai.Extension`, signed by that team.
-- Archives use the Release configuration, which contains no diagnostics code
-  (`npm run check:release`).
+- Archives use the Release configuration, which contains no debug-only code
+  (`npm run check:release`). It does include the on-device debug log
+  (+ → Copy debug log), so TestFlight builds can report bugs.
 
 ## Repo side (done in `scripts/prepare-testflight.rb`, 2026-10-17)
 

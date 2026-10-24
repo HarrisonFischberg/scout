@@ -996,6 +996,8 @@
           <ul id="plus-menu" aria-label="More actions" hidden>
             <li><button id="coupons-run" type="button">
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12 12 20 3 11V3h8Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Find coupons</button></li>
+            <li><button id="diag-menu-copy" type="button">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>Copy debug log</button></li>
           </ul>
           <!-- Typing @ suggests tabs to attach (src/panel/attach.ts). -->
           <ul id="mention-list" role="listbox" aria-label="Tabs to attach" hidden></ul>
@@ -1223,22 +1225,23 @@
           </p>
         </section>
 
-        <!-- debug:start (scripts/build.mjs strips this block from release builds) -->
         <section id="diag" aria-labelledby="diag-title" hidden>
-          <h3 id="diag-title">Diagnostics (debug build)</h3>
+          <h3 id="diag-title">Diagnostics</h3>
           <p class="hint">
-            Records what the last 5 runs did, on this device only, so you can paste it into a bug report.
+            Records what the last 15 runs did (each step, errors, Scout mode actions, coupon attempts), plus any
+            unexpected errors and your setup, on this device only, so you can paste it into a bug report. Also in the + menu.
             Never includes page text, API keys, or form values.
           </p>
           <label><input id="diag-question" type="checkbox" /> Also record the question I type</label>
+          <!-- debug:start (scripts/build.mjs strips this block from release builds) -->
           <label><input id="diag-mock" type="checkbox" /> Answer from the local mock server (scripts/mock-scout-server.mjs, Anthropic only)</label>
+          <!-- debug:end -->
           <div class="row">
-            <button id="diag-copy" class="btn" type="button">Copy diagnostics</button>
+            <button id="diag-copy" class="btn" type="button">Copy debug log</button>
             <button id="diag-clear" class="btn" type="button">Clear diagnostics</button>
           </div>
           <p id="diag-status" class="hint" role="status" aria-live="polite"></p>
         </section>
-        <!-- debug:end -->
 
         <section aria-labelledby="legal-title">
           <h3 id="legal-title">Legal</h3>

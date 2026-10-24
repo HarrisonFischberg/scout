@@ -13,10 +13,12 @@ import { clearTabStates, forgetTab, loadTabStates, setPanelOpen, tabKey } from "
 import { openPanel, toolbarIcon, TITLE_CLOSE, TITLE_OPEN } from "./panel/toolbar";
 import { createWarmer } from "./panel/warm";
 import { nativeSend } from "./keychain";
-import { recordButtonFailure } from "./diagnostics";
+import { recordButtonFailure, watchCrashes } from "./diagnostics";
 
 const self = (): Self => ({ id: browser.runtime.id ?? "", baseUrl: browser.runtime.getURL?.("") ?? "" });
 const storage = browser.storage?.local;
+// Uncaught worker errors go into the debug log (src/diagnostics.ts).
+if (typeof globalThis.addEventListener === "function") watchCrashes(globalThis, storage, "worker");
 
 // ---------- Toolbar icon follows the theme ----------
 const dark = typeof matchMedia === "function" ? matchMedia("(prefers-color-scheme: dark)") : null;
@@ -47,10 +49,10 @@ const route = createRouter(
       return states[tabKey(p.tabId)] ?? {};
     },
     // Page button (src/edge.ts): Safari's own panel, never a frame in the page.
-    // Debug builds keep Safari's reason when it refuses (src/diagnostics.ts).
+    // The debug log keeps Safari's reason when it refuses (src/diagnostics.ts).
     "panel.open": async () => {
       const r = await openPanel(browser.action);
-      if (__SCOUT_DEBUG__ && !r.opened) await recordButtonFailure(storage, { at: Date.now(), reason: r.reason ?? "", tries: r.tries });
+      if (!r.opened) await recordButtonFailure(storage, { at: Date.now(), reason: r.reason ?? "", tries: r.tries });
       return r;
     },
     // Page button loaded or touched: answer at once, warm in the background.
