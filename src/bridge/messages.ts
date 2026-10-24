@@ -160,8 +160,10 @@ export const REQUESTS = {
         site: "string",
         /** "general": judged unrelated to the page, sent without it (src/chat/intent.ts). */
         scope: { enum: ["page", "general"] },
+        /** General questions: the open page's address and title only, so the model can choose to read it. */
+        open_page: { object: { url: "string", title: "string" } },
       },
-      optional: ["effort", "shared", "display_question", "answer_prefix", "prefix_sources", "site", "scope"],
+      optional: ["effort", "shared", "display_question", "answer_prefix", "prefix_sources", "site", "scope", "open_page"],
     },
   },
   "chat.stop": { senders: ["panel"], payload: { object: { message_id: "string" } } },
