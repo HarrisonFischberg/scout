@@ -15,7 +15,7 @@ import { formatMoney } from "./coupons/money";
 import { originLabel } from "./coupons/candidates";
 import { couponStatusText } from "./coupons/finder";
 import { formatCostLine } from "./cost";
-import { BUTTON_KEY, buildReport, describeBrowser, Diagnostics, disabledRun, loadButtonFailures, type ButtonFailure, type RunHandle, type RunKind } from "./diagnostics";
+import { BUTTON_KEY, buildReport, CRASH_KEY, describeBrowser, Diagnostics, disabledRun, loadButtonFailures, loadCrashes, parseButtonFailures, parseCrashes, watchCrashes, type ButtonFailure, type Crash, type RunHandle, type RunKind } from "./diagnostics";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { BridgeError, envelope, newRequestId, request, type Envelope } from "./bridge/messages";
 import { connectPanelPort, type PanelPort } from "./bridge/port";
@@ -184,6 +184,17 @@ let diag: Diagnostics | null = null;
 let current: RunHandle = disabledRun;
 /** Times the page button could not open Scout (recorded by the worker). */
 let buttonFailures: ButtonFailure[] = [];
+/** Uncaught errors in the panel and the worker, kept current from storage. */
+let crashes: Crash[] = [];
+/** The report's Setup lines, filled in by main() once settings and keys are known. */
+let setupLines: () => string[] = () => [];
+const setupOrEmpty = (): string[] => {
+  try {
+    return setupLines();
+  } catch {
+    return ["(setup not known yet: Scout was still opening)"];
+  }
+};
 
 function startRun(kind: RunKind, meta: { provider?: string; model?: string; question?: string; mock?: boolean } = {}): RunHandle {
   current = diag ? diag.start(kind, meta) : disabledRun;
@@ -204,16 +215,19 @@ function diagnosticsReport(): string {
     build: __SCOUT_DEBUG__ ? "debug" : "release",
     browser: describeBrowser(navigator.userAgent),
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  }, buttonFailures);
+  }, buttonFailures, { setup: setupOrEmpty(), crashes });
 }
 
-// Copies the report. If the clipboard is refused, shows it selected in a
-// read-only box next to `anchor` so the user can copy it by hand.
+// Copies the report. Built synchronously so the copy stays inside the tap
+// (Safari on iPhone refuses clipboard writes after an await). If the
+// clipboard API is refused, tries the older copy command, then shows the
+// report selected in a read-only box next to `anchor` to copy by hand.
 async function copyDiagnostics(anchor: HTMLElement, statusNode: HTMLElement): Promise<void> {
   const text = diagnosticsReport();
+  const done = "Diagnostics copied. Paste them into your bug report as Actual behavior.";
   try {
     await navigator.clipboard.writeText(text);
-    statusNode.textContent = "Diagnostics copied. Paste them into your bug report as Actual behavior.";
+    statusNode.textContent = done;
   } catch {
     let box = anchor.parentElement?.querySelector<HTMLTextAreaElement>("textarea.diag-fallback") ?? null;
     if (!box) {
@@ -228,7 +242,18 @@ async function copyDiagnostics(anchor: HTMLElement, statusNode: HTMLElement): Pr
     box.value = text;
     box.focus();
     box.select();
-    statusNode.textContent = "Could not copy automatically. The report is selected: press Command-C.";
+    box.setSelectionRange(0, text.length);
+    let copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } catch {
+      // Refused too: the selected box is the way.
+    }
+    statusNode.textContent = copied
+      ? done
+      : matchMedia("(pointer: coarse)").matches
+        ? "Could not copy automatically. Touch and hold the report below, then tap Select All and Copy."
+        : "Could not copy automatically. The report is selected: press Command-C.";
   }
 }
 
@@ -453,7 +478,14 @@ async function main(): Promise<void> {
   const mockRead = __SCOUT_DEBUG__ && storage ? storage.get(DEV_MOCK_KEY).catch(() => none) : Promise.resolve(none);
   if (__SCOUT_DEBUG__) {
     diag = new Diagnostics(storage);
+    watchCrashes(window, storage, "panel");
     void loadButtonFailures(storage).then((f) => (buttonFailures = f));
+    void loadCrashes(storage).then((c) => (crashes = c));
+    browser.storage?.onChanged?.addListener((changes, area) => {
+      if (area !== "local") return;
+      if (CRASH_KEY in changes) crashes = parseCrashes(changes[CRASH_KEY]?.newValue);
+      if (BUTTON_KEY in changes) buttonFailures = parseButtonFailures(changes[BUTTON_KEY]?.newValue);
+    });
   }
   [conv] = await Promise.all([
     convRead,
@@ -496,9 +528,27 @@ async function main(): Promise<void> {
         diagStatus.textContent = diagMock.checked ? "Answers now come from the local mock server." : "Answers come from your provider again.";
       });
     });
+    // The + menu's copy (debug builds): reachable without opening Settings.
+    const menuCopy = el<HTMLButtonElement>("diag-menu-copy");
+    // The menu closes, so a hand-copy box shows by the status line instead.
+    menuCopy.addEventListener("click", () => {
+      void copyDiagnostics(status, status);
+      closePlus();
+    });
+    setupLines = () => [
+      `Surface: ${STANDALONE ? "Scout page" : "panel"} · ${matchMedia("(pointer: coarse)").matches ? "touch" : "mouse"} · ${innerWidth}×${innerHeight} @${devicePixelRatio}x · ${matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"}`,
+      `Look: ${document.documentElement.dataset.look ?? "default"}`,
+      `Mode: ${mode() === "scout" ? "Scout mode" : "Chat"}`,
+      `Settings: ${settings.provider} / ${settings.model} · effort ${settings.effort} · history ${settings.retention}`,
+      `Keys saved: Anthropic ${keyed.has("anthropic") ? "yes" : "no"}, OpenAI ${keyed.has("openai") ? "yes" : "no"}`,
+      `Page: ${hostOf(tab.url ?? "") ?? "none"}${tab.incognito ? " · private" : ""}`,
+      `Busy: ${[activeChat && "answering", task && "Scout mode", couponRun && "Find coupons"].filter(Boolean).join(", ") || "no"}`,
+      `Network: ${navigator.onLine ? "online" : "offline"} · ${navigator.language}`,
+    ];
     el("diag-clear").addEventListener("click", () => {
       buttonFailures = [];
-      void storage?.set({ [BUTTON_KEY]: [] }).catch(() => undefined);
+      crashes = [];
+      void storage?.set({ [BUTTON_KEY]: [], [CRASH_KEY]: [] }).catch(() => undefined);
       void diag?.clear().then(() => (diagStatus.textContent = "Diagnostics cleared."));
     });
     diagBox.hidden = false;
@@ -2197,9 +2247,15 @@ async function main(): Promise<void> {
     switch (p.kind) {
       case "log": {
         const text = String(p.text ?? "");
-        appendTaskLog(text, String(p.status ?? "note"));
+        const logStatus = String(p.status ?? "note");
+        appendTaskLog(text, logStatus);
         // Diagnostics: the overlay's failure reason (app-generated, never page text).
         if (text.startsWith("Overlay could not be shown")) trace("task:overlay-failed " + (/\(([^)]*)\)/.exec(text)?.[1] ?? ""));
+        // Each step Scout mode took. Step lines name the action and its target
+        // (never typed text, see describeAction); Scout's own remarks and the
+        // goal are left out, since they can quote the page or the question.
+        else if (logStatus === "say" || logStatus === "note") trace("step:" + logStatus);
+        else trace("step:" + logStatus + " " + text.replace(/\s+/g, " ").slice(0, 160));
         break;
       }
       case "state": {
