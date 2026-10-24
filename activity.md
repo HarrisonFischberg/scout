@@ -2092,3 +2092,10 @@ Owner after #79: "it brings up the keyboard but doesnt activate the microphone".
 - Cause: PR #92 made the panel send `open_page` (the open page's address and title) with general questions, but the `chat.start` schema in `src/bridge/messages.ts` was not updated. The worker's router rejected the message with `payload.open_page is not allowed`, and the panel showed its generic start error.
 - Fix: add `open_page` (optional) to the `chat.start` schema.
 - Evidence: new test in `tests/unit/bridge.test.ts` failed before the fix with that exact message and passes after; `npm test` 612/613 (the one failure is the known Take control test on `main`), typecheck, lint and build pass.
+
+## 2026-10-24: SkillSpector security scan; payments always asked
+
+- Scan: NVIDIA SkillSpector (LLM mode through the local `claude` CLI) on the ponytail, ponytail-audit and ponytail-review skills, the agent files (`CLAUDE.md`, `PROMPT.md`, `.claude/settings.json`, `ralph/`), `src/` and `scripts/`. Report: `/mnt/project-files/audits/skillspector-scan-2026-10-24.md`. Nearly all hits were keyword false positives (Keychain, test-fixture injection text, provider URLs).
+- Real issue: the Scout mode confirmation offered "Always allow on this site" for payments, so after one click a page's hidden instructions could make Scout place an order on that site without asking.
+- Fix: `ASK_EVERY_TIME` in `src/permissions/gate.ts` (payments): never saved, honored, or kept from storage; the confirmation hides the button for them. Corrected two stale comments (gate header, coupon finder header: it can open Checkout but never pays).
+- Evidence: new tests in `tests/unit/gate.test.ts` and `tests/unit/task.test.ts`; `npm test` 625/625, typecheck, lint, build, `npm run check:release` pass. Needs a device check: a payment confirmation shows only Allow once / Deny.
