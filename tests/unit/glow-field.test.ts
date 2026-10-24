@@ -31,8 +31,8 @@ describe("glow field", () => {
         expect(o.duration).toBeGreaterThanOrEqual(5000);
         expect(o.duration).toBeLessThanOrEqual(12000);
         expect(o.delay).toBeLessThanOrEqual(0);
-        expect(o.peak).toBeGreaterThan(0.4);
-        expect(o.peak).toBeLessThan(0.9);
+        expect(o.peak).toBeGreaterThanOrEqual(0.3);
+        expect(o.peak).toBeLessThanOrEqual(0.55);
         expect(GLOW_COLORS).toContain(o.color);
       }
       for (const p of sparkles) {

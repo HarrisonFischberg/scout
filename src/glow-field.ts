@@ -45,8 +45,9 @@ export interface GlowField {
 export const GLOW_COLORS = ["#0A84FF", "#1A9BE8", "#2BBCE6", "#33CCF0", "#64D2FF", "#5E5CE6", "#30D5C8"] as const;
 export const SPARKLE_COLORS = ["#D6F4FF", "#8FE3FF", "#64D2FF", "#FFFFFF"] as const;
 
-export const ORBS = { mac: 12, phone: 8 } as const;
-export const SPARKLES = { mac: 36, phone: 22 } as const;
+// Owner, 2026-10-24: "subtler" than the first preview (12/8 orbs, 36/22 sparkles).
+export const ORBS = { mac: 8, phone: 5 } as const;
+export const SPARKLES = { mac: 18, phone: 12 } as const;
 
 const between = (rng: Rng, lo: number, hi: number): number => lo + (hi - lo) * rng();
 const pick = <T>(rng: Rng, list: readonly T[]): T => list[Math.min(list.length - 1, Math.floor(rng() * list.length))]!;
@@ -76,13 +77,13 @@ export function glowField(rng: Rng, phone: boolean): GlowField {
     orbs.push({
       x: round(at.x),
       y: round(at.y),
-      size: round(between(rng, phone ? 26 : 18, phone ? 48 : 38)),
+      size: round(between(rng, phone ? 22 : 16, phone ? 38 : 30)),
       color: pick(rng, GLOW_COLORS),
       dx: round(between(rng, -12, 12)),
       dy: round(between(rng, -12, 12)),
       duration,
       delay: -Math.round(rng() * duration),
-      peak: round(between(rng, 0.45, 0.85) * 100) / 100,
+      peak: round(between(rng, 0.3, 0.55) * 100) / 100,
     });
   }
   const sparkles: GlowSparkle[] = [];
@@ -92,7 +93,7 @@ export function glowField(rng: Rng, phone: boolean): GlowField {
     sparkles.push({
       x: round(Math.min(99, Math.max(1, at.x))),
       y: round(Math.min(99, Math.max(1, at.y))),
-      size: round(between(rng, 2, 5)),
+      size: round(between(rng, 2, 4)),
       color: pick(rng, SPARKLE_COLORS),
       duration,
       delay: -Math.round(rng() * duration),
