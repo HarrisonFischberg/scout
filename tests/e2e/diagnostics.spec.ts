@@ -105,7 +105,7 @@ test("the question is included only after opting in", async ({ page }) => {
 test("diagnostics controls are reachable and labeled", async ({ page }) => {
   await openPopup(page);
   await page.getByRole("button", { name: "Settings" }).click();
-  await expect(page.getByRole("heading", { name: "Diagnostics (debug build)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Diagnostics" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Copy debug log" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Clear diagnostics" })).toBeVisible();
   await page.getByRole("button", { name: "Clear diagnostics" }).click();

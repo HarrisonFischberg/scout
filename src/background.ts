@@ -17,9 +17,8 @@ import { recordButtonFailure, watchCrashes } from "./diagnostics";
 
 const self = (): Self => ({ id: browser.runtime.id ?? "", baseUrl: browser.runtime.getURL?.("") ?? "" });
 const storage = browser.storage?.local;
-// Debug builds: uncaught worker errors go into the debug log (src/diagnostics.ts).
-// Unit tests load this file without the build flag.
-if (typeof __SCOUT_DEBUG__ !== "undefined" && __SCOUT_DEBUG__ && typeof globalThis.addEventListener === "function") watchCrashes(globalThis, storage, "worker");
+// Uncaught worker errors go into the debug log (src/diagnostics.ts).
+if (typeof globalThis.addEventListener === "function") watchCrashes(globalThis, storage, "worker");
 
 // ---------- Toolbar icon follows the theme ----------
 const dark = typeof matchMedia === "function" ? matchMedia("(prefers-color-scheme: dark)") : null;
@@ -50,10 +49,10 @@ const route = createRouter(
       return states[tabKey(p.tabId)] ?? {};
     },
     // Page button (src/edge.ts): Safari's own panel, never a frame in the page.
-    // Debug builds keep Safari's reason when it refuses (src/diagnostics.ts).
+    // The debug log keeps Safari's reason when it refuses (src/diagnostics.ts).
     "panel.open": async () => {
       const r = await openPanel(browser.action);
-      if (__SCOUT_DEBUG__ && !r.opened) await recordButtonFailure(storage, { at: Date.now(), reason: r.reason ?? "", tries: r.tries });
+      if (!r.opened) await recordButtonFailure(storage, { at: Date.now(), reason: r.reason ?? "", tries: r.tries });
       return r;
     },
     // Page button loaded or touched: answer at once, warm in the background.

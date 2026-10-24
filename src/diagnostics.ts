@@ -1,8 +1,9 @@
-// Debug-build diagnostics. Records what each run did (stages, user-visible
-// errors, outcome, tokens) so a failure can be pasted into a bug report as
-// "Actual behavior". Local only: kept in extension storage, never sent
-// anywhere, cleared by Delete all data. Release builds never create a
-// recorder (see __SCOUT_DEBUG__ in scripts/build.mjs).
+// The debug log. Records what each run did (stages, user-visible errors,
+// outcome, tokens) so a failure can be pasted into a bug report as "Actual
+// behavior". Local only: kept in extension storage, never sent anywhere by
+// the app, copied only when the user taps Copy, cleared by Delete all data.
+// In every build since 2026-10-24 (owner decision: he tests TestFlight
+// builds); the native console log and the mock server switch stay debug only.
 //
 // Never recorded: API keys, page text, form values, typed agent input. The
 // user's question is recorded only when they opt in.
@@ -211,7 +212,7 @@ export async function recordButtonFailure(store: StorageArea | undefined, failur
 
 // ---------- Unexpected errors ----------
 // Uncaught exceptions and unhandled promise rejections in the panel and the
-// worker (debug builds only). Nothing else would show them: they never reach
+// worker. Nothing else would show them: they never reach
 // the chat as an error message.
 
 export const CRASH_KEY = "diagnosticsCrashes";
