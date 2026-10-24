@@ -11,7 +11,7 @@ import { callInjected } from "../content-call";
 import { extractPage } from "../context/extract";
 import { readTabs, readTab, type GatherDeps, type TabRef } from "../context/gather";
 import { createKeychain, nativeSend, type Provider } from "../keychain";
-import { loadPageAccess, parsePolicy, savePageAccess, type ScreenshotChoice } from "../permissions/gate";
+import { blockedBy, hostOf, loadPageAccess, parsePolicy, savePageAccess, type ScreenshotChoice } from "../permissions/gate";
 import { createProvider, ProviderError, type Effort } from "../providers";
 import { effortForId, loadModelList } from "../providers/models";
 import { Consent, gatedFetch } from "../settings/consent";
@@ -218,6 +218,13 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
   const couponHost = new CouponHost({
     provider,
     page: (tabId, opts) => tabCouponPage(tabId, opts),
+    blocked: async (tabId) => {
+      const url = (await tab(tabId))?.url ?? "";
+      const host = hostOf(url);
+      if (!host) return "Find coupons works on web pages only.";
+      const by = blockedBy(url, await access(), await admin());
+      return by === "admin" ? "Your organization blocks " + host + "." : by === "user" ? host + " is blocked in Settings, so Scout cannot act on it." : null;
+    },
     tabs: () => quietBrowser(),
     allowBrowser: allowBrowserPages,
     ...(storage ? { storage } : {}),

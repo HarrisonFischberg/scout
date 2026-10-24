@@ -8,6 +8,7 @@
 import type { Action, ActionResult } from "../actions/executor";
 import type { AgentControl } from "../agent/control";
 import { formatCostLineParts } from "../cost";
+import { withLock } from "../settings/lock";
 import type { Effort, ProviderClient, Usage } from "../providers/types";
 import { browserFirstSites, countFetch, parseReaderHosts, READER_HOSTS_KEY } from "./reader-hosts";
 import { browserTrace, type BrowserTarget, type PageBrowser } from "./browser-read";
@@ -254,7 +255,13 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
       firstHosts: browserFirstSites(readerHosts),
       onReader: (url: string, ok: boolean) => {
         readerHosts = countFetch(readerHosts, url, ok, Date.now());
-        if (storage) void storage.set({ [READER_HOSTS_KEY]: readerHosts }).catch(() => undefined);
+        // Counted on what is saved now: a run in another tab may have counted too.
+        if (storage) {
+          void withLock(READER_HOSTS_KEY, async () => {
+            const saved = parseReaderHosts((await storage.get(READER_HOSTS_KEY))[READER_HOSTS_KEY]);
+            await storage.set({ [READER_HOSTS_KEY]: countFetch(saved, url, ok, Date.now()) });
+          }).catch(() => undefined);
+        }
       },
     };
     trace("coupons:browser-first " + browserPages.firstHosts.length);
@@ -410,11 +417,16 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     // Remember what worked here (and count remembered codes the store refused), on this device.
     if (storage && outcome.baseline) {
       const base = outcome.baseline;
-      const next = updateWorked(worked, merchant.domain, {
+      const seen = {
         worked: outcome.attempts.filter((a) => !a.combo && a.accepted !== false && a.saving !== null && a.saving > 0).map((a) => ({ code: a.code, pct: ((a.saving ?? 0) / base) * 100 })),
         refused: outcome.attempts.filter((a) => !a.combo && a.origin === "remembered" && (a.accepted === false || !a.saving)).map((a) => a.code),
-      });
-      if (JSON.stringify(next) !== JSON.stringify(worked)) void storage.set({ [WORKED_KEY]: next }).catch(() => undefined);
+      };
+      // Updated on what is saved now, not what this run read at its start: another tab's run may have saved since.
+      void withLock(WORKED_KEY, async () => {
+        const saved = parseWorked((await storage.get(WORKED_KEY))[WORKED_KEY]);
+        const next = updateWorked(saved, merchant.domain, seen);
+        if (JSON.stringify(next) !== JSON.stringify(saved)) await storage.set({ [WORKED_KEY]: next });
+      }).catch(() => undefined);
     }
     trace("coupons:status " + outcome.status + (outcome.best ? " best" : " none") + (outcome.applied ? " applied" : ""));
     if (outcome.status === "no_codes") {

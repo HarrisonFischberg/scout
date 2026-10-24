@@ -41,7 +41,7 @@ export interface PageAccess {
 export const DEFAULT_PAGE_ACCESS: PageAccess = { readCurrent: true, searchTabs: false, screenshots: {}, blocked: [], scoutMode: "on", alwaysAllow: {} };
 
 export const MAX_BLOCKED = 200;
-export const SENSITIVE_KINDS: readonly SensitiveKind[] = ["payment", "login", "send", "personal_data", "destructive", "download", "account"];
+export const SENSITIVE_KINDS: readonly SensitiveKind[] = ["payment", "login", "send", "personal_data", "destructive", "download", "account", "leave_site"];
 
 /** Host of an http(s) URL, lowercased; null for anything else. */
 export function hostOf(url: string): string | null {
