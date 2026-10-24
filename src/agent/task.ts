@@ -377,6 +377,8 @@ export async function runTask(deps: TaskDeps): Promise<TaskOutcome> {
         try {
           const raw: unknown = await guarded(deps.page.snapshot());
           if (isSnapshot(raw) && !detectCaptcha(raw)) cleared = raw;
+          // The check often reloads the page, which takes the glow with it; keep it on.
+          else await overlay({ type: "show", state: "waiting" });
         } catch {
           // The page is often reloading right after the check; read it again next time.
           if (halted()) return end("stopped", "Stopped.");

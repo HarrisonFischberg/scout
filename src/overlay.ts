@@ -5,7 +5,8 @@
 // conic-gradient wash over the whole page (strongest at the edges, lighter in
 // the middle; owner changed this from the spec's thin border on 2026-10-17;
 // CSS @property angle, 2.5 s sweep, soft blur), a ripple at the point of each
-// click, and a small "Working…" toast with the Scout truck and a Stop square. Static border under prefers-reduced-motion; the
+// click, a procedural field of drifting orbs and sparkles (src/glow-field.ts),
+// and a small "Working…" toast with the Scout truck and a Stop square. Static border under prefers-reduced-motion; the
 // animation pauses while the tab is hidden; the glow renders at half
 // resolution and is scaled up. The worker drives it through one handler
 // global; the pill's buttons ask the worker to pause or stop the task.
@@ -15,6 +16,7 @@ import { request } from "./bridge/messages";
 import { holdRun } from "./bridge/run-port";
 import { OVERLAY_HANDLER, type OverlayRequest } from "./content-api";
 import { isPhoneScreen } from "./panel/blur";
+import { glowField } from "./glow-field";
 
 const FLAG = "__safariScoutOverlayLoaded";
 const g = globalThis as unknown as Record<string, unknown>;
@@ -96,7 +98,26 @@ const STYLE_TEXT = `
 }
 .layer.phone .glow { opacity: ${PHONE_GLOW_SCALE}; }
 .wash { position: absolute; inset: 0; pointer-events: none; }
-.layer.hidden-tab .glow { animation-play-state: paused; }
+.layer.hidden-tab .glow, .layer.hidden-tab .orb, .layer.hidden-tab .sparkle { animation-play-state: paused; }
+/* The procedural field (src/glow-field.ts): soft orbs drifting near the edges and
+   twinkling sparkles, laid out anew for every run. Gradients, not blur filters,
+   and only transform and opacity animate. */
+.field { position: absolute; inset: 0; pointer-events: none; }
+.orb {
+  position: absolute; border-radius: 50%; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle, var(--c) 0%, color-mix(in srgb, var(--c) 45%, transparent) 35%, transparent 70%);
+  animation: scout-drift var(--t) ease-in-out var(--d) infinite alternate;
+}
+@keyframes scout-drift {
+  from { transform: translate(-50%, -50%) scale(0.8); opacity: calc(var(--peak) * 0.35); }
+  to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.2); opacity: var(--peak); }
+}
+.sparkle {
+  position: absolute; border-radius: 50%; pointer-events: none; opacity: 0; background: var(--c);
+  box-shadow: 0 0 6px 2px color-mix(in srgb, var(--c) 70%, transparent), 0 0 14px 4px rgb(51 204 240 / 35%);
+  animation: scout-twinkle var(--t) ease-in-out var(--d) infinite;
+}
+@keyframes scout-twinkle { 0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 @keyframes scout-sweep { to { --scout-angle: 360deg; } }
 @keyframes scout-pulse { from { filter: blur(26px) brightness(0.85); } to { filter: blur(22px) brightness(1.25); } }
 .ripple {
@@ -127,6 +148,8 @@ const STYLE_TEXT = `
 .pill button.stop:focus-visible { outline: 2px solid #8fe3ff; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   .glow { animation: none; }
+  .orb { animation: none; opacity: calc(var(--peak) * 0.7); transform: translate(-50%, -50%); }
+  .sparkle { animation: none; opacity: 0.6; transform: translate(-50%, -50%); }
   .ripple { animation: none; transform: scale(1); }
   .layer, .layer.on { transition: none; }
 }
@@ -185,6 +208,7 @@ if (!g[FLAG]) {
   let layer: HTMLElement | null = null;
   let ripples: HTMLElement | null = null;
   let label: HTMLElement | null = null;
+  let field: HTMLElement | null = null;
   let taskId = "";
   let state: State = "running";
   let shown = false;
@@ -242,7 +266,10 @@ if (!g[FLAG]) {
     const wash = document.createElement("div");
     wash.className = "wash";
     wash.setAttribute("aria-hidden", "true");
-    wash.append(glow);
+    field = document.createElement("div");
+    field.className = "field";
+    field.setAttribute("aria-hidden", "true");
+    wash.append(glow, field);
     layer.append(wash, ripples, pill);
     root.append(style, layer);
     document.addEventListener("visibilitychange", () => layer?.classList.toggle("hidden-tab", document.hidden));
@@ -270,6 +297,35 @@ if (!g[FLAG]) {
     }
   };
 
+  // A new pattern for every run (owner, 2026-10-24).
+  const scatter = (): void => {
+    if (!field) return;
+    const { orbs, sparkles } = glowField(Math.random, onPhone());
+    const dots: HTMLElement[] = [];
+    for (const o of orbs) {
+      const el = document.createElement("div");
+      el.className = "orb";
+      el.style.cssText = "left:" + o.x + "%;top:" + o.y + "%;width:" + o.size + "vmin;height:" + o.size + "vmin";
+      el.style.setProperty("--c", o.color);
+      el.style.setProperty("--dx", o.dx + "vmin");
+      el.style.setProperty("--dy", o.dy + "vmin");
+      el.style.setProperty("--t", o.duration + "ms");
+      el.style.setProperty("--d", o.delay + "ms");
+      el.style.setProperty("--peak", String(o.peak));
+      dots.push(el);
+    }
+    for (const p of sparkles) {
+      const el = document.createElement("div");
+      el.className = "sparkle";
+      el.style.cssText = "left:" + p.x + "%;top:" + p.y + "%;width:" + p.size + "px;height:" + p.size + "px";
+      el.style.setProperty("--c", p.color);
+      el.style.setProperty("--t", p.duration + "ms");
+      el.style.setProperty("--d", p.delay + "ms");
+      dots.push(el);
+    }
+    field.replaceChildren(...dots);
+  };
+
   const setState = (next: State): void => {
     state = next;
     if (!layer || !label) return;
@@ -289,7 +345,9 @@ if (!g[FLAG]) {
       clearTimeout(removeTimer);
       removeTimer = null;
     }
+    const fresh = !shown || !host?.isConnected;
     mount();
+    if (fresh) scatter();
     setState(next);
     layer!.classList.toggle("hidden-tab", document.hidden);
     shown = true;
