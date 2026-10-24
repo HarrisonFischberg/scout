@@ -287,6 +287,11 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
       return { message_id: p.message_id };
     },
     "chat.stop": (p: { message_id: string }) => ({ stopped: server.stop(p.message_id) }),
+    "jobs.stop_all": async () => {
+      server.stopAll();
+      await Promise.all([taskHost.stopAll(), couponHost.stopAll()]);
+      return { ok: true };
+    },
     "chat.tool_result": (p: {
       message_id: string;
       request_id: string;

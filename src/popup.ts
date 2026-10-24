@@ -3605,26 +3605,32 @@ async function main(): Promise<void> {
   });
   confirmYes.addEventListener("click", () => {
     const none: StorageArea = { get: async () => ({}), set: async () => undefined, clear: async () => undefined };
-    void deleteAllData({
-      storage: storage ?? none,
-      deleteKey: (p) => keychain.deleteKey(p),
-      listGrantedOrigins: listOrigins,
-      removeOrigins: async (origins) => void (await browser.permissions.remove({ origins })),
-    }).then(async (report) => {
-      const text = deleteReportText(report);
-      deleteResult.textContent = text;
-      deleteConfirm.hidden = true;
-      deleteBtn.hidden = false;
-      settings = parseSettings(undefined);
-      consent.forget();
-      diag?.forget();
-      showLook(HOME_LOOK);
-      clearThread();
-      conv = "";
-      await connect(false);
-      status.textContent = text;
-      await refreshSettings();
-    });
+    // A job that ends after the wipe would save into the cleared storage; delete anyway if the worker does not answer.
+    void request(toWorker, "jobs.stop_all", {})
+      .catch(() => undefined)
+      .then(() =>
+        deleteAllData({
+          storage: storage ?? none,
+          deleteKey: (p) => keychain.deleteKey(p),
+          listGrantedOrigins: listOrigins,
+          removeOrigins: async (origins) => void (await browser.permissions.remove({ origins })),
+        }),
+      )
+      .then(async (report) => {
+        const text = deleteReportText(report);
+        deleteResult.textContent = text;
+        deleteConfirm.hidden = true;
+        deleteBtn.hidden = false;
+        settings = parseSettings(undefined);
+        consent.forget();
+        diag?.forget();
+        showLook(HOME_LOOK);
+        clearThread();
+        conv = "";
+        await connect(false);
+        status.textContent = text;
+        await refreshSettings();
+      });
   });
 
   // ---------- Start ----------

@@ -260,11 +260,12 @@ export class TaskHost {
       .then(async (out) => {
         record.pending = undefined;
         record.prompt = undefined;
-        resolveFinished(out);
         this.set(() => this.tasks.delete(task_id), deps.keepMs ?? 120_000);
         if (p.conv && record.source === "panel") {
           await deps.save({ at: deps.now(), conv: p.conv, question: goal, answer: out.summary }).catch(() => undefined);
         }
+        // After the save, so stopAll knows nothing more is written.
+        resolveFinished(out);
       });
     return { task_id };
   }
@@ -299,6 +300,13 @@ export class TaskHost {
     task.prompt = undefined;
     resolve(p.decision);
     return { accepted: true };
+  }
+
+  /** Delete all data: ends every task and waits until each has saved, so nothing is written after the wipe. */
+  async stopAll(): Promise<void> {
+    const open = [...this.tasks.values()].filter((t) => !t.done);
+    for (const t of open) void this.control({ task_id: t.task_id, command: "stop" });
+    await Promise.all(open.map((t) => t.finished));
   }
 
   /** The tab closed: end its task. */
