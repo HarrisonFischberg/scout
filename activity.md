@@ -2100,6 +2100,20 @@ Owner after #79: "it brings up the keyboard but doesnt activate the microphone".
 - Fix: `ASK_EVERY_TIME` in `src/permissions/gate.ts` (payments; owner extended it on 2026-10-24 to logins, account changes and deletes): never saved, honored, or kept from storage; the confirmation hides the button for them. Sending, downloads and leaving the site can still be always-allowed. Corrected two stale comments (gate header, coupon finder header: it can open Checkout but never pays).
 - Evidence: new tests in `tests/unit/gate.test.ts` and `tests/unit/task.test.ts`; `npm test` 625/625, typecheck, lint, build, `npm run check:release` pass. Needs a device check: a payment, password, account or delete confirmation shows only Allow once / Deny.
 
+## 2026-10-24: Scout mode pauses for human checks instead of giving a partial answer
+
+- Actual: on Amazon, Scout mode hit an "I am human" / "Human Verification" check on one product page. The CAPTCHA detector did not know that wording, so the model skipped the page and answered with only half the comparison. When the detector did match, Scout stopped the whole task.
+- Expected (owner, via coordinator): Scout never solves or gets around the check. It tells the owner, waits while he completes it in the page, and then carries on by itself.
+- Fix: `runTask` (`src/agent/task.ts`) now pauses on a detected check: log line "Paused: <site> shows a human check. Complete it in the page and Scout will carry on.", overlay shows "Waiting for you" (clicks pass through to the page), the page is read again every 2 s, and the task resumes on the first read without a check. Stop still works; after 5 minutes it stops with status `captcha`. The model never sees the check page and its prompt says never to try to get around one. `detectCaptcha` (`src/safety/classifier.ts`) also knows "Human Verification", "I am human", "confirm you're human" and "Press and hold", and ignores the invisible reCAPTCHA badge text on sign-in forms ("protected by reCAPTCHA").
+- Evidence: new tests in `tests/unit/task.test.ts` and `tests/unit/safety.test.ts`; `npm test` 627/627, typecheck, lint, build, `npm run check:release` pass. e2e not run here (no WebKit in the cloud container). Needs a device check on a real human check page.
+
+## 2026-10-24: Glow stays on through a human check; procedural glow field
+
+- Owner: "it should carry on with the blue glowing screen too" and "make the screen glow even cooler ... a multitude of procedurally generated glowing".
+- Glow (owner follow-up: "if there is a human interaction part, it should disappear and then once done, come back"): while Scout waits for the user (a human check or a confirmation) the glow fades out and only the "Waiting for you" pill stays; it comes back when Scout carries on. During a human check the pill is shown again on every read, since the check often reloads the page.
+- Field: `src/glow-field.ts` lays out a new set of soft orbs (8 on Mac, 5 on iPhone; owner chose "subtler" over the first preview's 12 / 8) drifting near the edges and twinkling sparkles (18 / 12) on every show, on top of the conic sweep. Radial gradients instead of blur filters, and only transform and opacity animate, so it stays cheap on iPhone. Paused while the tab is hidden; static under reduced motion. Coupon runs use the same overlay, so they get it too.
+- Evidence: `tests/unit/glow-field.test.ts` (counts, edge bias, ranges, palette, seed) and the extended pause test; `npm test` 630/630, typecheck, lint, build, `npm run check:release` pass. Chromium preview at /mnt/project-files/glow-field/. Needs a check in real Safari on Mac and iPhone (smoothness, iPhone bottom bar tint).
+
 ## 2026-10-24: fuller debug log, one tap from the + menu
 
 - Owner request: "a much more robust debug log capture that I can access which does a copy to my clipboard so we can easily diagnose bugs/issues".
