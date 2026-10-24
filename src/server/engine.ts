@@ -92,6 +92,8 @@ interface Run {
   abort: AbortController;
   waits: Map<string, (r: ToolReply) => void>;
   shared: SharedRef[];
+  /** Settles once the answer has ended and saved. */
+  saved?: Promise<void>;
 }
 
 const ANSWER_FAILED = "Something went wrong. Try again.";
@@ -131,7 +133,7 @@ export class ScoutServer {
     if (this.runs.has(req.message_id)) throw new BridgeError("schema-error", "message_id is already in use");
     const run: Run = { req, log: [], subs: new Set(), finished: false, abort: new AbortController(), waits: new Map(), shared: [] };
     this.runs.set(req.message_id, run);
-    void this.execute(run);
+    run.saved = this.execute(run);
   }
 
   /** Sends every event after `afterSeq`, then live ones. Null when the answer is unknown (the worker restarted). */
@@ -159,9 +161,10 @@ export class ScoutServer {
     return true;
   }
 
-  /** Delete all data: stops every answer (a stopped answer is not saved). */
-  stopAll(): void {
+  /** Delete all data: stops every answer (a stopped answer is not saved) and waits for any that is still saving. */
+  async stopAll(): Promise<void> {
     for (const id of this.runs.keys()) this.stop(id);
+    await Promise.all([...this.runs.values()].map((r) => r.saved));
   }
 
   /** Answers still running in a conversation, so a reopened panel can resume them. */

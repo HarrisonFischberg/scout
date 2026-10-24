@@ -96,7 +96,11 @@ async function markPrivate(storage: Store, tabId: number | undefined, conv: stri
 }
 
 /** Deletes the history of private conversations: one tab's, or every tab's when `tabId` is undefined. */
-async function dropPrivate(storage: Store, tabId?: number): Promise<void> {
+function dropPrivate(storage: Store, tabId?: number): Promise<void> {
+  return withLock(HISTORY_KEY, () => dropPrivateNow(storage, tabId));
+}
+
+async function dropPrivateNow(storage: Store, tabId?: number): Promise<void> {
   const got = await storage.get([PRIVATE_CONVS_KEY, HISTORY_KEY]);
   const all = parsePrivateConvs(got[PRIVATE_CONVS_KEY]);
   const keys = tabId === undefined ? Object.keys(all) : [tabKey(tabId)].filter((k) => k in all);
