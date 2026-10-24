@@ -3,6 +3,7 @@
 // writes it directly, so it works even when the background worker is asleep;
 // the worker also updates it from the panel port and drops closed tabs.
 import { CHAT_START_KEY, HISTORY_KEY, type StorageArea } from "../settings/settings";
+import { withLock } from "../settings/lock";
 
 export const TAB_STATE_KEY = "tabState";
 
@@ -54,7 +55,11 @@ async function saveTabStates(storage: Store, states: TabStates): Promise<void> {
 // Entries saved before per-tab chats carry no `conv`. The conversation that
 // was current then (since the last New chat) moves to the first tab that opens
 // the panel, once; older entries stay hidden until they expire.
-async function adoptLegacyConversation(storage: Store, conv: string): Promise<void> {
+function adoptLegacyConversation(storage: Store, conv: string): Promise<void> {
+  return withLock(HISTORY_KEY, () => adoptLegacy(storage, conv));
+}
+
+async function adoptLegacy(storage: Store, conv: string): Promise<void> {
   const got = await storage.get([HISTORY_KEY, CHAT_START_KEY]);
   const raw = got[HISTORY_KEY];
   if (!Array.isArray(raw)) return;
