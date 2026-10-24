@@ -229,8 +229,9 @@ export class CouponHost {
 
   /** Delete all data: ends every run and waits until each has saved, so nothing is written after the wipe. */
   async stopAll(): Promise<void> {
-    const runs = [...this.runs.values()].filter((r) => !r.done);
-    for (const r of runs) this.stop(r.tab_id);
+    const runs = [...this.runs.values()];
+    for (const r of runs) if (!r.done) this.stop(r.tab_id);
+    // A run marked done may still be saving its summary, so every one is waited on.
     await Promise.all(runs.map((r) => r.finished));
   }
 

