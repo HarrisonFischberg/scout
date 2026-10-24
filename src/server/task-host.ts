@@ -12,7 +12,7 @@ import type { PortLike } from "../bridge/port";
 import type { ContentRequest, OverlayRequest } from "../content-api";
 import type { TabRef } from "../context/gather";
 import type { Provider } from "../keychain";
-import { hostOf, savePageAccess, taskDecision, withAlwaysAllow, type PageAccess } from "../permissions/gate";
+import { ASK_EVERY_TIME, hostOf, savePageAccess, taskDecision, withAlwaysAllow, type PageAccess } from "../permissions/gate";
 import type { Effort, ProviderClient, Usage } from "../providers/types";
 import type { SensitiveKind } from "../safety/classifier";
 import type { StorageArea } from "../settings/settings";
@@ -57,6 +57,8 @@ export interface PendingPrompt {
   site: string;
   reason: string;
   preapproved: boolean;
+  /** "Always allow on this site" may be offered (never for payments). */
+  always: boolean;
 }
 
 export interface TaskView {
@@ -200,7 +202,7 @@ export class TaskHost {
     };
     const confirm = (req: ConfirmRequest): Promise<ConfirmDecision> =>
       new Promise((resolveDecision) => {
-        const prompt: PendingPrompt = { prompt_id: task_id + "." + (record.log.length + 1), what: req.what, site: req.site, reason: req.reason, preapproved: req.preapproved };
+        const prompt: PendingPrompt = { prompt_id: task_id + "." + (record.log.length + 1), what: req.what, site: req.site, reason: req.reason, preapproved: req.preapproved, always: !ASK_EVERY_TIME.includes(req.kind) };
         // Unanswered for two minutes (panel closed, user away): denied, so the task cannot hang.
         const timer = this.set(() => {
           if (record.pending?.prompt === prompt) this.decide({ task_id, prompt_id: prompt.prompt_id, decision: "deny" });
@@ -211,7 +213,7 @@ export class TaskHost {
         };
         record.pending = { prompt, resolve };
         record.prompt = prompt;
-        this.emit(record, { kind: "confirm", prompt_id: prompt.prompt_id, what: prompt.what, site: prompt.site, reason: prompt.reason, preapproved: prompt.preapproved });
+        this.emit(record, { kind: "confirm", prompt_id: prompt.prompt_id, what: prompt.what, site: prompt.site, reason: prompt.reason, preapproved: prompt.preapproved, always: prompt.always });
         // Safari closes the popover when the user clicks the page; bring it back for the question.
         if (!this.watchers.get(tabId)?.size) void deps.openPanel().catch(() => undefined);
       });

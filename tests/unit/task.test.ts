@@ -288,13 +288,22 @@ describe("Scout mode runner", () => {
   });
 
   it("Allow once runs the action; Always allow on this site skips the question next time, per site and kind", async () => {
-    const provider = scripted([[act([{ type: "click", target: { ref: "e2" } }])], [act([{ type: "click", target: { ref: "e2" } }])], [act([{ type: "fill_field", target: { ref: "e4" }, value: "pw" }])], [finish("ok")]]);
+    const provider = scripted([[act([{ type: "fill_field", target: { ref: "e4" }, value: "pw" }])], [act([{ type: "fill_field", target: { ref: "e4" }, value: "pw" }])], [act([{ type: "click", target: { ref: "e2" } }])], [finish("ok")]]);
     const answers: ConfirmDecision[] = ["always", "once"];
     const h = harness(provider, { confirm: async () => answers.shift() ?? "deny" });
     await runTask(h.deps);
-    // Asked for the order once (then always allowed), and once for the password field (a different kind).
-    expect(h.asked.map((a) => a.kind)).toEqual(["payment", "login"]);
-    expect(h.acts.map((a) => a.type)).toEqual(["click", "click", "fill_field"]);
+    // Asked for the password field once (then always allowed), and once for the order (a different kind).
+    expect(h.asked.map((a) => a.kind)).toEqual(["login", "payment"]);
+    expect(h.acts.map((a) => a.type)).toEqual(["fill_field", "fill_field", "click"]);
+  });
+
+  it("Always allow is never remembered for a payment: the order is asked about every time", async () => {
+    const provider = scripted([[act([{ type: "click", target: { ref: "e2" } }])], [act([{ type: "click", target: { ref: "e2" } }])], [finish("ok")]]);
+    const answers: ConfirmDecision[] = ["always", "deny"];
+    const h = harness(provider, { confirm: async () => answers.shift() ?? "deny" });
+    await runTask(h.deps);
+    expect(h.asked.map((a) => a.kind)).toEqual(["payment", "payment"]);
+    expect(h.acts.map((a) => a.type)).toEqual(["click"]);
   });
 
   it("a confirmation that throws counts as a denial", async () => {

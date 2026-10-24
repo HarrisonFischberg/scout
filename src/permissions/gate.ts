@@ -4,7 +4,8 @@
 // in storage.local under "pageAccess". The organization blocklist is a managed
 // setting read from the host app over native messaging (ManagedPolicy.swift),
 // never from storage. Sensitive-action confirmation is always on: there is no
-// setting for it, and the gate has no way to skip it.
+// setting for it. "Always allow on this site" can skip it per site and kind,
+// except for payments (ASK_EVERY_TIME).
 import type { SensitiveKind } from "../safety/classifier";
 import type { StorageArea } from "../settings/settings";
 
@@ -42,6 +43,8 @@ export const DEFAULT_PAGE_ACCESS: PageAccess = { readCurrent: true, searchTabs: 
 
 export const MAX_BLOCKED = 200;
 export const SENSITIVE_KINDS: readonly SensitiveKind[] = ["payment", "login", "send", "personal_data", "destructive", "download", "account", "leave_site"];
+/** Asked every time: never offered or honored for "Always allow", so a page's hidden text can never spend money unasked. */
+export const ASK_EVERY_TIME: readonly SensitiveKind[] = ["payment"];
 
 /** Host of an http(s) URL, lowercased; null for anything else. */
 export function hostOf(url: string): string | null {
@@ -101,14 +104,14 @@ export function taskDecision(url: string, access: PageAccess, admin: readonly st
 /** The user chose "Always allow on this site" for this kind of sensitive action on this host. */
 export function alwaysAllowed(url: string, kind: SensitiveKind, access: PageAccess): boolean {
   const host = hostOf(url);
-  if (!host) return false;
+  if (!host || ASK_EVERY_TIME.includes(kind)) return false;
   return Object.entries(access.alwaysAllow).some(([rule, kinds]) => siteMatches(host, rule) && kinds.includes(kind));
 }
 
 /** Records "Always allow on this site" for one kind of sensitive action. */
 export function withAlwaysAllow(access: PageAccess, host: string, kind: SensitiveKind): PageAccess {
   const site = normalizeSite(host);
-  if (!site) return access;
+  if (!site || ASK_EVERY_TIME.includes(kind)) return access;
   const kinds = [...new Set([...(access.alwaysAllow[site] ?? []), kind])];
   return { ...access, alwaysAllow: { ...access.alwaysAllow, [site]: kinds } };
 }
@@ -138,7 +141,7 @@ export function parsePageAccess(raw: unknown): PageAccess {
     for (const [k, v] of Object.entries(r.alwaysAllow as Record<string, unknown>)) {
       const host = normalizeSite(k);
       if (!host || !Array.isArray(v)) continue;
-      const kinds = [...new Set(v.filter((x): x is SensitiveKind => SENSITIVE_KINDS.includes(x as SensitiveKind)))];
+      const kinds = [...new Set(v.filter((x): x is SensitiveKind => SENSITIVE_KINDS.includes(x as SensitiveKind) && !ASK_EVERY_TIME.includes(x as SensitiveKind)))];
       if (kinds.length && Object.keys(alwaysAllow).length < MAX_BLOCKED) alwaysAllow[host] = kinds;
     }
   }

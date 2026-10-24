@@ -11,6 +11,7 @@ import {
   taskDecision,
   withAlwaysAllow,
   withoutAlwaysAllow,
+  type PageAccess,
 } from "../../src/permissions/gate";
 
 describe("page access defaults", () => {
@@ -97,21 +98,29 @@ describe("Scout mode gate", () => {
   });
 
   it("parses only known kinds and hosts for always-allow, and has no switch for the confirmation itself", () => {
-    const a = parsePageAccess({ alwaysAllow: { "Shop.Test": ["payment", "bogus"], "not a host": ["send"], "x.test": [] }, sensitiveConfirm: false });
-    expect(a.alwaysAllow).toEqual({ "shop.test": ["payment"] });
+    const a = parsePageAccess({ alwaysAllow: { "Shop.Test": ["send", "bogus"], "not a host": ["send"], "x.test": [] }, sensitiveConfirm: false });
+    expect(a.alwaysAllow).toEqual({ "shop.test": ["send"] });
     expect(Object.keys(a)).not.toContain("sensitiveConfirm");
   });
 
   it("always-allow is per site and per kind, covers subdomains, and can be revoked", () => {
-    let a = withAlwaysAllow(DEFAULT_PAGE_ACCESS, "www.shop.test", "payment");
-    expect(alwaysAllowed("https://www.shop.test/checkout", "payment", a)).toBe(true);
-    expect(alwaysAllowed("https://m.www.shop.test/checkout", "payment", a)).toBe(true);
-    expect(alwaysAllowed("https://www.shop.test/checkout", "send", a)).toBe(false);
-    expect(alwaysAllowed("https://other.test/", "payment", a)).toBe(false);
-    a = withAlwaysAllow(a, "www.shop.test", "send");
-    expect(a.alwaysAllow["www.shop.test"]).toEqual(["payment", "send"]);
+    let a = withAlwaysAllow(DEFAULT_PAGE_ACCESS, "www.shop.test", "send");
+    expect(alwaysAllowed("https://www.shop.test/checkout", "send", a)).toBe(true);
+    expect(alwaysAllowed("https://m.www.shop.test/checkout", "send", a)).toBe(true);
+    expect(alwaysAllowed("https://www.shop.test/checkout", "login", a)).toBe(false);
+    expect(alwaysAllowed("https://other.test/", "send", a)).toBe(false);
+    a = withAlwaysAllow(a, "www.shop.test", "login");
+    expect(a.alwaysAllow["www.shop.test"]).toEqual(["send", "login"]);
     a = withoutAlwaysAllow(a, "www.shop.test");
-    expect(alwaysAllowed("https://www.shop.test/", "payment", a)).toBe(false);
-    expect(withAlwaysAllow(a, "???", "payment")).toEqual(a);
+    expect(alwaysAllowed("https://www.shop.test/", "send", a)).toBe(false);
+    expect(withAlwaysAllow(a, "???", "send")).toEqual(a);
+  });
+
+  it("payments are asked every time: never saved, honored, or kept from storage as always-allowed", () => {
+    expect(withAlwaysAllow(DEFAULT_PAGE_ACCESS, "shop.test", "payment")).toEqual(DEFAULT_PAGE_ACCESS);
+    const stored = parsePageAccess({ alwaysAllow: { "shop.test": ["payment", "send"], "pay.test": ["payment"] } });
+    expect(stored.alwaysAllow).toEqual({ "shop.test": ["send"] });
+    const forged: PageAccess = { ...DEFAULT_PAGE_ACCESS, alwaysAllow: { "shop.test": ["payment"] } };
+    expect(alwaysAllowed("https://shop.test/checkout", "payment", forged)).toBe(false);
   });
 });
