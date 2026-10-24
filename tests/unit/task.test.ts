@@ -400,6 +400,9 @@ describe("Scout mode runner", () => {
     const states = h.events.flatMap((e) => (e.kind === "state" ? [e.state] : []));
     expect(states).toEqual(["waiting", "running"]);
     expect(h.overlay).toContainEqual({ type: "state", state: "waiting" });
+    // The glow stays on through the wait (the check may reload the page) and when Scout carries on.
+    const shows = h.overlay.flatMap((c) => (c.type === "show" ? [c.state] : []));
+    expect(shows).toEqual(["running", "waiting", "waiting", "running"]);
     const lines = logLines(h);
     expect(lines).toContain("note: Paused: shop.test shows a human check. Complete it in the page and Scout will carry on.");
     expect(lines).toContain("note: Human check done. Carrying on.");
