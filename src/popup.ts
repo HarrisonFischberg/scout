@@ -729,13 +729,16 @@ async function main(): Promise<void> {
     clearThread();
     if (storage) {
       conv = await startNewConversation(storage, tab.id, Date.now(), tab.incognito).catch(() => conv);
-      for (const e of entries) {
-        await appendHistory(storage, settings.retention, {
+      // One write for the whole branch.
+      await appendHistory(
+        storage,
+        settings.retention,
+        entries.map((e) => ({
           ...e,
           conv,
           ...(e.sources ? { sources: e.sources.map((s) => ({ url: savedUrl(s.url), ...(s.title ? { title: s.title } : {}), ...(s.kind ? { kind: s.kind } : {}) })) } : {}),
-        }).catch(() => undefined);
-      }
+        })),
+      ).catch(() => undefined);
     }
     showEntries(entries);
     updateEmpty();

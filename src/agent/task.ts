@@ -26,7 +26,7 @@ import { fencePage } from "../chat/prompt";
 import { alwaysAllowed, blockedBy, hostOf, screenshotDecision, type PageAccess } from "../permissions/gate";
 import { ProviderError } from "../providers/errors";
 import type { ChatMessage, ContentPart, Effort, ProviderClient, ToolSpec, Usage } from "../providers/types";
-import { classifyTaskAction, detectCaptcha, type Classification, type SensitiveKind } from "../safety/classifier";
+import { classifyNavigation, classifyTaskAction, detectCaptcha, type Classification, type SensitiveKind } from "../safety/classifier";
 import type { Snapshot } from "../snapshot/snapshot";
 import type { ToolImage } from "../tools/host";
 import { AgentControl } from "./control";
@@ -232,6 +232,8 @@ export async function runTask(deps: TaskDeps): Promise<TaskOutcome> {
   let lastShot: TaskScreenshot | null = null;
   let lastSnap: Snapshot | null = null;
   let site = "";
+  /** Sites navigate may open without asking: the one the task started on, and each one the user allowed. */
+  const knownSites: string[] = [];
   /** Results of the last batch, sent with the next observation in one user turn. */
   let pendingResults = "";
   let lastBatchKey = "";
@@ -345,6 +347,7 @@ export async function runTask(deps: TaskDeps): Promise<TaskOutcome> {
     }
     lastSnap = snap;
     site = hostOf(snap.url) ?? site;
+    if (site && !knownSites.length) knownSites.push(site);
     if (blockedBy(snap.url, access, admin)) return end("blocked", "Stopped: " + (site || "this site") + " is blocked in Settings, so Scout cannot act on it.");
     if (detectCaptcha(snap)) return end("captcha", "Stopped: the page asks for a CAPTCHA. Complete it yourself, then run the task again.");
     lastShot = null;
@@ -451,7 +454,12 @@ export async function runTask(deps: TaskDeps): Promise<TaskOutcome> {
 
       // Sensitive actions: asked on the device, every time, unless the user chose
       // "Always allow on this site" for this kind. A server pre-approval changes nothing.
-      const cls: Classification = classifyTaskAction(resolved.action, probe);
+      const cls: Classification = action.type !== "navigate"
+          ? classifyTaskAction(resolved.action, probe)
+          : // A blocked site is refused by navigate itself, with no question first.
+            blockedBy(action.url, access, admin)
+            ? { sensitive: false }
+            : classifyNavigation(action.url, knownSites, deps.goal);
       if (cls.sensitive && cls.kind) {
         if (!alwaysAllowed(nowUrl || snap.url, cls.kind, await deps.access())) {
           await setState("waiting");
@@ -473,6 +481,9 @@ export async function runTask(deps: TaskDeps): Promise<TaskOutcome> {
           await setState("running");
           if (halted()) return end("stopped", "Stopped.");
         }
+        // Allowed once: the rest of this task may come back to that site without asking again.
+        const opened = action.type === "navigate" ? hostOf(action.url) : null;
+        if (opened) knownSites.push(opened);
       }
 
       // Browser shortcuts only ever reach the page; say so instead of letting the model guess why nothing happened.

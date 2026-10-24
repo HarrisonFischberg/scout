@@ -67,7 +67,8 @@ function describe(el: Element): ProbeResult {
     name: redacted && tag !== "input" ? "" : nameOf(el),
     role: roleOf(el),
     tag,
-    ...(el instanceof HTMLInputElement ? { type: el.type.toLowerCase() } : {}),
+    // A <button> in a form submits it unless its type says otherwise, so its type counts too.
+    ...(el instanceof HTMLInputElement || el instanceof HTMLButtonElement ? { type: el.type.toLowerCase() } : {}),
     ...(el instanceof HTMLAnchorElement ? { href: el.href.slice(0, 200) } : {}),
     ...(redacted ? { redacted: true } : {}),
     ...((el as HTMLButtonElement).disabled === true || el.getAttribute("aria-disabled") === "true" ? { disabled: true } : {}),
