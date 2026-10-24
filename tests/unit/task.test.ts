@@ -384,12 +384,50 @@ describe("Scout mode runner", () => {
     expect(textOf(first.content)).toContain("No screenshot for this site.");
   });
 
-  it("stops at a CAPTCHA without calling the model, and on the round budget", async () => {
+  it("pauses at a human check without calling the model, then carries on once the user completes it", async () => {
+    const provider = scripted([[finish("Compared both.")]]);
+    const h = harness(provider);
+    let reads = 0;
+    h.deps.humanCheckPollMs = 5;
+    h.deps.page.snapshot = async () => (++reads <= 3 ? { ...SNAP, title: "Human Verification", text: "I am human" } : SNAP);
+    const out = await runTask(h.deps);
+    expect(out.status).toBe("done");
+    expect(out.summary).toBe("Compared both.");
+    // The model never saw the check page: its first look is the page after it.
+    expect(provider.seen).toHaveLength(1);
+    expect(textOf(provider.seen[0]!.messages[0]!.content)).not.toContain("Human Verification");
+    expect(h.acts).toHaveLength(0);
+    const states = h.events.flatMap((e) => (e.kind === "state" ? [e.state] : []));
+    expect(states).toEqual(["waiting", "running"]);
+    expect(h.overlay).toContainEqual({ type: "state", state: "waiting" });
+    // The pill stays up through the wait (the check may reload the page); the glow returns when Scout carries on.
+    const shows = h.overlay.flatMap((c) => (c.type === "show" ? [c.state] : []));
+    expect(shows).toEqual(["running", "waiting", "waiting", "running"]);
+    const lines = logLines(h);
+    expect(lines).toContain("note: Paused: shop.test shows a human check. Complete it in the page and Scout will carry on.");
+    expect(lines).toContain("note: Human check done. Carrying on.");
+  });
+
+  it("stops at a human check nobody completes, and on Stop while waiting", async () => {
     const provider = scripted([[act([{ type: "scroll", direction: "down" }])]]);
     const h = harness(provider);
+    h.deps.humanCheckPollMs = 5;
+    h.deps.humanCheckWaitMs = 30;
     h.deps.page.snapshot = async () => ({ ...SNAP, text: "Please verify you are human" });
-    expect((await runTask(h.deps)).status).toBe("captcha");
+    const out = await runTask(h.deps);
+    expect(out.status).toBe("captcha");
+    expect(out.summary).toContain("was not completed");
     expect(provider.seen).toHaveLength(0);
+    expect(h.overlay[h.overlay.length - 1]).toEqual({ type: "hide" });
+
+    const s = harness(scripted([[finish("x")]]));
+    s.deps.humanCheckPollMs = 5;
+    s.deps.page.snapshot = async () => ({ ...SNAP, text: "Please verify you are human" });
+    setTimeout(() => s.control.stop(), 20);
+    expect((await runTask(s.deps)).status).toBe("stopped");
+  });
+
+  it("stops on the round budget", async () => {
     const loop = harness(scripted([[act([{ type: "scroll", direction: "down" }])], [act([{ type: "scroll", direction: "up" }])], [act([{ type: "scroll", direction: "down" }])]]));
     loop.deps.budget = { maxRounds: 2 };
     const out = await runTask(loop.deps);

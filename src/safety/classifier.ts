@@ -75,10 +75,13 @@ const RULES: Array<{ kind: SensitiveKind; reason: string; test: RegExp }> = [
 
 const FILE_HREF = /\.(pdf|zip|dmg|pkg|exe|msi|csv|xlsx?|docx?|apk|sh|ipa)(\?|#|$)/i;
 
-const CAPTCHA = /captcha|not\s+a\s+robot|verify\s+(that\s+)?you\s+are\s+(a\s+)?human|are\s+you\s+a\s+human/i;
+const CAPTCHA =
+  /captcha|not\s+a\s+robot|(?:verify|confirm)\s+(?:that\s+)?you(?:\s+are|['\u2019]re)\s+(?:a\s+)?human|are\s+you\s+(?:a\s+)?(?:human|robot)|\bi\s*(?:am|['\u2019]m)\s+(?:a\s+)?human\b|human\s+verification|press\s+(?:and|&)\s+hold/i;
+/** The badge text on pages that only use invisible reCAPTCHA (sign-in forms): no check is shown. */
+const CAPTCHA_BADGE = /(?:protected|secured)\s+by\s+re\s*captcha[^.]*\.?|re\s*captcha\s+and\s+the\s+google\s+privacy\s+policy[^.]*\.?/gi;
 
 export function detectCaptcha(snap: Snapshot): boolean {
-  if (CAPTCHA.test(snap.title) || CAPTCHA.test(snap.text)) return true;
+  if (CAPTCHA.test(snap.title) || CAPTCHA.test(snap.text.replace(CAPTCHA_BADGE, ""))) return true;
   return snap.elements.some((e) => CAPTCHA.test(e.name) || (e.href !== undefined && /captcha/i.test(e.href)));
 }
 
