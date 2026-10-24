@@ -131,6 +131,24 @@ describe("retention expiry", () => {
     expect((s.data.history as HistoryEntry[]).map((e) => e.question).sort()).toEqual(["b1", "b2", "chat", "coupons"]);
   });
 
+  // Review 2026-10-24: a save that had read the old list wrote it all back after Clear history.
+  it("Clear history waits for a save already under way, so deleted entries do not come back", async () => {
+    const s = fakeStorage({ history: [entry(0, "old")] });
+    const slow: StorageArea = {
+      ...s,
+      remove: async (keys) => {
+        for (const k of keys) delete s.data[k];
+      },
+      get: async (k) => {
+        const got = await s.get(k);
+        await new Promise((r) => setTimeout(r, 10));
+        return got;
+      },
+    };
+    await Promise.all([appendHistory(slow, "7", entry(0, "new")), clearHistory(slow)]);
+    expect(s.data.history).toBeUndefined();
+  });
+
   it("a save that never finishes lets go of the lock, so later saves still run", async () => {
     const order: string[] = [];
     const stuck = withLock("t", () => new Promise<void>(() => undefined), 20).catch(() => order.push("gave up"));
