@@ -94,10 +94,8 @@ const STYLE_TEXT = `
   mask-image: radial-gradient(ellipse at center, ${MASK_STOPS});
   filter: blur(26px); animation: scout-sweep ${SWEEP_MS}ms linear infinite, scout-pulse ${PULSE_MS}ms ease-in-out infinite alternate;
 }
-.layer.paused .glow { opacity: 0.5; }
 .layer.phone .glow { opacity: ${PHONE_GLOW_SCALE}; }
 .wash { position: absolute; inset: 0; pointer-events: none; }
-.layer.phone.paused .glow { opacity: ${PHONE_GLOW_SCALE * 0.5}; }
 .layer.hidden-tab .glow { animation-play-state: paused; }
 @keyframes scout-sweep { to { --scout-angle: 360deg; } }
 @keyframes scout-pulse { from { filter: blur(26px) brightness(0.85); } to { filter: blur(22px) brightness(1.25); } }
@@ -169,9 +167,9 @@ const onPhone = (): boolean => isPhoneScreen(matchMedia("(pointer: coarse)").mat
 
   '<circle class="lens" cx="17" cy="44" r="8"/><circle class="lens" cx="47" cy="44" r="8"/></svg>';
 
-type State = "running" | "paused" | "waiting";
+type State = "running" | "waiting";
 
-const LABEL: Record<State, string> = { running: "Working…", paused: "Paused", waiting: "Waiting for you" };
+const LABEL: Record<State, string> = { running: "Working…", waiting: "Waiting for you" };
 
 // Scout truck (design/icons/scout-truck-solid.svg), window, hubs and cut lines in the toast color.
 const GLYPH =
@@ -195,7 +193,7 @@ if (!g[FLAG]) {
   /** Lets go of the worker (src/bridge/run-port.ts); set while the overlay shows. */
   let held: { taskId: string; release: () => void } | null = null;
 
-  const send = (command: "pause" | "resume" | "stop"): void => {
+  const send = (command: "stop"): void => {
     void request((m) => browser.runtime.sendMessage(m), "task.control", { task_id: taskId, command }).catch(() => undefined);
   };
 
@@ -275,7 +273,6 @@ if (!g[FLAG]) {
   const setState = (next: State): void => {
     state = next;
     if (!layer || !label) return;
-    layer.classList.toggle("paused", next === "paused");
     label.textContent = LABEL[next];
   };
 

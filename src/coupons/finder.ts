@@ -695,7 +695,6 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
         continue;
       }
       const cand = codes[i]!;
-      await control?.gate();
       if (halted()) {
         stoppedEarly = "stopped";
         break outer;

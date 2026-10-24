@@ -57,6 +57,8 @@ interface RunRecord extends CouponRunView {
   control: AgentControl;
   seq: number;
   pending?: { prompt_id: string; resolve: (more: boolean) => void };
+  /** Settles once the run has ended and saved its summary. */
+  finished?: Promise<void>;
 }
 
 let counter = 0;
@@ -148,7 +150,7 @@ export class CouponHost {
       void this.deps.overlay(p.tab_id, req).catch(() => trace("coupons:overlay-failed"));
     };
     overlay({ type: "overlay:show", taskId: "coupons:" + p.tab_id, state: "running" });
-    void runCouponJob({
+    r.finished = runCouponJob({
       page,
       provider: client,
       model: p.model,
@@ -223,6 +225,13 @@ export class CouponHost {
     r.control.stop();
     void this.deps.overlay(tabId, { type: "overlay:hide" }).catch(() => undefined);
     return { ok: true };
+  }
+
+  /** Delete all data: ends every run and waits until each has saved, so nothing is written after the wipe. */
+  async stopAll(): Promise<void> {
+    const runs = [...this.runs.values()].filter((r) => !r.done);
+    for (const r of runs) this.stop(r.tab_id);
+    await Promise.all(runs.map((r) => r.finished));
   }
 
   /** A closed tab ends its run. */
