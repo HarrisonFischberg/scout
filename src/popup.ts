@@ -235,7 +235,7 @@ async function copyDiagnostics(anchor: HTMLElement, statusNode: HTMLElement): Pr
 /** Settings key: "asked" once Find coupons has asked Safari for access to every site (for the browser fallback). */
 const COUPON_BROWSER_KEY = "couponBrowser";
 
-// Granted site origins, minus the provider API hosts the manifest always holds.
+// Granted site origins; a provider API host is never listed as a site.
 async function listOrigins(): Promise<string[]> {
   try {
     const all = await browser.permissions.getAll();

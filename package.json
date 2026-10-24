@@ -1,8 +1,8 @@
 {
-  "name": "safari-scout",
+  "name": "scout-ai-assistant",
   "version": "0.1.0",
   "private": true,
-  "description": "Scout for Safari Safari extension (TypeScript, bundled with esbuild)",
+  "description": "Scout AI Assistant browser extension for Safari, Chrome and Firefox (TypeScript, bundled with esbuild)",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -19,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/HarrisonFischberg/safari-scout.git"
+    "url": "git+https://github.com/HarrisonFischberg/scout-ai-assistant.git"
   },
   "license": "UNLICENSED",
   "devDependencies": {
