@@ -362,7 +362,7 @@ export async function runTask(deps: TaskDeps): Promise<TaskOutcome> {
     if (blockedBy(snap.url, access, admin)) return end("blocked", "Stopped: " + (site || "this site") + " is blocked in Settings, so Scout cannot act on it.");
     if (detectCaptcha(snap)) {
       // Scout never solves or works around a human check. It waits for the
-      // user to complete it in the page (the overlay lets clicks through),
+      // user to complete it in the page (the glow steps aside, clicks pass through),
       // then carries on with a fresh read of the page.
       const where = site || "this site";
       logLine("Paused: " + where + " shows a human check. Complete it in the page and Scout will carry on.", "note");
@@ -377,7 +377,8 @@ export async function runTask(deps: TaskDeps): Promise<TaskOutcome> {
         try {
           const raw: unknown = await guarded(deps.page.snapshot());
           if (isSnapshot(raw) && !detectCaptcha(raw)) cleared = raw;
-          // The check often reloads the page, which takes the glow with it; keep it on.
+          // The check often reloads the page, which removes the overlay; keep the
+          // "Waiting for you" pill up (the glow itself stays hidden while waiting).
           else await overlay({ type: "show", state: "waiting" });
         } catch {
           // The page is often reloading right after the check; read it again next time.

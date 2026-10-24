@@ -97,7 +97,11 @@ const STYLE_TEXT = `
   filter: blur(26px); animation: scout-sweep ${SWEEP_MS}ms linear infinite, scout-pulse ${PULSE_MS}ms ease-in-out infinite alternate;
 }
 .layer.phone .glow { opacity: ${PHONE_GLOW_SCALE}; }
-.wash { position: absolute; inset: 0; pointer-events: none; }
+.wash { position: absolute; inset: 0; pointer-events: none; transition: opacity ${FADE_OUT_MS}ms ease; }
+/* While Scout waits for the user (a human check, a confirmation) the glow steps
+   aside and only the pill stays; it comes back when Scout carries on (owner, 2026-10-24). */
+.layer.waiting .wash { opacity: 0; }
+.layer.waiting .glow, .layer.waiting .orb, .layer.waiting .sparkle { animation-play-state: paused; }
 .layer.hidden-tab .glow, .layer.hidden-tab .orb, .layer.hidden-tab .sparkle { animation-play-state: paused; }
 /* The procedural field (src/glow-field.ts): soft orbs drifting near the edges and
    twinkling sparkles, laid out anew for every run. Gradients, not blur filters,
@@ -330,6 +334,7 @@ if (!g[FLAG]) {
     state = next;
     if (!layer || !label) return;
     label.textContent = LABEL[next];
+    layer.classList.toggle("waiting", next === "waiting");
   };
 
   const show = (id: string, next: State): void => {
