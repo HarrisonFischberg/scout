@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BridgeError,
   PANEL_PORT,
+  REQUESTS,
   checkSchema,
   classifySender,
   createRouter,
@@ -175,5 +176,27 @@ describe("panel port", () => {
     port.close();
     rt.ports[0]!.drop();
     expect(timers).toHaveLength(0);
+  });
+});
+
+describe("chat.start schema", () => {
+  // A general question sends the open page's address and title (PR #92). The
+  // schema rejected open_page, so every general question on a normal page
+  // ended in "Could not start the answer".
+  it("accepts a general question with open_page", () => {
+    const payload = {
+      message_id: "m1",
+      conv: "c1",
+      provider: "anthropic",
+      model: "claude-haiku-5-5",
+      question: "best coffee shop in Denver",
+      history: [],
+      pages: [],
+      shared: [],
+      site: "homedepot.com",
+      scope: "general",
+      open_page: { url: "https://www.homedepot.com/", title: "The Home Depot" },
+    };
+    expect(checkSchema(REQUESTS["chat.start"].payload, payload)).toBeNull();
   });
 });

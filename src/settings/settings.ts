@@ -3,6 +3,7 @@
 import type { Provider } from "../keychain";
 import { EFFORTS, type Effort } from "../providers/types";
 import { browserName, siteAccessSettings, TARGET } from "../platform";
+import { withLock } from "./lock";
 
 export type Retention = "off" | "7" | "30";
 
@@ -186,22 +187,29 @@ export async function loadHistory(
   retention: Retention,
   now: number,
 ): Promise<HistoryEntry[]> {
-  const got = await storage.get(HISTORY_KEY);
-  const all = parseHistory(got[HISTORY_KEY]);
-  const kept = pruneHistory(all, retention, now);
-  if (kept.length !== all.length) await storage.set({ [HISTORY_KEY]: kept });
-  return kept;
+  return withLock(HISTORY_KEY, async () => {
+    const got = await storage.get(HISTORY_KEY);
+    const all = parseHistory(got[HISTORY_KEY]);
+    const kept = pruneHistory(all, retention, now);
+    if (kept.length !== all.length) await storage.set({ [HISTORY_KEY]: kept });
+    return kept;
+  });
 }
 
+/** Saves one entry, or several in one write (Branch). */
 export async function appendHistory(
   storage: StorageArea,
   retention: Retention,
-  entry: HistoryEntry,
+  entry: HistoryEntry | HistoryEntry[],
 ): Promise<void> {
-  if (retention === "off") return;
-  const got = await storage.get(HISTORY_KEY);
-  const next = pruneHistory([...parseHistory(got[HISTORY_KEY]), entry], retention, entry.at);
-  await storage.set({ [HISTORY_KEY]: next });
+  const added = Array.isArray(entry) ? entry : [entry];
+  if (retention === "off" || !added.length) return;
+  const now = Math.max(...added.map((e) => e.at));
+  await withLock(HISTORY_KEY, async () => {
+    const got = await storage.get(HISTORY_KEY);
+    const next = pruneHistory([...parseHistory(got[HISTORY_KEY]), ...added], retention, now);
+    await storage.set({ [HISTORY_KEY]: next });
+  });
 }
 
 export interface DeleteDeps {
@@ -234,7 +242,8 @@ export async function deleteAllData(deps: DeleteDeps): Promise<DeleteReport> {
     await deps.deleteKey("anthropic");
     await deps.deleteKey("openai");
   });
-  const storage = await attempt(() => deps.storage.clear());
+  // Under the history lock, so a save that already read the old list cannot write it back after the wipe.
+  const storage = await attempt(() => withLock(HISTORY_KEY, () => deps.storage.clear()));
   let remainingOrigins: string[] = [];
   const removed = await attempt(async () => {
     const origins = await deps.listGrantedOrigins();
@@ -312,10 +321,12 @@ export async function saveRating(storage: StorageArea, key: string, rating: Rati
 
 /** Deletes one conversation's saved entries (the chats menu). */
 export async function deleteConversation(storage: StorageArea, conv: string): Promise<void> {
-  const got = await storage.get(HISTORY_KEY);
-  const raw = got[HISTORY_KEY];
-  if (!Array.isArray(raw)) return;
-  await storage.set({ [HISTORY_KEY]: raw.filter((e: unknown) => (e as { conv?: unknown } | null)?.conv !== conv) });
+  await withLock(HISTORY_KEY, async () => {
+    const got = await storage.get(HISTORY_KEY);
+    const raw = got[HISTORY_KEY];
+    if (!Array.isArray(raw)) return;
+    await storage.set({ [HISTORY_KEY]: raw.filter((e: unknown) => (e as { conv?: unknown } | null)?.conv !== conv) });
+  });
 }
 
 /** Host of a page address for HistoryEntry.site; undefined for anything but http(s). */
@@ -335,8 +346,11 @@ export function siteOf(url: string | undefined): string | undefined {
  * the button showed nothing at all, so the write never finished).
  */
 export async function clearHistory(storage: StorageArea): Promise<void> {
-  if (storage.remove) await storage.remove([HISTORY_KEY, RATINGS_KEY]);
-  else await storage.set({ [HISTORY_KEY]: [], [RATINGS_KEY]: {} });
+  // Under the lock, so a save that already read the old list cannot write it back after this.
+  await withLock(HISTORY_KEY, async () => {
+    if (storage.remove) await storage.remove([HISTORY_KEY, RATINGS_KEY]);
+    else await storage.set({ [HISTORY_KEY]: [], [RATINGS_KEY]: {} });
+  });
 }
 
 /** Part 3, spec 10: what each conversation shared (tabs, screenshots, tools), for Settings > Permissions. */
@@ -362,12 +376,14 @@ export function summarizeShared(entries: HistoryEntry[]): SharedSummary[] {
 
 /** Forgets what was shared in one conversation (all of them when `conv` is undefined); the messages stay. */
 export async function clearShared(storage: StorageArea, conv?: string): Promise<void> {
-  const got = await storage.get(HISTORY_KEY);
-  const all = parseHistory(got[HISTORY_KEY]);
-  const next = all.map((e) => {
-    if (!e.shared || (conv !== undefined && (e.conv ?? "") !== conv)) return e;
-    const { shared: _s, ...rest } = e;
-    return rest;
+  await withLock(HISTORY_KEY, async () => {
+    const got = await storage.get(HISTORY_KEY);
+    const all = parseHistory(got[HISTORY_KEY]);
+    const next = all.map((e) => {
+      if (!e.shared || (conv !== undefined && (e.conv ?? "") !== conv)) return e;
+      const { shared: _s, ...rest } = e;
+      return rest;
+    });
+    await storage.set({ [HISTORY_KEY]: next });
   });
-  await storage.set({ [HISTORY_KEY]: next });
 }

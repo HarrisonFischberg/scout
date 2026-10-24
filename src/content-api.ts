@@ -29,8 +29,8 @@ export const CONTENT_HANDLER = "__safariScoutHandle";
 export const OVERLAY_HANDLER = "__safariScoutOverlay";
 
 export type OverlayRequest =
-  | { type: "overlay:show"; taskId: string; state: "running" | "paused" | "waiting" }
-  | { type: "overlay:state"; state: "running" | "paused" | "waiting" }
+  | { type: "overlay:show"; taskId: string; state: "running" | "waiting" }
+  | { type: "overlay:state"; state: "running" | "waiting" }
   | { type: "overlay:marker"; x: number; y: number }
   | { type: "overlay:hide" }
   | { type: "overlay:status" };

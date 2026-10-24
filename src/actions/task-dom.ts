@@ -2,7 +2,7 @@
 // events from a content script; Safari has no browser-level input automation
 // for extensions). Content script only; exercised by Playwright
 // (tests/e2e/overlay.spec.ts), not Vitest. Every action here is synchronous,
-// so a Take control that lands between two actions never finds one half done.
+// so a Stop that lands between two actions never finds one half done.
 import type { ProbeResult, TaskPage } from "./task";
 import type { ScrollDirection, Target } from "./vocabulary";
 import { isSensitiveField, type SnapNode } from "../snapshot/snapshot";
@@ -67,7 +67,8 @@ function describe(el: Element): ProbeResult {
     name: redacted && tag !== "input" ? "" : nameOf(el),
     role: roleOf(el),
     tag,
-    ...(el instanceof HTMLInputElement ? { type: el.type.toLowerCase() } : {}),
+    // A <button> in a form submits it unless its type says otherwise, so its type counts too.
+    ...(el instanceof HTMLInputElement || el instanceof HTMLButtonElement ? { type: el.type.toLowerCase() } : {}),
     ...(el instanceof HTMLAnchorElement ? { href: el.href.slice(0, 200) } : {}),
     ...(redacted ? { redacted: true } : {}),
     ...((el as HTMLButtonElement).disabled === true || el.getAttribute("aria-disabled") === "true" ? { disabled: true } : {}),

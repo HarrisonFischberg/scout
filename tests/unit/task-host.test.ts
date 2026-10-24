@@ -57,7 +57,7 @@ interface Fake {
   port: { postMessage(m: unknown): void };
 }
 
-function fake(provider: ProviderClient, opts: { tabs?: TabRef[]; access?: Partial<PageAccess>; confirmTimeoutMs?: number } = {}): Fake {
+function fake(provider: ProviderClient, opts: { tabs?: TabRef[]; access?: Partial<PageAccess>; confirmTimeoutMs?: number; saveMs?: number } = {}): Fake {
   const storage = memStorage();
   storage.data.pageAccess = parsePageAccess(opts.access ?? {});
   const tabs = opts.tabs ?? [{ id: 1, url: "https://shop.test/a", title: "Shop", windowId: 1, active: true }];
@@ -86,7 +86,10 @@ function fake(provider: ProviderClient, opts: { tabs?: TabRef[]; access?: Partia
     confirmTimeoutMs: opts.confirmTimeoutMs,
     setIcon: async (tabId, active) => void f.icons.push([tabId, active]),
     openPanel: async () => void f.panelOpens++,
-    save: async (e) => void f.saved.push({ conv: e.conv, question: e.question, answer: e.answer }),
+    save: async (e) => {
+      if (opts.saveMs) await settle(opts.saveMs);
+      f.saved.push({ conv: e.conv, question: e.question, answer: e.answer });
+    },
     now: () => Date.now(),
     keepMs: 50,
   };
@@ -162,12 +165,30 @@ describe("task host", () => {
     expect(f.host.status(1).task?.log.some((l) => l.status === "denied")).toBe(true);
   });
 
+  it("stopAll (Delete all data) ends every task and resolves only after each has saved", async () => {
+    const f = fake(scripted([[act([{ type: "click", target: { ref: "e1" } }])], [finish("ok")]]));
+    await f.host.start({ tab_id: 1, goal: "Buy it", conv: "c1", source: "panel" });
+    await settle(60);
+    await f.host.stopAll();
+    expect(f.saved).toHaveLength(1);
+    expect(f.host.status(1).task).toMatchObject({ done: { status: "stopped" } });
+  });
+
+  // Review 2026-10-24: a task is marked done before its summary is saved.
+  it("stopAll also waits for a task that has ended but is still saving", async () => {
+    const f = fake(scripted([[finish("ok")]]), { saveMs: 80 });
+    await f.host.start({ tab_id: 1, goal: "Buy it", conv: "c1", source: "panel" });
+    for (let i = 0; i < 100 && !f.host.status(1).task?.done; i++) await settle(5);
+    expect(f.saved).toHaveLength(0);
+    await f.host.stopAll();
+    expect(f.saved).toHaveLength(1);
+  });
+
   it("the overlay's pill may control only its own tab's task; Stop hides the overlay at once and denies an open prompt", async () => {
     const f = fake(scripted([[act([{ type: "click", target: { ref: "e1" } }])], [finish("ok")]]));
     const { task_id } = await f.host.start({ tab_id: 1, goal: "Buy it" });
     await settle(60);
-    await expect(f.host.control({ task_id, command: "pause" }, { kind: "content", raw: { tab: { id: 2 } } })).rejects.toBeInstanceOf(BridgeError);
-    expect(await f.host.control({ task_id, command: "pause" }, { kind: "content", raw: { tab: { id: 1 } } })).toEqual({ ok: true, state: "paused" });
+    await expect(f.host.control({ task_id, command: "stop" }, { kind: "content", raw: { tab: { id: 2 } } })).rejects.toBeInstanceOf(BridgeError);
     expect(await f.host.control({ task_id, command: "stop" }, { kind: "panel", raw: {} })).toEqual({ ok: true });
     expect(f.overlay.some((o) => o.type === "overlay:hide")).toBe(true);
     const out = await f.host.outcome(task_id);

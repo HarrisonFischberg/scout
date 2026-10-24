@@ -47,14 +47,14 @@ on Chrome and Firefox. There is no Scout server.
   Scout uses the page; otherwise it answers like any chat window.
 - **Summarize** a page, or ask across other open tabs.
 - **Scout mode**: a supervised agent that carries out a task on the page for
-  you, step by step, under a glowing page with Take control and Stop. Sending
+  you, step by step, under a glowing page with a Stop button. Sending
   a task starts it at once; before anything sensitive (buying, sending, signing in,
   deleting, submitting, downloading) it asks, every time.
 - **Find coupons** on a cart or checkout page: searches the live web for codes
   posted for that store (coupon sites, creators, the store's own pages), keeps
-  each code's page as evidence, tests every code in your cart one at a time,
-  and leaves the best verified discount applied. It never guesses codes and
-  never checks out.
+  each code's page as evidence, adds a few common codes marked as guesses,
+  tests every code in your cart one at a time, and leaves the best verified
+  discount applied. It never checks out.
 - **Settings**: pick the model, effort level and look.
 
 Each tab keeps its own conversation. Scout works in Private Browsing; chats in a

