@@ -473,10 +473,10 @@ async function main(): Promise<void> {
   if (!STANDALONE && !matchMedia("(pointer: coarse)").matches) closeWhenHidden(document, () => window.close(), trace);
 
   // Cached or built-in model lists, so names and effort support are known
-  // before Settings is opened. No network call here. Debug builds load their
-  // diagnostics in the same round.
+  // before Settings is opened. No network call here. The debug log loads in
+  // the same round (every build since 2026-10-24: owner decision).
   const mockRead = __SCOUT_DEBUG__ && storage ? storage.get(DEV_MOCK_KEY).catch(() => none) : Promise.resolve(none);
-  if (__SCOUT_DEBUG__) {
+  {
     diag = new Diagnostics(storage);
     watchCrashes(window, storage, "panel");
     void loadButtonFailures(storage).then((f) => (buttonFailures = f));
@@ -509,8 +509,8 @@ async function main(): Promise<void> {
   const attached = new Map<number, TabInfo>();
   const toWorker = (m: unknown): Promise<unknown> => browser.runtime.sendMessage(m);
 
-  // ---------- Diagnostics (debug builds only) ----------
-  if (__SCOUT_DEBUG__) {
+  // ---------- Diagnostics (the debug log; the mock server switch is debug builds only) ----------
+  {
     const diagBox = el("diag");
     const diagStatus = el("diag-status");
     const diagQuestion = el<HTMLInputElement>("diag-question");
@@ -519,16 +519,18 @@ async function main(): Promise<void> {
     diagQuestion.addEventListener("change", () => void diag?.setIncludeQuestion(diagQuestion.checked));
     diagCopy.addEventListener("click", () => void copyDiagnostics(diagCopy.parentElement ?? diagCopy, diagStatus));
     // Answers from the local mock server (scripts/mock-scout-server.mjs) instead of Anthropic.
-    const diagMock = el<HTMLInputElement>("diag-mock");
-    const mockSet = await mockRead;
-    diagMock.checked = typeof mockSet[DEV_MOCK_KEY] === "string";
-    diagMock.addEventListener("change", () => {
-      void storage?.set({ [DEV_MOCK_KEY]: diagMock.checked ? DEV_MOCK_URL : null }).then(async () => {
-        await connect();
-        diagStatus.textContent = diagMock.checked ? "Answers now come from the local mock server." : "Answers come from your provider again.";
+    if (__SCOUT_DEBUG__) {
+      const diagMock = el<HTMLInputElement>("diag-mock");
+      const mockSet = await mockRead;
+      diagMock.checked = typeof mockSet[DEV_MOCK_KEY] === "string";
+      diagMock.addEventListener("change", () => {
+        void storage?.set({ [DEV_MOCK_KEY]: diagMock.checked ? DEV_MOCK_URL : null }).then(async () => {
+          await connect();
+          diagStatus.textContent = diagMock.checked ? "Answers now come from the local mock server." : "Answers come from your provider again.";
+        });
       });
-    });
-    // The + menu's copy (debug builds): reachable without opening Settings.
+    }
+    // The + menu's copy: reachable without opening Settings.
     const menuCopy = el<HTMLButtonElement>("diag-menu-copy");
     // The menu closes, so a hand-copy box shows by the status line instead.
     menuCopy.addEventListener("click", () => {
@@ -880,7 +882,7 @@ async function main(): Promise<void> {
       label.className = "mode";
       label.textContent = opts.mode;
       node.append(label, document.createTextNode(text));
-    } else if (kind === "error" && __SCOUT_DEBUG__) {
+    } else if (kind === "error") {
       // Own element, so the message reads on its own next to the copy button.
       const span = document.createElement("span");
       span.textContent = text;
@@ -888,14 +890,12 @@ async function main(): Promise<void> {
     } else node.textContent = text;
     if (kind === "error") {
       current.error(text);
-      if (__SCOUT_DEBUG__) {
-        const copy = document.createElement("button");
-        copy.type = "button";
-        copy.className = "diag-copy";
-        copy.textContent = "Copy diagnostics";
-        copy.addEventListener("click", () => void copyDiagnostics(copy, status));
-        node.appendChild(copy);
-      }
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "diag-copy";
+      copy.textContent = "Copy diagnostics";
+      copy.addEventListener("click", () => void copyDiagnostics(copy, status));
+      node.appendChild(copy);
     }
     log.appendChild(node);
     updateEmpty();

@@ -40,8 +40,9 @@ Gate A (engineering complete) is not Gate B (ready for release).
 
 ## Bug reports from the owner (diagnostics workflow)
 
-Debug builds have a "Copy diagnostics" button (on every error message and in
-Settings → Diagnostics). The copied text starts with
+Every build (debug, TestFlight and release, since 2026-10-24) has "Copy debug
+log" in the + menu and in Settings → Diagnostics, and "Copy diagnostics" on
+every error message. The copied text starts with
 `## Scout AI Assistant diagnostics — Actual behavior` (older builds: `## Scout for Safari diagnostics`).
 
 When the owner pastes a report that starts with that heading:
@@ -56,5 +57,6 @@ When the owner pastes a report that starts with that heading:
    and log actual, expected, cause, fix, and evidence in `activity.md`.
 
 Diagnostics never contain API keys, page text, or form values; the question
-is included only if the owner opted in. Release builds contain no
-diagnostics code (`npm run check:release`).
+is included only if the owner opted in. The log stays on the device until the
+user copies it. Release builds contain no debug-only code (native console
+log, drag probe, mock server switch; `npm run check:release`).

@@ -121,8 +121,8 @@ Review has been rejecting AI apps over it). The extension's
 Not declared, and why: the API key (a credential sent only to the user's own
 provider to sign in, not a data type Apple lists); voice (the microphone uses
 Safari's own speech recognition, handled by Apple, and Scout records nothing);
-diagnostics (debug builds only, never sent; release builds contain none,
-`npm run check:release`); coupon tests (sent to the store the user is already
+the debug log (kept on the device, never sent by the app; leaves only if the
+user taps Copy debug log and pastes it somewhere themselves); coupon tests (sent to the store the user is already
 on, from the user's own cart).
 
 "Not linked" because Scout attaches no name, account or device ID, and has
