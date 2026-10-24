@@ -5,7 +5,7 @@
 // setting read from the host app over native messaging (ManagedPolicy.swift),
 // never from storage. Sensitive-action confirmation is always on: there is no
 // setting for it. "Always allow on this site" can skip it per site and kind,
-// except for payments (ASK_EVERY_TIME).
+// except for payments, logins, account changes and deletes (ASK_EVERY_TIME).
 import type { SensitiveKind } from "../safety/classifier";
 import type { StorageArea } from "../settings/settings";
 
@@ -43,8 +43,11 @@ export const DEFAULT_PAGE_ACCESS: PageAccess = { readCurrent: true, searchTabs: 
 
 export const MAX_BLOCKED = 200;
 export const SENSITIVE_KINDS: readonly SensitiveKind[] = ["payment", "login", "send", "personal_data", "destructive", "download", "account", "leave_site"];
-/** Asked every time: never offered or honored for "Always allow", so a page's hidden text can never spend money unasked. */
-export const ASK_EVERY_TIME: readonly SensitiveKind[] = ["payment"];
+/**
+ * Asked every time: never offered or honored for "Always allow", so a page's hidden text can never pay, sign in,
+ * change the account or delete something unasked (owner decision 2026-10-24).
+ */
+export const ASK_EVERY_TIME: readonly SensitiveKind[] = ["payment", "login", "account", "destructive"];
 
 /** Host of an http(s) URL, lowercased; null for anything else. */
 export function hostOf(url: string): string | null {

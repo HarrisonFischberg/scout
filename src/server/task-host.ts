@@ -57,7 +57,7 @@ export interface PendingPrompt {
   site: string;
   reason: string;
   preapproved: boolean;
-  /** "Always allow on this site" may be offered (never for payments). */
+  /** "Always allow on this site" may be offered (never for ASK_EVERY_TIME kinds). */
   always: boolean;
 }
 
