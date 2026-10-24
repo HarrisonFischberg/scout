@@ -242,7 +242,8 @@ export async function deleteAllData(deps: DeleteDeps): Promise<DeleteReport> {
     await deps.deleteKey("anthropic");
     await deps.deleteKey("openai");
   });
-  const storage = await attempt(() => deps.storage.clear());
+  // Under the history lock, so a save that already read the old list cannot write it back after the wipe.
+  const storage = await attempt(() => withLock(HISTORY_KEY, () => deps.storage.clear()));
   let remainingOrigins: string[] = [];
   const removed = await attempt(async () => {
     const origins = await deps.listGrantedOrigins();
@@ -345,8 +346,11 @@ export function siteOf(url: string | undefined): string | undefined {
  * the button showed nothing at all, so the write never finished).
  */
 export async function clearHistory(storage: StorageArea): Promise<void> {
-  if (storage.remove) await storage.remove([HISTORY_KEY, RATINGS_KEY]);
-  else await storage.set({ [HISTORY_KEY]: [], [RATINGS_KEY]: {} });
+  // Under the lock, so a save that already read the old list cannot write it back after this.
+  await withLock(HISTORY_KEY, async () => {
+    if (storage.remove) await storage.remove([HISTORY_KEY, RATINGS_KEY]);
+    else await storage.set({ [HISTORY_KEY]: [], [RATINGS_KEY]: {} });
+  });
 }
 
 /** Part 3, spec 10: what each conversation shared (tabs, screenshots, tools), for Settings > Permissions. */

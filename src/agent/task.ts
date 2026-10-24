@@ -103,6 +103,8 @@ export interface TaskDeps {
   model: string;
   effort?: Effort;
   goal: string;
+  /** Who wrote the goal: the user in the panel, or the chat model (which has read pages). */
+  source?: "panel" | "chat";
   page: TaskPageClient;
   access(): Promise<PageAccess>;
   admin(): Promise<readonly string[]>;
@@ -454,12 +456,16 @@ export async function runTask(deps: TaskDeps): Promise<TaskOutcome> {
 
       // Sensitive actions: asked on the device, every time, unless the user chose
       // "Always allow on this site" for this kind. A server pre-approval changes nothing.
-      const cls: Classification = action.type !== "navigate"
-          ? classifyTaskAction(resolved.action, probe)
-          : // A blocked site is refused by navigate itself, with no question first.
-            blockedBy(action.url, access, admin)
-            ? { sensitive: false }
-            : classifyNavigation(action.url, knownSites, deps.goal);
+      // Sites named in the goal count as allowed only when the user typed it;
+      // a goal the chat model wrote may come from a page's hidden instructions.
+      const userGoal = deps.source === "panel" ? deps.goal : "";
+      // A link to another site leaves it just as navigate does.
+      const leaving = action.type === "navigate" ? action.url : CLICK_TYPES.has(action.type) ? probe?.href : undefined;
+      let cls: Classification = action.type === "navigate" ? { sensitive: false } : classifyTaskAction(resolved.action, probe);
+      // A blocked site is refused by navigate itself, with no question first.
+      if (!cls.sensitive && leaving && !(action.type === "navigate" && blockedBy(leaving, access, admin))) {
+        cls = classifyNavigation(leaving, knownSites, userGoal);
+      }
       if (cls.sensitive && cls.kind) {
         if (!alwaysAllowed(nowUrl || snap.url, cls.kind, await deps.access())) {
           await setState("waiting");
@@ -482,7 +488,7 @@ export async function runTask(deps: TaskDeps): Promise<TaskOutcome> {
           if (halted()) return end("stopped", "Stopped.");
         }
         // Allowed once: the rest of this task may come back to that site without asking again.
-        const opened = action.type === "navigate" ? hostOf(action.url) : null;
+        const opened = cls.kind === "leave_site" && leaving ? hostOf(leaving) : null;
         if (opened) knownSites.push(opened);
       }
 

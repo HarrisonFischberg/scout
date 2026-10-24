@@ -221,6 +221,7 @@ export class TaskHost {
       model: settings.model,
       ...(settings.effort ? { effort: settings.effort } : {}),
       goal,
+      source: record.source,
       control,
       page: {
         snapshot: async () => (await deps.content(tabId, { type: "scout:snapshot" })) as never,
@@ -304,9 +305,10 @@ export class TaskHost {
 
   /** Delete all data: ends every task and waits until each has saved, so nothing is written after the wipe. */
   async stopAll(): Promise<void> {
-    const open = [...this.tasks.values()].filter((t) => !t.done);
-    for (const t of open) void this.control({ task_id: t.task_id, command: "stop" });
-    await Promise.all(open.map((t) => t.finished));
+    const all = [...this.tasks.values()];
+    for (const t of all) if (!t.done) void this.control({ task_id: t.task_id, command: "stop" });
+    // A task marked done may still be saving its summary, so every one is waited on.
+    await Promise.all(all.map((t) => t.finished));
   }
 
   /** The tab closed: end its task. */
