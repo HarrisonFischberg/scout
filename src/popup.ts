@@ -2152,11 +2152,12 @@ async function main(): Promise<void> {
     refreshHead();
   }
 
-  function showConfirm(p: { prompt_id: string; what: string; site: string; reason: string; preapproved: boolean }): void {
+  function showConfirm(p: { prompt_id: string; what: string; site: string; reason: string; preapproved: boolean; always?: boolean }): void {
     if (!task) return;
     task.promptId = p.prompt_id;
     confirmWhat.textContent = p.what + (p.site ? " on " + p.site : "");
     confirmReason.textContent = (p.reason ? p.reason + " " : "") + (p.preapproved ? "The model marked this as approved; Scout asks you anyway." : "");
+    confirmAlways.hidden = p.always === false;
     confirmBox.hidden = false;
     setTaskState("waiting");
     status.textContent = "Waiting for your answer.";
@@ -2208,7 +2209,7 @@ async function main(): Promise<void> {
         break;
       }
       case "confirm":
-        showConfirm({ prompt_id: String(p.prompt_id), what: String(p.what ?? ""), site: String(p.site ?? ""), reason: String(p.reason ?? ""), preapproved: p.preapproved === true });
+        showConfirm({ prompt_id: String(p.prompt_id), what: String(p.what ?? ""), site: String(p.site ?? ""), reason: String(p.reason ?? ""), preapproved: p.preapproved === true, always: p.always !== false });
         break;
       case "done": {
         const usage: Usage = { inputTokens: Number(p.input_tokens ?? 0), outputTokens: Number(p.output_tokens ?? 0) };

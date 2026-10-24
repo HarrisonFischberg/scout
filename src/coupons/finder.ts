@@ -1,5 +1,7 @@
 // Coupon finder: test the codes found online one at a time against the real
-// cart, keep the best, apply it, and never touch checkout. The try loop is
+// cart, keep the best, and apply it. It never pays or places an order; it opens
+// the store's Checkout page itself only when the coupon box is only there
+// (goToCheckout). The try loop is
 // plain code, not model-driven, so page content cannot steer it. It tests the
 // codes it is given in order: remembered and found codes first, guesses
 // (guesses.ts, owner decision 2026-10-19) only after the search ended.
