@@ -165,6 +165,8 @@ export const REQUESTS = {
     },
   },
   "chat.stop": { senders: ["panel"], payload: { object: { message_id: "string" } } },
+  /** Delete all data: stop every answer, Scout mode task and coupon run, so none saves after the wipe. */
+  "jobs.stop_all": { senders: ["panel"], payload: { object: {} } },
   /** The panel ran a tool request through the tool host; same request_id as the request. */
   "chat.tool_result": {
     senders: ["panel"],
