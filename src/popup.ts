@@ -34,6 +34,7 @@ import { summarizeChats, whenText } from "./chat/list";
 import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/consent";
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
+import { APPLE_UNAVAILABLE_TEXT, appleGenerate, appleStatus } from "./providers/apple";
 import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
 import { joinDictation, Listener, micBlocked, micBlockedHere, micErrorText, recognitionCtor, rememberMic } from "./panel/voice";
 import { PageListener } from "./panel/page-listen";
@@ -3511,6 +3512,7 @@ async function main(): Promise<void> {
     keyError.textContent = "";
     consentStatus.textContent = "";
     await refreshSettings();
+    void refreshApple();
     // Focus the heading or the key field, never a <select>: on iOS a focused
     // select opens its picker immediately (T018).
     if (focusKey) keyInput.focus();
@@ -3521,6 +3523,31 @@ async function main(): Promise<void> {
     chatView.hidden = false;
     settingsOpen.focus();
   }
+  // Apple's on-device model (owner's choice 2026-10-25): Safari only. This
+  // first version only checks the device and runs one short test reply, so
+  // a real build can show whether Safari lets the extension use the model.
+  const appleSection = el("apple-section");
+  const appleStatusEl = el("apple-status");
+  const appleTry = el<HTMLButtonElement>("apple-try");
+  const appleResult = el("apple-result");
+  async function refreshApple(): Promise<void> {
+    if (TARGET !== "safari") return;
+    appleSection.hidden = false;
+    const st = await appleStatus(nativeSend);
+    appleStatusEl.textContent = st.available ? "Available on this device." : APPLE_UNAVAILABLE_TEXT[st.reason];
+    appleTry.hidden = !st.available;
+  }
+  appleTry.addEventListener("click", () => {
+    appleTry.disabled = true;
+    appleResult.textContent = "Asking Apple's model…";
+    const started = performance.now();
+    appleGenerate(nativeSend, { prompt: "In one short sentence, say hello to a new Scout user.", maxTokens: 60 })
+      .then(
+        (text) => (appleResult.textContent = "Reply in " + ((performance.now() - started) / 1000).toFixed(1) + " s: " + text),
+        (err: unknown) => (appleResult.textContent = err instanceof Error ? err.message : "Apple's model couldn't answer."),
+      )
+      .finally(() => (appleTry.disabled = false));
+  });
   settingsOpen.addEventListener("click", () => void openSettings());
   el("no-key-open").addEventListener("click", () => void openSettings(true));
   el("settings-back").addEventListener("click", closeSettings);

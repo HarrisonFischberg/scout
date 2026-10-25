@@ -23,6 +23,16 @@ final class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         #if os(iOS)
         KeychainStore().markExtensionSeen()
         #endif
+        // The on-device model answers asynchronously; the request completes when it does.
+        if AppleModelBridge.handles(message) {
+            Task {
+                let reply = await AppleModelBridge.handle(message)
+                let response = NSExtensionItem()
+                response.userInfo = [SFExtensionMessageKey: reply]
+                context.completeRequest(returningItems: [response], completionHandler: nil)
+            }
+            return
+        }
         let response = NSExtensionItem()
         response.userInfo = [SFExtensionMessageKey: ManagedPolicy.handle(message) ?? KeychainBridge.handle(message)]
         context.completeRequest(returningItems: [response], completionHandler: nil)
