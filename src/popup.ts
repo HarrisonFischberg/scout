@@ -565,15 +565,17 @@ async function main(): Promise<void> {
   // while they read from its top (owner, 2026-10-18).
   let atBottom = true;
   let pinnedTop = -1;
+  // Where the thread last was, ours or the user's; a scroll event compares
+  // against it, so a user scroll in the same frame as ours still reads as up.
+  let lastTop = 0;
   const scrollToEnd = (): void => {
     atBottom = true;
     thread.scrollTop = thread.scrollHeight;
-    pinnedTop = thread.scrollTop;
+    pinnedTop = lastTop = thread.scrollTop;
   };
   const followEnd = (): void => {
     if (atBottom) scrollToEnd();
   };
-  let lastTop = 0;
   thread.addEventListener("scroll", () => {
     const top = thread.scrollTop;
     const up = top < lastTop;
