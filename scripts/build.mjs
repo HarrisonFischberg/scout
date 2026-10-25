@@ -38,6 +38,8 @@ await build({
   logLevel: "warning",
   // Needed so `if (__SCOUT_DEBUG__)` branches are removed, not just skipped.
   minifySyntax: release,
+  minifyWhitespace: release,
+  minifyIdentifiers: release,
   treeShaking: true,
   define: {
     __SCOUT_DEBUG__: release ? "false" : "true",
