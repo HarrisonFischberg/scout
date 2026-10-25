@@ -80,4 +80,15 @@ final class HostAppAccessibilityUITests: XCTestCase {
         XCTAssertTrue(privacy.waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Legal (DRAFT)"].exists)
     }
+
+    // Goal gradient: installing counts as step 1, so a fresh install starts at
+    // 1 of 3, and the step to do next is announced as the current step.
+    func testSetupShowsProgressFromTheFirstLaunch() {
+        let app = launch(.light)
+        let header = app.descendants(matching: .any)["Setup progress"]
+        XCTAssertTrue(header.waitForExistence(timeout: 5))
+        XCTAssertEqual(header.value as? String, "1 of 3 steps done. About 1 minute left")
+        XCTAssertTrue(app.staticTexts["Step 1, Install Scout, done"].exists)
+        XCTAssertTrue(app.staticTexts["Step 2, Turn on the extension, current step"].exists)
+    }
 }

@@ -34,6 +34,8 @@ import { summarizeChats, whenText } from "./chat/list";
 import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/consent";
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
+import { isKeyProblem } from "./providers/errors";
+import { APPLE_UNAVAILABLE_TEXT, appleGenerate, appleStatus } from "./providers/apple";
 import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
 import { joinDictation, Listener, micBlocked, micBlockedHere, micErrorText, recognitionCtor, rememberMic } from "./panel/voice";
 import { PageListener } from "./panel/page-listen";
@@ -915,9 +917,20 @@ async function main(): Promise<void> {
     return node;
   }
 
+  function errorAction(label: string, run: () => void): HTMLButtonElement {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn primary error-action";
+    b.textContent = label;
+    b.addEventListener("click", run);
+    return b;
+  }
+
   function updateEmpty(): void {
     const busyCards = !!task || !!couponRun || !confirmBox.hidden;
     empty.hidden = !(session || connecting) || log.childElementCount > 0 || busyCards;
+    // "Your key works" greets the first new chat only.
+    if (log.childElementCount > 0) el("key-works").hidden = true;
     // On iPhone the starters live in the docked composer (src/panel/dock.ts).
     document.documentElement.toggleAttribute("data-chat-empty", !empty.hidden);
     siteSuggestions.hidden = empty.hidden || !siteSuggestions.childElementCount;
@@ -1664,6 +1677,16 @@ async function main(): Promise<void> {
           void ask(CONTINUE_PROMPT, { continueOf: { bubble: v.bubble, question: v.question, partial: full, shared: v.shared, sources: allSources(v, m) } });
         });
         err.appendChild(more);
+      } else if (!full) {
+        // The way forward is the standout; Copy diagnostics stays as a quiet link (UX plan, peak-end).
+        const keyProblem = isKeyProblem(message);
+        err.insertBefore(errorAction(keyProblem ? "Open Settings" : "Try again", () => {
+          if (keyProblem) return void openSettings(true);
+          const asked = err.previousElementSibling;
+          if (asked?.classList.contains("user")) asked.remove();
+          err.remove();
+          void ask(v.question);
+        }), err.querySelector(".diag-copy"));
       }
       status.textContent = "The request failed.";
       current.finish("error", message, m.usage);
@@ -3511,6 +3534,7 @@ async function main(): Promise<void> {
     keyError.textContent = "";
     consentStatus.textContent = "";
     await refreshSettings();
+    void refreshApple();
     // Focus the heading or the key field, never a <select>: on iOS a focused
     // select opens its picker immediately (T018).
     if (focusKey) keyInput.focus();
@@ -3521,6 +3545,31 @@ async function main(): Promise<void> {
     chatView.hidden = false;
     settingsOpen.focus();
   }
+  // Apple's on-device model (owner's choice 2026-10-25): Safari only. This
+  // first version only checks the device and runs one short test reply, so
+  // a real build can show whether Safari lets the extension use the model.
+  const appleSection = el("apple-section");
+  const appleStatusEl = el("apple-status");
+  const appleTry = el<HTMLButtonElement>("apple-try");
+  const appleResult = el("apple-result");
+  async function refreshApple(): Promise<void> {
+    if (TARGET !== "safari") return;
+    appleSection.hidden = false;
+    const st = await appleStatus(nativeSend);
+    appleStatusEl.textContent = st.available ? "Available on this device." : APPLE_UNAVAILABLE_TEXT[st.reason];
+    appleTry.hidden = !st.available;
+  }
+  appleTry.addEventListener("click", () => {
+    appleTry.disabled = true;
+    appleResult.textContent = "Asking Apple's model…";
+    const started = performance.now();
+    appleGenerate(nativeSend, { prompt: "In one short sentence, say hello to a new Scout user.", maxTokens: 60 })
+      .then(
+        (text) => (appleResult.textContent = "Reply in " + ((performance.now() - started) / 1000).toFixed(1) + " s: " + text),
+        (err: unknown) => (appleResult.textContent = err instanceof Error ? err.message : "Apple's model couldn't answer."),
+      )
+      .finally(() => (appleTry.disabled = false));
+  });
   settingsOpen.addEventListener("click", () => void openSettings());
   el("no-key-open").addEventListener("click", () => void openSettings(true));
   el("settings-back").addEventListener("click", closeSettings);
@@ -3584,6 +3633,8 @@ async function main(): Promise<void> {
       keyInput.focus();
       return;
     }
+    // Saving the first key is the end of setup: go back to the chat and say so (UX plan, peak-end).
+    const firstKey = !el("no-key").hidden;
     void (async () => {
       // Testing the key is a request to the provider, so it needs consent too.
       if (!consent.has(p) && !(await allowSharing(p))) {
@@ -3603,6 +3654,10 @@ async function main(): Promise<void> {
           keyStatus.textContent = PROVIDER_NAME[p] + " key works and is saved in " + keyPlace() + ".";
           await connect();
           await refreshModels(true);
+          if (firstKey) {
+            el("key-works").hidden = false;
+            closeSettings();
+          }
         } catch {
           keyError.textContent = "The key works, but it could not be saved" + (TARGET === "safari" ? " to the Keychain" : "") + ". Try again.";
         }

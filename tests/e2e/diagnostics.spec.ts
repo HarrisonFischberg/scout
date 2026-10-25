@@ -96,7 +96,8 @@ test("the question is included only after opting in", async ({ page }) => {
   await page.getByLabel("Ask about this page").fill("What does the widget cost?");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText("The API key was rejected.")).toBeVisible();
-  await page.getByRole("button", { name: "Settings" }).click();
+  // exact: the error card also offers "Open Settings".
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.locator("#diag-copy").click();
   await expect(page.locator("#diag-status")).toHaveText(/Diagnostics copied/);
   expect(await copied(page)).toContain('- Question: "What does the widget cost?"');

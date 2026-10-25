@@ -7,6 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		27F212D81D60E9E4A118ED0A /* AppleModelBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02D25D2E94EE1E968D89BA9D /* AppleModelBridge.swift */; };
+		5F1E899DB11EDC548DE52B02 /* AppleModelBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02D25D2E94EE1E968D89BA9D /* AppleModelBridge.swift */; };
+		2FAD43C0005940EEC8E1269C /* SetupStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0898E4411DC78748C6C84C6 /* SetupStatus.swift */; };
+		9AD63525A3538A3CF18EB5BA /* SetupStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0898E4411DC78748C6C84C6 /* SetupStatus.swift */; };
+		CA013402DA238256E5993A8C /* SetupStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0898E4411DC78748C6C84C6 /* SetupStatus.swift */; };
+		19A5DDBC6209F51955673D2A /* SetupComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B0818C8D1ADE954CA553877 /* SetupComponents.swift */; };
+		A8ADB22164032ED0AC6B601B /* SetupComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B0818C8D1ADE954CA553877 /* SetupComponents.swift */; };
+		AFD45107A7126DFE41231FD0 /* SetupProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59992B530C3E81D9E5243219 /* SetupProgressTests.swift */; };
 		0B61B16B770EC3A7178C62D6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B4986E15F6D4CE7B6EBDAC66 /* Assets.xcassets */; };
 		133B8E56268CB0592DBD7CC3 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 77BD6CFDE26F3F0EB3CAF274 /* Foundation.framework */; };
 		2574AB3AD256B028946D68D4 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 2EACFEFE046C585EEC22A075 /* manifest.json */; };
@@ -108,6 +116,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		02D25D2E94EE1E968D89BA9D /* AppleModelBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleModelBridge.swift; sourceTree = "<group>"; };
+		C0898E4411DC78748C6C84C6 /* SetupStatus.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SetupStatus.swift; sourceTree = "<group>"; };
+		0B0818C8D1ADE954CA553877 /* SetupComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SetupComponents.swift; sourceTree = "<group>"; };
+		59992B530C3E81D9E5243219 /* SetupProgressTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SetupProgressTests.swift; sourceTree = "<group>"; };
 		017E778274AD8134FA1FAFD8 /* ManagedPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ManagedPolicy.swift; sourceTree = "<group>"; };
 		028B5C712BE52F47B902E1D5 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		04F7B8DE0E0129420C3451F7 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -207,6 +219,7 @@
 			isa = PBXGroup;
 			children = (
 				8B3F9BF90D7D010DA54B9A7C /* Resources */,
+				02D25D2E94EE1E968D89BA9D /* AppleModelBridge.swift */,
 				1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */,
 				7A1C0D4E2B9F46C3A8E5D1F0 /* KeychainStore.swift */,
 				BA52935E29A00BF86685A3B8 /* Info.plist */,
@@ -278,6 +291,8 @@
 		CA7B7D07EAF849AAB1E1577D /* App */ = {
 			isa = PBXGroup;
 			children = (
+				0B0818C8D1ADE954CA553877 /* SetupComponents.swift */,
+				C0898E4411DC78748C6C84C6 /* SetupStatus.swift */,
 				1FFF3A7A6FFAC4C38E60D00F /* SafariScoutApp.swift */,
 				D6984060B5995FB15A70F7EB /* ContentView.swift */,
 				7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */,
@@ -302,6 +317,7 @@
 		E357AFF747FE264F92E5026C /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				59992B530C3E81D9E5243219 /* SetupProgressTests.swift */,
 				67857510C6E847756D3CEA9F /* KeychainStoreTests.swift */,
 				8E6C47A906B73CF54C895C3C /* ManagedPolicyTests.swift */,
 			);
@@ -523,6 +539,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				27F212D81D60E9E4A118ED0A /* AppleModelBridge.swift in Sources */,
 				68EFD9AC48B2EC8AACAA8530 /* SafariWebExtensionHandler.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1F1 /* KeychainStore.swift in Sources */,
 				EB459CC47E91A731AE502DD2 /* ManagedPolicy.swift in Sources */,
@@ -533,6 +550,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				19A5DDBC6209F51955673D2A /* SetupComponents.swift in Sources */,
+				2FAD43C0005940EEC8E1269C /* SetupStatus.swift in Sources */,
 				44591AF1303D7DE7A9594AF2 /* SafariScoutApp.swift in Sources */,
 				432C9AE3398D8889519FDAFD /* ContentView.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1A3 /* OnboardingView.swift in Sources */,
@@ -544,6 +563,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A8ADB22164032ED0AC6B601B /* SetupComponents.swift in Sources */,
+				9AD63525A3538A3CF18EB5BA /* SetupStatus.swift in Sources */,
 				3CA34DA466AB0F3599D4F3D1 /* SafariScoutApp.swift in Sources */,
 				523BC8C08DFDAB1AA8A16FAE /* ContentView.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1A4 /* OnboardingView.swift in Sources */,
@@ -555,6 +576,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AFD45107A7126DFE41231FD0 /* SetupProgressTests.swift in Sources */,
+				CA013402DA238256E5993A8C /* SetupStatus.swift in Sources */,
 				C0C7388EAF345F982393C9EE /* KeychainStoreTests.swift in Sources */,
 				C3A53F9D6F7BA805B8F82363 /* KeychainStore.swift in Sources */,
 				73269E726703913A34E07EC7 /* ManagedPolicy.swift in Sources */,
@@ -574,6 +597,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5F1E899DB11EDC548DE52B02 /* AppleModelBridge.swift in Sources */,
 				F1B11E8D9F04B01567E493A5 /* SafariWebExtensionHandler.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1F2 /* KeychainStore.swift in Sources */,
 				30443659A2B199EAD188B54B /* ManagedPolicy.swift in Sources */,
