@@ -122,6 +122,11 @@ test("scrolling up while an answer types out stays where the user put it", async
   // While it types, the thread follows the new text.
   await expect.poll(() => thread.evaluate((t) => t.scrollHeight > t.clientHeight + 200), { timeout: 15_000 }).toBe(true);
   expect(await gap()).toBeLessThan(24);
+  // A small scroll up near the bottom (scrollbar drag, end of a touch drag) is not snapped back.
+  await thread.evaluate((t) => (t.scrollTop -= 10));
+  const nudged = await thread.evaluate((t) => t.scrollTop);
+  await page.waitForTimeout(300);
+  expect(await thread.evaluate((t) => t.scrollTop)).toBe(nudged);
   // The user scrolls up to read from the top; typing goes on and does not pull them back down.
   await thread.hover();
   await page.mouse.wheel(0, -5000);
