@@ -565,18 +565,30 @@ async function main(): Promise<void> {
   // while they read from its top (owner, 2026-10-18).
   let atBottom = true;
   let pinnedTop = -1;
+  // Where the thread last was, ours or the user's; a scroll event compares
+  // against it, so a user scroll in the same frame as ours still reads as up.
+  let lastTop = 0;
   const scrollToEnd = (): void => {
     atBottom = true;
     thread.scrollTop = thread.scrollHeight;
-    pinnedTop = thread.scrollTop;
+    pinnedTop = lastTop = thread.scrollTop;
   };
   const followEnd = (): void => {
     if (atBottom) scrollToEnd();
   };
   thread.addEventListener("scroll", () => {
+    const top = thread.scrollTop;
+    const up = top < lastTop;
+    lastTop = top;
     // Our own scroll, before the content grew under it, is not the user's.
-    if (Math.abs(thread.scrollTop - pinnedTop) < 2) return;
-    atBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 24;
+    if (Math.abs(top - pinnedTop) < 2) return;
+    const gap = thread.scrollHeight - top - thread.clientHeight;
+    // Any move up unpins, even a few pixels from the bottom (a scrollbar drag
+    // or the scroll after a touch), so typing never snaps the user back down;
+    // only scrolling down to the end pins again. A clamp from shrinking
+    // content leaves the gap at 0 and keeps the pin.
+    if (up && gap > 1) atBottom = false;
+    else if (!up && gap < 24) atBottom = true;
   });
   // Unpin as soon as the user starts scrolling up, before the next typed
   // frame can scroll the thread back down under their finger or wheel.
