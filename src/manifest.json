@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Scout AI Assistant",
   "short_name": "Scout",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI assistant in your browser: summarize pages, ask questions, compare tabs, fill forms and find coupons.",
   "permissions": [
     "activeTab",
