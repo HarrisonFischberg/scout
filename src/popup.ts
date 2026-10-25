@@ -1321,11 +1321,12 @@ async function main(): Promise<void> {
     plus.disabled = modelPill.disabled = mic.disabled = busy;
     if (busy) stopDictation();
     if (busy) closeModelMenu();
-    question.disabled = busy;
+    // The ask box stays editable while Scout answers, so the next question can
+    // be typed; ask() and runTask() hold Enter until the answer ends (owner, 2026-10-25).
     for (const i of modeInputs) i.disabled = busy;
     for (const c of empty.querySelectorAll<HTMLButtonElement>("button")) c.disabled = busy;
     for (const c of siteSuggestions.querySelectorAll<HTMLButtonElement>("button")) c.disabled = busy;
-    if (busy) stop.focus();
+    if (busy && document.activeElement !== question) stop.focus();
     else if (!matchMedia("(pointer: coarse)").matches) question.focus();
   }
 

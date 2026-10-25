@@ -250,6 +250,23 @@ test("Stop ends a streaming answer and keeps what arrived", async ({ page }) => 
   await expect(page.getByText("Stopped.", { exact: true })).toHaveCount(0);
 });
 
+test("the next question can be typed while an answer streams, and sends after", async ({ page }) => {
+  await openPopup(page);
+  await ask(page, "Count slowly [mock:slow]");
+  await expect(lastAnswer(page)).toContainText("One two");
+  const box = page.locator("#question");
+  await expect(box).toBeEditable();
+  await box.fill("Next question");
+  await box.press("Enter");
+  // Held, not lost, while the answer streams.
+  await expect(box).toHaveValue("Next question");
+  await page.locator(".composer-foot").getByRole("button", { name: "Stop" }).click();
+  await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+  await box.press("Enter");
+  await expect(box).toHaveValue("");
+  await expect(page.getByRole("log").getByText("Next question")).toBeVisible();
+});
+
 test("answers render tables, code with a Copy button, math, and numbered sources", async ({ page }) => {
   await openPopup(page);
   await ask(page, "Show me everything");
