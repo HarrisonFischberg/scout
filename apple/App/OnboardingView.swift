@@ -4,17 +4,17 @@ import AppKit
 import SafariServices
 #endif
 
-// S01 (macOS) / S02 (iOS): enable the extension. S03: where to add the key.
+// S01 (macOS) / S02 (iOS): set up in three steps, with progress. Step 1
+// (installing) is already done, so people start at "1 of 3 done". Only the
+// current step is emphasized and carries the screen's one filled button.
 struct OnboardingView: View {
-    // Must match PRODUCT_BUNDLE_IDENTIFIER of the macOS extension target (only macOS uses it).
-    private let extensionBundleIdentifier = "com.harrisonfischberg.Scoutai.Extension"
     // The published policy (guideline 5.1.1(i): linked from inside the app).
     static let privacyPolicyURL = URL(string: "https://rarecreatures.app/apps/scout/privacy/")!
+    // Scout's own page; on iPhone it opens in Safari, where Scout lives.
+    static let scoutPageURL = URL(string: "https://rarecreatures.app/apps/scout/")!
 
-    #if os(macOS)
-    // Live status for step 1 (nil until Safari answers).
-    @State private var extensionOn: Bool?
-    #endif
+    let progress: SetupProgress
+    @Environment(\.openURL) private var openURL
 
     // Trailhead look (owner choice 2026-10-19): sand canvas, a sunrise badge
     // with the Scout truck, numbered step cards, rounded type. Text sizes are
@@ -22,10 +22,6 @@ struct OnboardingView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // 64 pt, not 84: with the privacy link as a one-line footer the
-                // whole screen fits on an iPhone 17 Pro at the default text size,
-                // so no text sits half cut off at the bottom edge (the light
-                // accessibility audit failed on a clipped "Legal" heading).
                 SunriseBadge()
                     .frame(width: 64, height: 64)
                     .padding(.bottom, 4)
@@ -37,115 +33,142 @@ struct OnboardingView: View {
                 Text("Your AI Scout for the Safari Browser")
                     .font(.system(.title3, design: .rounded))
                     .foregroundStyle(Color.trailMuted)
-                    .padding(.bottom, 6)
-                enableSection
-                keySection
-                legalSection
+                StepProgressHeader(done: progress.doneCount, total: progress.total, note: progressNote)
+                    .padding(.vertical, 6)
+                ForEach(SetupProgress.Step.allCases) { step in
+                    StepCard(number: step.rawValue + 1, title: title(step), state: state(step)) {
+                        content(step)
+                    }
+                }
+                Link("Privacy policy", destination: Self.privacyPolicyURL)
+                    .padding(.top, 4)
             }
             .padding(24)
             .frame(maxWidth: 560, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
         .background(Color.trailCanvas.ignoresSafeArea())
-        #if os(macOS)
-        .task { refreshExtensionState() }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            refreshExtensionState()
-        }
-        #endif
     }
 
-    #if os(macOS)
-    private func refreshExtensionState() {
-        SFSafariExtensionManager.getStateOfSafariExtension(withIdentifier: extensionBundleIdentifier) { state, _ in
-            DispatchQueue.main.async { extensionOn = state?.isEnabled }
-        }
-    }
-    #endif
-
-    private var enableSection: some View {
+    private var progressNote: String? {
         #if os(macOS)
-        StepCard(number: 1, done: extensionOn == true, title: "1. Turn on the extension", status: extensionOn.map { $0 ? "On" : "Off" }) {
-            Text("Open Safari extension settings, then switch on Scout AI Assistant.")
-            Button("Open Safari Extension Settings") {
-                SFSafariApplication.showPreferencesForExtension(withIdentifier: extensionBundleIdentifier) { _ in }
-            }
-            .buttonStyle(AccentButtonStyle())
-        }
+        // The Mac app cannot see the key the extension saves, so the last
+        // step is finished (and checked) in Safari.
+        return progress.current == .key ? "Last step is in Safari" : "About 1 minute left"
         #else
-        StepCard(number: 1, done: false, title: "1. Turn on the extension", status: nil) {
-            Text("Open the Settings app. Go to Apps, then Safari, then Extensions. Switch on Scout AI Assistant and allow it on the websites you choose.")
-        }
+        let m = progress.minutesLeft
+        return progress.isComplete ? nil : m == 1 ? "About 1 minute left" : "About \(m) minutes left"
         #endif
     }
 
-    // The key is entered in the extension's own Settings on both platforms:
-    // one place to add, test, replace, or delete it, and the extension asks
-    // for permission to share with the provider before the first request.
-    // (On iOS the app and the extension share one Keychain item, so a key
-    // saved in either is the same key.)
-    private var keySection: some View {
-        StepCard(number: 2, done: false, title: "2. Add your API key", status: nil) {
-            Text("Scout sends page content to the provider you choose, using your own key. The key is stored in Keychain on this device.")
-            Text("Your provider bills your account for every request Scout makes, at the provider's prices. Scout shows an estimated cost after each answer or task.")
+    private func state(_ step: SetupProgress.Step) -> StepPhase {
+        progress.isDone(step) ? .done : progress.current == step ? .current : .upcoming
+    }
+
+    private func title(_ step: SetupProgress.Step) -> String {
+        switch step {
+        case .install: return "Install Scout"
+        case .enable: return "Turn on the extension"
+        case .key: return "Add your API key"
+        }
+    }
+
+    private func content(_ step: SetupProgress.Step) -> AnyView {
+        let current = progress.current == step
+        switch step {
+        case .install:
+            return AnyView(Text("Installed. Nice start."))
+        case .enable:
             #if os(macOS)
-            Text("Add your key in Safari: click the Scout icon in the toolbar, then Settings.")
-                .bold()
-                .foregroundStyle(Color.trailInk)
+            return AnyView(VStack(alignment: .leading, spacing: 10) {
+                Text(progress.isDone(.enable) ? "Scout is on in Safari." : "Open Safari extension settings, then switch on Scout AI Assistant.")
+                if current {
+                    Button("Open Safari Extension Settings") {
+                        SFSafariApplication.showPreferencesForExtension(withIdentifier: SetupStatus.extensionBundleIdentifier) { _ in }
+                    }
+                    .buttonStyle(AccentButtonStyle())
+                }
+            })
             #else
-            Text("Add your key in Safari: open Scout from the menu in the address bar, then tap Settings.")
-                .bold()
-                .foregroundStyle(Color.trailInk)
+            if progress.isDone(.enable) { return AnyView(Text("Scout is on in Safari.")) }
+            return AnyView(VStack(alignment: .leading, spacing: 10) {
+                Text("Open the Settings app. Go to Apps, then Safari, then Extensions. Switch on Scout AI Assistant and allow it on the websites you choose.")
+                if current {
+                    Text("This step checks off the first time Scout opens in Safari.")
+                        .font(.system(.footnote, design: .rounded))
+                }
+            })
             #endif
+        case .key:
+            if progress.isDone(.key) { return AnyView(Text("Your key is saved in Keychain.")) }
+            return AnyView(VStack(alignment: .leading, spacing: 10) {
+                #if os(macOS)
+                Text("Add your key in Safari: click the Scout icon in the toolbar, then Settings.")
+                    .bold()
+                    .foregroundStyle(Color.trailInk)
+                #else
+                Text("Add your key in Safari: open Scout from the menu in the address bar, then tap Settings.")
+                    .bold()
+                    .foregroundStyle(Color.trailInk)
+                #endif
+                // The key is entered in the extension's own Settings on both
+                // platforms: one place to add, test, replace, or delete it.
+                // The cost and sharing lines show once this is the step to do
+                // (the panel shows them again next to the key field).
+                if current {
+                    Text("Scout sends page content to the provider you choose, using your own key. The key is stored in Keychain on this device.")
+                    Text("Your provider bills your account for every request Scout makes, at the provider's prices. Scout shows an estimated cost after each answer or task.")
+                }
+                #if os(iOS)
+                if current {
+                    Button("Open Safari") { openURL(Self.scoutPageURL) }
+                        .buttonStyle(AccentButtonStyle())
+                }
+                #endif
+            })
         }
     }
 }
 
-// One numbered setup step on a rounded card. A done step shows a check
-// instead of its number; `status` is a short live state ("On", "Off").
-private struct StepCard<Content: View>: View {
+// One numbered setup step on a rounded card. Done steps show a check and
+// recede; the current step gets the accent outline; upcoming steps are muted.
+enum StepPhase { case done, current, upcoming }
+
+struct StepCard<Content: View>: View {
     let number: Int
-    let done: Bool
     let title: String
-    let status: String?
+    let state: StepPhase
     @ViewBuilder let content: Content
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             ZStack {
-                Circle().fill(done ? Color.accentFill : Color.trailChip)
-                if done {
-                    Image(systemName: "checkmark").font(.body.weight(.bold)).foregroundStyle(Color.accentOn)
+                Circle().fill(state == .upcoming ? Color.trailHairline : state == .done ? Color.trailChip : Color.accentFill)
+                if state == .done {
+                    Image(systemName: "checkmark").font(.body.weight(.bold)).foregroundStyle(Color.accentText)
                 } else {
-                    Text("\(number)").font(.system(.body, design: .rounded).weight(.heavy)).foregroundStyle(Color.accentText)
+                    Text("\(number)").font(.system(.body, design: .rounded).weight(.heavy))
+                        .foregroundStyle(state == .current ? Color.accentOn : Color.trailInk)
                 }
             }
             .frame(width: 30, height: 30)
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(title)
-                        .font(.system(.title3, design: .rounded).weight(.heavy))
-                        .foregroundStyle(Color.trailInk)
-                        .accessibilityAddTraits(.isHeader)
-                    if let status {
-                        Text(status)
-                            .font(.system(.caption, design: .rounded).weight(.heavy))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(Color.trailChip, in: Capsule())
-                            .foregroundStyle(Color.accentText)
-                    }
-                }
+                Text(title)
+                    .font(.system(state == .current ? .title3 : .headline, design: .rounded).weight(.heavy))
+                    .foregroundStyle(Color.trailInk)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityLabel("Step \(number), \(title)" + (state == .done ? ", done" : state == .current ? ", current step" : ""))
                 content
-                    .font(.system(.body, design: .rounded))
+                    .font(.system(state == .current ? .body : .subheadline, design: .rounded))
                     .foregroundStyle(Color.trailMuted)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(16)
-        .background(Color.trailSurface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.trailHairline))
+        .background(state == .current ? Color.trailSurface : Color.trailCanvas, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous)
+            .strokeBorder(state == .current ? Color.accentFill : Color.trailHairline, lineWidth: state == .current ? 2 : 1))
     }
 }
 
@@ -187,12 +210,6 @@ private struct ScoutTruck: Shape {
     }
 }
 
-extension OnboardingView {
-    fileprivate var legalSection: some View {
-        Link("Privacy policy", destination: Self.privacyPolicyURL)
-    }
-}
-
 #Preview {
-    OnboardingView()
+    OnboardingView(progress: SetupProgress(extensionOn: true, hasKey: false))
 }

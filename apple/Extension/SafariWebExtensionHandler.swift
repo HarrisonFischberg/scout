@@ -20,6 +20,9 @@ final class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             return
         }
         #endif
+        #if os(iOS)
+        KeychainStore().markExtensionSeen()
+        #endif
         let response = NSExtensionItem()
         response.userInfo = [SFExtensionMessageKey: ManagedPolicy.handle(message) ?? KeychainBridge.handle(message)]
         context.completeRequest(returningItems: [response], completionHandler: nil)

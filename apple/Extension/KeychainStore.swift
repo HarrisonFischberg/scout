@@ -74,6 +74,18 @@ struct KeychainStore {
     }
 }
 
+extension KeychainStore {
+    // A "Scout has run in Safari" marker (value "1", no page data), so the
+    // iOS setup app can check off "Turn on Scout". Written once; the app and
+    // extension share this Keychain group on iOS only.
+    static let extensionSeenAccount = "setup.extension-seen"
+
+    func markExtensionSeen() {
+        guard (try? get(account: Self.extensionSeenAccount)) == nil else { return }
+        try? set("1", account: Self.extensionSeenAccount)
+    }
+}
+
 // Pure message dispatch so XCTest covers it without an NSExtensionContext.
 // Request:  {"type": "keychain.set|get|delete", "account": "<provider>", "value": "<key>"}
 // Response: {"ok": true, "value": "<key>"?} or {"ok": false, "error": "<code>"}
