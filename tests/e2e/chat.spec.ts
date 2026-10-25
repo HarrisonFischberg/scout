@@ -159,6 +159,43 @@ test("provider 401 shows a readable error", async ({ page }) => {
   await expect(page.getByText("The API key was rejected.")).toBeVisible();
 });
 
+// UX plan (2026-10-25, peak-end): an error offers the way forward first.
+test("a failed answer offers Try again, which asks again once", async ({ page }) => {
+  await openPopup(page, { key: "sk-test-synthetic" });
+  await page.unroute("https://api.anthropic.com/**");
+  let calls = 0;
+  await page.route("https://api.anthropic.com/**", async (r) => {
+    calls += 1;
+    if (calls === 1) await r.fulfill({ status: 529, body: "{}" });
+    else await r.fulfill({ status: 200, contentType: "text/event-stream", body: ANSWER });
+  });
+  await page.getByLabel("Ask about this page").fill("How much is the widget?");
+  await page.getByRole("button", { name: "Send" }).click();
+  const log = page.getByRole("log", { name: "Conversation" });
+  await expect(log.getByRole("button", { name: "Copy diagnostics" })).toBeVisible();
+  await log.getByRole("button", { name: "Try again" }).click();
+  await expect(log.getByText("with free shipping.")).toBeVisible();
+  await expect(log.locator(".msg.error")).toHaveCount(0);
+  await expect(log.locator(".msg.user")).toHaveCount(1);
+});
+
+test("a rejected key offers Open Settings instead of Try again", async ({ page }) => {
+  await openPopup(page, { key: "sk-test-synthetic" });
+  await page.unroute("https://api.anthropic.com/**");
+  await page.route("https://api.anthropic.com/**", (r) => r.fulfill({ status: 401, body: "{}" }));
+  await page.getByLabel("Ask about this page").fill("Hi");
+  await page.getByRole("button", { name: "Send" }).click();
+  const log = page.getByRole("log", { name: "Conversation" });
+  await expect(log.getByRole("button", { name: "Try again" })).toHaveCount(0);
+  await log.getByRole("button", { name: "Open Settings" }).click();
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+});
+
+test("no key: says it is the last step", async ({ page }) => {
+  await openPopup(page, { key: null });
+  await expect(page.getByText("Last step · 2 of 3 done")).toBeVisible();
+});
+
 test.describe("touch device", () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 402, height: 874 } });
 
