@@ -150,9 +150,14 @@
         align-self: stretch; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--danger);
         color: var(--danger); background: var(--bg-surface);
       }
+      /* The fix is the standout (Try again / Open Settings); diagnostics is a quiet link. */
+      .setup-step { margin: 0 0 4px; font-size: 13px; font-weight: 700; color: var(--accent-text); }
+      .key-works { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; padding: 8px 12px; border-radius: 12px; background: var(--bg-subtle); color: var(--text-primary); font-size: 14px; }
+      .key-works svg { flex: none; color: var(--accent-text); }
+      .msg.error .error-action { display: block; margin-top: 8px; }
       .msg.error .diag-copy {
-        display: block; margin-top: 6px; padding: 2px 8px; border-radius: 6px; font-size: 13px;
-        border: 1px solid var(--border-control); background: transparent; color: var(--text-primary);
+        display: block; margin-top: 6px; padding: 2px 0; min-height: 28px; font-size: 13px;
+        border: 0; background: transparent; color: var(--text-muted); text-decoration: underline;
       }
       .card { background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 10px 12px; box-shadow: var(--shadow); }
       .card h2 { font-size: 14px; margin: 0 0 4px; }
@@ -601,9 +606,10 @@
       :root[data-look="trailhead"] #starters button, :root[data-look="dealhunter"] #starters button { min-width: 0; }
       :root[data-look="trailhead"] #starters button span, :root[data-look="dealhunter"] #starters button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
       :root[data-look="trailhead"] .composer-box { border-radius: 22px; padding: 10px 10px 8px 14px; }
-      :root[data-look="trailhead"] #model-pill { background: var(--selected); color: var(--accent-text); font-weight: 700; }
+      :root[data-look="trailhead"] #model-pill { background: transparent; color: var(--text-muted); font-weight: 600; }
       :root[data-look="trailhead"] .round.mic { background: var(--selected); color: var(--accent-text); }
-      :root[data-look="trailhead"] .segmented label.on { background: var(--accent); color: var(--accent-on); }
+      /* Send is the composer's only filled control (UX plan, Von Restorff): the mode toggle and model stay quiet. */
+      :root[data-look="trailhead"] .segmented label.on { background: var(--selected); color: var(--accent-text); }
       :root[data-look="trailhead"] .msg.user { border-radius: 18px 18px 6px 18px; font-weight: 600; }
       :root[data-look="trailhead"] .msg.assistant strong { color: var(--accent-text); }
       :root[data-look="trailhead"] .msg th { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
@@ -716,7 +722,7 @@
       :root[data-look="nightops"] .round, :root[data-look="nightops"] .round.mic, :root[data-look="nightops"] .round.send { border-radius: 7px; }
       :root[data-look="nightops"] fieldset.segmented { border-radius: 7px; }
       :root[data-look="nightops"] .segmented label { border-radius: 5px; }
-      :root[data-look="nightops"] .segmented label.on { background: var(--accent); color: var(--accent-on); }
+      :root[data-look="nightops"] .segmented label.on { background: var(--selected); color: var(--accent-text); }
       :root[data-look="nightops"] #model-pill { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 6px; }
       :root[data-look="nightops"] #status { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; }
       :root[data-look="nightops"] .msg.user { border-radius: 10px 10px 2px 10px; font-weight: 500; }
@@ -933,12 +939,13 @@
       <div id="thread">
         <section id="no-key" class="center" aria-labelledby="no-key-title" hidden>
           <img src="icons/icon-128.png" alt="" />
+          <!-- Goal gradient (UX plan, 2026-10-25): install and turn on are done, so this is the last step. -->
+          <p class="setup-step">Last step · 2 of 3 done</p>
           <h2 id="no-key-title">Add your API key to start</h2>
           <p class="hint">
             Scout uses your own Anthropic or OpenAI key, kept in <span data-other-browsers="this browser on this computer">your Keychain</span>. Page text you ask about is sent to that provider.
-            Your provider bills your account for every request Scout makes, at the provider's prices.
-            Scout shows an estimated cost after each answer or task.
           </p>
+          <p class="hint">Your provider bills your account for every request Scout makes, at the provider's prices. Scout shows an estimated cost after each answer or task.</p>
           <button id="no-key-open" class="btn primary" type="button">Add API key</button>
         </section>
 
@@ -953,6 +960,10 @@
           </svg>
           <!-- Greeting per look (src/panel/look.ts); the Classic look has none. -->
           <p id="greeting" class="greeting"><b id="greeting-title">Where to next?</b><span id="greeting-sub">Ask about this page, or send Scout to do it.</span></p>
+          <p id="key-works" class="key-works" role="status" hidden>
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.5 2.5L16 9.5"/></svg>
+            <span><b>Your key works.</b> Try Summarize this page.</span>
+          </p>
           <ul id="starters" aria-label="Suggestions">
             <li><button type="button" data-prompt="summarize"><span>Summarize this page</span>
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5 8.5 15.5M8.5 10v5.5H14"/></svg></button></li>
@@ -1068,14 +1079,6 @@
         <h2 id="settings-title" tabindex="-1">Settings</h2>
       </header>
       <div class="body">
-        <!-- Look (owner choice 2026-10-19): Trailhead by default, the others here (src/panel/look.ts). Filled from script. -->
-        <section id="look-section" aria-labelledby="look-title">
-          <h3 id="look-title">Look</h3>
-          <fieldset id="look-list" class="look-list">
-            <legend class="sr-only">Look</legend>
-          </fieldset>
-        </section>
-
         <section aria-labelledby="provider-title">
           <h3 id="provider-title">AI provider</h3>
           <fieldset class="segmented" id="set-provider">
@@ -1207,6 +1210,15 @@
           <ul id="shared-list" class="list" aria-label="Shared in conversations"></ul>
           <div class="row"><button id="shared-clear-all" class="btn" type="button">Clear all shared records</button></div>
           <p id="shared-status" class="hint" role="status"></p>
+        </section>
+
+        <!-- Look (owner choice 2026-10-19): Trailhead by default, the others here (src/panel/look.ts). Filled from script.
+             Below the key and privacy settings: the key is the one setting everyone needs (UX plan, 2026-10-25). -->
+        <section id="look-section" aria-labelledby="look-title">
+          <h3 id="look-title">Look</h3>
+          <fieldset id="look-list" class="look-list">
+            <legend class="sr-only">Look</legend>
+          </fieldset>
         </section>
 
         <section id="pagebutton-section" aria-labelledby="pagebutton-title">
