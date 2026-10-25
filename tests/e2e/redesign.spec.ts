@@ -99,11 +99,14 @@ test("no key: Add API key opens Settings at the key field; a bad key is explaine
   expect(fake.keys).toEqual({ anthropic: GOOD_KEY });
   expect(JSON.stringify(fake.data)).not.toContain(GOOD_KEY);
 
-  await page.getByRole("button", { name: "Back to chat" }).click();
+  // The first key is the end of setup: Scout goes back to the chat and says the key works (UX plan, 2026-10-25).
   await expect(page.getByLabel("Ask about this page")).toBeVisible();
+  await expect(page.getByText("Your key works.")).toBeVisible();
   await expect(page.getByRole("list", { name: "Suggestions" })).toBeVisible();
   // No "Ready. Using …" line: the line under the conversation is only for cost.
   await expect(page.locator("#status")).toHaveText("");
+  await page.getByRole("button", { name: "Summarize this page" }).click();
+  await expect(page.getByText("Your key works.")).toBeHidden();
 });
 
 test("Scout mode shows a bold chip and switches the send action", async ({ page }) => {

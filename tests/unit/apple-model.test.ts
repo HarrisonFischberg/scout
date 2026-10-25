@@ -26,3 +26,13 @@ describe("Apple on-device model client", () => {
     expect((err as Error).message).toMatch(/too long for Apple's on-device model/);
   });
 });
+
+describe("key problems in chat errors", () => {
+  it("recognizes the messages fixed in Settings, and nothing else", async () => {
+    const { ProviderError, isKeyProblem } = await import("../../src/providers/errors");
+    expect(isKeyProblem(new ProviderError("anthropic", "auth_invalid").message)).toBe(true);
+    expect(isKeyProblem(new ProviderError("openai", "no_credit").message)).toBe(true);
+    expect(isKeyProblem(new ProviderError("anthropic", "provider_unavailable").message)).toBe(false);
+    expect(isKeyProblem("Something went wrong. Try again.")).toBe(false);
+  });
+});

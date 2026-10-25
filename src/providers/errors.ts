@@ -27,6 +27,17 @@ const PROVIDER_NAME: Record<ProviderId, string> = { anthropic: "Anthropic", open
 // What providers say when the account cannot pay for the request.
 const NO_CREDIT = /credit balance|insufficient[_ ]quota|exceeded your current quota|purchase credits|plans\s*&\s*billing|billing details/i;
 
+/**
+ * True when a shown error message is one the user fixes in Settings (key
+ * rejected, missing, or out of credit). Chat errors reach the panel as text
+ * only (src/server/protocol.ts), so this matches the messages above.
+ */
+export function isKeyProblem(message: string): boolean {
+  return (["auth_invalid", "no_key", "no_credit"] as const).some((code) =>
+    Object.values(PROVIDER_NAME).some((name) => MESSAGES[code].replace("{provider}", name) === message),
+  );
+}
+
 export class ProviderError extends Error {
   constructor(
     readonly provider: ProviderId,
