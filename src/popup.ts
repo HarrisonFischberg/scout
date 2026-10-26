@@ -2744,6 +2744,7 @@ async function main(): Promise<void> {
       );
     } catch (err) {
       const msg = err instanceof BridgeError ? err.message : "Could not reach this page. Reload it and try again.";
+      trace("coupons:start " + (err instanceof BridgeError ? err.error : err instanceof Error ? err.name : "error"));
       endCouponRun(run, "error");
       addMessage("error", msg);
       status.textContent = couponStatusText("error");

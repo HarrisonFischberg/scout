@@ -37,7 +37,8 @@ const BUSY_RE = /\b(?:applying|loading|please\s+wait|processing|updating)\b/i;
 
 export interface CouponForm {
   input: SnapElement;
-  apply: SnapElement;
+  /** Missing when the store shows its Apply button only once a code is typed (Stripe Checkout). */
+  apply?: SnapElement;
 }
 
 /** Element names the model picked for a page the rules could not read (see `FormHints`). */
@@ -66,7 +67,12 @@ function navigates(e: SnapElement): boolean {
   return h !== "" && !h.startsWith("#") && !/^javascript:/i.test(h);
 }
 
-/** The coupon box and its Apply button, or null. `hints` are names the model picked, used when the rules find nothing. */
+/**
+ * The coupon box and its Apply button, or null. `hints` are names the model
+ * picked, used when the rules find nothing. A box the rules name plainly
+ * ("Add promotion code") counts without an Apply button: some checkouts
+ * (Stripe Checkout, owner report 2026-10-26) draw Apply only once a code is typed.
+ */
 export function findForm(snap: Snapshot, hints?: FormHints): CouponForm | null {
   const els = snap.elements;
   const inputs = els.filter((e) => isTextInput(e) && INPUT_NAME.test(e.name) && !NOT_COUPON_INPUT.test(e.name));
@@ -82,7 +88,8 @@ export function findForm(snap: Snapshot, hints?: FormHints): CouponForm | null {
   if (!apply && hints?.apply) apply = els.find((e) => usable(e) && e.name === hints.apply);
   // An unnamed or icon button right after the box ("→").
   if (!apply) apply = els.slice(at + 1, at + 3).find((e) => usable(e) && e.name.trim().length <= 3);
-  return apply ? { input, apply } : null;
+  if (apply) return { input, apply };
+  return STRONG_INPUT.test(input.name) ? { input } : null;
 }
 
 /** A control that shows a hidden coupon box, best first; never one that leaves the page or orders. */

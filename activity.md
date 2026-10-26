@@ -572,7 +572,6 @@ $ npm run e2e -- chat -> 5 failed, 0 passed: WebKit launch failed in sandbox (XP
       - [pid=3877][err] 2026-10-15 20:13:54.597 Playwright[3906:11060598] Connection Invalid error for service com.apple.hiservices-xpcservice.
       - [pid=3877][err] 2026-10-15 20:13:54.597 Playwright[3906:11060586] Error received in message reply handler: Connection invalid
 
-
     Error Context: test-results/chat-provider-401-shows-a-readable-error-webkit/error-context.md
 
   5 failed
@@ -687,7 +686,6 @@ $ npm run e2e -- safety --global-timeout=60000
 - e2e not exercised: WebKit launch blocked in the sandbox (blocker 12); the popup approval sheet and spec are unverified in a browser.
 - Supervised check: outside the sandbox, `npm run build && npm run e2e -- safety`.
 - Next task: T012 (@tab multi-tab context; depends on T007).
-
 
 ## 2026-10-15 - T012 @tab multi-tab context: needs supervised check
 
@@ -2000,7 +1998,6 @@ Owner: "Remove all copy from the chat box, except the words 'Ask Scout'", "Make 
 - App-side: merged the held PR #2 (Mac bundle IDs and team, privacy manifests, export flag, archive/upload script). The extension's privacy manifest now declares the same two collected types. The setup screen and the extension's Settings link to the published privacy policy; the bundled DRAFT policy and terms pages are removed from the build and the Xcode project (`scripts/remove-legal-drafts.rb`), and their e2e/UI tests replaced. New `npm run check:screenshots` (`scripts/check-store-screenshots.mjs`) checks App Store sizes and transparency.
 - Not verified here: no Xcode in the cloud session. Needs the Mac build (Mac key re-entered once after the bundle ID change), the Release archive, the Mac Keychain check (blocker 14) and the screenshots.
 
-
 ## 2026-10-20 — iPhone mic button: never stuck on, falls back to the keyboard's dictation (owner bug report)
 
 Actual (owner): "The microphone button on ios doesnt hear your voice nor record voice to text. it also stays activated after you press it and it fails." Expected: the mic turns speech into text, and when it can't, the button turns off with a clear message. Cause: `Listener` (src/panel/voice.ts) only ended when WebKit fired `onend`. In the iPhone Safari panel the recognizer can start silently and never fire anything (no start, error or end), or report an error without ending, so the button stayed pressed; tapping it again called `stop()` on a recognizer that also never ended. Fix: the listener ends itself if the recognizer hasn't started within 4 s (`no-start`), 0.8 s after an error with no end, and 0.8 s after Stop with no end; onEnd fires exactly once. The message says Safari didn't let Scout use the microphone and to tap the mic on the keyboard. After one refusal on a phone, the next tap skips the wait and focuses the question box (raising the keyboard with its own mic); the flag is keyed by user agent so a Safari update retries, and is cleared once dictation works. Evidence: unit voice tests (never starts, error without end, stop while stuck, started stays on, refusal memory); e2e "a mic that never starts…", "tapping a stuck mic again turns it off" and the phone keyboard fallback fail on `main` and pass here (Chromium; WebKit isn't installed in this container); unit 558/559 (known Take control failure), typecheck, lint, build, `check:release` clean. Not checked: real iPhone, so whether Safari lets the panel's recognizer work at all there is still open.
@@ -2131,6 +2128,15 @@ Owner after #79: "it brings up the keyboard but doesnt activate the microphone".
 - Evidence: `npm test` 641/641, typecheck, lint, build; `tests/e2e/look.spec.ts` 31/31 on Chromium (WebKit is not installed in the cloud container). Needs a look on a real Mac and iPhone.
 - Follow-up (owner, decision card 2026-10-26: "Glasshouse everywhere"): Glasshouse is now the default on Mac, iPhone and iPad (`DEFAULT_LOOK`, `defaultLook`, `popup.html`); a saved look is kept. The setup app takes the Glasshouse colors and SF Pro (was SF Rounded), a plain teal truck badge, and the current step's one action (Open Safari Extension Settings on Mac, Open Safari on iPhone) moves into a bottom bar: `.buttonStyle(.glassProminent)` on iOS/macOS 26, the accent button on a material capsule before that (`GlassActionBar` in `SetupComponents.swift`). Not compiled here (no Xcode); needs the Mac build, XCTest UI audit, and a look on both devices.
 - Evidence: `npm test` 641/641, typecheck, lint, `npm run check:release`; full Chromium e2e 31 failures, the same set as `main` minus one look test this change fixed (`look.spec.ts` 31/31).
+
+## 2026-10-26: Find coupons on Stripe Checkout (checkout.stripe.com)
+
+- Actual (owner diagnostics, Mobbin Pro on checkout.stripe.com): run ended `no_form` "No coupon box found" although "Add promotion code" was on the page (locate found the input and the total, method none). Pressing Find coupons again showed a bordered square in the middle of the page, and later runs said "Could not reach this page. Reload it and try again." with no stages recorded.
+- Expected (owner): Scout finds the promotion code box and tests codes there; no stray square on the page.
+- Cause 1: `findForm` needs an Apply button, and Stripe draws its Apply only once something is typed in the box. Fix: a box the rules name plainly (promo, coupon, discount...) counts without Apply; Apply is looked up again after typing, and if it never shows the run stops with a note saying so (`src/coupons/form.ts`, `src/coupons/finder.ts`). Never clicks an order button either way.
+- Cause 2: Safari applies the page's style policy (CSP `style-src`) to elements a content script makes. Stripe blocks inline styles, so the overlay host lost its `style` attribute and its shadow `<style>` and showed as Safari's default popover: a bordered box centered on the page. Fix: `src/page-style.ts` sets host styles through the CSSOM and adds shadow styles as constructed sheets (neither is subject to `style-src`); used by the overlay, the coupon pointer and the page button.
+- Cause 3 (not reproduced): "Could not reach this page" is any failure to inject content.js or start the run, and its reason was dropped. Now the first injection is retried twice (a page mid-reload), and diagnostics get `coupons:start-failed <kind: words>` from the worker (addresses replaced by `<url>`) and `coupons:start <kind>` from the panel, so the next report says why.
+- Evidence: new unit tests in `tests/unit/coupon-pages.test.ts` (Stripe-style box whose Apply shows after typing; box that never shows Apply) and `tests/unit/coupon-host.test.ts`; new fixture `tests/fixtures/stripe-checkout.html` (strict `style-src`) and e2e `overlay.spec.ts` "strict style policy": fails on `main` (overlay host 216x1608 at x=532, a centered box), passes with the fix (Chromium; WebKit is not installed in the cloud container). `npm test` 644/644, typecheck, lint, build, `npm run check:release` pass. Chromium e2e for overlay/actions/edge/coupons/checkout/cart: same failures as `main` (edge arrow keys, 6 panel coupon specs). Needs a device check on a real Stripe Checkout page in Safari.
 
 ## 2026-10-26: five looks removed
 

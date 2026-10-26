@@ -148,7 +148,10 @@ describe("runCouponSearch", () => {
       .filter((e) => e.name !== "Apply")
       .map((e) => (e.name === "Place order" ? { ...e, name: "Apply and place order" } : e));
     const out = await runCouponSearch({ page: { snapshot: async () => snap, act: p.act }, codes: five, settleMs: 0 });
-    expect(out.status).toBe("no_form");
+    // The box still counts (Apply may show once a code is typed, as on Stripe
+    // Checkout), but with no Apply after typing the run stops; the order button is never pressed.
+    expect(out.attempts).toEqual([]);
+    expect(out.note).toBe("I typed a code into the coupon box, but no Apply button showed next to it, so I stopped testing there.");
     expect(p.ordered).toBe(0);
   });
 

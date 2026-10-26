@@ -7,6 +7,8 @@
 // aria-hidden, so snapshots skip it, and its shadow root is closed.
 // Content script only; exercised by Playwright (tests/e2e/actions.spec.ts).
 
+import { adoptStyle, setHostStyle } from "../page-style";
+
 export const GLIDE_MS = 380;
 export const PRESS_MS = 160;
 export const RING_MS = 450;
@@ -117,17 +119,16 @@ export function pagePointer(win: Window): Pointer {
     host = doc.createElement("div");
     host.id = HOST_ID;
     host.setAttribute("aria-hidden", "true");
-    host.setAttribute("style", HOST_STYLE);
+    setHostStyle(host, HOST_STYLE);
     const root = host.attachShadow({ mode: "closed" });
-    const style = doc.createElement("style");
-    style.textContent = STYLE_TEXT;
     layer = doc.createElement("div");
     layer.className = "layer";
     arrow = doc.createElement("div");
     arrow.className = "arrow";
     arrow.innerHTML = ARROW;
     layer.append(arrow);
-    root.append(style, layer);
+    root.append(layer);
+    adoptStyle(root, STYLE_TEXT);
     doc.documentElement.appendChild(host);
     at = null;
     return arrow;
