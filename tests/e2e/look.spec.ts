@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { withWorker } from "./worker";
 
 // Looks (owner choice 2026-10-19): the panel opens in Trailhead, Settings > Look
-// switches between the six looks at once, the choice is kept, and each look
+// switches between the eleven looks at once, the choice is kept, and each look
 // passes the WCAG 2.2 AA rules in light and dark. Stubbed browser APIs,
 // synthetic data, no network.
 async function openPopup(page: Page, data: Record<string, unknown> = {}): Promise<void> {
@@ -68,7 +68,7 @@ test("Settings > Look switches at once, is saved, and is kept on the next open",
   await openPopup(page);
   await page.getByRole("button", { name: "Settings" }).click();
   const group = page.getByRole("group", { name: "Look" });
-  await expect(group.getByRole("radio")).toHaveCount(6);
+  await expect(group.getByRole("radio")).toHaveCount(11);
   await expect(group.getByRole("radio", { name: /Trailhead/ })).toBeChecked();
   await group.getByRole("radio", { name: /Night Ops/ }).check();
   expect(await look(page)).toBe("nightops");
@@ -102,7 +102,7 @@ test("Delete all data goes back to Trailhead, now and on the next open", async (
 });
 
 test("every look shows only Summarize and Explain, each on one line, with nothing cut off on a short iPhone sheet", async ({ browser }) => {
-  for (const id of ["trailhead", "apple", "nightops", "dealhunter", "ink", "classic"]) {
+  for (const id of ["trailhead", "apple", "glasshouse", "aurora", "bento", "pebble", "cinema", "nightops", "dealhunter", "ink", "classic"]) {
     const page = await browser.newPage({ viewport: { width: 393, height: 390 }, hasTouch: true, isMobile: true });
     await openPopup(page, { look: id });
     await expect.poll(() => look(page)).toBe(id);
@@ -177,7 +177,7 @@ const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 for (const scheme of ["light", "dark"] as const) {
   test.describe(`${scheme} scheme`, () => {
     test.use({ colorScheme: scheme });
-    for (const id of ["trailhead", "apple", "nightops", "dealhunter", "ink", "classic"]) {
+    for (const id of ["trailhead", "apple", "glasshouse", "aurora", "bento", "pebble", "cinema", "nightops", "dealhunter", "ink", "classic"]) {
       test(`${id}: new chat and Settings have no WCAG 2.2 AA violations`, async ({ page }) => {
         await openPopup(page, { look: id });
         await expect.poll(() => look(page)).toBe(id);

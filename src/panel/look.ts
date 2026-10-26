@@ -3,7 +3,7 @@
 // available in Settings > Look. A look is CSS on html[data-look] (src/popup.html)
 // plus the new-chat greeting set here.
 
-export type LookId = "trailhead" | "apple" | "nightops" | "dealhunter" | "ink" | "classic";
+export type LookId = "trailhead" | "apple" | "glasshouse" | "aurora" | "bento" | "pebble" | "cinema" | "nightops" | "dealhunter" | "ink" | "classic";
 
 export interface Look {
   id: LookId;
@@ -19,6 +19,12 @@ export interface Look {
 export const LOOKS: readonly Look[] = [
   { id: "trailhead", swatch: ["#f6f1e7", "#2f6b3a", "#f2c14e"], name: "Trailhead", blurb: "Warm sand and forest green", greeting: { title: "Where to next?", sub: "" } },
   { id: "apple", swatch: ["#f2f2f7", "#0a6cff", "#34c759"], name: "Pure Apple", blurb: "Like Safari's own apps", greeting: { title: "Ask Scout", sub: "" } },
+  // Round two (owner choice 2026-10-26, from the Liquid Glass, SwiftUI Expert and UI/UX Pro Max skills).
+  { id: "glasshouse", swatch: ["#eef3f6", "#00727f", "#ffffff"], name: "Glasshouse", blurb: "Cool sky and teal, calm", greeting: { title: "Ask Scout anything", sub: "" } },
+  { id: "aurora", swatch: ["#f7f5ff", "#6d28d9", "#fbcfe8"], name: "Aurora", blurb: "A soft violet and pink glow", greeting: { title: "What's on your mind?", sub: "" } },
+  { id: "bento", swatch: ["#f2f2f5", "#2747d6", "#ffffff"], name: "Bento", blurb: "Bold tiles, easy to scan", greeting: { title: "Pick a start", sub: "" } },
+  { id: "pebble", swatch: ["#e9edf3", "#3c5fa8", "#f4f6fa"], name: "Pebble", blurb: "Soft and tactile", greeting: { title: "Hi, I'm Scout", sub: "" } },
+  { id: "cinema", swatch: ["#050506", "#5e6ad2", "#ededef"], name: "Cinema", blurb: "Deep dark with an indigo glow", greeting: { title: "What's the plan?", sub: "" } },
   { id: "nightops", swatch: ["#0b0d0c", "#b8f35a", "#e8f0ea"], name: "Night Ops", blurb: "Dark console, signal lime", greeting: { title: "What should Scout do?", sub: "" } },
   { id: "dealhunter", swatch: ["#fff6e5", "#c2410c", "#ffd34d"], name: "Deal Hunter", blurb: "Bold and bright, for shopping", greeting: { title: "What are we hunting?", sub: "" } },
   { id: "ink", swatch: ["#fbfaf7", "#141414", "#8a2c0d"], name: "Ink & Paper", blurb: "Calm, for reading", greeting: { title: "What would you like to know?", sub: "" } },
