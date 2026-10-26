@@ -12,12 +12,12 @@ Safari.)
 
 ## Screenshots
 
-On the Mac, Scout opens in the Trailhead look. These follow your system's light
+Scout opens in the Glasshouse look. These follow your system's light
 or dark setting, so GitHub shows the one that matches yours.
 
 | Ask about the page | Scout mode | Settings > Look |
 | --- | --- | --- |
-| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mac-dark-answer.png"><img src="docs/screenshots/mac-light-answer.png" width="260" alt="Scout panel answering a question about a product page, with a price table"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mac-dark-scout-mode.png"><img src="docs/screenshots/mac-light-scout-mode.png" width="260" alt="Scout panel with Scout mode on and a task typed in"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mac-dark-settings.png"><img src="docs/screenshots/mac-light-settings.png" width="260" alt="Settings showing the six looks: Trailhead, Pure Apple, Night Ops, Deal Hunter, Ink and Paper, Classic"></picture> |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mac-dark-answer.png"><img src="docs/screenshots/mac-light-answer.png" width="260" alt="Scout panel answering a question about a product page, with a price table"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mac-dark-scout-mode.png"><img src="docs/screenshots/mac-light-scout-mode.png" width="260" alt="Scout panel with Scout mode on and a task typed in"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mac-dark-settings.png"><img src="docs/screenshots/mac-light-settings.png" width="260" alt="Settings showing the looks to choose from"></picture> |
 
 On iPhone and iPad, Scout starts in the Pure Apple look:
 
@@ -117,11 +117,11 @@ Settings, and ask away.
 ## Dark mode
 
 Scout follows your system's light or dark appearance, the same way Safari does.
-There is no separate switch: every look (Trailhead, Pure Apple, Night Ops, Deal
-Hunter, Ink & Paper and Classic) has a light and a dark version, and the panel
+There is no separate switch: every look (Glasshouse, Pure Apple, Bento, Pebble,
+Cinema and Night Ops) has a light and a dark version, and the panel
 changes the moment your system does. The toolbar button swaps to a matching
-light or dark icon too. Pick a look in Settings > Look. Trailhead is the
-default on Mac (and on Chrome and Firefox), Pure Apple on iPhone and iPad.
+light or dark icon too. Pick a look in Settings > Look. Glasshouse is the
+default everywhere (Mac, iPhone, iPad, Chrome and Firefox).
 
 ## Build and test
 

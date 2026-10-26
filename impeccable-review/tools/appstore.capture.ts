@@ -53,9 +53,9 @@ function sse(text: string): string {
 }
 
 const DEVS = {
-  mac: { look: "trailhead", ctx: { viewport: { width: 400, height: 640 }, deviceScaleFactor: 3 } },
-  ipad: { look: "apple", ctx: { viewport: { width: 400, height: 640 }, deviceScaleFactor: 3, hasTouch: true } },
-  iphone: { look: "apple", ctx: { viewport: { width: 393, height: 720 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true } },
+  mac: { look: "glasshouse", ctx: { viewport: { width: 400, height: 640 }, deviceScaleFactor: 3 } },
+  ipad: { look: "glasshouse", ctx: { viewport: { width: 400, height: 640 }, deviceScaleFactor: 3, hasTouch: true } },
+  iphone: { look: "glasshouse", ctx: { viewport: { width: 393, height: 720 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true } },
 } as const;
 
 async function open(page: Page, look: string, answer: string, pageData: { url: string; title: string }): Promise<void> {

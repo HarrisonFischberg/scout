@@ -220,8 +220,8 @@ no transparency (guideline 2.3.3: they must show the app in use).
 | iPad | yes, because the app runs on iPad | 2064 x 2752 portrait | iPad Pro 13-inch Simulator |
 | Mac | yes | 2880 x 1800 (16:10) | Safari on the Mac; crop or pad to 16:10 if the display isn't 16:10 |
 
-Shot list, same five on each device, light appearance, default looks
-(Trailhead on Mac, Pure Apple on iPhone and iPad):
+Shot list, same five on each device, light appearance, default look
+(Glasshouse on every device):
 
 1. Summary of an article (use a rarecreatures.app page, so no one else's
    content or brand is shown, guideline 5.2.1).
