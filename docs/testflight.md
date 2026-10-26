@@ -44,8 +44,13 @@ The Safari extension ships inside the app, so it comes along automatically.
 3. `apple/App/Info.plist`: `ITSAppUsesNonExemptEncryption = NO` (HTTPS only) and
    `LSApplicationCategoryType = public.app-category.productivity` (Mac uploads need it).
 4. `scripts/archive-testflight.sh`: runs `npm run check:release`, builds the release
-   extension bundle, archives the Release build for each platform with a timestamp build
-   number (`20261017.2100`), and uploads with `scripts/ExportOptions-testflight.plist`.
+   extension bundle, archives the Release build for each platform, and uploads with
+   `scripts/ExportOptions-testflight.plist`. Each upload gets the next short version on
+   both platforms (0.2, 0.3, ...; TestFlight shows "Version 0.N"). The last uploaded N
+   is kept in `~/.scout-testflight-number` on the Mac and moves on only after every
+   platform uploaded; `SCOUT_VERSION_NUMBER=N` sets it by hand. The build number stays
+   a timestamp (`20261017.2100`): Apple requires each Mac build number to be higher
+   than every earlier Mac upload, and the first uploads already used timestamps.
    `--no-upload` stops after the archive; `SCOUT_PLATFORMS=iOS` does one platform.
    On exit it unregisters the Release copies the archive leaves (DerivedData
    ArchiveIntermediates, the `.xcarchive`, the export folder) and re-registers the dev
