@@ -85,11 +85,13 @@ struct OnboardingView: View {
         progress.isDone(step) ? .done : progress.current == step ? .current : .upcoming
     }
 
+    // With Apple Intelligence ready, the key card is an optional extra, not a step.
+
     private func title(_ step: SetupProgress.Step) -> String {
         switch step {
         case .install: return "Install Scout"
         case .enable: return "Turn on the extension"
-        case .key: return "Add your API key"
+        case .key: return progress.isOptional(.key) ? "Optional: add an API key" : "Add your API key"
         }
     }
 
@@ -113,6 +115,9 @@ struct OnboardingView: View {
             #endif
         case .key:
             if progress.isDone(.key) { return AnyView(Text("Your key is saved in Keychain.")) }
+            if progress.isOptional(.key) {
+                return AnyView(Text("Scout already answers with Apple Intelligence on this device, free and with nothing sent anywhere. An Anthropic or OpenAI key adds stronger answers, web search, Scout mode and Find coupons. Add it later in Scout's Settings in Safari."))
+            }
             return AnyView(VStack(alignment: .leading, spacing: 10) {
                 #if os(macOS)
                 Text("Add your key in Safari: click the Scout icon in the toolbar, then Settings.")
