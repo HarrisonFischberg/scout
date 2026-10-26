@@ -15,6 +15,7 @@ import { buildMessages, chatSystemPrompt, fenceOpenPage, type PageContext } from
 import { CHAT_MAX_TOKENS } from "../chat/session";
 import type { Provider } from "../keychain";
 import { ProviderError } from "../providers/errors";
+import { AppleModelError } from "../providers/apple";
 import type { ChatMessage, ContentPart, Effort, ProviderClient, ToolSpec, Usage } from "../providers/types";
 import type { ToolStatus } from "../tools/registry";
 import type { NumberedEvent, ServerEvent } from "./protocol";
@@ -269,11 +270,13 @@ export class ScoutServer {
       if (!signal.aborted) {
         if (usage.inputTokens || usage.outputTokens) this.emit(run, { kind: "usage", usage: { ...usage } });
         const pe = err instanceof ProviderError ? err : null;
+        // Apple's on-device model explains its own failures (too long, declined).
+        const shown = pe ? pe.userMessage : err instanceof AppleModelError ? err.userMessage : null;
         const interrupted = full.length > 0 && (!pe || pe.code === "network" || pe.code === "stream_error");
         this.emit(run, {
           kind: "error",
-          code: interrupted ? "interrupted" : pe ? "provider" : "failed",
-          message: interrupted ? INTERRUPTED : pe ? pe.userMessage : ANSWER_FAILED,
+          code: interrupted ? "interrupted" : shown ? "provider" : "failed",
+          message: interrupted ? INTERRUPTED : (shown ?? ANSWER_FAILED),
         });
         this.finish(run);
         return;

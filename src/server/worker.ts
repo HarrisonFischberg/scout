@@ -13,6 +13,7 @@ import { readTabs, readTab, type GatherDeps, type TabRef } from "../context/gath
 import { createKeychain, nativeSend, type Provider } from "../keychain";
 import { blockedBy, hostOf, loadPageAccess, parsePolicy, savePageAccess, type ScreenshotChoice } from "../permissions/gate";
 import { createProvider, ProviderError, type Effort } from "../providers";
+import { APPLE_MODEL, createApple } from "../providers/apple";
 import { effortForId, loadModelList } from "../providers/models";
 import { Consent, gatedFetch } from "../settings/consent";
 import { savedUrl } from "../chat/sources";
@@ -145,7 +146,9 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     now: () => Date.now(),
   };
 
-  const provider = async (p: Provider, _model: string) => {
+  const provider = async (p: Provider, model: string) => {
+    // No key saved: Apple's on-device model. Nothing leaves the device, so no consent to ask.
+    if (model === APPLE_MODEL) return createApple(nativeSend);
     const consent = await Consent.load(storage);
     if (!consent.has(p)) throw new ProviderError(p, "consent_required");
     const apiKey = await keychain.getKey(p).catch(() => null);
