@@ -16,9 +16,10 @@ struct OnboardingView: View {
     let progress: SetupProgress
     @Environment(\.openURL) private var openURL
 
-    // Trailhead look (owner choice 2026-10-19): sand canvas, a sunrise badge
-    // with the Scout truck, numbered step cards, rounded type. Text sizes are
-    // Dynamic Type styles, so the system text size setting still applies.
+    // Glasshouse look (owner choice 2026-10-26): cool canvas, the Scout truck
+    // badge, numbered step cards on solid surfaces. The current step's one
+    // action sits in a Liquid Glass bar at the bottom (glass only on controls,
+    // never on the content). Text sizes are Dynamic Type styles.
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -27,11 +28,11 @@ struct OnboardingView: View {
                     .padding(.bottom, 4)
                     .accessibilityHidden(true)
                 Text("Set up Scout AI Assistant")
-                    .font(.system(.largeTitle, design: .rounded).weight(.heavy))
+                    .font(.system(.largeTitle).weight(.heavy))
                     .foregroundStyle(Color.trailInk)
                     .accessibilityAddTraits(.isHeader)
                 Text("Your AI Scout for the Safari Browser")
-                    .font(.system(.title3, design: .rounded))
+                    .font(.system(.title3))
                     .foregroundStyle(Color.trailMuted)
                 StepProgressHeader(done: progress.doneCount, total: progress.total, note: progressNote)
                     .padding(.vertical, 6)
@@ -48,6 +49,25 @@ struct OnboardingView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color.trailCanvas.ignoresSafeArea())
+        .safeAreaInset(edge: .bottom) {
+            if let action = primaryAction {
+                GlassActionBar(title: action.title, action: action.run)
+            }
+        }
+    }
+
+    /// The current step's one action, shown in the bottom bar.
+    private var primaryAction: (title: String, run: () -> Void)? {
+        #if os(macOS)
+        if progress.current == .enable {
+            return ("Open Safari Extension Settings", {
+                SFSafariApplication.showPreferencesForExtension(withIdentifier: SetupStatus.extensionBundleIdentifier) { _ in }
+            })
+        }
+        #else
+        if progress.current == .key { return ("Open Safari", { openURL(Self.scoutPageURL) }) }
+        #endif
+        return nil
     }
 
     private var progressNote: String? {
@@ -80,22 +100,14 @@ struct OnboardingView: View {
             return AnyView(Text("Installed. Nice start."))
         case .enable:
             #if os(macOS)
-            return AnyView(VStack(alignment: .leading, spacing: 10) {
-                Text(progress.isDone(.enable) ? "Scout is on in Safari." : "Open Safari extension settings, then switch on Scout AI Assistant.")
-                if current {
-                    Button("Open Safari Extension Settings") {
-                        SFSafariApplication.showPreferencesForExtension(withIdentifier: SetupStatus.extensionBundleIdentifier) { _ in }
-                    }
-                    .buttonStyle(AccentButtonStyle())
-                }
-            })
+            return AnyView(Text(progress.isDone(.enable) ? "Scout is on in Safari." : "Open Safari extension settings, then switch on Scout AI Assistant."))
             #else
             if progress.isDone(.enable) { return AnyView(Text("Scout is on in Safari.")) }
             return AnyView(VStack(alignment: .leading, spacing: 10) {
                 Text("Open the Settings app. Go to Apps, then Safari, then Extensions. Switch on Scout AI Assistant and allow it on the websites you choose.")
                 if current {
                     Text("This step checks off the first time Scout opens in Safari.")
-                        .font(.system(.footnote, design: .rounded))
+                        .font(.system(.footnote))
                 }
             })
             #endif
@@ -119,12 +131,6 @@ struct OnboardingView: View {
                     Text("Scout sends page content to the provider you choose, using your own key. The key is stored in Keychain on this device.")
                     Text("Your provider bills your account for every request Scout makes, at the provider's prices. Scout shows an estimated cost after each answer or task.")
                 }
-                #if os(iOS)
-                if current {
-                    Button("Open Safari") { openURL(Self.scoutPageURL) }
-                        .buttonStyle(AccentButtonStyle())
-                }
-                #endif
             })
         }
     }
@@ -147,7 +153,7 @@ struct StepCard<Content: View>: View {
                 if state == .done {
                     Image(systemName: "checkmark").font(.body.weight(.bold)).foregroundStyle(Color.accentText)
                 } else {
-                    Text("\(number)").font(.system(.body, design: .rounded).weight(.heavy))
+                    Text("\(number)").font(.system(.body).weight(.heavy))
                         .foregroundStyle(state == .current ? Color.accentOn : Color.trailInk)
                 }
             }
@@ -155,12 +161,12 @@ struct StepCard<Content: View>: View {
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 10) {
                 Text(title)
-                    .font(.system(state == .current ? .title3 : .headline, design: .rounded).weight(.heavy))
+                    .font(.system(state == .current ? .title3 : .headline).weight(.heavy))
                     .foregroundStyle(Color.trailInk)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityLabel("Step \(number), \(title)" + (state == .done ? ", done" : state == .current ? ", current step" : ""))
                 content
-                    .font(.system(state == .current ? .body : .subheadline, design: .rounded))
+                    .font(.system(state == .current ? .body : .subheadline))
                     .foregroundStyle(Color.trailMuted)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -172,23 +178,17 @@ struct StepCard<Content: View>: View {
     }
 }
 
-// The sunrise badge: the Scout truck (design/icons outline, 64-unit grid)
-// on forest green with a low sun. Decorative.
+// The Scout badge: the truck (design/icons outline, 64-unit grid) on a teal
+// circle (Glasshouse, owner choice 2026-10-26). Decorative.
 private struct SunriseBadge: View {
     var body: some View {
         ZStack {
             Circle().fill(Color.accentFill)
-            Circle()
-                .fill(Color.trailSun)
-                .scaleEffect(0.76)
-                .offset(y: 46)
-                .clipShape(Circle())
             ScoutTruck()
                 .stroke(Color.accentOn, style: StrokeStyle(lineWidth: 3.6, lineJoin: .round))
                 .background(ScoutTruck().fill(Color.accentFill))
                 .padding(16)
         }
-        .clipShape(Circle())
         .overlay(Circle().strokeBorder(Color.trailHairline).padding(-7))
     }
 }

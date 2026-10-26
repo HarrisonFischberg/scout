@@ -112,20 +112,20 @@ struct ReadyView: View {
             VStack(alignment: .leading, spacing: 20) {
                 Label {
                     Text("Scout is ready")
-                        .font(.system(.largeTitle, design: .rounded).weight(.heavy))
+                        .font(.system(.largeTitle).weight(.heavy))
                         .foregroundStyle(Color.trailInk)
                 } icon: {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.accentText)
                 }
                 .accessibilityAddTraits(.isHeader)
                 Text("Open Scout from the menu in Safari's address bar on any page.")
-                    .font(.system(.title3, design: .rounded))
+                    .font(.system(.title3))
                     .foregroundStyle(Color.trailMuted)
                 Button("Open Safari") { openURL(OnboardingView.scoutPageURL) }
                     .buttonStyle(AccentButtonStyle())
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Things to try")
-                        .font(.system(.headline, design: .rounded))
+                        .font(.system(.headline))
                         .foregroundStyle(Color.trailInk)
                         .accessibilityAddTraits(.isHeader)
                     tip("doc.text.magnifyingglass", "Summarize this page", "One tap on any article or product.")
@@ -152,8 +152,8 @@ struct ReadyView: View {
                 .frame(width: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(.body, design: .rounded).weight(.semibold)).foregroundStyle(Color.trailInk)
-                Text(detail).font(.system(.subheadline, design: .rounded)).foregroundStyle(Color.trailMuted)
+                Text(title).font(.system(.body).weight(.semibold)).foregroundStyle(Color.trailInk)
+                Text(detail).font(.system(.subheadline)).foregroundStyle(Color.trailMuted)
             }
         }
         .accessibilityElement(children: .combine)
@@ -169,7 +169,7 @@ struct PrivacyCostsView: View {
                 Text("To replace or remove your key, open Scout in Safari, then Settings.")
                 Link("Privacy policy", destination: OnboardingView.privacyPolicyURL)
             }
-            .font(.system(.body, design: .rounded))
+            .font(.system(.body))
             .foregroundStyle(Color.trailMuted)
             .padding(24)
             .frame(maxWidth: 560, alignment: .leading)
