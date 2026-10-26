@@ -1019,6 +1019,15 @@
         <h2 id="settings-title" tabindex="-1">Settings</h2>
       </header>
       <div class="body">
+        <!-- Look (owner choice 2026-10-19, trimmed to six 2026-10-26): Glasshouse by default, the others here (src/panel/look.ts). Filled from script.
+             First in Settings (owner 2026-10-26); the no-key screen still leads straight to the key. -->
+        <section id="look-section" aria-labelledby="look-title">
+          <h3 id="look-title">Look</h3>
+          <fieldset id="look-list" class="look-list">
+            <legend class="sr-only">Look</legend>
+          </fieldset>
+        </section>
+
         <section aria-labelledby="provider-title">
           <h3 id="provider-title">AI provider</h3>
           <fieldset class="segmented" id="set-provider">
@@ -1150,15 +1159,6 @@
           <ul id="shared-list" class="list" aria-label="Shared in conversations"></ul>
           <div class="row"><button id="shared-clear-all" class="btn" type="button">Clear all shared records</button></div>
           <p id="shared-status" class="hint" role="status"></p>
-        </section>
-
-        <!-- Look (owner choice 2026-10-19, trimmed to six 2026-10-26): Glasshouse by default, the others here (src/panel/look.ts). Filled from script.
-             Below the key and privacy settings: the key is the one setting everyone needs (UX plan, 2026-10-25). -->
-        <section id="look-section" aria-labelledby="look-title">
-          <h3 id="look-title">Look</h3>
-          <fieldset id="look-list" class="look-list">
-            <legend class="sr-only">Look</legend>
-          </fieldset>
         </section>
 
         <section id="pagebutton-section" aria-labelledby="pagebutton-title">
