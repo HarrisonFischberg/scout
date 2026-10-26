@@ -19,14 +19,23 @@ const ANSWER = sse([
   { type: "message_stop" },
 ]);
 
-async function openPopup(page: Page, opts: { key: string | null }): Promise<{ bodies: string[] }> {
+async function openPopup(page: Page, opts: { key: string | null; apple?: boolean }): Promise<{ bodies: string[] }> {
   const bodies: string[] = [];
   await page.addInitScript(
-    ({ key, pageData }) => {
+    ({ key, pageData, apple }) => {
       const stub = {
         runtime: {
           sendMessage: async () => ({ ok: true }),
-          sendNativeMessage: async () => (key ? { ok: true, value: key } : { ok: true }),
+          sendNativeMessage: async (_app: string, m: { type?: string; prompt?: string }) => {
+            // Apple's on-device model (src/providers/apple.ts), answered by the "native app".
+            if (m?.type === "ai.apple.status") return apple ? { ok: true, available: true } : { ok: true, available: false, reason: "device_not_eligible" };
+            if (m?.type === "ai.apple.generate") {
+              const g = globalThis as unknown as { __applePrompts?: string[] };
+              (g.__applePrompts ??= []).push(m.prompt ?? "");
+              return { ok: true, text: "On device: the widget costs $10." };
+            }
+            return key ? { ok: true, value: key } : { ok: true };
+          },
           onMessage: { addListener() {} },
         },
         // Sharing with the provider already allowed (consent.spec.ts covers asking).
@@ -42,7 +51,7 @@ async function openPopup(page: Page, opts: { key: string | null }): Promise<{ bo
       };
       (globalThis as unknown as { browser: unknown }).browser = stub;
     },
-    { key: opts.key, pageData: PAGE },
+    { key: opts.key, pageData: PAGE, apple: opts.apple === true },
   );
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
@@ -60,6 +69,35 @@ test("no key: explains setup and offers no composer", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Add your API key to start" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add API key" })).toBeVisible();
   await expect(page.getByLabel("Ask about this page")).toBeHidden();
+});
+
+// Owner's choice 2026-10-25: no key needed where Apple Intelligence is available.
+test("no key with Apple Intelligence: chat answers on the device and nothing goes to a provider", async ({ page }) => {
+  const { bodies } = await openPopup(page, { key: null, apple: true });
+  await expect(page.getByRole("heading", { name: "Add your API key to start" })).toBeHidden();
+  await expect(page.getByRole("button", { name: /Apple · on device/ })).toBeVisible();
+  await page.getByLabel("Ask about this page").fill("How much is the widget?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("log", { name: "Conversation" }).getByText("On device: the widget costs $10.")).toBeVisible();
+  expect(bodies).toHaveLength(0);
+  const prompts = await page.evaluate(() => (globalThis as unknown as { __applePrompts: string[] }).__applePrompts);
+  expect(prompts[0]).toContain("Widget costs $10.");
+  expect(prompts[0]).toContain("How much is the widget?");
+});
+
+test("no key with Apple Intelligence: Find coupons explains it needs a key", async ({ page }) => {
+  await openPopup(page, { key: null, apple: true });
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("button", { name: "Find coupons" }).click();
+  const log = page.getByRole("log", { name: "Conversation" });
+  await expect(log.getByText("Find coupons needs an API key.")).toBeVisible();
+  await expect(log.getByRole("button", { name: "Add API key" })).toBeVisible();
+});
+
+test("no key and no Apple Intelligence: says why and asks for a key", async ({ page }) => {
+  await openPopup(page, { key: null });
+  await expect(page.getByRole("heading", { name: "Add your API key to start" })).toBeVisible();
+  await expect(page.getByText("This device doesn't support Apple Intelligence.")).toBeVisible();
 });
 
 test("ask about the page streams a Markdown answer", async ({ page }) => {

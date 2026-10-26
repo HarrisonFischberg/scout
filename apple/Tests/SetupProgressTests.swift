@@ -26,6 +26,17 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertFalse(p.isComplete)
     }
 
+    func testWithAppleIntelligenceTheKeyIsOptional() {
+        // Owner's choice 2026-10-25: Apple's on-device model answers without a key.
+        var p = SetupProgress(extensionOn: false, hasKey: false, appleReady: true)
+        XCTAssertEqual(p.total, 2)
+        XCTAssertEqual(p.doneCount, 1)
+        XCTAssertTrue(p.isOptional(.key))
+        p.extensionOn = true
+        XCTAssertTrue(p.isComplete)
+        XCTAssertNil(p.current)
+    }
+
     func testTimeLeftShrinksWithEachStep() {
         XCTAssertEqual(SetupProgress().minutesLeft, 1)
         XCTAssertEqual(SetupProgress(extensionOn: true, hasKey: false).minutesLeft, 1)

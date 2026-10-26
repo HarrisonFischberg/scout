@@ -35,7 +35,7 @@ import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/cons
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { isKeyProblem } from "./providers/errors";
-import { APPLE_UNAVAILABLE_TEXT, appleGenerate, appleStatus } from "./providers/apple";
+import { APPLE_MODEL, APPLE_MODEL_LABEL, APPLE_UNAVAILABLE_TEXT, appleGenerate, appleStatus, createApple, type AppleStatus } from "./providers/apple";
 import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
 import { joinDictation, Listener, micBlocked, micBlockedHere, micErrorText, recognitionCtor, rememberMic } from "./panel/voice";
 import { PageListener } from "./panel/page-listen";
@@ -285,6 +285,8 @@ interface Session {
   fellBackFrom?: Provider;
   /** Debug builds: Settings > Diagnostics > local mock server is on. */
   mock?: boolean;
+  /** No key saved: chat runs on Apple's on-device model (owner's choice 2026-10-25). */
+  apple?: boolean;
 }
 
 // Display names from the provider's model list (or the built-in one), filled
@@ -338,6 +340,7 @@ async function main(): Promise<void> {
   const status = el("status");
   const log = el("log");
   const noKey = el("no-key");
+  const noKeyApple = el("no-key-apple");
   const empty = el("empty");
   const siteSuggestions = el<HTMLUListElement>("site-suggestions");
   const composer = el<HTMLFormElement>("composer");
@@ -917,6 +920,12 @@ async function main(): Promise<void> {
     return node;
   }
 
+  /** Scout mode and Find coupons use tools and web search, which Apple's on-device model can't. */
+  function needsKey(feature: string): void {
+    const err = addMessage("error", feature + " needs an API key. Apple's on-device model can answer questions about the page, but it can't use the web or act on pages.");
+    err.insertBefore(errorAction("Add API key", () => void openSettings(true)), err.querySelector(".diag-copy"));
+  }
+
   function errorAction(label: string, run: () => void): HTMLButtonElement {
     const b = document.createElement("button");
     b.type = "button";
@@ -1014,6 +1023,22 @@ async function main(): Promise<void> {
     fallbackNotice?.remove();
     fallbackNotice = null;
     if (!found) {
+      // No key: chat on Apple's on-device model when this device has it. The
+      // key stays an optional upgrade for stronger models, Scout mode and coupons.
+      const apple: AppleStatus = TARGET === "safari" ? await appleStatus(nativeSend) : { available: false, reason: "not_safari" };
+      if (apple.available) {
+        session = { settings: { ...settings, model: APPLE_MODEL }, provider: createApple(nativeSend), apple: true };
+        noKey.hidden = true;
+        composer.hidden = false;
+        modelPillText.textContent = APPLE_MODEL_LABEL;
+        modelPill.setAttribute("aria-label", APPLE_MODEL_LABEL + ", free with no key. Add an API key for stronger models");
+        status.textContent = "";
+        current.finish("ready", "Ready. Using Apple's on-device model (no key).");
+        updateEmpty();
+        return;
+      }
+      noKeyApple.textContent = TARGET === "safari" ? "Apple Intelligence can't be used here: " + APPLE_UNAVAILABLE_TEXT[apple.reason] : "";
+      noKeyApple.hidden = TARGET !== "safari";
       session = null;
       status.textContent = "No API key saved.";
       current.error("No API key saved.");
@@ -1273,6 +1298,8 @@ async function main(): Promise<void> {
   }
 
   function openModelMenu(focus: "checked" | "last" = "checked"): void {
+    // On Apple's model there is nothing to pick until a key is added.
+    if (session?.apple) return void openSettings(true);
     closePlus();
     renderModelMenu();
     modelMenu.hidden = false;
@@ -1916,7 +1943,8 @@ async function main(): Promise<void> {
     await sessionReady();
     if (!trimmed || activeChat || couponRun || task || !session) return;
     const s = session;
-    if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
+    // Apple's on-device model sends nothing off the device, so there is nothing to consent to.
+    if (!s.apple && !consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     const cont = opts.continueOf;
     const extra = cont ? [] : [...attached.values()];
     // Asked first: the permission prompt needs this click's user gesture.
@@ -2362,6 +2390,7 @@ async function main(): Promise<void> {
       return;
     }
     const s = session;
+    if (s.apple) return needsKey("Scout mode");
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     // No per-task question (owner decision 2026-10-17): sending the task starts it.
     startRun("agent", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model, question: trimmed });
@@ -2709,6 +2738,7 @@ async function main(): Promise<void> {
       renderCouponChip();
     }
     const s = session;
+    if (s.apple) return needsKey("Find coupons");
     askSiteAccessOnce();
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     startRun("coupons", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model });
@@ -3635,7 +3665,7 @@ async function main(): Promise<void> {
       return;
     }
     // Saving the first key is the end of setup: go back to the chat and say so (UX plan, peak-end).
-    const firstKey = !el("no-key").hidden;
+    const firstKey = !el("no-key").hidden || session?.apple === true;
     void (async () => {
       // Testing the key is a request to the provider, so it needs consent too.
       if (!consent.has(p) && !(await allowSharing(p))) {
