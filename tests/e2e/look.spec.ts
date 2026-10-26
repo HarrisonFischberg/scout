@@ -68,7 +68,7 @@ test("Settings > Look switches at once, is saved, and is kept on the next open",
   await openPopup(page);
   await page.getByRole("button", { name: "Settings" }).click();
   const group = page.getByRole("group", { name: "Look" });
-  await expect(group.getByRole("radio")).toHaveCount(11);
+  await expect(group.getByRole("radio")).toHaveCount(6);
   await expect(group.getByRole("radio", { name: /Glasshouse/ })).toBeChecked();
   await group.getByRole("radio", { name: /Night Ops/ }).check();
   expect(await look(page)).toBe("nightops");
@@ -79,11 +79,11 @@ test("Settings > Look switches at once, is saved, and is kept on the next open",
   await expect(page.locator("#greeting")).toHaveText(/What should Scout do\?/);
 });
 
-test("a look saved on another device wins over a stale cache; Classic has no greeting", async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("scout.look", "ink"));
-  await openPopup(page, { look: "classic" });
-  await expect.poll(() => look(page)).toBe("classic");
-  await expect(page.locator("#greeting")).toBeHidden();
+test("a look saved on another device wins over a stale cache", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("scout.look", "pebble"));
+  await openPopup(page, { look: "bento" });
+  await expect.poll(() => look(page)).toBe("bento");
+  await expect(page.locator("#greeting")).toHaveText("Pick a start");
   await expect(page.locator("#starters button:visible")).toHaveCount(2);
 });
 
@@ -102,7 +102,7 @@ test("Delete all data goes back to Glasshouse, now and on the next open", async 
 });
 
 test("every look shows only Summarize and Explain, each on one line, with nothing cut off on a short iPhone sheet", async ({ browser }) => {
-  for (const id of ["trailhead", "apple", "glasshouse", "aurora", "bento", "pebble", "cinema", "nightops", "dealhunter", "ink", "classic"]) {
+  for (const id of ["apple", "glasshouse", "bento", "pebble", "cinema", "nightops"]) {
     const page = await browser.newPage({ viewport: { width: 393, height: 390 }, hasTouch: true, isMobile: true });
     await openPopup(page, { look: id });
     await expect.poll(() => look(page)).toBe(id);
@@ -138,8 +138,8 @@ test.describe("iPhone", () => {
   });
 
   test("the car and title stay put when a status line shows (mic, New chat)", async ({ page }) => {
-    await openPopup(page, { look: "trailhead" });
-    await expect.poll(() => look(page)).toBe("trailhead");
+    await openPopup(page, { look: "bento" });
+    await expect.poll(() => look(page)).toBe("bento");
     const where = async () => {
       const car = (await page.locator("#empty .scout-mark").boundingBox())!;
       const title = (await page.locator("#greeting").boundingBox())!;
@@ -155,8 +155,8 @@ test.describe("iPhone", () => {
   });
 
   test("Delete all data goes back to Glasshouse, and a chosen look is kept", async ({ page }) => {
-    await openPopup(page, { look: "trailhead" });
-    await expect.poll(() => look(page)).toBe("trailhead");
+    await openPopup(page, { look: "bento" });
+    await expect.poll(() => look(page)).toBe("bento");
     await page.getByRole("button", { name: "Settings" }).click();
     await page.getByRole("button", { name: "Delete all data" }).click();
     await page.getByRole("button", { name: "Yes, delete all data" }).click();
@@ -177,7 +177,7 @@ const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 for (const scheme of ["light", "dark"] as const) {
   test.describe(`${scheme} scheme`, () => {
     test.use({ colorScheme: scheme });
-    for (const id of ["trailhead", "apple", "glasshouse", "aurora", "bento", "pebble", "cinema", "nightops", "dealhunter", "ink", "classic"]) {
+    for (const id of ["apple", "glasshouse", "bento", "pebble", "cinema", "nightops"]) {
       test(`${id}: new chat and Settings have no WCAG 2.2 AA violations`, async ({ page }) => {
         await openPopup(page, { look: id });
         await expect.poll(() => look(page)).toBe(id);

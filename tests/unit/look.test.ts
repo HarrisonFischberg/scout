@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { applyLook, cachedLook, cacheLook, DEFAULT_LOOK, defaultLook, LOOK_CACHE_KEY, LOOKS, parseLook } from "../../src/panel/look";
 
-// Looks (owner choice 2026-10-19; Glasshouse the default everywhere 2026-10-26): ten others in Settings.
+// Looks (owner choice 2026-10-19; Glasshouse the default everywhere 2026-10-26; five removed 2026-10-26).
 describe("looks", () => {
-  it("defaults to Glasshouse and keeps the other ten on offer (owner 2026-10-26)", () => {
+  it("defaults to Glasshouse and keeps the other five on offer (owner 2026-10-26)", () => {
     expect(DEFAULT_LOOK).toBe("glasshouse");
-    expect(LOOKS.map((l) => l.id)).toEqual(["trailhead", "apple", "glasshouse", "aurora", "bento", "pebble", "cinema", "nightops", "dealhunter", "ink", "classic"]);
+    expect(LOOKS.map((l) => l.id)).toEqual(["apple", "glasshouse", "bento", "pebble", "cinema", "nightops"]);
   });
 
   it("iPhone, iPad and Mac all open in Glasshouse (owner 2026-10-26); a passed fallback still wins", () => {
@@ -23,10 +23,12 @@ describe("looks", () => {
     expect(parseLook("purple")).toBe("glasshouse");
     expect(parseLook(undefined)).toBe("glasshouse");
     expect(parseLook(42)).toBe("glasshouse");
+    // Removed looks (owner 2026-10-26): a saved one opens in Glasshouse.
+    for (const gone of ["trailhead", "aurora", "dealhunter", "ink", "classic"]) expect(parseLook(gone)).toBe("glasshouse");
   });
 
   it("uses the cached look, and the default when storage throws or is missing", () => {
-    expect(cachedLook({ getItem: (k) => (k === LOOK_CACHE_KEY ? "ink" : null) })).toBe("ink");
+    expect(cachedLook({ getItem: (k) => (k === LOOK_CACHE_KEY ? "pebble" : null) })).toBe("pebble");
     expect(cachedLook({ getItem: () => { throw new Error("blocked"); } })).toBe("glasshouse");
     expect(cachedLook(undefined)).toBe("glasshouse");
     const saved: Record<string, string> = {};
@@ -35,25 +37,23 @@ describe("looks", () => {
     expect(() => cacheLook({ setItem: () => { throw new Error("quota"); } }, "apple")).not.toThrow();
   });
 
-  it("sets the page attribute and the greeting; Classic has no greeting", () => {
+  it("sets the page attribute and the greeting", () => {
     const nodes: Record<string, { textContent: string; hidden: boolean }> = {
       "greeting-title": { textContent: "", hidden: false },
       "greeting-sub": { textContent: "", hidden: false },
       greeting: { textContent: "", hidden: false },
     };
     const doc = { documentElement: { dataset: {} as Record<string, string> }, getElementById: (id: string) => nodes[id] ?? null } as unknown as Document;
-    applyLook(doc, "dealhunter");
-    expect(doc.documentElement.dataset.look).toBe("dealhunter");
-    expect(nodes["greeting-title"].textContent).toBe("What are we hunting?");
+    applyLook(doc, "bento");
+    expect(doc.documentElement.dataset.look).toBe("bento");
+    expect(nodes["greeting-title"].textContent).toBe("Pick a start");
     expect(nodes.greeting.hidden).toBe(false);
-    applyLook(doc, "classic");
-    expect(nodes.greeting.hidden).toBe(true);
   });
 
-  it("every look but Classic has its own CSS in the panel, and the panel starts in Glasshouse", () => {
+  it("every look has its own CSS in the panel, and the panel starts in Glasshouse", () => {
     const html = readFileSync(new URL("../../src/popup.html", import.meta.url).pathname, "utf8");
     expect(html).toMatch(/<html lang="en" data-look="glasshouse">/);
-    for (const l of LOOKS.filter((x) => x.id !== "classic")) {
+    for (const l of LOOKS) {
       expect(html).toContain(`:root[data-look="${l.id}"] {`);
       // A dark set for every look.
       expect(html).toMatch(new RegExp(`@media \\(prefers-color-scheme: dark\\) \\{\\s*:root\\[data-look="${l.id}"\\] \\{`));
@@ -66,7 +66,7 @@ describe("looks", () => {
     expect(start).toBeGreaterThan(0);
     const css = html.slice(start, html.indexOf("</style>", start));
     expect(css).not.toMatch(/backdrop-filter|position:\s*fixed|@keyframes/);
-    for (const id of ["glasshouse", "aurora", "bento", "pebble", "cinema"] as const) {
+    for (const id of ["glasshouse", "bento", "pebble", "cinema"] as const) {
       expect(LOOKS.find((l) => l.id === id)?.greeting.sub).toBe("");
     }
   });
