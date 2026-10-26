@@ -17,6 +17,7 @@ import { holdRun } from "./bridge/run-port";
 import { OVERLAY_HANDLER, type OverlayRequest } from "./content-api";
 import { isPhoneScreen } from "./panel/blur";
 import { glowField } from "./glow-field";
+import { adoptStyle, setHostStyle } from "./page-style";
 
 const FLAG = "__safariScoutOverlayLoaded";
 const g = globalThis as unknown as Record<string, unknown>;
@@ -230,11 +231,9 @@ if (!g[FLAG]) {
     registerAngle();
     host = document.createElement("div");
     host.setAttribute("data-scout-overlay", "");
-    host.setAttribute("style", HOST_STYLE);
+    setHostStyle(host, HOST_STYLE);
     // The page can inspect the overlay; it cannot press its buttons (trusted events only).
     const root = host.attachShadow({ mode: "open" });
-    const style = document.createElement("style");
-    style.textContent = STYLE_TEXT;
     layer = document.createElement("div");
     layer.className = onPhone() ? "layer phone" : "layer";
     layer.setAttribute("role", "group");
@@ -275,7 +274,8 @@ if (!g[FLAG]) {
     field.setAttribute("aria-hidden", "true");
     wash.append(glow, field);
     layer.append(wash, ripples, pill);
-    root.append(style, layer);
+    root.append(layer);
+    adoptStyle(root, STYLE_TEXT);
     document.addEventListener("visibilitychange", () => layer?.classList.toggle("hidden-tab", document.hidden));
   };
 

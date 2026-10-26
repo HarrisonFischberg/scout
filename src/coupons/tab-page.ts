@@ -29,7 +29,17 @@ export interface CouponPage {
  */
 export async function tabCouponPage(tabId: number, opts: { aboveSheet?: boolean; trace?: (stage: string) => void } = {}): Promise<CouponPage> {
   const trace = opts.trace ?? (() => undefined);
-  await browser.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
+  // A page still loading or just reloaded can refuse the first injection; try a few times.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await browser.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
+      break;
+    } catch (err) {
+      if (attempt >= 2) throw err;
+      trace("content:inject retry");
+      await new Promise((r) => setTimeout(r, 400));
+    }
+  }
   // A page that reloads (a store whose Apply button submits a form) loses the
   // content script: inject it again and retry, for up to about 4 s.
   const call = async (req: ContentRequest): Promise<unknown> => {

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!-- Like checkout.stripe.com (owner report 2026-10-26): a strict style
+         policy, so inline style attributes and <style> elements that a script
+         adds are dropped. Scripts are allowed so the fixture can run. -->
+    <meta http-equiv="Content-Security-Policy" content="style-src 'self'" />
+    <title>Subscribe to Pro (synthetic)</title>
+  </head>
+  <body>
+    <!-- A Stripe Checkout style summary: "Add promotion code" is a plain box,
+         and its Apply button shows only once something is typed. Synthetic
+         code: SAVE10 = 10% off $45.00. -->
+    <main>
+      <p>Subscribe to Pro</p>
+      <p>Pro $45.00</p>
+      <p>Subtotal $45.00</p>
+      <input id="promo" type="text" placeholder="Add promotion code" aria-label="Add promotion code" />
+      <button id="apply" type="button" hidden>Apply</button>
+      <p id="message" role="alert"></p>
+      <p id="total">Total due today $45.00</p>
+      <button id="pay" type="button">Subscribe</button>
+    </main>
+    <script>
+      const promo = document.getElementById("promo");
+      const apply = document.getElementById("apply");
+      const msg = document.getElementById("message");
+      promo.addEventListener("input", () => {
+        apply.hidden = promo.value.trim() === "";
+        msg.textContent = "";
+      });
+      apply.addEventListener("click", () => {
+        const code = promo.value.trim().toUpperCase();
+        if (code === "SAVE10") document.getElementById("total").textContent = "Total due today $40.50";
+        else msg.textContent = "This code is invalid.";
+      });
+    </script>
+  </body>
+</html>
