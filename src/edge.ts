@@ -9,6 +9,7 @@
 // the website: Safari runs such a frame in the page's process and kills that
 // process when the frame uses extension APIs (owner bug report 2026-10-16).
 import { request } from "./bridge/messages";
+import { adoptStyle, setHostStyle } from "./page-style";
 import {
   clampY,
   isDrag,
@@ -129,12 +130,12 @@ function viewportInfo(): Parameters<typeof tabScale>[0] {
 
 function mount(initial: PageButton, save: (side: Side, y: number) => void, hidden = false): EdgeUi {
   const host = document.createElement("div");
-  host.setAttribute("style", HOST_STYLE);
+  setHostStyle(host, HOST_STYLE);
   const root = host.attachShadow({ mode: "closed" });
   root.innerHTML =
-    "<style>" + CSS + "</style>" +
     '<button class="tab" type="button" aria-label="Open Scout"><span class="pill">' + GLYPH + "</span></button>" +
     '<p class="toast" role="status"></p>';
+  adoptStyle(root, CSS);
   const tab = root.querySelector("button") as HTMLButtonElement;
   const toastNode = root.querySelector("p") as HTMLParagraphElement;
   if (hidden) tab.classList.add("waiting");

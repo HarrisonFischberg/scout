@@ -142,6 +142,8 @@ export class CouponHost {
       client = await this.deps.provider(p.provider, p.model);
       page = await this.deps.page(p.tab_id, { aboveSheet: p.phone === true, trace });
     } catch (err) {
+      // Diagnostics say why (owner report 2026-10-26: "Could not reach this page" with no stages).
+      trace("coupons:start-failed " + failReason(err));
       this.runs.delete(p.tab_id);
       if (err instanceof BridgeError) throw err;
       throw new BridgeError("unhandled", "Could not reach this page. Reload it and try again.");
@@ -248,4 +250,12 @@ function flat(w: CouponEvent): Record<string, unknown> {
     return { ...rest, input_tokens: usage.inputTokens, output_tokens: usage.outputTokens, ...(usage.webSearches ? { web_searches: usage.webSearches } : {}) };
   }
   return { ...w };
+}
+
+/** A short reason for diagnostics: the error's kind and words, with no page address. */
+export function failReason(err: unknown): string {
+  const kind = err instanceof BridgeError ? err.error : err instanceof Error ? err.name : typeof err;
+  const words = err instanceof Error ? err.message : String(err ?? "");
+  const clean = words.replace(/\b[a-z][a-z0-9+.-]*:\/\/\S*/gi, "<url>").replace(/\s+/g, " ").trim().slice(0, 100);
+  return clean ? kind + ": " + clean : kind;
 }

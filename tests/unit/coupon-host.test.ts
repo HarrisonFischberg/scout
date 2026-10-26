@@ -9,7 +9,7 @@ import type { OverlayRequest } from "../../src/content-api";
 import type { CartState } from "../../src/coupons/finder";
 import type { CouponPage } from "../../src/coupons/tab-page";
 import type { ProviderClient } from "../../src/providers";
-import { CouponHost, COUPON_QUESTION } from "../../src/server/coupon-host";
+import { CouponHost, failReason, COUPON_QUESTION } from "../../src/server/coupon-host";
 
 // The web search finds nothing: the only code is the one the store's page shows.
 const quiet: ProviderClient = {
@@ -151,6 +151,20 @@ describe("coupon host", () => {
     const host = new CouponHost({ ...(f.host as unknown as { deps: ConstructorParameters<typeof CouponHost>[0] }).deps, page: async () => Promise.reject(new Error("no")) });
     await expect(host.start({ tab_id: 3, provider: "anthropic", model: "m" })).rejects.toBeInstanceOf(BridgeError);
     expect(host.status(3)).toEqual({});
+  });
+
+  // Owner report 2026-10-26 (checkout.stripe.com): "Could not reach this page"
+  // came with no stages at all. A watching panel now gets the reason, with no page address in it.
+  it("tells a watching panel why a page could not be reached", async () => {
+    const f = fake(cartPage());
+    const host = new CouponHost({
+      ...(f.host as unknown as { deps: ConstructorParameters<typeof CouponHost>[0] }).deps,
+      page: async () => Promise.reject(new Error("Cannot access https://checkout.stripe.com/c/pay/cs_test_123 right now")),
+    });
+    host.watch(f.port, 4);
+    await expect(host.start({ tab_id: 4, provider: "anthropic", model: "m" })).rejects.toThrow("Could not reach this page. Reload it and try again.");
+    expect(f.posted.filter((p) => p.kind === "trace").map((p) => p.stage)).toEqual(["coupons:start-failed Error: Cannot access <url> right now"]);
+    expect(failReason(new BridgeError("blocked-by-user", "Blocked"))).toBe("blocked-by-user: Blocked");
   });
   // Owner report 2026-10-19 (run #203): a coupon run's report showed no stages,
   // only the panel's own "port:reconnecting". The worker stamps each stage with

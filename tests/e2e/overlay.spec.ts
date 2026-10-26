@@ -270,3 +270,35 @@ test.describe("on iPhone", () => {
     expect(pill.bottom).toBeLessThanOrEqual(boxes.height);
   });
 });
+
+// Owner report 2026-10-26, checkout.stripe.com: a page whose style policy drops
+// inline styles showed the overlay as Safari's default popover, a bordered
+// square in the middle of the page. The overlay and the coupon pointer must
+// keep their own styles there.
+test("on a page with a strict style policy the overlay covers the page and the pointer stays a pointer", async ({ page }) => {
+  await load(page, "/stripe-checkout.html");
+  await overlay(page, { type: "overlay:show", taskId: "t1", state: "running" });
+  const box = await host(page).boundingBox();
+  const view = page.viewportSize();
+  expect(box).toEqual({ x: 0, y: 0, width: view?.width, height: view?.height });
+  const looks = await host(page).evaluate((h) => {
+    const cs = getComputedStyle(h);
+    return { position: cs.position, border: cs.borderTopWidth, background: cs.backgroundColor };
+  });
+  expect(looks).toEqual({ position: "fixed", border: "0px", background: "rgba(0, 0, 0, 0)" });
+  // The pill is styled from the shadow root: pinned near the bottom, not in the page's flow.
+  const pill = await inShadow(page, (root) => getComputedStyle(root.querySelector(".pill") as Element).position);
+  expect(pill).toBe("absolute");
+
+  const snap = await content<{ elements: Array<{ ref: string; name: string }> }>(page, { type: "scout:snapshot" });
+  const promo = snap.elements.find((e) => e.name === "Add promotion code");
+  expect(promo).toBeTruthy();
+  const typed = await content<{ ok: boolean }>(page, { type: "scout:act", action: { type: "type", ref: promo?.ref, text: "SAVE10" }, show: true });
+  expect(typed.ok).toBe(true);
+  const pointer = await page.locator("#scout-pointer").evaluate((h) => {
+    const cs = getComputedStyle(h);
+    return { position: cs.position, width: cs.width };
+  });
+  expect(pointer).toEqual({ position: "fixed", width: "0px" });
+  await expect(page.getByRole("button", { name: "Apply" })).toBeVisible();
+});
