@@ -601,7 +601,7 @@
         border: 1px solid var(--hairline); border-radius: 14px; white-space: nowrap; background: var(--bg-surface);
         color: var(--text-primary); font-weight: 700; font-size: 13px; line-height: 1.2; box-shadow: var(--shadow);
       }
-      :root[data-look="trailhead"] #starters button svg.i { order: -1; flex: none; width: 22px; height: 22px; padding: 3px; border-radius: 7px; background: var(--selected); color: var(--accent-text); }
+      :root[data-look="trailhead"] #starters button svg.i { order: -1; flex: none; width: 20px; height: 20px; padding: 2px; border-radius: 6px; background: var(--selected); color: var(--accent-text); }
       /* One line per card; a very narrow screen ends the label with an ellipsis instead of growing the card. */
       :root[data-look="trailhead"] #starters button, :root[data-look="dealhunter"] #starters button { min-width: 0; }
       :root[data-look="trailhead"] #starters button span, :root[data-look="dealhunter"] #starters button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -893,6 +893,174 @@
       @media (max-height: 620px) {
         .greeting b { font-size: 19px; }
       }
+
+      /* ---------- Looks, round two (owner choice 2026-10-26, from the Liquid Glass, SwiftUI Expert and
+         UI/UX Pro Max skills): Glasshouse, Aurora, Bento, Pebble, Cinema. The panel stays solid in every one:
+         glass is only drawn natively in the setup app, and nothing here is fixed over the page or blurred. ---------- */
+
+      /* Shared by the round-two looks: starters as one-line cards, the car in a small tinted tile (still at
+         the bottom left, owner 2026-10-19), cards for tables and coupon codes, a 3 px focus ring. */
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #chat-view > header, :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #settings-view > header { border-bottom: 0; }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #empty .scout-mark { width: 40px; height: 40px; padding: 8px; border-radius: 12px; background: var(--selected); fill: var(--selected); stroke: var(--accent-text); stroke-width: 3.6; }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #empty .scout-mark .hub { fill: var(--accent-text); }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #starters { display: grid; gap: 8px; padding-bottom: 8px; }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]):not([data-look="bento"]) #starters { grid-template-columns: 1fr 1fr; }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #starters li { display: flex; min-width: 0; }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #starters button { gap: 5px; min-width: 0; min-height: 40px; padding: 4px 7px; white-space: nowrap; background: var(--bg-surface); color: var(--text-primary); font-weight: 600; font-size: 13px; line-height: 1.2; box-shadow: var(--shadow); }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]):is([data-look="glasshouse"], :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) [data-look="aurora"], :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) [data-look="cinema"]) #starters button { border: 1px solid var(--hairline); border-radius: 16px; }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #starters button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #starters button svg.i { order: -1; flex: none; width: 20px; height: 20px; padding: 2px; border-radius: 6px; background: var(--selected); color: var(--accent-text); }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) .msg .table-wrap { background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 16px; padding: 4px 12px; box-shadow: var(--shadow); }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) .msg tr:last-child td { border-bottom: 0; }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) .trace .attempt { padding: 7px 10px; border-radius: 12px; background: var(--bg-surface); border: 1px solid var(--hairline); }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) .trace .attempt.good { border-color: var(--accent); }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) .btn { border-radius: 999px; font-weight: 600; padding: 4px 14px; }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) .msg.user { border-radius: 18px 18px 6px 18px; }
+      :root:is([data-look="glasshouse"], [data-look="aurora"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) :focus-visible { outline-width: 3px; }
+
+      /* ===== Glasshouse: cool sky, teal, solid cards; round header buttons and a floating composer ===== */
+      :root[data-look="glasshouse"] {
+        --bg-canvas: #eef3f6; --bg-surface: #ffffff; --bg-subtle: #e2eaee;
+        --text-primary: #0f1a20; --text-secondary: #334047; --text-muted: #52606a;
+        --accent: #00727f; --accent-on: #ffffff; --accent-text: #006570;
+        --selected: #dbeced; --bubble-user: #00727f; --bubble-user-text: #ffffff;
+        --danger: #b42318; --focus-ring: #00727f; --border-control: #7f9097; --hairline: #d5e0e5;
+        --shadow: inset 0 1px 0 rgb(255 255 255 / 90%), 0 1px 2px rgb(15 40 50 / 6%), 0 8px 24px rgb(15 40 50 / 8%);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root[data-look="glasshouse"] {
+          --bg-canvas: #0c1316; --bg-surface: #162126; --bg-subtle: #1f2c32;
+          --text-primary: #eaf3f5; --text-secondary: #c5d3d7; --text-muted: #9fb1b7;
+          --accent: #5fd0dc; --accent-on: #04282d; --accent-text: #6fd7e2;
+          --selected: #173a40; --bubble-user: #1d4d55; --bubble-user-text: #eaf3f5;
+          --danger: #ff8a80; --focus-ring: #6fd7e2; --border-control: #7d9198; --hairline: #24343a;
+          --shadow: inset 0 1px 0 rgb(255 255 255 / 6%), 0 1px 2px rgb(0 0 0 / 40%), 0 8px 24px rgb(0 0 0 / 35%);
+        }
+      }
+      :root[data-look="glasshouse"] header .icon-btn { border-radius: 999px; background: var(--bg-surface); box-shadow: var(--shadow); margin-left: 4px; }
+      :root[data-look="glasshouse"] .composer-box { border-radius: 26px; border-color: transparent; box-shadow: var(--shadow); }
+      :root[data-look="glasshouse"] .round:not(.send), :root[data-look="glasshouse"] fieldset.segmented { border-color: transparent; background: var(--bg-subtle); }
+      :root[data-look="glasshouse"] .segmented label.on { background: var(--bg-surface); color: var(--accent-text); box-shadow: var(--shadow); }
+      :root[data-look="glasshouse"] #model-pill { background: transparent; color: var(--text-muted); }
+      :root[data-look="glasshouse"] .msg.assistant strong { color: var(--accent-text); }
+
+      /* ===== Aurora: a still violet, pink and cyan glow at the top, plain paper where you read ===== */
+      :root[data-look="aurora"] {
+        --bg-canvas: #f7f5ff; --bg-surface: #ffffff; --bg-subtle: #efebff;
+        --text-primary: #1a1430; --text-secondary: #3e3758; --text-muted: #5d5677;
+        --accent: #6d28d9; --accent-on: #ffffff; --accent-text: #5b21b6;
+        --selected: #ede7ff; --bubble-user: #6d28d9; --bubble-user-text: #ffffff;
+        --danger: #b42318; --focus-ring: #6d28d9; --border-control: #8a83a6; --hairline: #e6e0f7;
+        --aurora: radial-gradient(60% 80% at 15% 0%, #c4b5fd 0, transparent 60%), radial-gradient(50% 70% at 85% 10%, #fbcfe8 0, transparent 60%), radial-gradient(60% 60% at 50% 100%, #a5f3fc 0, transparent 60%);
+        --aurora-fill: linear-gradient(135deg, #6d28d9, #c026d3);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root[data-look="aurora"] {
+          --bg-canvas: #0f0b1d; --bg-surface: #1a1430; --bg-subtle: #251d40;
+          --text-primary: #f2eeff; --text-secondary: #d3cbee; --text-muted: #aaa1c9;
+          --accent: #b69cff; --accent-on: #1a0f3a; --accent-text: #c4b0ff;
+          --selected: #2c2150; --bubble-user: #4c1d95; --bubble-user-text: #f2eeff;
+          --danger: #ff8a80; --focus-ring: #c4b0ff; --border-control: #8f86ad; --hairline: #2c2445;
+          --aurora: radial-gradient(60% 80% at 15% 0%, #4c1d95 0, transparent 60%), radial-gradient(50% 70% at 85% 10%, #831843 0, transparent 60%), radial-gradient(60% 60% at 50% 100%, #155e75 0, transparent 60%);
+          --aurora-fill: linear-gradient(135deg, #4c1d95, #86198f);
+        }
+      }
+      :root[data-look="aurora"] body {
+        background: linear-gradient(to bottom, transparent 0, var(--bg-canvas) 210px), var(--aurora), var(--bg-canvas);
+        background-repeat: no-repeat; background-size: 100% 320px, 100% 320px, auto;
+      }
+      :root[data-look="aurora"] .msg.user { background: var(--aurora-fill); color: #ffffff; }
+      :root[data-look="aurora"] .round.send { background: var(--aurora-fill); color: #ffffff; }
+      :root[data-look="aurora"] .msg th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+      :root[data-look="aurora"] .trace .attempt .code { font-family: var(--font-mono); }
+
+      /* ===== Bento: tiles of different weight; the first starter and the winning code stand out ===== */
+      :root[data-look="bento"] {
+        --bg-canvas: #f2f2f5; --bg-surface: #ffffff; --bg-subtle: #e8e8ee;
+        --text-primary: #111318; --text-secondary: #363a45; --text-muted: #565b68;
+        --accent: #2747d6; --accent-on: #ffffff; --accent-text: #2340c4;
+        --selected: #e6eafc; --bubble-user: #111318; --bubble-user-text: #ffffff;
+        --danger: #b42318; --focus-ring: #2747d6; --border-control: #858a96; --hairline: #e2e2e8;
+        --shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 4px 6px rgb(0 0 0 / 5%);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root[data-look="bento"] {
+          --bg-canvas: #0d0e12; --bg-surface: #1a1c22; --bg-subtle: #252832;
+          --text-primary: #f2f3f7; --text-secondary: #cfd2dc; --text-muted: #a2a7b5;
+          --accent: #8ea2ff; --accent-on: #0b1030; --accent-text: #9fb0ff;
+          --selected: #232a4d; --bubble-user: #2a2e3a; --bubble-user-text: #f2f3f7;
+          --danger: #ff8a80; --focus-ring: #9fb0ff; --border-control: #7d8292; --hairline: #262934; --shadow: none;
+        }
+      }
+      :root[data-look="bento"] #starters { grid-template-columns: 1fr 1fr; }
+      :root[data-look="bento"] #starters button { border: 0; border-radius: 18px; }
+      :root[data-look="bento"] #starters li:first-child button { background: var(--accent); color: var(--accent-on); }
+      :root[data-look="bento"] #starters li:first-child button svg.i { background: color-mix(in srgb, var(--accent-on) 18%, transparent); color: var(--accent-on); }
+      :root[data-look="bento"] .composer-box, :root[data-look="bento"] .msg .table-wrap { border-color: transparent; border-radius: 24px; }
+      :root[data-look="bento"] .coupon-step { background: var(--bg-surface); border-radius: 16px; padding: 8px 12px; }
+      :root[data-look="bento"] .trace-body { display: grid; grid-template-columns: 1fr 1fr; border-left: 0; padding-left: 0; }
+      :root[data-look="bento"] .trace .attempt { flex-direction: column; gap: 2px; border: 0; border-radius: 18px; padding: 10px 12px; min-width: 0; }
+      :root[data-look="bento"] .trace .attempt.good { grid-column: 1 / -1; background: var(--selected); }
+      :root[data-look="bento"] .trace .attempt .code { font-family: inherit; font-size: 15px; font-weight: 700; }
+      :root[data-look="bento"] .trace-body > :not(.attempt) { grid-column: 1 / -1; }
+
+      /* ===== Pebble: soft raised cards and pressed-in controls, every edge still visible ===== */
+      :root[data-look="pebble"] {
+        --bg-canvas: #e9edf3; --bg-surface: #f4f6fa; --bg-subtle: #dfe5ee;
+        --text-primary: #1e2633; --text-secondary: #3a4454; --text-muted: #4f5a6b;
+        --accent: #3c5fa8; --accent-on: #ffffff; --accent-text: #34549a;
+        --selected: #dbe3f1; --bubble-user: #3c5fa8; --bubble-user-text: #ffffff;
+        --danger: #b42318; --focus-ring: #3c5fa8; --border-control: #7e8899; --hairline: #d3dae5;
+        --shadow: 6px 6px 14px rgb(163 177 198 / 55%), -6px -6px 14px rgb(255 255 255 / 90%);
+        --press: inset 2px 2px 5px rgb(163 177 198 / 50%), inset -2px -2px 5px rgb(255 255 255 / 80%);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root[data-look="pebble"] {
+          --bg-canvas: #1b2029; --bg-surface: #222834; --bg-subtle: #2a3140;
+          --text-primary: #e8edf5; --text-secondary: #c6cedb; --text-muted: #a3adbd;
+          --accent: #9db8ee; --accent-on: #14213d; --accent-text: #a9c2f2;
+          --selected: #2c3a55; --bubble-user: #33456b; --bubble-user-text: #e8edf5;
+          --danger: #ff8a80; --focus-ring: #a9c2f2; --border-control: #7c879a; --hairline: #2e3644;
+          --shadow: 6px 6px 14px rgb(0 0 0 / 45%), -4px -4px 12px rgb(255 255 255 / 4%);
+          --press: inset 2px 2px 5px rgb(0 0 0 / 45%), inset -2px -2px 5px rgb(255 255 255 / 3%);
+        }
+      }
+      :root[data-look="pebble"] #starters button, :root[data-look="pebble"] .composer-box { border-radius: 18px; }
+      :root[data-look="pebble"] .round:not(.send), :root[data-look="pebble"] fieldset.segmented { border-color: transparent; background: var(--bg-canvas); box-shadow: var(--press); }
+      :root[data-look="pebble"] .round.send { box-shadow: var(--shadow); }
+      :root[data-look="pebble"] .segmented label.on { background: var(--bg-surface); color: var(--accent-text); box-shadow: var(--shadow); }
+      :root[data-look="pebble"] #model-pill { background: transparent; }
+      :root[data-look="pebble"] .msg.user { box-shadow: var(--shadow); }
+
+      /* ===== Cinema: near-black with an indigo glow in the corner; a light version keeps the same accent ===== */
+      :root[data-look="cinema"] {
+        --bg-canvas: #f7f7fb; --bg-surface: #ffffff; --bg-subtle: #ececf3;
+        --text-primary: #0d0d12; --text-secondary: #30323c; --text-muted: #555866;
+        --accent: #4f5bd5; --accent-on: #ffffff; --accent-text: #4450c4;
+        --selected: #ecedfb; --bubble-user: #ecedfb; --bubble-user-text: #1b1e4a;
+        --danger: #b42318; --focus-ring: #4f5bd5; --border-control: #868896; --hairline: #e3e4ec;
+        --glow: rgb(94 106 210 / 18%);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root[data-look="cinema"] {
+          --bg-canvas: #050506; --bg-surface: #0e0e12; --bg-subtle: #16161c;
+          --text-primary: #ededef; --text-secondary: #c9cbd2; --text-muted: #9a9fa8;
+          --accent: #5e6ad2; --accent-on: #ffffff; --accent-text: #a3abff;
+          --selected: #1a1b2e; --bubble-user: #1a1b2e; --bubble-user-text: #ededef;
+          --danger: #ff8a80; --focus-ring: #a3abff; --border-control: #6c6f7a; --hairline: #1d1d24;
+          --shadow: 0 0 0 1px rgb(255 255 255 / 6%); --glow: rgb(94 106 210 / 32%);
+        }
+      }
+      :root[data-look="cinema"] body {
+        background: radial-gradient(420px 260px at 85% -40px, var(--glow), transparent 70%), var(--bg-canvas);
+        background-repeat: no-repeat;
+      }
+      :root[data-look="cinema"] .round.send { box-shadow: 0 0 18px rgb(94 106 210 / 55%); }
+      :root[data-look="cinema"] .composer-box { box-shadow: 0 0 0 1px var(--hairline), 0 12px 30px rgb(0 0 0 / 12%); }
+      :root[data-look="cinema"] .greeting b { font-weight: 600; letter-spacing: -0.03em; }
+      :root[data-look="cinema"] .msg th { font-weight: 500; color: var(--text-muted); }
+      :root[data-look="cinema"] .trace .attempt .code { font-family: var(--font-mono); }
+
     </style>
     <script src="popup.js" defer></script>
   </head>

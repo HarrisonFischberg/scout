@@ -4,9 +4,9 @@ import { applyLook, cachedLook, cacheLook, DEFAULT_LOOK, defaultLook, LOOK_CACHE
 
 // Looks (owner choice 2026-10-19): Trailhead by default, five others in Settings.
 describe("looks", () => {
-  it("defaults to Trailhead and keeps the other five on offer", () => {
+  it("defaults to Trailhead and keeps the other ten on offer (five more 2026-10-26)", () => {
     expect(DEFAULT_LOOK).toBe("trailhead");
-    expect(LOOKS.map((l) => l.id)).toEqual(["trailhead", "apple", "nightops", "dealhunter", "ink", "classic"]);
+    expect(LOOKS.map((l) => l.id)).toEqual(["trailhead", "apple", "glasshouse", "aurora", "bento", "pebble", "cinema", "nightops", "dealhunter", "ink", "classic"]);
   });
 
   it("iPhone and iPad open in Pure Apple, with only \"Ask Scout\" above the starters (owner 2026-10-19)", () => {
@@ -57,6 +57,17 @@ describe("looks", () => {
       expect(html).toContain(`:root[data-look="${l.id}"] {`);
       // A dark set for every look.
       expect(html).toMatch(new RegExp(`@media \\(prefers-color-scheme: dark\\) \\{\\s*:root\\[data-look="${l.id}"\\] \\{`));
+    }
+  });
+
+  it("round-two looks have no subtitle and stay solid: no blur and nothing fixed in their CSS", () => {
+    const html = readFileSync(new URL("../../src/popup.html", import.meta.url).pathname, "utf8");
+    const start = html.indexOf("Looks, round two");
+    expect(start).toBeGreaterThan(0);
+    const css = html.slice(start, html.indexOf("</style>", start));
+    expect(css).not.toMatch(/backdrop-filter|position:\s*fixed|@keyframes/);
+    for (const id of ["glasshouse", "aurora", "bento", "pebble", "cinema"] as const) {
+      expect(LOOKS.find((l) => l.id === id)?.greeting.sub).toBe("");
     }
   });
 });
