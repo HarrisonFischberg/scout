@@ -192,7 +192,7 @@ async function applyOnPage(page: CouponPage, cart: CartApi, code: string, origin
   if (!(await page.act({ type: "type", ref: form.input.ref, text: code, clear: true })).ok) return null;
   // Some stores enable Apply only once a code is typed.
   const ready = findForm(await page.snapshot());
-  if (!ready || ready.apply.disabled) return null;
+  if (!ready?.apply || ready.apply.disabled) return null;
   if (!(await page.act({ type: "click", ref: ready.apply.ref })).ok) return null;
   for (let waited = 0; waited < PAGE_APPLY_MS; waited += POLL_MS) {
     await page.act({ type: "wait", ms: POLL_MS }).catch(() => null);
@@ -326,6 +326,7 @@ const EPS = 0.004;
 const REMOVE_FAILED_NOTE = "The store kept the earlier code on the order: I pressed its remove control, but the total did not go back, so I stopped testing there.";
 const BOX_GONE_NOTE =
   "The store kept the earlier code on the order and shows no remove button I can use safely, and its coupon box is not available while that code is on, so I stopped testing there.";
+const NO_APPLY_NOTE = "I typed a code into the coupon box, but no Apply button showed next to it, so I stopped testing there.";
 const stackedNote = (kept: string, code: string): string =>
   "The store kept " + kept + " on the order and added " + code + " on top of it, so the total now counts both codes. Codes cannot be measured one at a time here, so I stopped testing.";
 
@@ -433,7 +434,9 @@ async function pageTester(
     // Some stores enable Apply only once a code is typed.
     const ready = await look();
     const now = ready ? findForm(ready, hints) : null;
-    if (!ready || !now || now.apply.disabled) return { total: null, accepted: null, note: "The Apply button stayed disabled." };
+    // A box whose Apply never showed: no code can be tried here, so stop rather than type the rest.
+    if (ready && now && !now.apply) return { total: null, accepted: null, halt: true, note: NO_APPLY_NOTE };
+    if (!ready || !now?.apply || now.apply.disabled) return { total: null, accepted: null, note: "The Apply button stayed disabled." };
     const preTotal = totalOf(ready)?.amount ?? baseline;
     const clicked = await act({ type: "click", ref: now.apply.ref });
     if (!clicked.ok) return { total: null, accepted: null, note: "Could not press Apply: " + clicked.message };

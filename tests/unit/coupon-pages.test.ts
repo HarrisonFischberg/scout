@@ -72,14 +72,16 @@ describe("totals in any currency and format", () => {
 describe("finding the coupon box", () => {
   it("finds boxes and Apply buttons named in other languages or with an icon", () => {
     const de = snap([el("e1", "textbox", "Gutscheincode"), el("e2", "button", "Einlösen")]);
-    expect(findForm(de)?.apply.ref).toBe("e2");
+    expect(findForm(de)?.apply?.ref).toBe("e2");
     const icon = snap([el("e1", "textbox", "Promo code"), el("e2", "button", "→"), el("e3", "button", "Place order")]);
-    expect(findForm(icon)?.apply.ref).toBe("e2");
+    expect(findForm(icon)?.apply?.ref).toBe("e2");
   });
 
   it("never picks an order, payment, or remove control as Apply", () => {
     const s = snap([el("e1", "textbox", "Promo code"), el("e2", "button", "Pay"), el("e3", "button", "Remove")]);
-    expect(findForm(s)).toBeNull();
+    expect(findForm(s)?.input.ref).toBe("e1");
+    expect(findForm(s)?.apply).toBeUndefined();
+    expect(findForm(snap([el("e1", "textbox", "Enter code"), el("e2", "button", "Pay")]))).toBeNull();
   });
 
   it("finds the toggle that shows a hidden box, never a link that leaves the page or an order button", () => {
@@ -143,6 +145,12 @@ interface StoreOpts {
   boxGoneWhenApplied?: boolean;
   inputName?: string;
   applyName?: string;
+  /** Apply shows only once a code is typed (Stripe Checkout). */
+  applyOnceTyped?: boolean;
+  /** No Apply button ever shows. */
+  noApply?: boolean;
+  /** Text around the totals, in place of "Subtotal" and "Total". */
+  labels?: { subtotal: string; total: string };
 }
 
 function store(o: StoreOpts): CouponPage & { applied: string[]; clicks: string[]; ordered: number } {
@@ -165,12 +173,16 @@ function store(o: StoreOpts): CouponPage & { applied: string[]; clicks: string[]
       }
       const els: SnapElement[] = [];
       if (!open) els.push(el("t1", "button", "Have a promo code?", { expanded: false }));
-      if (open && !(o.boxGoneWhenApplied && s.applied.length)) els.push(el("i1", "textbox", o.inputName ?? "Discount code"), el("a1", "button", o.applyName ?? "Apply"));
+      if (open && !(o.boxGoneWhenApplied && s.applied.length)) {
+        els.push(el("i1", "textbox", o.inputName ?? "Discount code"));
+        if (!o.noApply && (!o.applyOnceTyped || typed)) els.push(el("a1", "button", o.applyName ?? "Apply"));
+      }
       if (o.removable || o.brokenRemove) s.applied.forEach((c, i) => els.push(el("r" + (i + 1), "button", "Remove " + c)));
       els.push(el("p1", "button", "Place order"));
       // Like real stores, each applied code is listed in the order summary.
       const lines = s.applied.map((c) => "Discount (" + c + ")");
-      return snap(els, ["Subtotal " + fmt(base), ...lines, msg, "Total " + fmt(shown)].filter(Boolean).join("\n"));
+      const words = o.labels ?? { subtotal: "Subtotal", total: "Total" };
+      return snap(els, [words.subtotal + " " + fmt(base), ...lines, msg, words.total + " " + fmt(shown)].filter(Boolean).join("\n"));
     },
     async act(a: Action): Promise<ActionResult> {
       const ok = { ok: true, action: a.type, message: "ok" };
@@ -289,6 +301,33 @@ describe("the page path on different kinds of checkout", () => {
     expect(out.best?.code).toBe("SAVE20");
     expect(out.applied).toBe(true);
     expect(p.applied).toEqual(["SAVE20"]);
+    expect(p.ordered).toBe(0);
+  });
+
+  // Owner report 2026-10-26, checkout.stripe.com: "Add promotion code" is a
+  // plain box, and Stripe draws its Apply button only once a code is typed.
+  it("tests codes on a Stripe Checkout box whose Apply shows only after typing", async () => {
+    const p = store({
+      pct: { SAVE10: 10 },
+      base: 45,
+      message: true,
+      applyOnceTyped: true,
+      inputName: "Add promotion code",
+      labels: { subtotal: "Subtotal", total: "Total due today" },
+    });
+    const out = await runCouponSearch({ page: p, codes: codes("NOPE", "SAVE10"), settleMs: 300 });
+    expect(out.status).toBe("done");
+    expect(out.best?.code).toBe("SAVE10");
+    expect(out.attempts.map((a) => a.total)).toEqual([45, 40.5]);
+    expect(p.ordered).toBe(0);
+  });
+
+  it("stops after one code when a box never shows an Apply button", async () => {
+    const p = store({ pct: { SAVE10: 10 }, noApply: true, inputName: "Promo code" });
+    const out = await runCouponSearch({ page: p, codes: codes("NOPE", "SAVE10"), settleMs: 300 });
+    expect(out.attempts).toEqual([]);
+    expect(out.untested).toBe(2);
+    expect(out.note).toBe("I typed a code into the coupon box, but no Apply button showed next to it, so I stopped testing there.");
     expect(p.ordered).toBe(0);
   });
 
