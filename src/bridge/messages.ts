@@ -297,10 +297,12 @@ export const WORKER_EVENTS = {
       input_tokens: "number",
       output_tokens: "number",
       web_searches: "number",
+      cache_write_tokens: "number",
+      cache_read_tokens: "number",
     },
     optional: [
       "delta", "url", "title", "request_id", "name", "input", "status", "text", "message", "code", "stopped",
-      "input_tokens", "output_tokens", "web_searches",
+      "input_tokens", "output_tokens", "web_searches", "cache_write_tokens", "cache_read_tokens",
     ],
   },
   /** The worker no longer knows this answer (it restarted): nothing more will come. */

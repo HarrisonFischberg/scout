@@ -49,12 +49,22 @@ export interface ChatRequest {
   webFetch?: boolean;
   /** Max page fetches per request (Anthropic `max_uses`). Default: `webSearchMaxUses`. */
   webFetchMaxUses?: number;
+  /**
+   * Anthropic prompt caching (top-level `cache_control`): later requests of
+   * the same answer (tool rounds, resumed turns) read the prompt back at a
+   * fraction of the input price. OpenAI caches on its own; ignored there.
+   */
+  cache?: boolean;
   signal?: AbortSignal;
 }
 
 export interface Usage {
+  /** Every input token, including the cache writes and reads below. */
   inputTokens: number;
   outputTokens: number;
+  /** Of inputTokens: written to / read from Anthropic's prompt cache. Absent when none. */
+  cacheWriteTokens?: number;
+  cacheReadTokens?: number;
   /** Server-side web searches, billed per search (Anthropic). Absent when none ran. */
   webSearches?: number;
 }

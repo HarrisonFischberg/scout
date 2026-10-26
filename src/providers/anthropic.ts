@@ -77,6 +77,8 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
       let inputTokens = 0;
       let outputTokens = 0;
       let webSearches = 0;
+      let cacheWriteTokens = 0;
+      let cacheReadTokens = 0;
       // Earlier parts of a paused turn, sent back so the server resumes it.
       let paused: RawBlock[] = [];
       let container: string | undefined;
@@ -92,6 +94,7 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
           tools: tools.length ? tools : undefined,
           output_config: req.effort ? { effort: req.effort } : undefined,
           container: paused.length ? container : undefined,
+          cache_control: req.cache ? { type: "ephemeral" } : undefined,
         };
         let res: Response;
         try {
@@ -128,11 +131,18 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
         for await (const raw of readSse(res.body)) {
           const ev = raw as Record<string, any>;
           switch (ev.type) {
-            case "message_start":
-              inputTokens += ev.message?.usage?.input_tokens ?? 0;
+            case "message_start": {
+              // input_tokens is only the part after the cache; Usage.inputTokens counts all of it.
+              const u = ev.message?.usage ?? {};
+              const write = u.cache_creation_input_tokens ?? 0;
+              const read = u.cache_read_input_tokens ?? 0;
+              inputTokens += (u.input_tokens ?? 0) + write + read;
+              cacheWriteTokens += write;
+              cacheReadTokens += read;
               respOut = ev.message?.usage?.output_tokens ?? 0;
               if (typeof ev.message?.container?.id === "string") container = ev.message.container.id;
               break;
+            }
             case "content_block_start": {
               const cb = ev.content_block ?? {};
               if (cb.type === "web_fetch_tool_result") {
@@ -239,7 +249,16 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
         }
         paused = [...paused, ...resumable(content)];
       }
-      yield { type: "usage", usage: { inputTokens, outputTokens, ...(webSearches ? { webSearches } : {}) } };
+      yield {
+        type: "usage",
+        usage: {
+          inputTokens,
+          outputTokens,
+          ...(webSearches ? { webSearches } : {}),
+          ...(cacheWriteTokens ? { cacheWriteTokens } : {}),
+          ...(cacheReadTokens ? { cacheReadTokens } : {}),
+        },
+      };
       yield { type: "done" };
     },
   };

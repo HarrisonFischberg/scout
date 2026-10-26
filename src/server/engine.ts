@@ -239,6 +239,8 @@ export class ScoutServer {
           ...(searchesLeft > 0 ? { webSearch: true, webSearchMaxUses: searchesLeft } : {}),
           maxTokens: CHAT_MAX_TOKENS,
           ...(req.effort ? { effort: req.effort } : {}),
+          // Tool rounds and resumed turns resend this whole prompt (page included) seconds later.
+          cache: true,
           signal,
         })) {
           if (ev.type === "text") {
@@ -255,6 +257,8 @@ export class ScoutServer {
             usage.inputTokens += ev.usage.inputTokens;
             usage.outputTokens += ev.usage.outputTokens;
             if (ev.usage.webSearches) usage.webSearches = (usage.webSearches ?? 0) + ev.usage.webSearches;
+            if (ev.usage.cacheWriteTokens) usage.cacheWriteTokens = (usage.cacheWriteTokens ?? 0) + ev.usage.cacheWriteTokens;
+            if (ev.usage.cacheReadTokens) usage.cacheReadTokens = (usage.cacheReadTokens ?? 0) + ev.usage.cacheReadTokens;
           }
         }
         if (!calls.length || signal.aborted) break;

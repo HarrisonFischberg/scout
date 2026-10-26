@@ -170,6 +170,23 @@ describe("web search (T019)", () => {
     expect(ev).toContainEqual({ type: "usage", usage: { inputTokens: 5, outputTokens: 3, webSearches: 2 } });
   });
 
+  it("anthropic: asks for prompt caching only when told to, and counts cache tokens as input", async () => {
+    const bodies: string[] = [];
+    const f: FetchLike = async (_u, init) => {
+      bodies.push(String(init.body));
+      return sse([
+        { type: "message_start", message: { usage: { input_tokens: 10, cache_creation_input_tokens: 300, cache_read_input_tokens: 2000, output_tokens: 1 } } },
+        { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 3 } },
+      ]);
+    };
+    const p = createProvider("anthropic", { apiKey: "k", fetch: f });
+    const ev = await collect(p.stream({ ...req, cache: true }));
+    expect(JSON.parse(bodies[0]!).cache_control).toEqual({ type: "ephemeral" });
+    expect(ev).toContainEqual({ type: "usage", usage: { inputTokens: 2310, outputTokens: 3, cacheWriteTokens: 300, cacheReadTokens: 2000 } });
+    await collect(p.stream(req));
+    expect(JSON.parse(bodies[1]!)).not.toHaveProperty("cache_control");
+  });
+
   it("openai: sends web_search and emits url citations as sources", async () => {
     let body = "";
     const f: FetchLike = async (_u, init) => {

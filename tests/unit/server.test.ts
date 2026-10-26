@@ -220,6 +220,25 @@ describe("ScoutServer", () => {
     expect(provider.seen[1]?.tools).toBeUndefined();
   });
 
+  it("caches the prompt for the answer's later rounds and adds up the cache tokens", async () => {
+    const call: StreamEvent = { type: "tool_call", id: "t", name: "read_page", input: {} };
+    const provider = scripted([
+      [call, { type: "usage", usage: { inputTokens: 1000, outputTokens: 5, cacheWriteTokens: 990 } }],
+      [text("ok"), { type: "usage", usage: { inputTokens: 1100, outputTokens: 5, cacheWriteTokens: 100, cacheReadTokens: 990 } }],
+    ]);
+    const { s } = server(provider);
+    s.start(REQ);
+    s.subscribe("m1", 0, (n) => {
+      if (n.event.kind === "tool_request") s.toolResult("m1", n.event.request_id, { status: "ok", text: "x" });
+    });
+    const events = await collect(s, "m1");
+    expect(provider.seen.map((r) => r.cache)).toEqual([true, true]);
+    expect(events.find((n) => n.event.kind === "usage")?.event).toEqual({
+      kind: "usage",
+      usage: { inputTokens: 2100, outputTokens: 10, cacheWriteTokens: 1090, cacheReadTokens: 990 },
+    });
+  });
+
   it("times out a tool request the panel never answers and tells the model", async () => {
     const provider = scripted([[{ type: "tool_call", id: "t", name: "read_page", input: {} }], [text("Could not read it.")]]);
     const { s } = server(provider, { toolTimeoutMs: 10 });
@@ -310,7 +329,7 @@ describe("protocol wire format", () => {
       { kind: "citation", url: "https://a.test", title: "A" },
       { kind: "tool_request", request_id: "r", name: "read_page", input: { tab_id: 1 } },
       { kind: "tool_done", request_id: "r", status: "blocked-by-user" },
-      { kind: "usage", usage: { inputTokens: 1, outputTokens: 2, webSearches: 1 } },
+      { kind: "usage", usage: { inputTokens: 1, outputTokens: 2, webSearches: 1, cacheWriteTokens: 3, cacheReadTokens: 4 } },
       { kind: "done", text: "hi", stopped: true },
       { kind: "error", code: "interrupted", message: "x" },
     ];

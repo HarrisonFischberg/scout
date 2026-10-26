@@ -7,24 +7,27 @@ export interface ModelPrice {
   outputPerMTok: number;
   /** Higher prices for the whole request when its prompt is over `overInputTokens`. */
   longPrompt?: { overInputTokens: number; inputPerMTok: number; outputPerMTok: number };
+  /** Prompt-cache hits as a share of the input price, when not the standard 0.1x. */
+  cacheRead?: number;
 }
 
 export const PRICE_TABLE_DATE = "2026-10-16";
 
 // A model absent from this table has no recorded source, so no estimate is shown.
-// https://platform.claude.com/docs/en/about-claude/pricing ("Model pricing"), fetched 2026-10-16.
+// https://platform.claude.com/docs/en/about-claude/pricing ("Model pricing"), fetched 2026-10-16;
+// cache write and hit prices from the same table, fetched 2026-10-26.
 export const PRICES: Record<string, ModelPrice> = {
-  "claude-fable-5-1": { inputPerMTok: 10, outputPerMTok: 50 },
+  "claude-fable-5-1": { inputPerMTok: 10, outputPerMTok: 50, cacheRead: 0.025 },
   "claude-fable-5": { inputPerMTok: 10, outputPerMTok: 50 },
-  "claude-mythos-5-1": { inputPerMTok: 10, outputPerMTok: 50 },
+  "claude-mythos-5-1": { inputPerMTok: 10, outputPerMTok: 50, cacheRead: 0.025 },
   "claude-mythos-5": { inputPerMTok: 10, outputPerMTok: 50 },
-  "claude-opus-5-5": { inputPerMTok: 4, outputPerMTok: 20 },
+  "claude-opus-5-5": { inputPerMTok: 4, outputPerMTok: 20, cacheRead: 0.05 },
   "claude-opus-5": { inputPerMTok: 5, outputPerMTok: 25 },
   "claude-opus-4-8": { inputPerMTok: 5, outputPerMTok: 25 },
   "claude-opus-4-7": { inputPerMTok: 5, outputPerMTok: 25 },
   "claude-opus-4-6": { inputPerMTok: 5, outputPerMTok: 25 },
   "claude-opus-4-5": { inputPerMTok: 5, outputPerMTok: 25 },
-  "claude-sonnet-5-5": { inputPerMTok: 2, outputPerMTok: 10 },
+  "claude-sonnet-5-5": { inputPerMTok: 2, outputPerMTok: 10, cacheRead: 0.05 },
   "claude-sonnet-5": { inputPerMTok: 2, outputPerMTok: 10 },
   "claude-sonnet-4-6": { inputPerMTok: 3, outputPerMTok: 15 },
   "claude-sonnet-4-5": { inputPerMTok: 3, outputPerMTok: 15 },
@@ -48,8 +51,12 @@ export function estimateCostUsd(model: string, usage: Usage): number | null {
   const base = priceFor(model);
   if (!base) return null;
   const price = base.longPrompt && usage.inputTokens > base.longPrompt.overInputTokens ? base.longPrompt : base;
+  // inputTokens includes the cache tokens: writes bill at 1.25x input (5-minute cache), hits at cacheRead.
+  const write = usage.cacheWriteTokens ?? 0;
+  const read = usage.cacheReadTokens ?? 0;
+  const input = usage.inputTokens - write - read + write * 1.25 + read * (base.cacheRead ?? 0.1);
   return (
-    (usage.inputTokens * price.inputPerMTok + usage.outputTokens * price.outputPerMTok) / 1_000_000 +
+    (input * price.inputPerMTok + usage.outputTokens * price.outputPerMTok) / 1_000_000 +
     (usage.webSearches ?? 0) * WEB_SEARCH_USD
   );
 }

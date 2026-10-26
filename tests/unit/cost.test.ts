@@ -22,6 +22,15 @@ describe("cost", () => {
     expect(estimateCostUsd("claude-haiku-5-5", { inputTokens: 100_000, outputTokens: 0 })).toBeCloseTo(0.01, 10);
     expect(estimateCostUsd("claude-haiku-5-5", { inputTokens: 100_001, outputTokens: 1_000_000 })).toBeCloseTo(0.0500005 + 2.5, 10);
   });
+  it("prices prompt-cache writes at 1.25x input and hits at the model's cache price", () => {
+    const u = { inputTokens: 3_000_000, outputTokens: 0, cacheWriteTokens: 1_000_000, cacheReadTokens: 1_000_000 };
+    expect(estimateCostUsd("claude-sonnet-5", u)).toBeCloseTo(2 + 2.5 + 0.2, 10);
+    expect(estimateCostUsd("claude-sonnet-5-5", u)).toBeCloseTo(2 + 2.5 + 0.1, 10);
+    expect(estimateCostUsd("claude-opus-5-5", u)).toBeCloseTo(4 + 5 + 0.2, 10);
+    expect(estimateCostUsd("claude-fable-5-1", u)).toBeCloseTo(10 + 12.5 + 0.25, 10);
+    // Over 100,000 tokens (cache tokens count) Haiku 5.5 uses its long-prompt row for all three.
+    expect(estimateCostUsd("claude-haiku-5-5", u)).toBeCloseTo(0.5 + 0.625 + 0.05, 10);
+  });
   it("adds $10 per 1,000 web searches", () => {
     expect(estimateCostUsd("claude-sonnet-5-5", { inputTokens: 0, outputTokens: 0, webSearches: 3 })).toBeCloseTo(0.03, 10);
   });

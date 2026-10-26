@@ -49,6 +49,8 @@ export function toWire(message_id: string, n: NumberedEvent): Record<string, unk
         input_tokens: e.usage.inputTokens,
         output_tokens: e.usage.outputTokens,
         ...(e.usage.webSearches ? { web_searches: e.usage.webSearches } : {}),
+        ...(e.usage.cacheWriteTokens ? { cache_write_tokens: e.usage.cacheWriteTokens } : {}),
+        ...(e.usage.cacheReadTokens ? { cache_read_tokens: e.usage.cacheReadTokens } : {}),
       };
     case "done":
       return { ...base, text: e.text, ...(e.stopped ? { stopped: true } : {}) };
@@ -85,7 +87,13 @@ export function fromWire(p: Record<string, unknown>): { message_id: string; seq:
     case "usage":
       event = {
         kind: "usage",
-        usage: { inputTokens: n("input_tokens"), outputTokens: n("output_tokens"), ...(n("web_searches") ? { webSearches: n("web_searches") } : {}) },
+        usage: {
+          inputTokens: n("input_tokens"),
+          outputTokens: n("output_tokens"),
+          ...(n("web_searches") ? { webSearches: n("web_searches") } : {}),
+          ...(n("cache_write_tokens") ? { cacheWriteTokens: n("cache_write_tokens") } : {}),
+          ...(n("cache_read_tokens") ? { cacheReadTokens: n("cache_read_tokens") } : {}),
+        },
       };
       break;
     case "done":
