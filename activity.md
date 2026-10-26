@@ -2131,3 +2131,9 @@ Owner after #79: "it brings up the keyboard but doesnt activate the microphone".
 - Evidence: `npm test` 641/641, typecheck, lint, build; `tests/e2e/look.spec.ts` 31/31 on Chromium (WebKit is not installed in the cloud container). Needs a look on a real Mac and iPhone.
 - Follow-up (owner, decision card 2026-10-26: "Glasshouse everywhere"): Glasshouse is now the default on Mac, iPhone and iPad (`DEFAULT_LOOK`, `defaultLook`, `popup.html`); a saved look is kept. The setup app takes the Glasshouse colors and SF Pro (was SF Rounded), a plain teal truck badge, and the current step's one action (Open Safari Extension Settings on Mac, Open Safari on iPhone) moves into a bottom bar: `.buttonStyle(.glassProminent)` on iOS/macOS 26, the accent button on a material capsule before that (`GlassActionBar` in `SetupComponents.swift`). Not compiled here (no Xcode); needs the Mac build, XCTest UI audit, and a look on both devices.
 - Evidence: `npm test` 641/641, typecheck, lint, `npm run check:release`; full Chromium e2e 31 failures, the same set as `main` minus one look test this change fixed (`look.spec.ts` 31/31).
+
+## 2026-10-26: five looks removed
+
+- Owner request: remove Ink & Paper, Deal Hunter, Aurora, Classic and Trailhead. Settings › Look now offers six: Glasshouse (default), Pure Apple, Bento, Pebble, Cinema, Night Ops.
+- Their CSS is gone from `src/popup.html`; the original Classic styles stay as the shared base every look builds on. Anyone with a removed look saved (or cached) opens in Glasshouse, which is checked in Settings (`parseLook` treats it as unknown). Also fixed a selector from the previous PR that kept Cinema's starter cards from getting their border. README, App Store shot list and the App Store capture script now name Glasshouse.
+- Evidence: `npm test` 642/642, typecheck, lint, build; `tests/e2e/look.spec.ts` 22/22 on Chromium. The setup app is unchanged (already Glasshouse).
