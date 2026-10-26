@@ -36,3 +36,30 @@ describe("key problems in chat errors", () => {
     expect(isKeyProblem("Something went wrong. Try again.")).toBe(false);
   });
 });
+
+describe("Apple model as a chat provider", () => {
+  it("cuts a long page to fit but keeps the question at the end", async () => {
+    const { applePrompt, APPLE_PROMPT_CHARS } = await import("../../src/providers/apple");
+    const long = "x".repeat(50_000) + "\n\nUser question: what does it cost?";
+    const p = applePrompt([{ role: "user", content: long }]);
+    expect(p.length).toBeLessThanOrEqual(APPLE_PROMPT_CHARS);
+    expect(p).toContain("what does it cost?");
+    expect(p).toContain("shortened to fit");
+  });
+
+  it("streams one reply, and retries once with half the page when it is too long", async () => {
+    const { createApple } = await import("../../src/providers/apple");
+    const prompts: string[] = [];
+    const client = createApple(async (m) => {
+      const msg = m as { prompt: string };
+      prompts.push(msg.prompt);
+      return prompts.length === 1 ? { ok: false, error: "too_long" } : { ok: true, text: "Short answer." };
+    });
+    const events = [];
+    for await (const ev of client.stream({ model: "apple-on-device", system: "Be brief.", messages: [{ role: "user", content: "y".repeat(20_000) }], maxTokens: 2000 })) events.push(ev);
+    expect(events[0]).toEqual({ type: "text", delta: "Short answer." });
+    expect(events[events.length - 1]).toEqual({ type: "done" });
+    expect(prompts).toHaveLength(2);
+    expect(prompts[1]!.length).toBeLessThan(prompts[0]!.length);
+  });
+});

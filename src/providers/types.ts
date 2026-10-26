@@ -89,7 +89,8 @@ export type StreamEvent =
 export type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
 export interface ProviderClient {
-  readonly id: ProviderId;
+  /** "apple": Apple's on-device model (src/providers/apple.ts), used when no key is saved. */
+  readonly id: ProviderId | "apple";
   stream(req: ChatRequest): AsyncGenerator<StreamEvent, void, void>;
 }
 

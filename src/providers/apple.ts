@@ -1,8 +1,15 @@
 // Apple's on-device model over native messaging (owner's choice 2026-10-25:
 // Scout should work without an API key). Safari on iOS 26 / macOS 26 with
 // Apple Intelligence only. Nothing leaves the device and nothing is billed.
-// First version: one reply per request (no streaming, no tools, no web search).
+// One reply per request (no streaming, no tools, no web search). The model's
+// context is about 4,000 tokens, so long prompts are cut to fit.
 import type { NativeSend } from "../keychain";
+import { textOf, type ChatMessage, type ChatRequest, type ProviderClient, type StreamEvent } from "./types";
+
+/** The model id used when Scout runs on Apple's on-device model (no key). */
+export const APPLE_MODEL = "apple-on-device";
+/** Shown on the model pill. */
+export const APPLE_MODEL_LABEL = "Apple · on device";
 
 export type AppleUnavailable = "device_not_eligible" | "not_enabled" | "model_not_ready" | "os_too_old" | "not_safari" | "unknown";
 
@@ -32,6 +39,10 @@ export async function appleStatus(send: NativeSend): Promise<AppleStatus> {
 }
 
 export class AppleModelError extends Error {
+  /** Safe to show, like ProviderError.userMessage. */
+  get userMessage(): string {
+    return this.message;
+  }
   constructor(readonly code: string) {
     super(
       code === "too_long"
@@ -55,4 +66,49 @@ export async function appleGenerate(send: NativeSend, req: { system?: string; pr
   }
   if (!r?.ok || typeof r.text !== "string") throw new AppleModelError(r?.error ?? "generation_failed");
   return r.text;
+}
+
+// Budgets in characters (about 4 per token): instructions + prompt + reply
+// stay under the model's ~4,000-token context.
+export const APPLE_SYSTEM_CHARS = 2_000;
+export const APPLE_PROMPT_CHARS = 8_000;
+const APPLE_MAX_TOKENS = 700;
+
+/** Keeps the start and the end (where the question is) of a long text. */
+export function fitText(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const tail = Math.min(1_200, Math.floor(max / 3));
+  return text.slice(0, max - tail - 30) + "\n[… shortened to fit …]\n" + text.slice(text.length - tail);
+}
+
+/** The conversation as one prompt: earlier turns briefly, the newest message in full (cut to fit). */
+export function applePrompt(messages: ChatMessage[], max = APPLE_PROMPT_CHARS): string {
+  const last = messages[messages.length - 1];
+  const earlier = messages.slice(0, -1).slice(-4).map((m) => (m.role === "user" ? "User: " : "Assistant: ") + fitText(textOf(m.content), 600));
+  const head = earlier.length ? "Earlier in this conversation:\n" + earlier.join("\n") + "\n\n" : "";
+  const room = Math.max(1_000, max - head.length);
+  return head + fitText(last ? textOf(last.content) : "", room);
+}
+
+/** A provider client for the chat engine, over native messaging to Apple's model. */
+export function createApple(send: NativeSend): ProviderClient {
+  return {
+    id: "apple",
+    async *stream(req: ChatRequest): AsyncGenerator<StreamEvent, void, void> {
+      const system = req.system ? fitText(req.system, APPLE_SYSTEM_CHARS) : undefined;
+      const maxTokens = Math.min(req.maxTokens, APPLE_MAX_TOKENS);
+      let text: string;
+      try {
+        text = await appleGenerate(send, { system, prompt: applePrompt(req.messages), maxTokens });
+      } catch (err) {
+        // Too long even after cutting: try once more with half the page.
+        if (!(err instanceof AppleModelError) || err.code !== "too_long") throw err;
+        text = await appleGenerate(send, { system, prompt: applePrompt(req.messages, APPLE_PROMPT_CHARS / 2), maxTokens });
+      }
+      if (req.signal?.aborted) return;
+      yield { type: "text", delta: text };
+      yield { type: "stop", reason: "end_turn" };
+      yield { type: "done" };
+    },
+  };
 }

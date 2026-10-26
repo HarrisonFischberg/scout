@@ -31,7 +31,9 @@ struct ContentView: View {
                     centered {
                         SuccessView(
                             title: "Scout is ready",
-                            message: "Scout is on in Safari and your key is saved in Keychain.",
+                            message: status.progress.isOptional(.key) && status.progress.hasKey != true
+                                ? "Scout is on in Safari and answers with Apple Intelligence on this device. No key needed."
+                                : "Scout is on in Safari and your key is saved in Keychain.",
                             nextStepTitle: "Try it now",
                             nextStepDetail: "Open any page in Safari, tap the menu in the address bar, choose Scout, then tap Summarize this page.",
                             primaryLabel: "Open Safari",
@@ -76,20 +78,25 @@ struct ContentView: View {
         }
     }
 
-    // The two real checks behind "Scout is ready". Each re-reads the Keychain.
+    // The two real checks behind "Scout is ready". Each re-reads the device.
     private var checks: [StagedProgressView.Stage] {
-        [
-            .init(running: "Checking Scout in Safari…", done: "Scout is on in Safari",
-                  failed: "Scout hasn't opened in Safari yet") {
-                await status.refresh()
-                return status.progress.isDone(.enable)
-            },
-            .init(running: "Checking your key in Keychain…", done: "Your key is saved",
-                  failed: "No key found. Add it in Scout's Settings in Safari.") {
-                await status.refresh()
-                return status.progress.isDone(.key)
-            },
-        ]
+        let safari = StagedProgressView.Stage(running: "Checking Scout in Safari…", done: "Scout is on in Safari",
+                                              failed: "Scout hasn't opened in Safari yet") {
+            await status.refresh()
+            return status.progress.isDone(.enable)
+        }
+        // With Apple Intelligence the key is optional, so check the model instead.
+        let apple = StagedProgressView.Stage(running: "Checking Apple Intelligence…", done: "Apple Intelligence is ready",
+                                             failed: "Apple Intelligence isn't ready on this device") {
+            await status.refresh()
+            return status.progress.appleReady
+        }
+        let key = StagedProgressView.Stage(running: "Checking your key in Keychain…", done: "Your key is saved",
+                                           failed: "No key found. Add it in Scout's Settings in Safari.") {
+            await status.refresh()
+            return status.progress.isDone(.key)
+        }
+        return [safari, status.progress.isOptional(.key) ? apple : key]
     }
 
     private func centered<V: View>(@ViewBuilder _ content: () -> V) -> some View {
