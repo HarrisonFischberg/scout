@@ -4,7 +4,12 @@
 # Xcode signed in to the Apple ID of team KTV2G3Z883 (Xcode > Settings >
 # Accounts) and the App Store Connect record for com.harrisonfischberg.Scoutai
 # already created. Uploads go to Apple: owner's approval only.
-# Build number: SCOUT_BUILD_NUMBER, default a timestamp, so every upload is higher.
+# Version: each upload gets the next short version (0.2, 0.3, ...) on both
+# platforms, so TestFlight reads "Version 0.N". The counter lives in
+# ~/.scout-testflight-number (last uploaded N) and moves on only after every
+# platform uploaded; SCOUT_VERSION_NUMBER=N overrides it. The build number stays
+# a timestamp (SCOUT_BUILD_NUMBER overrides): Apple requires each Mac build
+# number to be higher than every earlier Mac upload, so it can't restart small.
 # SCOUT_PLATFORMS="macOS iOS" (default both) picks platforms; --no-upload
 # stops after the archive.
 # On exit it unregisters the Release copies the archive leaves behind (in
@@ -16,6 +21,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 BUILD="${SCOUT_BUILD_NUMBER:-$(date -u +%Y%m%d.%H%M)}"
 UPLOAD=1; [ "${1:-}" = "--no-upload" ] && UPLOAD=0
+COUNTER="$HOME/.scout-testflight-number"
+LAST=$(cat "$COUNTER" 2>/dev/null || echo 1)
+N="${SCOUT_VERSION_NUMBER:-$((LAST + 1))}"
+case "$N" in ''|*[!0-9]*) echo "version number must be a whole number, got '$N'" >&2; exit 1 ;; esac
+VERSION="0.$N"
 # check:release leaves the debug bundle in place, so build the release
 # extension (no diagnostics code) last, and put the debug one back on exit.
 npm run --silent check:release
@@ -49,13 +59,17 @@ for platform in ${SCOUT_PLATFORMS:-macOS iOS}; do
     *) echo "unknown platform $platform" >&2; exit 1 ;;
   esac
   archive="build/archives/Scout-$platform-$BUILD.xcarchive"
-  echo "archiving $platform build $BUILD"
+  echo "archiving $platform version $VERSION build $BUILD"
   xcodebuild -project apple/SafariScout.xcodeproj -scheme "Scout for Safari ($platform)" \
     -configuration Release -destination "$dest" -archivePath "$archive" \
-    -allowProvisioningUpdates CURRENT_PROJECT_VERSION="$BUILD" archive 2>&1 | grep -E ' error:|ARCHIVE'
+    -allowProvisioningUpdates MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" archive 2>&1 | grep -E ' error:|ARCHIVE'
   if [ "$UPLOAD" = 1 ]; then
-    echo "uploading $platform build $BUILD"
+    echo "uploading $platform version $VERSION build $BUILD"
     xcodebuild -exportArchive -archivePath "$archive" -exportPath "build/archives/export-$platform-$BUILD" \
       -exportOptionsPlist scripts/ExportOptions-testflight.plist -allowProvisioningUpdates 2>&1 | grep -E ' error:|EXPORT|Upload'
   fi
 done
+if [ "$UPLOAD" = 1 ]; then
+  echo "$N" > "$COUNTER"
+  echo "uploaded version $VERSION (build $BUILD); TestFlight shows it as Version $VERSION"
+fi
