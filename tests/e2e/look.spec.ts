@@ -2,8 +2,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { withWorker } from "./worker";
 
-// Looks (owner choice 2026-10-19): the panel opens in Trailhead, Settings > Look
-// switches between the six looks at once, the choice is kept, and each look
+// Looks (owner choice 2026-10-19; Glasshouse everywhere 2026-10-26): the panel opens in Glasshouse, Settings > Look
+// switches between the eleven looks at once, the choice is kept, and each look
 // passes the WCAG 2.2 AA rules in light and dark. Stubbed browser APIs,
 // synthetic data, no network.
 async function openPopup(page: Page, data: Record<string, unknown> = {}): Promise<void> {
@@ -57,10 +57,10 @@ async function openPopup(page: Page, data: Record<string, unknown> = {}): Promis
 
 const look = (page: Page) => page.evaluate(() => document.documentElement.dataset.look);
 
-test("opens in Trailhead, with its greeting and only the two starters", async ({ page }) => {
+test("opens in Glasshouse, with its greeting and only the two starters", async ({ page }) => {
   await openPopup(page);
-  expect(await look(page)).toBe("trailhead");
-  await expect(page.locator("#greeting")).toHaveText(/Where to next\?/);
+  expect(await look(page)).toBe("glasshouse");
+  await expect(page.locator("#greeting")).toHaveText(/Ask Scout anything/);
   await expect(page.locator("#starters button:visible")).toHaveText([/Summarize this page/, /Explain the key points/]);
 });
 
@@ -68,8 +68,8 @@ test("Settings > Look switches at once, is saved, and is kept on the next open",
   await openPopup(page);
   await page.getByRole("button", { name: "Settings" }).click();
   const group = page.getByRole("group", { name: "Look" });
-  await expect(group.getByRole("radio")).toHaveCount(6);
-  await expect(group.getByRole("radio", { name: /Trailhead/ })).toBeChecked();
+  await expect(group.getByRole("radio")).toHaveCount(11);
+  await expect(group.getByRole("radio", { name: /Glasshouse/ })).toBeChecked();
   await group.getByRole("radio", { name: /Night Ops/ }).check();
   expect(await look(page)).toBe("nightops");
   await expect.poll(() => page.evaluate(() => (globalThis as unknown as { __store: Record<string, unknown> }).__store.look)).toBe("nightops");
@@ -87,22 +87,22 @@ test("a look saved on another device wins over a stale cache; Classic has no gre
   await expect(page.locator("#starters button:visible")).toHaveCount(2);
 });
 
-test("Delete all data goes back to Trailhead, now and on the next open", async ({ page }) => {
+test("Delete all data goes back to Glasshouse, now and on the next open", async ({ page }) => {
   await openPopup(page, { look: "nightops" });
   await expect.poll(() => look(page)).toBe("nightops");
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("button", { name: "Delete all data" }).click();
   await page.getByRole("button", { name: "Yes, delete all data" }).click();
   await expect(page.locator("#delete-result")).toBeVisible();
-  expect(await look(page)).toBe("trailhead");
-  await expect(page.getByRole("group", { name: "Look" }).getByRole("radio", { name: /Trailhead/ })).toBeChecked();
+  expect(await look(page)).toBe("glasshouse");
+  await expect(page.getByRole("group", { name: "Look" }).getByRole("radio", { name: /Glasshouse/ })).toBeChecked();
   await page.reload();
   await expect(page.locator("#composer")).toBeVisible();
-  await expect.poll(() => look(page)).toBe("trailhead");
+  await expect.poll(() => look(page)).toBe("glasshouse");
 });
 
 test("every look shows only Summarize and Explain, each on one line, with nothing cut off on a short iPhone sheet", async ({ browser }) => {
-  for (const id of ["trailhead", "apple", "nightops", "dealhunter", "ink", "classic"]) {
+  for (const id of ["trailhead", "apple", "glasshouse", "aurora", "bento", "pebble", "cinema", "nightops", "dealhunter", "ink", "classic"]) {
     const page = await browser.newPage({ viewport: { width: 393, height: 390 }, hasTouch: true, isMobile: true });
     await openPopup(page, { look: id });
     await expect.poll(() => look(page)).toBe(id);
@@ -125,10 +125,10 @@ test("every look shows only Summarize and Explain, each on one line, with nothin
 test.describe("iPhone", () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 393, height: 740 } });
 
-  test("opens in Pure Apple: the little car, \"Ask Scout\", and the new question-box hint", async ({ page }) => {
+  test("opens in Glasshouse: the little car, \"Ask Scout anything\", and the new question-box hint", async ({ page }) => {
     await openPopup(page);
-    expect(await look(page)).toBe("apple");
-    await expect(page.locator("#greeting")).toHaveText("Ask Scout");
+    expect(await look(page)).toBe("glasshouse");
+    await expect(page.locator("#greeting")).toHaveText("Ask Scout anything");
     await expect(page.locator("#greeting-sub")).toBeHidden();
     await expect(page.locator("#question")).toHaveAttribute("placeholder", "What can Scout help with today?");
     // The little car sits above the title; nothing else in the box but the hint.
@@ -154,30 +154,30 @@ test.describe("iPhone", () => {
     expect(await where()).toEqual(before);
   });
 
-  test("Delete all data goes back to Pure Apple, and a chosen look is kept", async ({ page }) => {
+  test("Delete all data goes back to Glasshouse, and a chosen look is kept", async ({ page }) => {
     await openPopup(page, { look: "trailhead" });
     await expect.poll(() => look(page)).toBe("trailhead");
     await page.getByRole("button", { name: "Settings" }).click();
     await page.getByRole("button", { name: "Delete all data" }).click();
     await page.getByRole("button", { name: "Yes, delete all data" }).click();
     await expect(page.locator("#delete-result")).toBeVisible();
-    expect(await look(page)).toBe("apple");
+    expect(await look(page)).toBe("glasshouse");
   });
 });
 
-test("Mac keeps Trailhead, with the same hint and the little car over the title", async ({ page }) => {
+test("Mac opens in Glasshouse too, with the same hint and the little car over the title", async ({ page }) => {
   await openPopup(page);
-  expect(await look(page)).toBe("trailhead");
+  expect(await look(page)).toBe("glasshouse");
   await expect(page.locator("#question")).toHaveAttribute("placeholder", "What can Scout help with today?");
   await expect(page.locator("#empty .scout-mark")).toBeVisible();
-  await expect(page.locator("#greeting")).toHaveText("Where to next?");
+  await expect(page.locator("#greeting")).toHaveText("Ask Scout anything");
 });
 
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 for (const scheme of ["light", "dark"] as const) {
   test.describe(`${scheme} scheme`, () => {
     test.use({ colorScheme: scheme });
-    for (const id of ["trailhead", "apple", "nightops", "dealhunter", "ink", "classic"]) {
+    for (const id of ["trailhead", "apple", "glasshouse", "aurora", "bento", "pebble", "cinema", "nightops", "dealhunter", "ink", "classic"]) {
       test(`${id}: new chat and Settings have no WCAG 2.2 AA violations`, async ({ page }) => {
         await openPopup(page, { look: id });
         await expect.poll(() => look(page)).toBe(id);

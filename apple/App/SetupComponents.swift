@@ -20,12 +20,12 @@ struct StepProgressHeader: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Text("\(done) of \(total) done")
-                    .font(.system(.subheadline, design: .rounded).weight(.heavy))
+                    .font(.system(.subheadline).weight(.heavy))
                     .foregroundStyle(Color.accentText)
                 Spacer()
                 if let note {
                     Text(note)
-                        .font(.system(.subheadline, design: .rounded))
+                        .font(.system(.subheadline))
                         .foregroundStyle(Color.trailMuted)
                 }
             }
@@ -67,7 +67,7 @@ struct StagedProgressView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(title)
-                .font(.system(.title3, design: .rounded).weight(.heavy))
+                .font(.system(.title3).weight(.heavy))
                 .foregroundStyle(Color.trailInk)
                 .accessibilityAddTraits(.isHeader)
             ForEach(Array(stages.enumerated()), id: \.element.id) { index, stage in
@@ -97,7 +97,7 @@ struct StagedProgressView: View {
             .frame(width: 24)
             .accessibilityHidden(true)
             Text(state == .done ? stage.done : state == .failed ? stage.failed : stage.running)
-                .font(.system(.body, design: .rounded))
+                .font(.system(.body))
                 .foregroundStyle(state == .waiting ? Color.trailMuted : Color.trailInk)
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: state)
@@ -154,20 +154,20 @@ struct SuccessView: View {
                 .accessibilityHidden(true)
             VStack(spacing: 8) {
                 Text(title)
-                    .font(.system(.largeTitle, design: .rounded).weight(.heavy))
+                    .font(.system(.largeTitle).weight(.heavy))
                     .foregroundStyle(Color.trailInk)
                     .accessibilityAddTraits(.isHeader)
                 Text(message)
-                    .font(.system(.body, design: .rounded))
+                    .font(.system(.body))
                     .foregroundStyle(Color.trailMuted)
             }
             .multilineTextAlignment(.center)
             VStack(alignment: .leading, spacing: 6) {
                 Text(nextStepTitle)
-                    .font(.system(.headline, design: .rounded))
+                    .font(.system(.headline))
                     .foregroundStyle(Color.trailInk)
                 Text(nextStepDetail)
-                    .font(.system(.body, design: .rounded))
+                    .font(.system(.body))
                     .foregroundStyle(Color.trailMuted)
             }
             .padding(16)
@@ -179,7 +179,7 @@ struct SuccessView: View {
                 .buttonStyle(AccentButtonStyle())
             if let secondaryLabel, let secondaryAction {
                 Button(secondaryLabel, action: secondaryAction)
-                    .font(.system(.body, design: .rounded))
+                    .font(.system(.body))
             }
         }
         .padding(24)
@@ -191,6 +191,43 @@ struct SuccessView: View {
             announce(title + ". " + message)
         }
         .sensoryFeedback(.success, trigger: shown) { _, now in now }
+    }
+}
+
+// MARK: - Glass action bar (Liquid Glass, iOS / macOS 26)
+
+/// The screen's one primary action, floating at the bottom. On iOS and macOS
+/// 26 it is a prominent Liquid Glass button (glass only on this control, the
+/// content stays solid); earlier systems get the accent button on a material
+/// capsule. The system swaps glass for an opaque fill with Reduce Transparency.
+struct GlassActionBar: View {
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        Group {
+            if #available(iOS 26, macOS 26, *) {
+                Button(action: action) {
+                    Text(title)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Color.accentOn)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glassProminent)
+                .tint(Color.accentFill)
+                .controlSize(.large)
+            } else {
+                Button(action: action) {
+                    Text(title).frame(maxWidth: .infinity)
+                }
+                .buttonStyle(AccentButtonStyle())
+                .padding(6)
+                .background(.ultraThinMaterial, in: Capsule())
+            }
+        }
+        .frame(maxWidth: 512)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 12)
     }
 }
 
