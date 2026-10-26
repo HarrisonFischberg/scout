@@ -1,6 +1,6 @@
-// Looks (owner choice 2026-10-19, UI review in impeccable-review/): Trailhead is
-// the default; the other four refresh directions and the original design stay
-// available in Settings > Look. A look is CSS on html[data-look] (src/popup.html)
+// Looks (owner choice 2026-10-19, UI review in impeccable-review/; five more and
+// Glasshouse as the default on every device 2026-10-26): the others and the
+// original design stay available in Settings > Look. A look is CSS on html[data-look] (src/popup.html)
 // plus the new-chat greeting set here.
 
 export type LookId = "trailhead" | "apple" | "glasshouse" | "aurora" | "bento" | "pebble" | "cinema" | "nightops" | "dealhunter" | "ink" | "classic";
@@ -31,11 +31,11 @@ export const LOOKS: readonly Look[] = [
   { id: "classic", swatch: ["#f5f5f7", "#0071e3", "#e8e8ed"], name: "Classic", blurb: "The original gray and blue", greeting: { title: "", sub: "" } },
 ];
 
-export const DEFAULT_LOOK: LookId = "trailhead";
+export const DEFAULT_LOOK: LookId = "glasshouse";
 
-/** The look a panel opens in before the user picks one: Pure Apple on iPhone and iPad (owner 2026-10-19), Trailhead elsewhere. */
-export function defaultLook(touch: boolean): LookId {
-  return touch ? "apple" : DEFAULT_LOOK;
+/** The look a panel opens in before the user picks one: Glasshouse on every device (owner 2026-10-26; was Pure Apple on iPhone, Trailhead on Mac). */
+export function defaultLook(_touch: boolean): LookId {
+  return DEFAULT_LOOK;
 }
 /** storage.local key (source of truth). */
 export const LOOK_KEY = "look";

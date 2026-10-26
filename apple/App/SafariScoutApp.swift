@@ -31,7 +31,7 @@ struct SafariScoutApp: App {
         WindowGroup {
             ContentView()
                 .preferredColorScheme(Self.forcedScheme)
-                // Link-style buttons use the Trailhead accent-text token, which
+                // Link-style buttons use the accent-text token, which
                 // meets WCAG AA on both canvases.
                 .tint(.accentText)
         }
@@ -55,19 +55,19 @@ extension SafariScoutApp {
 }
 
 extension Color {
-    // Trailhead look (owner choice 2026-10-19; src/popup.html, html[data-look="trailhead"]).
-    // Pairs are AA: accent-text on canvas 6.6:1 light / 10.7:1 dark, accent-on on
-    // accent-fill 6.4:1 / 9.6:1, muted on surface 8.0:1 / 10.2:1, accent-text on chip 6.0:1 / 7.2:1.
-    static let accentText = Color(light: 0x2A6034, dark: 0x9BD6A5)
-    static let accentFill = Color(light: 0x2F6B3A, dark: 0x8FD19B)
-    static let accentOn = Color(light: 0xFFFFFF, dark: 0x0F1F11)
-    static let trailCanvas = Color(light: 0xF6F1E7, dark: 0x131913)
-    static let trailSurface = Color(light: 0xFFFDF8, dark: 0x1B231C)
-    static let trailChip = Color(light: 0xE2EAD6, dark: 0x2B3A2C)
-    static let trailHairline = Color(light: 0xE3D9C5, dark: 0x2B352B)
-    static let trailInk = Color(light: 0x1F2A1F, dark: 0xEEF1E8)
-    static let trailMuted = Color(light: 0x485245, dark: 0xC9D0C1)
-    static let trailSun = Color(light: 0xF2C14E, dark: 0xE9B949)
+    // Glasshouse look (owner choice 2026-10-26; src/popup.html, html[data-look="glasshouse"]).
+    // The token names are from the earlier Trailhead look. Pairs are AA: accent-text on
+    // canvas 6.1:1 light / 11.2:1 dark, accent-on on accent-fill 5.7:1 / 8.6:1, muted on
+    // surface 10.7:1 / 10.7:1, accent-text on chip 5.6:1 / 7.3:1.
+    static let accentText = Color(light: 0x006570, dark: 0x6FD7E2)
+    static let accentFill = Color(light: 0x00727F, dark: 0x5FD0DC)
+    static let accentOn = Color(light: 0xFFFFFF, dark: 0x04282D)
+    static let trailCanvas = Color(light: 0xEEF3F6, dark: 0x0C1316)
+    static let trailSurface = Color(light: 0xFFFFFF, dark: 0x162126)
+    static let trailChip = Color(light: 0xDBECED, dark: 0x173A40)
+    static let trailHairline = Color(light: 0xD5E0E5, dark: 0x24343A)
+    static let trailInk = Color(light: 0x0F1A20, dark: 0xEAF3F5)
+    static let trailMuted = Color(light: 0x334047, dark: 0xC5D3D7)
 
     init(light: UInt32, dark: UInt32) {
         func rgb(_ v: UInt32) -> (Double, Double, Double) {

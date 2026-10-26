@@ -2,33 +2,33 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { applyLook, cachedLook, cacheLook, DEFAULT_LOOK, defaultLook, LOOK_CACHE_KEY, LOOKS, parseLook } from "../../src/panel/look";
 
-// Looks (owner choice 2026-10-19): Trailhead by default, five others in Settings.
+// Looks (owner choice 2026-10-19; Glasshouse the default everywhere 2026-10-26): ten others in Settings.
 describe("looks", () => {
-  it("defaults to Trailhead and keeps the other ten on offer (five more 2026-10-26)", () => {
-    expect(DEFAULT_LOOK).toBe("trailhead");
+  it("defaults to Glasshouse and keeps the other ten on offer (owner 2026-10-26)", () => {
+    expect(DEFAULT_LOOK).toBe("glasshouse");
     expect(LOOKS.map((l) => l.id)).toEqual(["trailhead", "apple", "glasshouse", "aurora", "bento", "pebble", "cinema", "nightops", "dealhunter", "ink", "classic"]);
   });
 
-  it("iPhone and iPad open in Pure Apple, with only \"Ask Scout\" above the starters (owner 2026-10-19)", () => {
-    expect(defaultLook(true)).toBe("apple");
-    expect(defaultLook(false)).toBe("trailhead");
+  it("iPhone, iPad and Mac all open in Glasshouse (owner 2026-10-26); a passed fallback still wins", () => {
+    expect(defaultLook(true)).toBe("glasshouse");
+    expect(defaultLook(false)).toBe("glasshouse");
     expect(parseLook(undefined, "apple")).toBe("apple");
     expect(cachedLook({ getItem: () => null }, "apple")).toBe("apple");
     expect(cachedLook({ getItem: () => { throw new Error("blocked"); } }, "apple")).toBe("apple");
-    expect(LOOKS.find((l) => l.id === "apple")?.greeting).toEqual({ title: "Ask Scout", sub: "" });
+    expect(LOOKS.find((l) => l.id === "glasshouse")?.greeting).toEqual({ title: "Ask Scout anything", sub: "" });
   });
 
   it("reads only known looks; anything else is the default", () => {
     expect(parseLook("nightops")).toBe("nightops");
-    expect(parseLook("purple")).toBe("trailhead");
-    expect(parseLook(undefined)).toBe("trailhead");
-    expect(parseLook(42)).toBe("trailhead");
+    expect(parseLook("purple")).toBe("glasshouse");
+    expect(parseLook(undefined)).toBe("glasshouse");
+    expect(parseLook(42)).toBe("glasshouse");
   });
 
   it("uses the cached look, and the default when storage throws or is missing", () => {
     expect(cachedLook({ getItem: (k) => (k === LOOK_CACHE_KEY ? "ink" : null) })).toBe("ink");
-    expect(cachedLook({ getItem: () => { throw new Error("blocked"); } })).toBe("trailhead");
-    expect(cachedLook(undefined)).toBe("trailhead");
+    expect(cachedLook({ getItem: () => { throw new Error("blocked"); } })).toBe("glasshouse");
+    expect(cachedLook(undefined)).toBe("glasshouse");
     const saved: Record<string, string> = {};
     cacheLook({ setItem: (k, v) => void (saved[k] = v) }, "apple");
     expect(saved).toEqual({ [LOOK_CACHE_KEY]: "apple" });
@@ -50,9 +50,9 @@ describe("looks", () => {
     expect(nodes.greeting.hidden).toBe(true);
   });
 
-  it("every look but Classic has its own CSS in the panel, and the panel starts in Trailhead", () => {
+  it("every look but Classic has its own CSS in the panel, and the panel starts in Glasshouse", () => {
     const html = readFileSync(new URL("../../src/popup.html", import.meta.url).pathname, "utf8");
-    expect(html).toMatch(/<html lang="en" data-look="trailhead">/);
+    expect(html).toMatch(/<html lang="en" data-look="glasshouse">/);
     for (const l of LOOKS.filter((x) => x.id !== "classic")) {
       expect(html).toContain(`:root[data-look="${l.id}"] {`);
       // A dark set for every look.
