@@ -80,7 +80,8 @@ async function openPopup(
       // Sharing with the provider already allowed (consent.spec.ts covers asking).
       storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } } } : {}), set: async () => undefined, clear: async () => undefined } },
       tabs: {
-        query: async () => [{ id: 1 }],
+        // A web page: Find coupons refuses tabs that are not http(s) (audit PR #93).
+        query: async () => [{ id: 1, url: "https://shop.test/cart", title: "Cart" }],
         sendMessage: async (_id: number, m: { type: string; action?: { type: string; ref?: string; text?: string } }) => {
           if (m.type === "scout:snapshot") {
             return {
@@ -148,6 +149,13 @@ test("coupon run tests every code found online, applies the best, never clicks o
   await expect(steps.first()).toHaveText("Searching for coupons for shop…", BATCH_WAIT);
   await expect(page.locator("#log > .coupon-step.busy .pulse")).toHaveCount(1);
   await expect(page.locator("#status")).not.toContainText("couple of minutes");
+  // Owner, 2026-10-27: after 30 codes the run asks whether to keep going or use the best so far.
+  await expect(page.locator("#coupons-more-text")).toHaveText(
+    /^Scout has tried 30 codes in [\w ]+\. Best so far: SAVE20, 20% off \(saves \$20\.00\)\. Keep looking for a better one, or use this one\?$/,
+    BATCH_WAIT,
+  );
+  await expect(page.getByRole("button", { name: "Use the best one" })).toBeVisible();
+  await page.getByRole("button", { name: "Keep going" }).click();
   const answer = page.getByRole("log").locator(".msg.assistant").last();
   // Owner decision 2026-10-19: guesses are tested after every code found online, and named as guesses.
   await expect(answer).toHaveText(
@@ -174,7 +182,8 @@ test("coupon run tests every code found online, applies the best, never clicks o
   await expect(rows.nth(0)).toContainText("SAVE10");
   await expect(rows.nth(0)).toContainText("$90.00");
   // The saving is said once, in the note.
-  await expect(rows.nth(0)).toContainText("· $90.00 · Saves $10.00. · seen on deals.test");
+  // The note and the source are separate flex items (the gap spaces them), so the text has no space between.
+  await expect(rows.nth(0)).toContainText("· $90.00 · Saves $10.00.· seen on deals.test");
   await expect(rows.nth(1)).toContainText("FREESHIP");
   await expect(rows.nth(1)).toContainText("$100.00");
   await expect(rows.nth(2)).toContainText("SAVE20");
@@ -189,7 +198,7 @@ test("coupon run tests every code found online, applies the best, never clicks o
     await expect(rows.nth(i).locator(".source")).toHaveText("· seen on deals.test");
     expect(await rows.nth(i).locator("span:not(.code):not(.source)").textContent()).not.toMatch(/·\s*$/);
   }
-  await expect(rows.nth(4)).toContainText("Not accepted by the store. · seen on deals.test");
+  await expect(rows.nth(4)).toContainText("The store said: “Invalid coupon code.”· seen on deals.test");
   // Then the guesses, store-name codes first, each labeled as a guess.
   await expect(rows.nth(5)).toContainText("SHOP");
   await expect(rows.nth(5)).toContainText("a guess");
@@ -205,6 +214,9 @@ test("no winning code: offers to search again, searches without repeating codes,
   const { asks } = await openPopup(page, { pct: {} });
   await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Find coupons" }).click();
+  // The 30-code checkpoint comes first (owner, 2026-10-27).
+  await expect(page.locator("#coupons-more-text")).toHaveText(/^Scout has tried 30 codes in [\w ]+ and none lowered your total yet\. Keep looking\?$/, BATCH_WAIT);
+  await page.getByRole("button", { name: "Keep going" }).click();
   await expect(page.locator("#coupons-more-text")).toHaveText(
     "We've tried 37 codes and none lowered your total. Would you like Scout to search the web again, in other places, for more codes to test?",
     BATCH_WAIT,
