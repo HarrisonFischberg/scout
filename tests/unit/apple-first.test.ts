@@ -1,0 +1,126 @@
+// Owner, 2026-10-27: chat asks Apple's on-device model first and uses the
+// key's model only when Apple can't answer. Scripted providers; no network.
+import { describe, expect, it } from "vitest";
+import { APPLE_MODEL, AppleModelError, appleCouldNotAnswer } from "../../src/providers/apple";
+import type { ProviderClient, StreamEvent } from "../../src/providers/types";
+import { ScoutServer, type StartRequest } from "../../src/server/engine";
+import { fromWire, toWire, type NumberedEvent } from "../../src/server/protocol";
+import { ConversationStore } from "../../src/chat/store";
+
+const REQ: StartRequest = {
+  message_id: "m1",
+  conv: "c1",
+  provider: "anthropic",
+  model: APPLE_MODEL,
+  fallback: { provider: "anthropic", model: "claude-haiku-5-5", effort: "low" },
+  question: "How much is the widget?",
+  history: [],
+  pages: [{ url: "https://shop.test/a", title: "Test shop", text: "Widget costs $10." }],
+};
+
+function client(id: "apple" | "anthropic", reply: () => StreamEvent[]): ProviderClient & { calls: number } {
+  const c = {
+    id,
+    calls: 0,
+    async *stream() {
+      c.calls++;
+      for (const ev of reply()) yield ev;
+    },
+  };
+  return c;
+}
+
+function run(apple: ProviderClient, keyed: ProviderClient, req: StartRequest = REQ) {
+  const asked: string[] = [];
+  const s = new ScoutServer({
+    provider: async (_p, model) => {
+      asked.push(model);
+      return model === APPLE_MODEL ? apple : keyed;
+    },
+    tools: async () => [],
+    save: async () => undefined,
+    now: () => 1,
+  });
+  s.start(req);
+  return new Promise<{ events: NumberedEvent[]; asked: string[] }>((resolve) => {
+    const events: NumberedEvent[] = [];
+    s.subscribe(req.message_id, 0, (n) => {
+      events.push(n);
+      if (n.event.kind === "done" || n.event.kind === "error") resolve({ events, asked });
+    });
+  });
+}
+
+const answer = (t: string): StreamEvent[] => [{ type: "text", delta: t }, { type: "done" }];
+const KEYED = (): StreamEvent[] => [{ type: "text", delta: "Claude: $10." }, { type: "usage", usage: { inputTokens: 10, outputTokens: 3 } }, { type: "done" }];
+
+describe("Apple first, key as fallback", () => {
+  it("keeps Apple's answer and never calls the key's model", async () => {
+    const keyed = client("anthropic", KEYED);
+    const { events, asked } = await run(client("apple", () => answer("It costs $10.")), keyed);
+    expect(events[events.length - 1]?.event).toEqual({ kind: "done", text: "It costs $10." });
+    expect(events.some((e) => e.event.kind === "usage")).toBe(false);
+    expect(asked).toEqual([APPLE_MODEL]);
+    expect(keyed.calls).toBe(0);
+    expect(events.some((e) => e.event.kind === "handoff")).toBe(false);
+  });
+
+  it("falls back when Apple says it can't answer", async () => {
+    const { events, asked } = await run(client("apple", () => answer("I'm sorry, but I don't have access to real-time information.")), client("anthropic", KEYED));
+    expect(events[events.length - 1]?.event).toEqual({ kind: "done", text: "Claude: $10." });
+    expect(events.some((e) => e.event.kind === "usage")).toBe(true);
+    expect(asked).toEqual([APPLE_MODEL, "claude-haiku-5-5"]);
+    // The panel swaps "Thinking…" for "Looking deeper…" before the key's model writes.
+    expect(events.map((e) => e.event.kind)).toEqual(["start", "handoff", "text", "usage", "done"]);
+  });
+
+  it("the handoff survives the port and the store", () => {
+    expect(fromWire(toWire("m1", { seq: 2, event: { kind: "handoff" } }))?.event).toEqual({ kind: "handoff" });
+    const st = new ConversationStore();
+    st.create("m");
+    st.apply("m", 1, { kind: "start" });
+    st.apply("m", 2, { kind: "handoff" });
+    expect(st.get("m")?.handoff).toBe(true);
+  });
+
+  it("falls back when Apple fails (too long, unavailable, declined)", async () => {
+    for (const code of ["too_long", "unavailable", "refused", "generation_failed"]) {
+      const apple = client("apple", () => {
+        throw new AppleModelError(code);
+      });
+      const { events } = await run(apple, client("anthropic", KEYED));
+      expect(events[events.length - 1]?.event).toEqual({ kind: "done", text: "Claude: $10." });
+    }
+  });
+
+  it("falls back on an empty reply", async () => {
+    const { events } = await run(client("apple", () => answer("  ")), client("anthropic", KEYED));
+    expect(events[events.length - 1]?.event).toEqual({ kind: "done", text: "Claude: $10." });
+  });
+
+  it("without a fallback, Apple's model is the only model (no key saved)", async () => {
+    const { fallback: _, ...noKey } = REQ;
+    const { events, asked } = await run(client("apple", () => answer("I'm sorry, I can't.")), client("anthropic", KEYED), noKey);
+    expect(events[events.length - 1]?.event).toEqual({ kind: "done", text: "I'm sorry, I can't." });
+    expect(asked).toEqual([APPLE_MODEL]);
+  });
+});
+
+describe("appleCouldNotAnswer", () => {
+  it("spots short refusals and 'no current information' replies", () => {
+    for (const t of [
+      "",
+      "I'm sorry, but I can't help with that.",
+      "I’m unable to browse the internet.",
+      "I don't have access to real-time data, so I can't tell you today's price.",
+      "As an AI, I cannot provide that.",
+      "I don't know.",
+    ]) expect(appleCouldNotAnswer(t), t).toBe(true);
+  });
+
+  it("keeps real answers, including long ones that start with an apology", () => {
+    expect(appleCouldNotAnswer("The widget costs $10 with free shipping.")).toBe(false);
+    expect(appleCouldNotAnswer("- Point one\n- Point two")).toBe(false);
+    expect(appleCouldNotAnswer("I'm sorry to hear that. " + "Here is a detailed answer. ".repeat(40))).toBe(false);
+  });
+});

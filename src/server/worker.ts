@@ -297,6 +297,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
       prefix_sources?: Array<{ url: string; title: string }>;
       scope?: "page" | "general";
       open_page?: { url: string; title: string };
+      fallback?: { provider: Provider; model: string; effort?: Effort };
     }) => {
       server.start(p);
       return { message_id: p.message_id };
