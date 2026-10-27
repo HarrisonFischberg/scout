@@ -13,7 +13,7 @@ import { ConversationStore, type StoredMessage } from "./chat/store";
 import { MAX_EXTRA_TABS, type TabInfo } from "./chat/tabs";
 import { formatMoney } from "./coupons/money";
 import { originLabel } from "./coupons/candidates";
-import { couponStatusText } from "./coupons/finder";
+import { couponStatusText, duration } from "./coupons/finder";
 import { formatCostLine } from "./cost";
 import { BUTTON_KEY, buildReport, CRASH_KEY, describeBrowser, Diagnostics, disabledRun, loadButtonFailures, loadCrashes, parseButtonFailures, parseCrashes, watchCrashes, type ButtonFailure, type Crash, type RunHandle, type RunKind } from "./diagnostics";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
@@ -2543,8 +2543,12 @@ async function main(): Promise<void> {
     followEnd();
   }
 
-  /** The question after a search whose codes saved nothing; the composer's Stop (or the overlay's) answers it "no" in the worker. */
-  function showAsk(run: CouponRun, promptId: string, tried: number): void {
+  /**
+   * The question after a search whose codes saved nothing, or at a checkpoint
+   * part way through (every 30 codes or 1.5 minutes, owner 2026-10-27). The
+   * composer's Stop (or the overlay's) answers it "no" in the worker.
+   */
+  function showAsk(run: CouponRun, promptId: string, tried: number, check?: { seconds: number; best?: string }): void {
     run.ask?.box.remove();
     const box = document.createElement("div");
     box.className = "more";
@@ -2553,19 +2557,22 @@ async function main(): Promise<void> {
     box.setAttribute("aria-labelledby", "coupons-more-text");
     const p = document.createElement("p");
     p.id = "coupons-more-text";
-    p.textContent =
-      "We've tried " + tried + " code" + (tried === 1 ? "" : "s") + " and none lowered your total. " +
-      "Would you like Scout to search the web again, in other places, for more codes to test?";
+    const codes = tried + " code" + (tried === 1 ? "" : "s");
+    p.textContent = !check
+      ? "We've tried " + codes + " and none lowered your total. Would you like Scout to search the web again, in other places, for more codes to test?"
+      : check.best
+        ? "Scout has tried " + codes + " in " + duration(check.seconds) + ". Best so far: " + check.best + ". Keep looking for a better one, or use this one?"
+        : "Scout has tried " + codes + " in " + duration(check.seconds) + " and none lowered your total yet. Keep looking?";
     const row = document.createElement("div");
     row.className = "row";
     const yesBtn = document.createElement("button");
     yesBtn.type = "button";
     yesBtn.className = "btn primary";
-    yesBtn.textContent = "Search again";
+    yesBtn.textContent = check ? "Keep going" : "Search again";
     const noBtn = document.createElement("button");
     noBtn.type = "button";
     noBtn.className = "btn";
-    noBtn.textContent = "Stop here";
+    noBtn.textContent = check?.best ? "Use the best one" : "Stop here";
     row.append(yesBtn, noBtn);
     box.append(p, row);
     // In the chat, not the folded card, so it is seen.
@@ -2710,7 +2717,7 @@ async function main(): Promise<void> {
         break;
       }
       case "ask":
-        showAsk(run, String(p.prompt_id), Number(p.tried ?? 0));
+        showAsk(run, String(p.prompt_id), Number(p.tried ?? 0), typeof p.seconds === "number" ? { seconds: p.seconds, ...(typeof p.best === "string" ? { best: p.best } : {}) } : undefined);
         break;
       case "answered": {
         const ask = run.ask;

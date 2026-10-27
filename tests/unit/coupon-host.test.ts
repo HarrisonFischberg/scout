@@ -166,6 +166,10 @@ describe("coupon host", () => {
     expect(f.posted.filter((p) => p.kind === "trace").map((p) => p.stage)).toEqual(["coupons:start-failed Error: Cannot access <url> right now"]);
     expect(failReason(new BridgeError("blocked-by-user", "Blocked"))).toBe("blocked-by-user: Blocked");
   });
+  it("a checkpoint ask (seconds, best so far) passes the panel's message check", () => {
+    expect(checkSchema(WORKER_EVENTS["coupons.event"], { tab_id: 1, seq: 1, kind: "ask", prompt_id: "more-1", tried: 30, seconds: 90, best: "SAVE20, 20% off (saves $20.00)" })).toBeNull();
+  });
+
   // Owner report 2026-10-27 (getbeefy.co): no saved permission showed as "Could not reach this page".
   it("says when the provider needs permission, not that the page could not be reached", async () => {
     const f = fake(cartPage());
