@@ -2172,3 +2172,13 @@ Owner after #79: "it brings up the keyboard but doesnt activate the microphone".
 - Cause: `attemptRow` in `src/popup.ts` ended the note span with " · " and put the link in a separate flex item, so the separator wrapped with the note. Rows that saved money also said the saving twice ("saves $10.00 · Saves $10.00.").
 - Fix: the "· " now sits in a `.source` span with the link; the extra "saves" is dropped when the note already names the amount.
 - Evidence: unit 663/663, typecheck, lint; e2e assertions added in `tests/e2e/coupons.spec.ts` (WebKit could not be downloaded in the cloud sandbox, so the e2e run is pending); Chromium render of Glasshouse, Bento, Pure Apple and Night Ops rows shows no lone "·".
+
+## 2026-10-27 — Find coupons WebKit e2e failing 0/6 on `main`
+
+- Actual: `tests/e2e/coupons.spec.ts` failed 6/6 on the Mac (WebKit) at 17bc73e and 064b3ad; reproduced 6/6 on Chromium in the cloud.
+- Cause, three test-only problems, no app regression:
+  1. Since audit PR #93 (7cca1ca), Find coupons refuses tabs whose URL is not http(s) ("Find coupons works on web pages only."). The spec's fake tab had no URL, so every run stopped at once. Broken before #112.
+  2. PR #112's 30-code checkpoint now asks "Keep going?" before the 37 test codes finish; two tests waited for the end-of-run answer and never answered it.
+  3. PR #114's new row assertions expected a space between the note and "· seen on…" (they are separate flex items spaced by CSS `gap`, so the text has none) and "Not accepted by the store." where the fake store's own "Invalid coupon code." is shown.
+- Fix: the fake tab has `https://shop.test/cart`; the two run tests answer the checkpoint with Keep going (and check its wording and "Use the best one"); the row assertions match the rendered text.
+- Evidence: coupons.spec.ts 6/6 on Chromium (was 0/6); `npm test` passes, typecheck, lint. WebKit run on the Mac pending.
