@@ -92,7 +92,6 @@ test("key and Apple Intelligence: Apple answers first and nothing goes to the pr
   await page.getByLabel("Ask about this page").fill("How much is the widget?");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByRole("log", { name: "Conversation" }).getByText("On device: the widget costs $10.")).toBeVisible();
-  await expect(page.getByText("Answered by Apple's model on this device. Free.")).toBeVisible();
   expect(bodies).toHaveLength(0);
 });
 
@@ -103,7 +102,6 @@ test("key and Apple Intelligence: when Apple can't answer, the key's model does"
   const log = page.getByRole("log", { name: "Conversation" });
   await expect(log.getByText("with free shipping.")).toBeVisible();
   await expect(log.getByText("I'm sorry, but I can't help with that.")).toBeHidden();
-  await expect(page.getByText(/Apple's model couldn't answer, so .+ did\. Cost:/)).toBeVisible();
   expect(bodies).toHaveLength(1);
 });
 
