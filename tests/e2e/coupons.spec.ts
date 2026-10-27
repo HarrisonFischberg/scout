@@ -173,6 +173,8 @@ test("coupon run tests every code found online, applies the best, never clicks o
   await expect(rows).toHaveCount(37);
   await expect(rows.nth(0)).toContainText("SAVE10");
   await expect(rows.nth(0)).toContainText("$90.00");
+  // The saving is said once, in the note.
+  await expect(rows.nth(0)).toContainText("· $90.00 · Saves $10.00. · seen on deals.test");
   await expect(rows.nth(1)).toContainText("FREESHIP");
   await expect(rows.nth(1)).toContainText("$100.00");
   await expect(rows.nth(2)).toContainText("SAVE20");
@@ -182,7 +184,12 @@ test("coupon run tests every code found online, applies the best, never clicks o
   await expect(rows.nth(4)).toContainText("BOGUS99");
   for (let i = 0; i < 5; i++) {
     await expect(rows.nth(i).getByRole("link", { name: "seen on deals.test" })).toHaveAttribute("href", "https://deals.test/codes");
+    // The "·" before the source sits with the source, never at the end of
+    // the note, where a wrapped row left it alone on a line (owner, 2026-10-27).
+    await expect(rows.nth(i).locator(".source")).toHaveText("· seen on deals.test");
+    expect(await rows.nth(i).locator("span:not(.code):not(.source)").textContent()).not.toMatch(/·\s*$/);
   }
+  await expect(rows.nth(4)).toContainText("Not accepted by the store. · seen on deals.test");
   // Then the guesses, store-name codes first, each labeled as a guess.
   await expect(rows.nth(5)).toContainText("SHOP");
   await expect(rows.nth(5)).toContainText("a guess");
