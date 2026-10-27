@@ -13,7 +13,7 @@ import { ConversationStore, type StoredMessage } from "./chat/store";
 import { MAX_EXTRA_TABS, type TabInfo } from "./chat/tabs";
 import { formatMoney } from "./coupons/money";
 import { originLabel } from "./coupons/candidates";
-import { couponStatusText } from "./coupons/finder";
+import { couponStatusText, duration } from "./coupons/finder";
 import { formatCostLine } from "./cost";
 import { BUTTON_KEY, buildReport, CRASH_KEY, describeBrowser, Diagnostics, disabledRun, loadButtonFailures, loadCrashes, parseButtonFailures, parseCrashes, watchCrashes, type ButtonFailure, type Crash, type RunHandle, type RunKind } from "./diagnostics";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
@@ -553,6 +553,7 @@ async function main(): Promise<void> {
       `Mode: ${mode() === "scout" ? "Scout mode" : "Chat"}`,
       `Settings: ${settings.provider} / ${settings.model} · effort ${settings.effort} · history ${settings.retention}`,
       `Keys saved: Anthropic ${keyed.has("anthropic") ? "yes" : "no"}, OpenAI ${keyed.has("openai") ? "yes" : "no"}`,
+      `Sharing allowed: Anthropic ${consent.has("anthropic") ? "yes" : "no"}, OpenAI ${consent.has("openai") ? "yes" : "no"}${consentSaveError ? " · not saved: " + consentSaveError : ""}`,
       `Page: ${hostOf(tab.url ?? "") ?? "none"}${tab.incognito ? " · private" : ""}`,
       `Busy: ${[activeChat && "answering", task && "Scout mode", couponRun && "Find coupons"].filter(Boolean).join(", ") || "no"}`,
       `Network: ${navigator.onLine ? "online" : "offline"} · ${navigator.language}`,
@@ -1588,10 +1589,29 @@ async function main(): Promise<void> {
    * keeps its user gesture for the site-access prompt that may follow.
    */
   async function allowSharing(p: Provider): Promise<boolean> {
-    const ok = await ensureConsent(consent, p, askConsent, Date.now());
+    let unsaved: unknown = null;
+    const ok = await ensureConsent(consent, p, askConsent, Date.now(), (err) => (unsaved = err ?? "error"));
     renderConsent();
     if (!ok) status.textContent = "Nothing was sent. Scout asks before it shares anything with " + PROVIDER_NAME[p] + ".";
+    if (ok) {
+      // The worker sends the request, so it hears the answer too, saved or not (owner report 2026-10-27).
+      await tellWorkerConsent(p, true);
+      if (unsaved !== null) {
+        consentSaveError = (unsaved instanceof Error ? unsaved.name + ": " + unsaved.message : String(unsaved)).replace(/\s+/g, " ").slice(0, 100);
+        trace("consent:save-failed " + consentSaveError);
+      }
+    }
     return ok;
+  }
+
+  /** Why Safari last failed to save a permission, for the diagnostics Setup lines. */
+  let consentSaveError = "";
+
+  function tellWorkerConsent(p: Provider, allowed: boolean): Promise<void> {
+    return request(toWorker, "consent.set", { provider: p, allowed }, { timeoutMs: 5_000 }).then(
+      () => undefined,
+      () => trace("consent:worker-unreachable"),
+    );
   }
 
   // ---------- Chat (Part 2): context, the Scout server, tools ----------
@@ -2544,8 +2564,12 @@ async function main(): Promise<void> {
     followEnd();
   }
 
-  /** The question after a search whose codes saved nothing; the composer's Stop (or the overlay's) answers it "no" in the worker. */
-  function showAsk(run: CouponRun, promptId: string, tried: number): void {
+  /**
+   * The question after a search whose codes saved nothing, or at a checkpoint
+   * part way through (every 30 codes or 1.5 minutes, owner 2026-10-27). The
+   * composer's Stop (or the overlay's) answers it "no" in the worker.
+   */
+  function showAsk(run: CouponRun, promptId: string, tried: number, check?: { seconds: number; best?: string }): void {
     run.ask?.box.remove();
     const box = document.createElement("div");
     box.className = "more";
@@ -2554,19 +2578,22 @@ async function main(): Promise<void> {
     box.setAttribute("aria-labelledby", "coupons-more-text");
     const p = document.createElement("p");
     p.id = "coupons-more-text";
-    p.textContent =
-      "We've tried " + tried + " code" + (tried === 1 ? "" : "s") + " and none lowered your total. " +
-      "Would you like Scout to search the web again, in other places, for more codes to test?";
+    const codes = tried + " code" + (tried === 1 ? "" : "s");
+    p.textContent = !check
+      ? "We've tried " + codes + " and none lowered your total. Would you like Scout to search the web again, in other places, for more codes to test?"
+      : check.best
+        ? "Scout has tried " + codes + " in " + duration(check.seconds) + ". Best so far: " + check.best + ". Keep looking for a better one, or use this one?"
+        : "Scout has tried " + codes + " in " + duration(check.seconds) + " and none lowered your total yet. Keep looking?";
     const row = document.createElement("div");
     row.className = "row";
     const yesBtn = document.createElement("button");
     yesBtn.type = "button";
     yesBtn.className = "btn primary";
-    yesBtn.textContent = "Search again";
+    yesBtn.textContent = check ? "Keep going" : "Search again";
     const noBtn = document.createElement("button");
     noBtn.type = "button";
     noBtn.className = "btn";
-    noBtn.textContent = "Stop here";
+    noBtn.textContent = check?.best ? "Use the best one" : "Stop here";
     row.append(yesBtn, noBtn);
     box.append(p, row);
     // In the chat, not the folded card, so it is seen.
@@ -2711,7 +2738,7 @@ async function main(): Promise<void> {
         break;
       }
       case "ask":
-        showAsk(run, String(p.prompt_id), Number(p.tried ?? 0));
+        showAsk(run, String(p.prompt_id), Number(p.tried ?? 0), typeof p.seconds === "number" ? { seconds: p.seconds, ...(typeof p.best === "string" ? { best: p.best } : {}) } : undefined);
         break;
       case "answered": {
         const ask = run.ask;
@@ -3207,6 +3234,7 @@ async function main(): Promise<void> {
         btn.setAttribute("aria-label", "Withdraw permission to share with " + PROVIDER_NAME[p]);
         btn.addEventListener("click", () => {
           // The gate closes at once; storage follows.
+          void tellWorkerConsent(p, false);
           void consent.withdraw(p).then(
             () => (consentStatus.textContent = "Withdrawn. Scout sends nothing to " + PROVIDER_NAME[p] + " until you allow it again."),
             () => (consentStatus.textContent = "Could not save the change. Nothing is sent to " + PROVIDER_NAME[p] + " while this panel is open. Try again."),
@@ -3813,6 +3841,7 @@ async function main(): Promise<void> {
         settings = parseSettings(undefined);
         appleFirstOn = true;
         consent.forget();
+        for (const p of ["anthropic", "openai"] as const) void tellWorkerConsent(p, false);
         diag?.forget();
         showLook(HOME_LOOK);
         clearThread();
