@@ -13,6 +13,8 @@ export type ServerEvent =
   | { kind: "start" }
   | { kind: "text"; delta: string }
   | { kind: "citation"; url: string; title?: string }
+  /** Apple's model couldn't answer and the key's model is taking over (no model named: the switch is seamless). */
+  | { kind: "handoff" }
   /** The panel runs it through the tool host and posts the result with the same request_id. */
   | { kind: "tool_request"; request_id: string; name: string; input: unknown }
   /** The server has the result; a reopened panel does not run the request again. */
@@ -34,6 +36,7 @@ export function toWire(message_id: string, n: NumberedEvent): Record<string, unk
   const base = { message_id, seq: n.seq, kind: e.kind };
   switch (e.kind) {
     case "start":
+    case "handoff":
       return base;
     case "text":
       return { ...base, delta: e.delta };
@@ -70,7 +73,8 @@ export function fromWire(p: Record<string, unknown>): { message_id: string; seq:
   let event: ServerEvent | null = null;
   switch (p.kind) {
     case "start":
-      event = { kind: "start" };
+    case "handoff":
+      event = { kind: p.kind };
       break;
     case "text":
       event = s("delta") !== undefined ? { kind: "text", delta: s("delta")! } : null;

@@ -90,6 +90,19 @@ export function applePrompt(messages: ChatMessage[], max = APPLE_PROMPT_CHARS): 
   return head + fitText(last ? textOf(last.content) : "", room);
 }
 
+// Replies that mean Apple's model could not help: a refusal, "I can't
+// browse", "I don't have current information". Only short replies count, so
+// a full answer that starts with an apology is kept.
+const COULD_NOT =
+  /\b(?:i(?:'m| am) (?:sorry|unable|not able)|i (?:can't|cannot|can not|couldn't|could not|don't know|do not know|don't have|do not have|lack)|as an ai|unable to (?:browse|access|provide|help|answer|find)|(?:no|without) (?:access to|ability to)|real-time|up-to-date information|knowledge cutoff)\b/i;
+
+/** True when Apple's reply is empty or says it can't answer, so a key's model should try instead (owner, 2026-10-27). */
+export function appleCouldNotAnswer(text: string): boolean {
+  const t = text.trim().replace(/[\u2018\u2019]/g, "'");
+  if (!t) return true;
+  return t.length < 700 && COULD_NOT.test(t.slice(0, 300));
+}
+
 /** A provider client for the chat engine, over native messaging to Apple's model. */
 export function createApple(send: NativeSend): ProviderClient {
   return {
