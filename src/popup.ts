@@ -1696,13 +1696,8 @@ async function main(): Promise<void> {
       const sources = allSources(v, m).map(({ url, title, kind }) => ({ url, ...(title ? { title } : {}), ...(kind ? { kind } : {}) }));
       turns.push({ bubble: v.bubble, entry: { at: Date.now(), question: v.question, answer: full, kind: "chat", ...(sources.length ? { sources } : {}), ...(v.shared.length ? { shared: v.shared } : {}) } });
       history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
-      status.textContent = v.appleFirst
-        ? m.usage
-          ? "Apple's model couldn't answer, so " + prettyModel(v.model) + " did. " + formatCostLine(v.model, m.usage)
-          : "Answered by Apple's model on this device. Free."
-        : m.usage
-          ? formatCostLine(v.model, m.usage)
-          : "";
+      // Apple first is seamless (owner, 2026-10-27): no line says which model answered; the debug log does.
+      status.textContent = m.usage ? formatCostLine(v.model, m.usage) : "";
       current.finish("done", "Answered (" + full.length + " characters" + (v.appleFirst ? (m.usage ? ", Apple couldn't, key's model did" : ", by Apple") : "") + ").", m.usage);
     } else if (m.status === "complete") {
       // The user pressed Stop: keep what arrived and say nothing (owner, 2026-10-17).
