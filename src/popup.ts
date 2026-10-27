@@ -261,6 +261,8 @@ async function copyDiagnostics(anchor: HTMLElement, statusNode: HTMLElement): Pr
 
 /** Settings key: "asked" once Find coupons has asked Safari for access to every site (for the browser fallback). */
 const COUPON_BROWSER_KEY = "couponBrowser";
+/** false: chat goes straight to the key's model. Absent or true: Apple's on-device model first (owner, 2026-10-27). */
+const APPLE_FIRST_KEY = "appleFirst";
 
 // Granted site origins; a provider API host is never listed as a site.
 async function listOrigins(): Promise<string[]> {
@@ -287,6 +289,8 @@ interface Session {
   mock?: boolean;
   /** No key saved: chat runs on Apple's on-device model (owner's choice 2026-10-25). */
   apple?: boolean;
+  /** Key saved: chat asks Apple's model first and uses the key's model when it can't answer (owner, 2026-10-27). */
+  appleFirst?: boolean;
 }
 
 // Display names from the provider's model list (or the built-in one), filled
@@ -430,13 +434,14 @@ async function main(): Promise<void> {
     // Private Browsing works like a regular tab (owner request 2026-10-17); its
     // chats are deleted from history when the tab closes (src/panel/state.ts).
     activeTab(),
-    storage ? storage.get([KEY_HINT_KEY, COUPON_BROWSER_KEY]).catch(() => none) : none,
+    storage ? storage.get([KEY_HINT_KEY, COUPON_BROWSER_KEY, APPLE_FIRST_KEY]).catch(() => none) : none,
   ]);
   settings = loaded;
   /** Saved with each answer to title the chat in the chats menu (host only). */
   const pageSite = STANDALONE ? undefined : siteOf(tab.url);
   /** Which providers had a saved key last time (src/panel/warm.ts). */
   let keyHint: KeyHint = parseKeyHint(early[KEY_HINT_KEY]);
+  let appleFirstOn = early[APPLE_FIRST_KEY] !== false;
   const providerFetch = gatedFetch((p) => consent.has(p), (i, init) => fetch(i, init));
 
   document.addEventListener("keydown", (e) => {
@@ -1008,6 +1013,8 @@ async function main(): Promise<void> {
   async function connect(record = true): Promise<void> {
     if (record) startRun("startup", { provider: settings.provider, model: settings.model });
     else current = disabledRun;
+    // Asked alongside the Keychain read: chat uses Apple's model with or without a key.
+    const appleCheck: Promise<AppleStatus> = TARGET === "safari" ? appleStatus(nativeSend) : Promise.resolve({ available: false, reason: "not_safari" });
     const keys = await (firstKeys ?? readKeys());
     if (firstKeys && __SCOUT_DEBUG__) trace("open:keys " + Math.round(performance.now()) + " ms");
     firstKeys = null;
@@ -1025,7 +1032,7 @@ async function main(): Promise<void> {
     if (!found) {
       // No key: chat on Apple's on-device model when this device has it. The
       // key stays an optional upgrade for stronger models, Scout mode and coupons.
-      const apple: AppleStatus = TARGET === "safari" ? await appleStatus(nativeSend) : { available: false, reason: "not_safari" };
+      const apple = await appleCheck;
       if (apple.available) {
         session = { settings: { ...settings, model: APPLE_MODEL }, provider: createApple(nativeSend), apple: true };
         noKey.hidden = true;
@@ -1060,19 +1067,24 @@ async function main(): Promise<void> {
       ...(mockUrl ? { mock: true } : {}),
       ...(effort ? { effort } : {}),
       ...(found.fellBackFrom ? { fellBackFrom: found.fellBackFrom } : {}),
+      ...(appleFirstOn && (await appleCheck).available ? { appleFirst: true } : {}),
     };
     noKey.hidden = true;
     composer.hidden = false;
     // Owner, 2026-10-17: the pill shows the short model name only; the effort is in the Models sheet.
-    const pill = prettyModel(session.settings.model);
+    // Apple first: "Apple + Haiku 5.5", the second being the backup the pill still picks.
+    const pill = (session.appleFirst ? "Apple + " : "") + prettyModel(session.settings.model);
     modelPillText.textContent = pill;
     // Accessible name starts with the visible text (WCAG 2.5.3 Label in Name).
-    modelPill.setAttribute("aria-label", pill + (effort ? ", " + EFFORT_LABEL[effort] + " effort" : "") + ", change model or effort");
+    modelPill.setAttribute(
+      "aria-label",
+      pill + (session.appleFirst ? ", Apple's on-device model first" : "") + (effort ? ", " + EFFORT_LABEL[effort] + " effort" : "") + ", change model or effort",
+    );
     // Nothing shown when ready; the line under the conversation is for each run's cost.
     status.textContent = "";
     current.finish(
       found.fellBackFrom ? "ready_fallback" : "ready",
-      "Ready. Using " + session.settings.provider + " " + session.settings.model + (effort ? ", " + EFFORT_LABEL[effort].toLowerCase() + " effort" : "") + ".",
+      "Ready. Using " + (session.appleFirst ? "Apple's on-device model first, then " : "") + session.settings.provider + " " + session.settings.model + (effort ? ", " + EFFORT_LABEL[effort].toLowerCase() + " effort" : "") + ".",
     );
     if (found.fellBackFrom) {
       fallbackNotice = addMessage(
@@ -1595,6 +1607,8 @@ async function main(): Promise<void> {
     /** As saved in history: the question, or the original one for a continuation. */
     question: string;
     model: string;
+    /** Asked Apple's model first; no usage means Apple answered, usage means the key's model did. */
+    appleFirst?: boolean;
     /** Tabs this answer may read: the current tab when shared, attached tabs, tabs it opened. */
     scope: number[];
     /** Numbered sources [n]: the pages sent with the question (after a Continue, the earlier part's sources). */
@@ -1682,8 +1696,14 @@ async function main(): Promise<void> {
       const sources = allSources(v, m).map(({ url, title, kind }) => ({ url, ...(title ? { title } : {}), ...(kind ? { kind } : {}) }));
       turns.push({ bubble: v.bubble, entry: { at: Date.now(), question: v.question, answer: full, kind: "chat", ...(sources.length ? { sources } : {}), ...(v.shared.length ? { shared: v.shared } : {}) } });
       history.splice(0, Math.max(0, history.length - CONTEXT_TURNS * 2));
-      status.textContent = m.usage ? formatCostLine(v.model, m.usage) : "";
-      current.finish("done", "Answered (" + full.length + " characters).", m.usage);
+      status.textContent = v.appleFirst
+        ? m.usage
+          ? "Apple's model couldn't answer, so " + prettyModel(v.model) + " did. " + formatCostLine(v.model, m.usage)
+          : "Answered by Apple's model on this device. Free."
+        : m.usage
+          ? formatCostLine(v.model, m.usage)
+          : "";
+      current.finish("done", "Answered (" + full.length + " characters" + (v.appleFirst ? (m.usage ? ", Apple couldn't, key's model did" : ", by Apple") : "") + ").", m.usage);
     } else if (m.status === "complete") {
       // The user pressed Stop: keep what arrived and say nothing (owner, 2026-10-17).
       if (!full) v.bubble.remove();
@@ -1985,6 +2005,7 @@ async function main(): Promise<void> {
       bubble = addMessage("assistant", "");
     }
     const v = newView(id, bubble, cont ? cont.question : trimmed, s.settings.model, cont ? cont.partial + (/\s$/.test(cont.partial) ? "" : " ") : "");
+    if (s.appleFirst && !cont) v.appleFirst = true;
     renderView(id);
     status.textContent = cont ? "Finishing the answer." : STANDALONE || scope === "general" ? "Waiting for the answer." : "Reading the page and waiting for the answer.";
     setBusy(true);
@@ -2038,9 +2059,10 @@ async function main(): Promise<void> {
         {
           message_id: id,
           conv,
-          provider: s.settings.provider,
-          model: s.settings.model,
-          ...(s.effort ? { effort: s.effort } : {}),
+          // Apple first; a Continue goes straight to the key's model.
+          ...(v.appleFirst
+            ? { provider: s.settings.provider, model: APPLE_MODEL, fallback: { provider: s.settings.provider, model: s.settings.model, ...(s.effort ? { effort: s.effort } : {}) } }
+            : { provider: s.settings.provider, model: s.settings.model, ...(s.effort ? { effort: s.effort } : {}) }),
           question: trimmed,
           history: cont ? [...past, { role: "user", content: cont.question }, { role: "assistant", content: cont.partial }] : past,
           pages,
@@ -3583,13 +3605,22 @@ async function main(): Promise<void> {
   const appleStatusEl = el("apple-status");
   const appleTry = el<HTMLButtonElement>("apple-try");
   const appleResult = el("apple-result");
+  const appleFirstBox = el<HTMLInputElement>("apple-first");
   async function refreshApple(): Promise<void> {
     if (TARGET !== "safari") return;
     appleSection.hidden = false;
     const st = await appleStatus(nativeSend);
     appleStatusEl.textContent = st.available ? "Available on this device." : APPLE_UNAVAILABLE_TEXT[st.reason];
     appleTry.hidden = !st.available;
+    appleFirstBox.checked = appleFirstOn;
+    el("apple-first-row").hidden = !st.available;
   }
+  appleFirstBox.addEventListener("change", () => {
+    appleFirstOn = appleFirstBox.checked;
+    void storage?.set({ [APPLE_FIRST_KEY]: appleFirstOn }).catch(() => undefined);
+    trace("apple-first:" + (appleFirstOn ? "on" : "off"));
+    void connect();
+  });
   appleTry.addEventListener("click", () => {
     appleTry.disabled = true;
     appleResult.textContent = "Asking Apple's model…";
@@ -3781,6 +3812,7 @@ async function main(): Promise<void> {
         deleteConfirm.hidden = true;
         deleteBtn.hidden = false;
         settings = parseSettings(undefined);
+        appleFirstOn = true;
         consent.forget();
         diag?.forget();
         showLook(HOME_LOOK);

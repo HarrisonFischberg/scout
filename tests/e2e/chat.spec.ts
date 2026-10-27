@@ -19,10 +19,10 @@ const ANSWER = sse([
   { type: "message_stop" },
 ]);
 
-async function openPopup(page: Page, opts: { key: string | null; apple?: boolean }): Promise<{ bodies: string[] }> {
+async function openPopup(page: Page, opts: { key: string | null; apple?: boolean; appleText?: string }): Promise<{ bodies: string[] }> {
   const bodies: string[] = [];
   await page.addInitScript(
-    ({ key, pageData, apple }) => {
+    ({ key, pageData, apple, appleText }) => {
       const stub = {
         runtime: {
           sendMessage: async () => ({ ok: true }),
@@ -32,7 +32,7 @@ async function openPopup(page: Page, opts: { key: string | null; apple?: boolean
             if (m?.type === "ai.apple.generate") {
               const g = globalThis as unknown as { __applePrompts?: string[] };
               (g.__applePrompts ??= []).push(m.prompt ?? "");
-              return { ok: true, text: "On device: the widget costs $10." };
+              return { ok: true, text: appleText };
             }
             return key ? { ok: true, value: key } : { ok: true };
           },
@@ -51,7 +51,7 @@ async function openPopup(page: Page, opts: { key: string | null; apple?: boolean
       };
       (globalThis as unknown as { browser: unknown }).browser = stub;
     },
-    { key: opts.key, pageData: PAGE, apple: opts.apple === true },
+    { key: opts.key, pageData: PAGE, apple: opts.apple === true, appleText: opts.appleText ?? "On device: the widget costs $10." },
   );
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
@@ -83,6 +83,28 @@ test("no key with Apple Intelligence: chat answers on the device and nothing goe
   const prompts = await page.evaluate(() => (globalThis as unknown as { __applePrompts: string[] }).__applePrompts);
   expect(prompts[0]).toContain("Widget costs $10.");
   expect(prompts[0]).toContain("How much is the widget?");
+});
+
+// Owner, 2026-10-27: with a key saved, Apple's model still answers first and the key is the fallback.
+test("key and Apple Intelligence: Apple answers first and nothing goes to the provider", async ({ page }) => {
+  const { bodies } = await openPopup(page, { key: "sk-test-synthetic", apple: true });
+  await expect(page.getByRole("button", { name: /^Apple \+ / })).toBeVisible();
+  await page.getByLabel("Ask about this page").fill("How much is the widget?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("log", { name: "Conversation" }).getByText("On device: the widget costs $10.")).toBeVisible();
+  await expect(page.getByText("Answered by Apple's model on this device. Free.")).toBeVisible();
+  expect(bodies).toHaveLength(0);
+});
+
+test("key and Apple Intelligence: when Apple can't answer, the key's model does", async ({ page }) => {
+  const { bodies } = await openPopup(page, { key: "sk-test-synthetic", apple: true, appleText: "I'm sorry, but I can't help with that." });
+  await page.getByLabel("Ask about this page").fill("How much is the widget?");
+  await page.getByRole("button", { name: "Send" }).click();
+  const log = page.getByRole("log", { name: "Conversation" });
+  await expect(log.getByText("with free shipping.")).toBeVisible();
+  await expect(log.getByText("I'm sorry, but I can't help with that.")).toBeHidden();
+  await expect(page.getByText(/Apple's model couldn't answer, so .+ did\. Cost:/)).toBeVisible();
+  expect(bodies).toHaveLength(1);
 });
 
 test("no key with Apple Intelligence: Find coupons explains it needs a key", async ({ page }) => {
