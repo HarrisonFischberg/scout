@@ -15,7 +15,7 @@ import { buildMessages, chatSystemPrompt, fenceOpenPage, type PageContext } from
 import { CHAT_MAX_TOKENS } from "../chat/session";
 import type { Provider } from "../keychain";
 import { ProviderError } from "../providers/errors";
-import { AppleModelError } from "../providers/apple";
+import { APPLE_MODEL, AppleModelError, appleCouldNotAnswer } from "../providers/apple";
 import type { ChatMessage, ContentPart, Effort, ProviderClient, ToolSpec, Usage } from "../providers/types";
 import type { ToolStatus } from "../tools/registry";
 import type { NumberedEvent, ServerEvent } from "./protocol";
@@ -48,6 +48,12 @@ export interface StartRequest {
   scope?: QuestionScope;
   /** A general message's open page: title and address only, so the model can tell when it is relevant. */
   open_page?: { url: string; title: string };
+  /**
+   * With model APPLE_MODEL: the key's model to use when Apple's on-device
+   * model can't answer (unavailable, failed, too long, declined, or says it
+   * can't). Owner, 2026-10-27: Apple first, the key as a fallback.
+   */
+  fallback?: { provider: Provider; model: string; effort?: Effort };
 }
 
 /** Most web searches one chat answer may run (each is billed by the provider). Five leaves room to retry a lookup with new wording (2026-10-23). */
@@ -210,6 +216,26 @@ export class ScoutServer {
     });
   }
 
+  /** Apple's on-device model, one reply without tools. Null when it can't answer, so the fallback runs. */
+  private async askApple(req: StartRequest, signal: AbortSignal): Promise<string | null> {
+    try {
+      const apple = await this.deps.provider(req.provider, APPLE_MODEL);
+      let text = "";
+      for await (const ev of apple.stream({
+        model: APPLE_MODEL,
+        system: chatSystemPrompt({ scope: req.scope }),
+        messages: buildMessages(req.history, req.question, req.pages[0] ?? null, req.pages.slice(1)),
+        maxTokens: CHAT_MAX_TOKENS,
+        signal,
+      })) {
+        if (ev.type === "text") text += ev.delta;
+      }
+      return appleCouldNotAnswer(text) ? null : text;
+    } catch {
+      return null;
+    }
+  }
+
   private async execute(run: Run): Promise<void> {
     const { req } = run;
     const signal = run.abort.signal;
@@ -218,13 +244,20 @@ export class ScoutServer {
     let full = "";
     this.emit(run, { kind: "start" });
     try {
-      const provider = await this.deps.provider(req.provider, req.model);
+      // Apple first: its answer stands unless it can't answer; then the key's model runs as usual.
+      const apple = req.model === APPLE_MODEL && req.fallback ? await this.askApple(req, signal) : null;
+      if (apple !== null) {
+        full = apple;
+        this.emit(run, { kind: "text", delta: apple });
+      }
+      const use = req.model === APPLE_MODEL && req.fallback ? req.fallback : req;
+      const provider = apple === null && !signal.aborted ? await this.deps.provider(use.provider, use.model) : null;
       const tools = await this.deps.tools().catch(() => [] as ToolSpec[]);
       const openPage = req.scope === "general" && req.pages.length === 0 && tools.length > 0 ? req.open_page : undefined;
       const question = openPage ? fenceOpenPage(openPage) + "\n\nUser message: " + req.question : req.question;
       const messages: ChatMessage[] = buildMessages(req.history, question, req.pages[0] ?? null, req.pages.slice(1));
       const maxRounds = this.deps.maxRounds ?? 6;
-      for (let round = 0; round < maxRounds && !signal.aborted; round++) {
+      for (let round = 0; provider && round < maxRounds && !signal.aborted; round++) {
         // The last round offers no tools, so the model has to answer.
         const offer = tools.length > 0 && round < maxRounds - 1;
         // The search budget is for the whole answer, not each round.
@@ -232,13 +265,13 @@ export class ScoutServer {
         let roundText = "";
         const calls: Array<{ id: string; name: string; input: unknown }> = [];
         for await (const ev of provider.stream({
-          model: req.model,
+          model: use.model,
           system: chatSystemPrompt({ scope: req.scope, tools: tools.length > 0, webSearch: searchesLeft > 0, openPage: !!openPage }),
           messages,
           ...(offer ? { tools } : {}),
           ...(searchesLeft > 0 ? { webSearch: true, webSearchMaxUses: searchesLeft } : {}),
           maxTokens: CHAT_MAX_TOKENS,
-          ...(req.effort ? { effort: req.effort } : {}),
+          ...(use.effort ? { effort: use.effort } : {}),
           signal,
         })) {
           if (ev.type === "text") {
