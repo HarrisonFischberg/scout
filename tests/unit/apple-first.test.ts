@@ -123,4 +123,17 @@ describe("appleCouldNotAnswer", () => {
     expect(appleCouldNotAnswer("- Point one\n- Point two")).toBe(false);
     expect(appleCouldNotAnswer("I'm sorry to hear that. " + "Here is a detailed answer. ".repeat(40))).toBe(false);
   });
+
+  it("keeps short answers that only mention access, real-time or failing to find something", () => {
+    for (const t of [
+      "Real-time bidding (RTB) is how ad slots are sold in an auction that runs while the page loads.",
+      "This page explains that guests without access to the portal must call the front desk.",
+      "The article says the app is unable to find your location when GPS is off.",
+      "The store has no up-to-date information on restocks yet.",
+    ]) expect(appleCouldNotAnswer(t), t).toBe(false);
+  });
+
+  it("still spots the model naming its own knowledge cutoff", () => {
+    expect(appleCouldNotAnswer("My knowledge cutoff is before that event.")).toBe(true);
+  });
 });

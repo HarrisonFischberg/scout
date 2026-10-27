@@ -2182,3 +2182,8 @@ Owner after #79: "it brings up the keyboard but doesnt activate the microphone".
   3. PR #114's new row assertions expected a space between the note and "· seen on…" (they are separate flex items spaced by CSS `gap`, so the text has none) and "Not accepted by the store." where the fake store's own "Invalid coupon code." is shown.
 - Fix: the fake tab has `https://shop.test/cart`; the two run tests answer the checkpoint with Keep going (and check its wording and "Use the best one"); the row assertions match the rendered text.
 - Evidence: coupons.spec.ts 6/6 on Chromium (was 0/6); `npm test` passes, typecheck, lint. WebKit run on the Mac pending.
+
+## 2026-10-27 Audit fixes 1 and 2 (ponytail audit 2026-10-27)
+
+- Apple-first: the "Apple couldn't answer" check counted ordinary words ("real-time", "without access to", "unable to find") as a refusal, so good free answers were dropped and the key was billed. Now only the model speaking about itself counts. Tests: 4 short answers kept, own knowledge cutoff still caught.
+- Tab state and the private-chat list were read, changed and written back by the panel and the worker at the same moment (panel opening on a new tab; a private tab closing while another opens). Every change now takes a `tabState` lock, before the history lock. Two new tests fail on the old code and pass now. Unit tests 667/667.

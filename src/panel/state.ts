@@ -48,6 +48,12 @@ export async function loadTabStates(storage: Store): Promise<TabStates> {
   return parseTabStates(got[TAB_STATE_KEY]);
 }
 
+// The panel and the worker both change the tab state and the private list,
+// often at the same moment (opening the panel on a new tab), so every change
+// takes this lock. Order: this lock first, then the history lock, never the
+// reverse (audit 2026-10-27).
+const tabLock = <T>(fn: () => Promise<T>): Promise<T> => withLock(TAB_STATE_KEY, fn);
+
 async function saveTabStates(storage: Store, states: TabStates): Promise<void> {
   await storage.set({ [TAB_STATE_KEY]: states });
 }
@@ -113,21 +119,23 @@ async function dropPrivateNow(storage: Store, tabId?: number): Promise<void> {
 }
 
 /** The conversation the panel shows on this tab, created on first use. `priv`: a Private Browsing tab. */
-export async function conversationForTab(storage: Store, tabId: number | undefined, now: number, priv = false): Promise<string> {
-  const states = await loadTabStates(storage);
-  const key = tabKey(tabId);
-  const existing = states[key];
-  if (existing) {
-    if (priv) await markPrivate(storage, tabId, existing.conv);
-    return existing.conv;
-  }
-  const conv = newConversationId(now);
-  // A private tab never adopts history saved outside it.
-  if (!priv) await adoptLegacyConversation(storage, conv);
-  states[key] = { conv, open: false, at: now };
-  await saveTabStates(storage, states);
-  if (priv) await markPrivate(storage, tabId, conv);
-  return conv;
+export function conversationForTab(storage: Store, tabId: number | undefined, now: number, priv = false): Promise<string> {
+  return tabLock(async () => {
+    const states = await loadTabStates(storage);
+    const key = tabKey(tabId);
+    const existing = states[key];
+    if (existing) {
+      if (priv) await markPrivate(storage, tabId, existing.conv);
+      return existing.conv;
+    }
+    const conv = newConversationId(now);
+    // A private tab never adopts history saved outside it.
+    if (!priv) await adoptLegacyConversation(storage, conv);
+    states[key] = { conv, open: false, at: now };
+    await saveTabStates(storage, states);
+    if (priv) await markPrivate(storage, tabId, conv);
+    return conv;
+  });
 }
 
 /** "New chat": this tab gets a fresh conversation. Earlier entries stay in history until they expire (private ones until the tab closes). */
@@ -136,33 +144,41 @@ export async function startNewConversation(storage: Store, tabId: number | undef
 }
 
 /** This tab shows `conv` again (back to a coupon run's chat from its chip). */
-export async function reopenConversation(storage: Store, tabId: number | undefined, conv: string, now: number, priv = false): Promise<string> {
-  const states = await loadTabStates(storage);
-  const key = tabKey(tabId);
-  states[key] = { conv, open: states[key]?.open ?? false, at: now };
-  await saveTabStates(storage, states);
-  if (priv) await markPrivate(storage, tabId, conv);
-  return conv;
+export function reopenConversation(storage: Store, tabId: number | undefined, conv: string, now: number, priv = false): Promise<string> {
+  return tabLock(async () => {
+    const states = await loadTabStates(storage);
+    const key = tabKey(tabId);
+    states[key] = { conv, open: states[key]?.open ?? false, at: now };
+    await saveTabStates(storage, states);
+    if (priv) await markPrivate(storage, tabId, conv);
+    return conv;
+  });
 }
 
 /** Records whether the panel is open on this tab. Creates the tab's slot if needed. */
-export async function setPanelOpen(storage: Store, tabId: number | undefined, open: boolean, now: number): Promise<void> {
-  const states = await loadTabStates(storage);
-  const key = tabKey(tabId);
-  states[key] = { conv: states[key]?.conv ?? newConversationId(now), open, at: now };
-  await saveTabStates(storage, states);
+export function setPanelOpen(storage: Store, tabId: number | undefined, open: boolean, now: number): Promise<void> {
+  return tabLock(async () => {
+    const states = await loadTabStates(storage);
+    const key = tabKey(tabId);
+    states[key] = { conv: states[key]?.conv ?? newConversationId(now), open, at: now };
+    await saveTabStates(storage, states);
+  });
 }
 
-export async function forgetTab(storage: Store, tabId: number): Promise<void> {
-  await dropPrivate(storage, tabId);
-  const states = await loadTabStates(storage);
-  if (!(tabKey(tabId) in states)) return;
-  delete states[tabKey(tabId)];
-  await saveTabStates(storage, states);
+export function forgetTab(storage: Store, tabId: number): Promise<void> {
+  return tabLock(async () => {
+    await dropPrivate(storage, tabId);
+    const states = await loadTabStates(storage);
+    if (!(tabKey(tabId) in states)) return;
+    delete states[tabKey(tabId)];
+    await saveTabStates(storage, states);
+  });
 }
 
 /** Tab ids are reused after Safari restarts, so old mappings are dropped at startup. */
-export async function clearTabStates(storage: Store): Promise<void> {
-  await dropPrivate(storage);
-  await saveTabStates(storage, {});
+export function clearTabStates(storage: Store): Promise<void> {
+  return tabLock(async () => {
+    await dropPrivate(storage);
+    await saveTabStates(storage, {});
+  });
 }
