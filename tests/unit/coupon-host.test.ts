@@ -8,7 +8,7 @@ import { BridgeError, checkSchema, WORKER_EVENTS } from "../../src/bridge/messag
 import type { OverlayRequest } from "../../src/content-api";
 import type { CartState } from "../../src/coupons/finder";
 import type { CouponPage } from "../../src/coupons/tab-page";
-import type { ProviderClient } from "../../src/providers";
+import { ProviderError, type ProviderClient } from "../../src/providers";
 import { CouponHost, failReason, COUPON_QUESTION } from "../../src/server/coupon-host";
 
 // The web search finds nothing: the only code is the one the store's page shows.
@@ -165,6 +165,22 @@ describe("coupon host", () => {
     await expect(host.start({ tab_id: 4, provider: "anthropic", model: "m" })).rejects.toThrow("Could not reach this page. Reload it and try again.");
     expect(f.posted.filter((p) => p.kind === "trace").map((p) => p.stage)).toEqual(["coupons:start-failed Error: Cannot access <url> right now"]);
     expect(failReason(new BridgeError("blocked-by-user", "Blocked"))).toBe("blocked-by-user: Blocked");
+  });
+  it("a checkpoint ask (seconds, best so far) passes the panel's message check", () => {
+    expect(checkSchema(WORKER_EVENTS["coupons.event"], { tab_id: 1, seq: 1, kind: "ask", prompt_id: "more-1", tried: 30, seconds: 90, best: "SAVE20, 20% off (saves $20.00)" })).toBeNull();
+  });
+
+  // Owner report 2026-10-27 (getbeefy.co): no saved permission showed as "Could not reach this page".
+  it("says when the provider needs permission, not that the page could not be reached", async () => {
+    const f = fake(cartPage());
+    const host = new CouponHost({
+      ...(f.host as unknown as { deps: ConstructorParameters<typeof CouponHost>[0] }).deps,
+      provider: async () => Promise.reject(new ProviderError("anthropic", "consent_required")),
+    });
+    await expect(host.start({ tab_id: 5, provider: "anthropic", model: "m" })).rejects.toThrow(
+      "Scout needs your permission before it sends anything to this provider. Nothing was sent.",
+    );
+    expect(host.status(5)).toEqual({});
   });
   // Owner report 2026-10-19 (run #203): a coupon run's report showed no stages,
   // only the panel's own "port:reconnecting". The worker stamps each stage with

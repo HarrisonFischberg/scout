@@ -14,6 +14,7 @@ import {
   API_TERMS,
   PRIVACY_POLICY,
   providerForUrl,
+  WorkerConsent,
 } from "../../src/settings/consent";
 import { deleteAllData, type StorageArea } from "../../src/settings/settings";
 
@@ -260,5 +261,36 @@ describe("consent text", () => {
   it("links to each provider's own API data terms over HTTPS", () => {
     expect(API_TERMS.anthropic).toBe("https://www.anthropic.com/legal/commercial-terms");
     expect(API_TERMS.openai).toBe("https://openai.com/enterprise-privacy/");
+  });
+});
+
+// Owner report 2026-10-27 (getbeefy.co): Safari did not save "Allow", so the
+// panel asked on every page and the worker refused the Find coupons run the
+// user had just allowed ("Scout needs your permission", shown as "Could not reach this page").
+describe("consent when Safari fails to save it", () => {
+  const broken = (): StorageArea => ({
+    get: async () => ({}),
+    set: async () => Promise.reject(new Error("Exceeded storage quota")),
+    clear: async () => undefined,
+  });
+
+  it("Allow still counts in the panel and reports why it was not saved", async () => {
+    const c = await Consent.load(broken());
+    const saveError = vi.fn();
+    expect(await ensureConsent(c, "anthropic", async () => true, NOW, saveError)).toBe(true);
+    expect(c.has("anthropic")).toBe(true);
+    expect(saveError).toHaveBeenCalledWith(expect.objectContaining({ message: "Exceeded storage quota" }));
+  });
+
+  it("the worker accepts what the panel was told, and a withdrawal wins over storage", async () => {
+    const w = new WorkerConsent();
+    expect((await w.load(broken()))("anthropic")).toBe(false);
+    w.set("anthropic", true);
+    expect((await w.load(broken()))("anthropic")).toBe(true);
+    expect((await w.load(broken()))("openai")).toBe(false);
+    const saved = fakeStorage({ [CONSENT_KEY]: { openai: { at: NOW, version: CONSENT_VERSION } } });
+    expect((await w.load(saved))("openai")).toBe(true);
+    w.set("openai", false);
+    expect((await w.load(saved))("openai")).toBe(false);
   });
 });

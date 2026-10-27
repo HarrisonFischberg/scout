@@ -15,7 +15,7 @@ import { blockedBy, hostOf, loadPageAccess, parsePolicy, savePageAccess, type Sc
 import { createProvider, ProviderError, type Effort } from "../providers";
 import { APPLE_MODEL, createApple } from "../providers/apple";
 import { effortForId, loadModelList } from "../providers/models";
-import { Consent, gatedFetch } from "../settings/consent";
+import { gatedFetch, WorkerConsent } from "../settings/consent";
 import { savedUrl } from "../chat/sources";
 import { appendHistory, loadSettings, type StorageArea } from "../settings/settings";
 import { runTool, type ToolDecision, type ToolHostDeps } from "../tools/host";
@@ -146,11 +146,12 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     now: () => Date.now(),
   };
 
+  const consents = new WorkerConsent();
   const provider = async (p: Provider, model: string) => {
     // No key saved: Apple's on-device model. Nothing leaves the device, so no consent to ask.
     if (model === APPLE_MODEL) return createApple(nativeSend);
-    const consent = await Consent.load(storage);
-    if (!consent.has(p)) throw new ProviderError(p, "consent_required");
+    const allowed = await consents.load(storage);
+    if (!allowed(p)) throw new ProviderError(p, "consent_required");
     const apiKey = await keychain.getKey(p).catch(() => null);
     if (!apiKey) throw new ProviderError(p, "no_key");
     let baseUrl: string | null = null;
@@ -159,7 +160,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     }
     return createProvider(p, {
       apiKey,
-      fetch: gatedFetch((q) => consent.has(q), (i, init) => fetch(i, init)),
+      fetch: gatedFetch(allowed, (i, init) => fetch(i, init)),
       ...(baseUrl ? { baseUrl } : {}),
     });
   };
@@ -243,6 +244,10 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
   const handlers = {
     "coupons.start": (p: { tab_id: number; window_id?: number; provider: Provider; model: string; effort?: Effort; conv?: string; phone?: boolean; site?: string }) => couponHost.start(p),
     "coupons.stop": (p: { tab_id: number }) => couponHost.stop(p.tab_id),
+    "consent.set": (p: { provider: Provider; allowed: boolean }) => {
+      consents.set(p.provider, p.allowed);
+      return { ok: true };
+    },
     "coupons.answer": (p: { tab_id: number; prompt_id: string; more: boolean }) => couponHost.answer(p),
     "coupons.status": (p: { tab_id: number }) => couponHost.status(p.tab_id),
     "coupons.list": () => couponHost.list(),

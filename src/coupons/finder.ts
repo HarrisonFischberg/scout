@@ -547,9 +547,15 @@ export async function openCouponTester(page: CouponPage, opts: TesterOptions = {
 }
 
 export interface BatchState {
-  /** Codes tested so far; none of them lowered the total. */
+  /** Codes tested so far; none of them lowered the total (a checkpoint: maybe some did). */
   tried: number;
+  /** Asked part way through a round, not after it (owner 2026-10-27): false ends testing and applies the best so far. */
+  checkpoint?: { seconds: number; best?: string };
 }
+
+/** A checkpoint comes after this many codes, or this long, while codes remain (owner 2026-10-27: "25 or 30 coupons", "1 minute, 30 seconds"). */
+export const CHECK_CODES = 30;
+export const CHECK_MS = 90_000;
 
 /** Codes found while a search is still running, handed to the tester as they come. */
 export class CodeQueue implements AsyncIterable<CouponCandidate[]> {
@@ -604,6 +610,10 @@ export interface CouponInput extends TesterOptions {
    * money, when more can be found; false stops. Absent: no further search.
    */
   askMore?: (s: BatchState) => Promise<boolean>;
+  /** Asked every CHECK_CODES codes or CHECK_MS while codes remain; false ends testing and applies the best so far. */
+  checkpoint?: (s: BatchState) => Promise<boolean>;
+  /** Clock for the checkpoint (tests). */
+  now?: () => number;
   /** Finds codes not in `known` (a new web search). Used only after askMore says yes; a stream is tested as it arrives. */
   findMore?: (known: string[]) => Promise<CouponCandidate[]> | AsyncIterable<CouponCandidate[]>;
   /** Called just before each code is tried. */
@@ -687,6 +697,10 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
   let feed: AsyncIterator<CouponCandidate[]> | undefined = input.incoming?.[Symbol.asyncIterator]();
   /** How many codes were known when the latest extra search started. */
   let searchedFrom: number | null = null;
+  const now = input.now ?? Date.now;
+  const started = now();
+  let checkedAt = 0;
+  let checkedTime = started;
   outer: for (;;) {
     for (;;) {
       if (i >= codes.length) {
@@ -703,6 +717,21 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
       if (halted()) {
         stoppedEarly = "stopped";
         break outer;
+      }
+      if (input.checkpoint && (i - checkedAt >= CHECK_CODES || now() - checkedTime >= CHECK_MS)) {
+        const lead = bestOf(attempts);
+        const best =
+          lead && lead.total !== null
+            ? (lead.combo ? lead.combo.join(" + ") : lead.code) + ", " + percentOff(baseline, lead.total) + " (saves " + formatMoney(lead.saving ?? 0, tester.currency) + ")"
+            : undefined;
+        const keep = await input.checkpoint({ tried: i, checkpoint: { seconds: Math.round((now() - started) / 1000), ...(best ? { best } : {}) } });
+        if (halted()) {
+          stoppedEarly = "stopped";
+          break outer;
+        }
+        if (!keep) break outer;
+        checkedAt = i;
+        checkedTime = now();
       }
       i++;
       input.onTry?.(cand.code);
@@ -808,6 +837,15 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
   const shown = best.combo ? best.combo.join(" + ") : best.code;
   return result(stoppedEarly ?? "done", applied ? "Best code " + shown + " applied." : "Best code " + shown + " could not be re-applied.", { applied });
 }
+
+/** "45 seconds", "1 minute", "1 min 30 s": how long a run has gone, for the checkpoint question. */
+export const duration = (seconds: number): string => {
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 60) return s + " second" + (s === 1 ? "" : "s");
+  const m = Math.floor(s / 60);
+  const rest = s % 60;
+  return rest ? m + " min " + rest + " s" : m + " minute" + (m === 1 ? "" : "s");
+};
 
 /** "20% off" for the drop from `baseline` to `total`. */
 export const percentOff = (baseline: number, total: number): string => {
