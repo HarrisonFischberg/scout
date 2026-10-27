@@ -91,10 +91,12 @@ export function applePrompt(messages: ChatMessage[], max = APPLE_PROMPT_CHARS): 
 }
 
 // Replies that mean Apple's model could not help: a refusal, "I can't
-// browse", "I don't have current information". Only short replies count, so
-// a full answer that starts with an apology is kept.
+// browse", "I don't have current information". Only the model speaking about
+// itself counts, so a page about "real-time bidding" or "guests without access"
+// keeps its answer (audit 2026-10-27). Only short replies count, so a full
+// answer that starts with an apology is kept.
 const COULD_NOT =
-  /\b(?:i(?:'m| am) (?:sorry|unable|not able)|i (?:can't|cannot|can not|couldn't|could not|don't know|do not know|don't have|do not have|lack)|as an ai|unable to (?:browse|access|provide|help|answer|find)|(?:no|without) (?:access to|ability to)|real-time|up-to-date information|knowledge cutoff)\b/i;
+  /\b(?:i(?:'m| am) (?:sorry|unable|not able)|i (?:can't|cannot|can not|couldn't|could not|don't know|do not know|don't have|do not have|lack)|as an ai|my (?:knowledge|training)(?: data)? (?:cutoff|only goes))\b/i;
 
 /** True when Apple's reply is empty or says it can't answer, so a key's model should try instead (owner, 2026-10-27). */
 export function appleCouldNotAnswer(text: string): boolean {
