@@ -251,6 +251,7 @@ export class ScoutServer {
         this.emit(run, { kind: "text", delta: apple });
       }
       const use = req.model === APPLE_MODEL && req.fallback ? req.fallback : req;
+      if (apple === null && req.fallback && req.model === APPLE_MODEL && !signal.aborted) this.emit(run, { kind: "handoff" });
       const provider = apple === null && !signal.aborted ? await this.deps.provider(use.provider, use.model) : null;
       const tools = await this.deps.tools().catch(() => [] as ToolSpec[]);
       const openPage = req.scope === "general" && req.pages.length === 0 && tools.length > 0 ? req.open_page : undefined;

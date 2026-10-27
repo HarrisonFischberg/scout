@@ -25,6 +25,8 @@ export interface StoredMessage {
   citations: Array<{ url: string; title?: string }>;
   tools: ToolCall[];
   usage?: Usage;
+  /** Apple's model couldn't answer; the key's model is working on it. */
+  handoff?: boolean;
   stopped?: boolean;
   error?: { code: string; message: string };
 }
@@ -68,6 +70,9 @@ export class ConversationStore {
     switch (event.kind) {
       case "start":
         if (m.status === "pending") m.status = "streaming";
+        break;
+      case "handoff":
+        m.handoff = true;
         break;
       case "text":
         m.status = "streaming";
