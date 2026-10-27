@@ -252,6 +252,8 @@ export const REQUESTS = {
     },
   },
   "coupons.stop": { senders: ["panel"], payload: { object: { tab_id: "number" } } },
+  /** The user allowed or withdrew sharing with a provider in the panel; counts even if Safari failed to save it. */
+  "consent.set": { senders: ["panel"], payload: { object: { provider: { enum: ["anthropic", "openai"] }, allowed: "boolean" } } },
   /** The answer to "search the web again?". */
   "coupons.answer": { senders: ["panel"], payload: { object: { tab_id: "number", prompt_id: "string", more: "boolean" } } },
   /** The run on a tab, if any, with its events so far (a reopened panel catches up). */
@@ -320,6 +322,9 @@ export const WORKER_EVENTS = {
       currency: "string",
       prompt_id: "string",
       tried: "number",
+      /** A checkpoint ask (src/coupons/finder.ts): seconds so far, and the best code so far. */
+      seconds: "number",
+      best: "string",
       stage: "string",
       /** A stage's time in the run (CouponHost.emit). Missing here, every stage was dropped (owner report 2026-10-19, run #203). */
       at_ms: "number",
@@ -335,7 +340,7 @@ export const WORKER_EVENTS = {
       web_searches: "number",
     },
     optional: [
-      "text", "step", "attempt", "currency", "prompt_id", "tried", "stage", "at_ms", "url", "status", "message", "outcome", "summary", "tone", "status_text",
+      "text", "step", "attempt", "currency", "prompt_id", "tried", "seconds", "best", "stage", "at_ms", "url", "status", "message", "outcome", "summary", "tone", "status_text",
       "input_tokens", "output_tokens", "web_searches",
     ],
   },
