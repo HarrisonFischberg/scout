@@ -11,6 +11,8 @@ import {
   parseCodes,
   parseTotal,
   runCouponSearch,
+  duration,
+  type BatchState,
   type CartApi,
   type CartState,
   type CouponPage,
@@ -526,6 +528,62 @@ function shopify(opts: { start?: string[]; rateLimitAfter?: number; stack?: bool
   };
   return api;
 }
+
+// Owner, 2026-10-27: no more than about 30 codes or 1.5 minutes before
+// asking whether to keep going or use the best code found so far.
+describe("checkpoints", () => {
+  const forty = [
+    ...Array.from({ length: 5 }, (_, i) => ({ code: "NOPE" + (i + 10), origin: "reported" as const, sourceUrl: "https://deals.test/list" })),
+    { code: "SAVE20", origin: "verified" as const, sourceUrl: "https://deals.test/a" },
+    ...Array.from({ length: 34 }, (_, i) => ({ code: "NOPE" + (i + 20), origin: "reported" as const, sourceUrl: "https://deals.test/list" })),
+  ];
+
+  it("after 30 codes asks, and Use the best one applies the best so far without testing the rest", async () => {
+    const asked: BatchState[] = [];
+    const page = shop();
+    const out = await runCouponSearch({ page, codes: forty, settleMs: 0, checkpoint: async (st) => (asked.push(st), false), now: () => 0 });
+    expect(asked).toHaveLength(1);
+    expect(asked[0]?.tried).toBe(30);
+    expect(asked[0]?.checkpoint?.best).toBe("SAVE20, 20% off (saves $20.00)");
+    expect(out.attempts).toHaveLength(30);
+    expect(out.untested).toBe(10);
+    expect(out.best?.code).toBe("SAVE20");
+    expect(out.applied).toBe(true);
+    expect(page.ordered).toBe(0);
+  });
+
+  it("Keep going tests the rest, and asks again only after 30 more", async () => {
+    const asked: number[] = [];
+    const out = await runCouponSearch({ page: shop(), codes: forty, settleMs: 0, checkpoint: async (st) => (asked.push(st.tried), true), now: () => 0 });
+    expect(asked).toEqual([30]);
+    expect(out.attempts).toHaveLength(40);
+    expect(out.best?.code).toBe("SAVE20");
+  });
+
+  it("asks after 1.5 minutes even before 30 codes, saying none worked yet", async () => {
+    let t = 0;
+    const asked: BatchState[] = [];
+    const out = await runCouponSearch({
+      page: shop(),
+      codes: forty.filter((c) => c.code !== "SAVE20"),
+      settleMs: 0,
+      // Each code takes 20 seconds here.
+      now: () => t,
+      checkpoint: async (st) => (asked.push(st), false),
+      onTry: () => void (t += 20_000),
+    });
+    expect(asked[0]?.tried).toBe(5);
+    expect(asked[0]?.checkpoint).toEqual({ seconds: 100 });
+    expect(out.attempts).toHaveLength(5);
+    expect(out.applied).toBe(false);
+  });
+
+  it("says how long in plain words", () => {
+    expect(duration(45)).toBe("45 seconds");
+    expect(duration(60)).toBe("1 minute");
+    expect(duration(90)).toBe("1 min 30 s");
+  });
+});
 
 describe("Shopify cart path", () => {
   const page = (cart: CartApi): CouponPage => ({

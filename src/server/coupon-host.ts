@@ -12,6 +12,7 @@ import type { BrowserTarget, PageBrowser } from "../coupons/browser-read";
 import { runCouponJob, type CouponEvent } from "../coupons/job";
 import type { CouponPage } from "../coupons/tab-page";
 import type { Provider } from "../keychain";
+import type { BatchState } from "../coupons/finder";
 import { ProviderError } from "../providers/errors";
 import type { Effort, ProviderClient } from "../providers/types";
 
@@ -166,7 +167,7 @@ export class CouponHost {
       ...(this.deps.storage ? { storage: this.deps.storage } : {}),
       askMore: (state, signal) => {
         overlay({ type: "overlay:state", state: "waiting" });
-        return this.ask(r, state.tried, signal).then((more) => {
+        return this.ask(r, state, signal).then((more) => {
           overlay({ type: "overlay:state", state: "running" });
           return more;
         });
@@ -187,7 +188,9 @@ export class CouponHost {
     return { started_at: r.started_at };
   }
 
-  private ask(r: RunRecord, tried: number, signal: AbortSignal): Promise<boolean> {
+  private ask(r: RunRecord, state: BatchState, signal: AbortSignal): Promise<boolean> {
+    const tried = state.tried;
+    const check = state.checkpoint;
     const prompt_id = "more-" + (++counter).toString(36);
     return new Promise((resolve) => {
       let timeout: unknown;
@@ -203,7 +206,7 @@ export class CouponHost {
       const no = (): void => done(false);
       r.pending = { prompt_id, resolve: done };
       this.emit(r, { kind: "trace", stage: "coupons:ask-more tried=" + tried });
-      this.emit(r, { kind: "ask", prompt_id, tried });
+      this.emit(r, { kind: "ask", prompt_id, tried, ...(check ? { seconds: check.seconds, ...(check.best ? { best: check.best } : {}) } : {}) });
       if (signal.aborted) return done(false);
       signal.addEventListener("abort", no, { once: true });
       timeout = this.timer(no, this.deps.askTimeoutMs ?? ASK_TIMEOUT_MS);
