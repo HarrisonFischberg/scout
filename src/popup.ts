@@ -2547,10 +2547,16 @@ async function main(): Promise<void> {
     if (a.context) code.title = a.context + (a.conditions ? " (" + a.conditions + ")" : "");
     const text = document.createElement("span");
     const parts = [a.total === null ? "total unknown" : formatMoney(a.total, currency)];
-    if (good && a.saving !== null) parts.push("saves " + formatMoney(a.saving, currency));
+    // The note usually says "Saves $10.00." already; don't say it twice.
+    const saves = good && a.saving !== null ? formatMoney(a.saving, currency) : "";
+    if (saves && !a.note.includes(saves)) parts.push("saves " + saves);
     parts.push(a.note);
-    text.textContent = " · " + parts.join(" · ") + " · ";
-    row.append(code, text);
+    text.textContent = " · " + parts.join(" · ");
+    // The separator before the source lives with the source, so a wrapped
+    // row never leaves a lone "·" under the note (owner, 2026-10-27).
+    const source = document.createElement("span");
+    source.className = "source";
+    source.append("· ");
     const label = originLabel(a);
     if (a.sourceUrl) {
       const link = document.createElement("a");
@@ -2558,8 +2564,9 @@ async function main(): Promise<void> {
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       link.textContent = label;
-      row.appendChild(link);
-    } else row.append(label);
+      source.appendChild(link);
+    } else source.append(label);
+    row.append(code, text, source);
     t.body.appendChild(row);
     followEnd();
   }
