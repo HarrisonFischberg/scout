@@ -28,10 +28,10 @@ interface Calls {
   openai: string[];
 }
 
-async function openPopup(page: Page, opts: { keys?: Record<string, string>; data?: Record<string, unknown> } = {}): Promise<Calls> {
+async function openPopup(page: Page, opts: { keys?: Record<string, string>; data?: Record<string, unknown>; failConsentSave?: boolean } = {}): Promise<Calls> {
   const calls: Calls = { anthropic: [], openai: [] };
   await page.addInitScript(
-    ({ keys, data, pageData }) => {
+    ({ keys, data, pageData, failConsentSave }) => {
       const g = globalThis as unknown as Record<string, unknown>;
       // Survive reloads inside one test (simulates reopening the popup).
       const store = (g.sessionStorage as Storage).getItem("__fake");
@@ -60,13 +60,17 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
               const list = Array.isArray(k) ? k : [k];
               return JSON.parse(JSON.stringify(Object.fromEntries(list.filter((x) => x in fake.data).map((x) => [x, fake.data[x]]))));
             },
-            set: async (items: Record<string, unknown>) => { Object.assign(fake.data, JSON.parse(JSON.stringify(items))); save(); },
+            set: async (items: Record<string, unknown>) => {
+              if (failConsentSave && "aiConsent" in items) throw new Error("Exceeded storage quota");
+              Object.assign(fake.data, JSON.parse(JSON.stringify(items)));
+              save();
+            },
             clear: async () => { fake.data = {}; save(); },
           },
         },
       };
     },
-    { keys: opts.keys ?? { anthropic: KEY }, data: opts.data ?? {}, pageData: PAGE },
+    { keys: opts.keys ?? { anthropic: KEY }, data: opts.data ?? {}, pageData: PAGE, failConsentSave: opts.failConsentSave === true },
   );
   await page.route("**/popup.html", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
@@ -126,6 +130,19 @@ test("the first request asks first, and nothing reaches Anthropic before Allow",
   await page.getByRole("button", { name: "Send" }).click();
   await expect.poll(() => calls.anthropic.length).toBe(2);
   await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+// Owner report 2026-10-27 (getbeefy.co): Safari did not save Allow, and the
+// worker then refused the request the user had just allowed.
+test("when Safari fails to save Allow, the request the user allowed still goes", async ({ page }) => {
+  const calls = await openPopup(page, { failConsentSave: true });
+  await page.getByLabel("Ask about this page").fill("How much is the widget?");
+  await page.getByRole("button", { name: "Send" }).click();
+  const dialog = page.getByRole("dialog", { name: "Share with Anthropic?" });
+  await dialog.getByRole("button", { name: "Allow" }).click();
+  await expect(page.getByRole("log").getByText("The widget costs $10.")).toBeVisible();
+  expect(calls.anthropic).toHaveLength(1);
+  expect(await stored(page)).toBeUndefined();
 });
 
 test("Not now sends nothing, keeps the question, and returns focus", async ({ page }) => {

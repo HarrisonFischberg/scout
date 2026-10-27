@@ -548,6 +548,7 @@ async function main(): Promise<void> {
       `Mode: ${mode() === "scout" ? "Scout mode" : "Chat"}`,
       `Settings: ${settings.provider} / ${settings.model} · effort ${settings.effort} · history ${settings.retention}`,
       `Keys saved: Anthropic ${keyed.has("anthropic") ? "yes" : "no"}, OpenAI ${keyed.has("openai") ? "yes" : "no"}`,
+      `Sharing allowed: Anthropic ${consent.has("anthropic") ? "yes" : "no"}, OpenAI ${consent.has("openai") ? "yes" : "no"}${consentSaveError ? " · not saved: " + consentSaveError : ""}`,
       `Page: ${hostOf(tab.url ?? "") ?? "none"}${tab.incognito ? " · private" : ""}`,
       `Busy: ${[activeChat && "answering", task && "Scout mode", couponRun && "Find coupons"].filter(Boolean).join(", ") || "no"}`,
       `Network: ${navigator.onLine ? "online" : "offline"} · ${navigator.language}`,
@@ -1576,10 +1577,29 @@ async function main(): Promise<void> {
    * keeps its user gesture for the site-access prompt that may follow.
    */
   async function allowSharing(p: Provider): Promise<boolean> {
-    const ok = await ensureConsent(consent, p, askConsent, Date.now());
+    let unsaved: unknown = null;
+    const ok = await ensureConsent(consent, p, askConsent, Date.now(), (err) => (unsaved = err ?? "error"));
     renderConsent();
     if (!ok) status.textContent = "Nothing was sent. Scout asks before it shares anything with " + PROVIDER_NAME[p] + ".";
+    if (ok) {
+      // The worker sends the request, so it hears the answer too, saved or not (owner report 2026-10-27).
+      await tellWorkerConsent(p, true);
+      if (unsaved !== null) {
+        consentSaveError = (unsaved instanceof Error ? unsaved.name + ": " + unsaved.message : String(unsaved)).replace(/\s+/g, " ").slice(0, 100);
+        trace("consent:save-failed " + consentSaveError);
+      }
+    }
     return ok;
+  }
+
+  /** Why Safari last failed to save a permission, for the diagnostics Setup lines. */
+  let consentSaveError = "";
+
+  function tellWorkerConsent(p: Provider, allowed: boolean): Promise<void> {
+    return request(toWorker, "consent.set", { provider: p, allowed }, { timeoutMs: 5_000 }).then(
+      () => undefined,
+      () => trace("consent:worker-unreachable"),
+    );
   }
 
   // ---------- Chat (Part 2): context, the Scout server, tools ----------
@@ -3186,6 +3206,7 @@ async function main(): Promise<void> {
         btn.setAttribute("aria-label", "Withdraw permission to share with " + PROVIDER_NAME[p]);
         btn.addEventListener("click", () => {
           // The gate closes at once; storage follows.
+          void tellWorkerConsent(p, false);
           void consent.withdraw(p).then(
             () => (consentStatus.textContent = "Withdrawn. Scout sends nothing to " + PROVIDER_NAME[p] + " until you allow it again."),
             () => (consentStatus.textContent = "Could not save the change. Nothing is sent to " + PROVIDER_NAME[p] + " while this panel is open. Try again."),
@@ -3782,6 +3803,7 @@ async function main(): Promise<void> {
         deleteBtn.hidden = false;
         settings = parseSettings(undefined);
         consent.forget();
+        for (const p of ["anthropic", "openai"] as const) void tellWorkerConsent(p, false);
         diag?.forget();
         showLook(HOME_LOOK);
         clearThread();

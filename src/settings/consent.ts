@@ -109,11 +109,34 @@ export async function ensureConsent(
   p: Provider,
   ask: (p: Provider) => Promise<boolean>,
   now: number,
+  onSaveError?: (err: unknown) => void,
 ): Promise<boolean> {
   if (consent.has(p)) return true;
   if (!(await ask(p))) return false;
-  await consent.grant(p, now).catch(() => undefined);
+  // Allowed even when Safari fails to save it; the caller says why it will ask again.
+  await consent.grant(p, now).catch((err: unknown) => onSaveError?.(err));
   return true;
+}
+
+/**
+ * The worker's view of consent: what storage holds, plus what the user allowed
+ * or withdrew in an open panel since the worker started. Owner report
+ * 2026-10-27: Safari did not save the permission, so the worker refused a
+ * Find coupons run the user had just allowed.
+ */
+export class WorkerConsent {
+  private readonly panel = new Map<Provider, boolean>();
+
+  /** The panel's answer for this session. */
+  set(p: Provider, allowed: boolean): void {
+    this.panel.set(p, allowed);
+  }
+
+  /** Reads storage now and returns the check the provider's fetch uses. */
+  async load(storage: StorageArea | undefined): Promise<(p: Provider) => boolean> {
+    const stored = await Consent.load(storage);
+    return (p) => this.panel.get(p) ?? stored.has(p);
+  }
 }
 
 export function providerForUrl(url: string): Provider | null {

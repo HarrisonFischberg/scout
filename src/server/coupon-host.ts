@@ -12,6 +12,7 @@ import type { BrowserTarget, PageBrowser } from "../coupons/browser-read";
 import { runCouponJob, type CouponEvent } from "../coupons/job";
 import type { CouponPage } from "../coupons/tab-page";
 import type { Provider } from "../keychain";
+import { ProviderError } from "../providers/errors";
 import type { Effort, ProviderClient } from "../providers/types";
 
 /** No answer to "search again?" within this time counts as Stop here. */
@@ -146,6 +147,8 @@ export class CouponHost {
       trace("coupons:start-failed " + failReason(err));
       this.runs.delete(p.tab_id);
       if (err instanceof BridgeError) throw err;
+      // No permission, no key: say so, not "could not reach" (owner report 2026-10-27).
+      if (err instanceof ProviderError) throw new BridgeError("unhandled", err.userMessage);
       throw new BridgeError("unhandled", "Could not reach this page. Reload it and try again.");
     }
     const overlay = (req: OverlayRequest): void => {
