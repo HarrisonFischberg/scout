@@ -53,7 +53,7 @@ export type CouponEvent =
   | { kind: "steps-end" }
   | { kind: "attempt"; attempt: CouponAttempt; currency?: string }
   /** The question after a search whose codes saved nothing; answered with `answered`. */
-  | { kind: "ask"; prompt_id: string; tried: number }
+  | { kind: "ask"; prompt_id: string; tried: number; seconds?: number; best?: string }
   | { kind: "answered"; prompt_id: string }
   /** Diagnostics: a stage name, and the page the run is on. */
   | { kind: "trace"; stage: string }
@@ -354,6 +354,11 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
       control: run,
       delayMs: 250,
       askMore: (state) => {
+        steps.end();
+        return deps.askMore(state, run.signal);
+      },
+      checkpoint: (state) => {
+        trace("coupons:checkpoint tried=" + state.tried + " s=" + (state.checkpoint?.seconds ?? 0) + (state.checkpoint?.best ? " best" : ""));
         steps.end();
         return deps.askMore(state, run.signal);
       },
