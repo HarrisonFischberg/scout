@@ -252,6 +252,8 @@ export const REQUESTS = {
     },
   },
   "coupons.stop": { senders: ["panel"], payload: { object: { tab_id: "number" } } },
+  /** The user allowed or withdrew sharing with a provider in the panel; counts even if Safari failed to save it. */
+  "consent.set": { senders: ["panel"], payload: { object: { provider: { enum: ["anthropic", "openai"] }, allowed: "boolean" } } },
   /** The answer to "search the web again?". */
   "coupons.answer": { senders: ["panel"], payload: { object: { tab_id: "number", prompt_id: "string", more: "boolean" } } },
   /** The run on a tab, if any, with its events so far (a reopened panel catches up). */
