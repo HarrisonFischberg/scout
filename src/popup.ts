@@ -1653,7 +1653,8 @@ async function main(): Promise<void> {
     const visible = text.slice(0, cut);
     if (visible) renderMarkdown(document, v.bubble, visible, { sources: allSources(v, m) });
     else if (m.status === "error" || m.status === "complete") v.bubble.textContent = "";
-    else v.bubble.innerHTML = '<span class="thinking">' + PULSE + "<span>Thinking…</span></span>";
+    // After Apple's model couldn't answer, a new label shows the work goes on (owner, 2026-10-27).
+    else v.bubble.innerHTML = '<span class="thinking">' + PULSE + "<span>" + (m.handoff ? "Looking deeper…" : "Thinking…") + "</span></span>";
     if (v.closed && m.status === "complete" && !m.stopped && text && cut >= text.length) {
       v.bubble.appendChild(answerActions(v.bubble, { question: v.question, answer: text, sources: allSources(v, m) }));
     }
@@ -1778,7 +1779,10 @@ async function main(): Promise<void> {
       v.queue = v.queue.then(() => runToolRequest(w.message_id, ev)).catch(() => undefined);
     }
     if (m.status === "complete" || m.status === "error") finalize(w.message_id);
-    else if (w.event.kind === "text" || w.event.kind === "citation" || w.event.kind === "tool_done") renderView(w.message_id);
+    else if (w.event.kind === "text" || w.event.kind === "citation" || w.event.kind === "tool_done" || w.event.kind === "handoff") {
+      if (w.event.kind === "handoff") trace("apple:handoff");
+      renderView(w.message_id);
+    }
   }
 
   // ---------- Tool requests that need the user (close_tabs, screenshots) ----------

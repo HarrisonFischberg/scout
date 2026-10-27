@@ -284,7 +284,7 @@ export const WORKER_EVENTS = {
     object: {
       message_id: "string",
       seq: "number",
-      kind: { enum: ["start", "text", "citation", "tool_request", "tool_done", "usage", "done", "error"] },
+      kind: { enum: ["start", "handoff", "text", "citation", "tool_request", "tool_done", "usage", "done", "error"] },
       delta: "string",
       url: "string",
       title: "string",

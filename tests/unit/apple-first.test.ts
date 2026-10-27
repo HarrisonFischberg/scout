@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import { APPLE_MODEL, AppleModelError, appleCouldNotAnswer } from "../../src/providers/apple";
 import type { ProviderClient, StreamEvent } from "../../src/providers/types";
 import { ScoutServer, type StartRequest } from "../../src/server/engine";
-import type { NumberedEvent } from "../../src/server/protocol";
+import { fromWire, toWire, type NumberedEvent } from "../../src/server/protocol";
+import { ConversationStore } from "../../src/chat/store";
 
 const REQ: StartRequest = {
   message_id: "m1",
@@ -61,6 +62,7 @@ describe("Apple first, key as fallback", () => {
     expect(events.some((e) => e.event.kind === "usage")).toBe(false);
     expect(asked).toEqual([APPLE_MODEL]);
     expect(keyed.calls).toBe(0);
+    expect(events.some((e) => e.event.kind === "handoff")).toBe(false);
   });
 
   it("falls back when Apple says it can't answer", async () => {
@@ -68,6 +70,17 @@ describe("Apple first, key as fallback", () => {
     expect(events[events.length - 1]?.event).toEqual({ kind: "done", text: "Claude: $10." });
     expect(events.some((e) => e.event.kind === "usage")).toBe(true);
     expect(asked).toEqual([APPLE_MODEL, "claude-haiku-5-5"]);
+    // The panel swaps "Thinking…" for "Looking deeper…" before the key's model writes.
+    expect(events.map((e) => e.event.kind)).toEqual(["start", "handoff", "text", "usage", "done"]);
+  });
+
+  it("the handoff survives the port and the store", () => {
+    expect(fromWire(toWire("m1", { seq: 2, event: { kind: "handoff" } }))?.event).toEqual({ kind: "handoff" });
+    const st = new ConversationStore();
+    st.create("m");
+    st.apply("m", 1, { kind: "start" });
+    st.apply("m", 2, { kind: "handoff" });
+    expect(st.get("m")?.handoff).toBe(true);
   });
 
   it("falls back when Apple fails (too long, unavailable, declined)", async () => {
