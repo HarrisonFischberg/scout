@@ -39,6 +39,8 @@ const scout = createScoutWorker(storage, {
     await browser.action?.setIcon?.({ path: toolbarIcon(dark?.matches === true, active), tabId })?.catch(() => undefined);
   },
   openPanel: async () => void (await openPanel(browser.action)),
+  // Coupon run progress only (never a key): cleared when Safari quits.
+  ...(browser.storage?.session ? { progress: browser.storage?.session } : {}),
 });
 const route = createRouter(
   {
