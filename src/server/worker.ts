@@ -69,6 +69,8 @@ export interface WorkerOptions {
   setIcon?: (tabId: number, active: boolean) => Promise<void>;
   /** Opens the toolbar panel (Part 3: a confirmation waits and no panel is open). */
   openPanel?: () => Promise<void>;
+  /** Where a running coupon run keeps its progress (storage.session in Safari; `storage` otherwise). */
+  progress?: Pick<StorageArea, "get" | "set">;
 }
 
 export function createScoutWorker(storage: StorageArea | undefined, options: WorkerOptions = {}) {
@@ -232,6 +234,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     tabs: () => quietBrowser(),
     allowBrowser: allowBrowserPages,
     ...(storage ? { storage } : {}),
+    ...((options.progress ?? storage) ? { progress: (options.progress ?? storage)! } : {}),
     overlay: (tabId, req: OverlayRequest) => callInjected(tabId, "overlay.js", OVERLAY_HANDLER, req),
     save: async (e) => {
       if (!storage) return;
@@ -249,8 +252,9 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
       return { ok: true };
     },
     "coupons.answer": (p: { tab_id: number; prompt_id: string; more: boolean }) => couponHost.answer(p),
-    "coupons.status": (p: { tab_id: number }) => couponHost.status(p.tab_id),
-    "coupons.list": () => couponHost.list(),
+    // A worker Safari started again saves the runs it lost first (CouponHost.ready).
+    "coupons.status": async (p: { tab_id: number }) => (await couponHost.ready, couponHost.status(p.tab_id)),
+    "coupons.list": async () => (await couponHost.ready, couponHost.list()),
     "tabs.show": async (p: { tab_id: number }) => {
       if (!browser.tabs.update) return { ok: false };
       await browser.tabs.update(p.tab_id, { active: true });

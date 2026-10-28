@@ -2838,16 +2838,33 @@ async function main(): Promise<void> {
   }
 
   type CouponRunView = { started_at: number; conv?: string; events: Array<Record<string, unknown>>; done: boolean; prompt_id?: string };
+  type LostCouponRun = { conv: string; at: number; answer: string };
+  /** A run Safari ended by unloading the worker, saved as a chat when the worker started again (CouponHost.recover). */
+  let couponLost: LostCouponRun | null = null;
 
   /** The worker's run on this tab (running or just finished), and live events that came while asking. */
   async function readCouponRun(): Promise<{ run: CouponRunView; buffered: Array<Record<string, unknown>> } | null> {
     if (tab.id === undefined || !port) return null;
     couponBuffer = [];
     watchTab();
-    const got = await request<{ run?: CouponRunView }>(toWorker, "coupons.status", { tab_id: tab.id }, { timeoutMs: 3_000 }).catch(() => null);
+    const got = await request<{ run?: CouponRunView; lost?: LostCouponRun }>(toWorker, "coupons.status", { tab_id: tab.id }, { timeoutMs: 5_000 }).catch(() => null);
     const buffered = couponBuffer;
     couponBuffer = null;
+    couponLost = got?.lost ?? null;
     return got?.run ? { run: got.run, buffered } : null;
+  }
+
+  /** Shows a lost run's saved chat entry on its own chat, once (it may already be shown from history). */
+  function showLostRun(): void {
+    const l = couponLost;
+    if (!l || !conv || l.conv !== conv || turns.some((t) => t.entry.kind === "coupons" && t.entry.at === l.at)) return;
+    trace("coupons:lost");
+    const entry: HistoryEntry = { at: l.at, question: COUPON_QUESTION, answer: l.answer, kind: "coupons" };
+    addMessage("user", COUPON_QUESTION, { mode: "Find coupons" });
+    addMessage("assistant", l.answer);
+    turns.push({ entry });
+    updateEmpty();
+    scrollToEnd();
   }
 
   /** Shows a run in the chat and replays its events so far (a finished run ends with its summary). */
@@ -2870,7 +2887,8 @@ async function main(): Promise<void> {
   async function resumeCoupons(): Promise<void> {
     if (couponRun) return;
     const got = await readCouponRun();
-    if (!got || couponRun) return;
+    if (!got) return showLostRun();
+    if (couponRun) return;
     const r = got.run;
     // The run belongs to a chat New chat left: the chip leads back to it.
     if (r.conv && conv && r.conv !== conv) {
@@ -2963,6 +2981,7 @@ async function main(): Promise<void> {
     showEntries(r ? entries.filter((e) => !(e.kind === "coupons" && e.at >= r.started_at)) : entries);
     if (r && got) replayCouponRun(r, got.buffered);
     else if (got && !got.run.done && !couponAway) sendCouponAway(got.run.conv ?? "", got.run.prompt_id ? "ask" : "running");
+    else if (!got) showLostRun();
     status.textContent = "";
     updateEmpty();
     trace("conversation:open " + entries.length);
@@ -2993,9 +3012,10 @@ async function main(): Promise<void> {
   }
 
   async function renderChats(): Promise<void> {
-    const [entries, runs, visible] = await Promise.all([
+    // The worker first, so a run it lost and has just saved as a chat is in the history read after.
+    const runs = port ? await request<{ runs: RunRow[] }>(toWorker, "coupons.list", {}, { timeoutMs: 5_000 }).then((r) => r.runs).catch(() => []) : [];
+    const [entries, visible] = await Promise.all([
       storage ? loadHistory(storage, settings.retention, Date.now()).catch(() => []) : [],
-      port ? request<{ runs: RunRow[] }>(toWorker, "coupons.list", {}, { timeoutMs: 3_000 }).then((r) => r.runs).catch(() => []) : [],
       visibleConvs(),
     ]);
     const chats = summarizeChats(entries, {
