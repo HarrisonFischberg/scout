@@ -9,7 +9,7 @@ import type { OverlayRequest } from "../../src/content-api";
 import type { CartState } from "../../src/coupons/finder";
 import type { CouponPage } from "../../src/coupons/tab-page";
 import { ProviderError, type ProviderClient } from "../../src/providers";
-import { CouponHost, failReason, COUPON_QUESTION } from "../../src/server/coupon-host";
+import { CouponHost, failReason, COUPON_QUESTION, COUPON_PROGRESS_KEY, lostSummary, parseProgress } from "../../src/server/coupon-host";
 
 // The web search finds nothing: the only code is the one the store's page shows.
 const quiet: ProviderClient = {
@@ -38,7 +38,17 @@ const cartPage = (opts: { hang?: boolean } = {}): CouponPage => {
   };
 };
 
-function fake(page: CouponPage, blocked?: string) {
+type Progress = { data: Record<string, unknown>; get(key: string): Promise<Record<string, unknown>>; set(items: Record<string, unknown>): Promise<void> };
+const progressStore = (): Progress => {
+  const store: Progress = {
+    data: {},
+    get: async (key) => (key in store.data ? { [key]: JSON.parse(JSON.stringify(store.data[key])) } : {}),
+    set: async (items) => void Object.assign(store.data, JSON.parse(JSON.stringify(items))),
+  };
+  return store;
+};
+
+function fake(page: CouponPage, blocked?: string, progress?: Progress) {
   const overlay: OverlayRequest[] = [];
   const saved: Array<{ conv: string; question: string; answer: string }> = [];
   const posted: Array<Record<string, unknown>> = [];
@@ -50,6 +60,7 @@ function fake(page: CouponPage, blocked?: string) {
     allowBrowser: async () => false,
     overlay: async (_tab, req) => void overlay.push(req),
     save: async (e) => void saved.push(e),
+    ...(progress ? { progress } : {}),
     now: () => 1000,
   });
   const port = { postMessage: (m: unknown) => void posted.push((m as { payload: Record<string, unknown> }).payload) };
@@ -116,6 +127,53 @@ describe("coupon host", () => {
     expect(f.saved[0]).toMatchObject({ conv: "c1", site: "shop.test" });
     expect(f.host.list().runs[0]).toMatchObject({ done: true });
   }, 30_000);
+
+  it("Safari unloads the worker mid-run: the next worker saves what the run found as a chat, and the panel on that tab gets it (owner report 2026-10-28)", async () => {
+    const progress = progressStore();
+    const f = fake(cartPage(), undefined, progress);
+    await f.host.start({ tab_id: 1, provider: "anthropic", model: "m", conv: "c1", site: "shop.test" });
+    await until(() => !!f.host.status(1).run?.prompt_id);
+    // Every code is refused; the run asks after 30 (src/coupons/finder.ts).
+    const tried = f.host.status(1).run!.events.filter((e) => e.kind === "attempt").length;
+    expect(tried).toBeGreaterThan(1);
+    await until(() => (progress.data[COUPON_PROGRESS_KEY] as Record<string, { tried: number }> | undefined)?.["1"]?.tried === tried);
+    // Only what the chat needs: no page text, no page address.
+    expect(progress.data[COUPON_PROGRESS_KEY]).toEqual({ "1": { tab_id: 1, conv: "c1", site: "shop.test", started_at: 1000, tried } });
+    // A new worker on the same storage, as after Safari unloads and wakes it.
+    const next = fake(cartPage(), undefined, progress);
+    await next.host.ready;
+    expect(next.saved).toHaveLength(1);
+    expect(next.saved[0]).toMatchObject({ conv: "c1", site: "shop.test", question: COUPON_QUESTION });
+    expect(next.saved[0]!.answer).toContain("It tried " + tried + " codes and none saved anything yet.");
+    expect(next.host.status(1)).toEqual({ lost: { conv: "c1", at: 1000, answer: next.saved[0]!.answer } });
+    expect(next.host.list()).toEqual({ runs: [] });
+    expect(progress.data[COUPON_PROGRESS_KEY]).toEqual({});
+    // Saved once: a third start finds nothing left.
+    const third = fake(cartPage(), undefined, progress);
+    await third.host.ready;
+    expect(third.saved).toHaveLength(0);
+    // A new run on the tab replaces the lost one.
+    await next.host.start({ tab_id: 1, provider: "anthropic", model: "m", conv: "c2" });
+    expect(next.host.status(1).lost).toBeUndefined();
+    await Promise.all([f.host.stopAll(), next.host.stopAll()]);
+  }, 30_000);
+
+  it("a finished run leaves no progress behind", async () => {
+    const progress = progressStore();
+    const f = fake(cartPage(), undefined, progress);
+    await f.host.start({ tab_id: 1, provider: "anthropic", model: "m", conv: "c1" });
+    await until(() => !!f.host.status(1).run?.prompt_id);
+    await f.host.stopAll();
+    expect(progress.data[COUPON_PROGRESS_KEY]).toEqual({});
+  }, 30_000);
+
+  it("a lost run's chat says how far it got, and stored progress is checked", () => {
+    const base = { tab_id: 1, conv: "c1", started_at: 1 };
+    expect(lostSummary({ ...base, tried: 0 })).toContain("No codes were tried yet.");
+    expect(lostSummary({ ...base, tried: 12, best: { code: "SAVE20", saving: 20, currency: "USD" } })).toContain("It tried 12 codes. Best so far: SAVE20, saving $20.00.");
+    expect(parseProgress({ a: null, b: { tab_id: "1" }, c: { ...base, tried: 2, best: { code: 5 } }, d: [] })).toEqual([{ ...base, tried: 2 }]);
+    expect(parseProgress("junk")).toEqual([]);
+  });
 
   it("stopAll (Delete all data) ends every run and resolves only after each has saved", async () => {
     const f = fake(cartPage());
