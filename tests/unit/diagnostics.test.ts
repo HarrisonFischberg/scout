@@ -239,7 +239,8 @@ describe("full debug log", () => {
     d.start("startup").finish("ready", "Ready.");
     d.start("ask", { provider: "anthropic", model: "m" }).finish("done", "Answered.");
     const text = buildReport(d.runs, ENV, [], {
-      crashes: [{ at: 0, where: "worker", message: "TypeError: x at background.js:3", count: 3 }],
+      // Mid-June: the report prints local time, which is June in every time zone.
+      crashes: [{ at: Date.UTC(2026, 5, 15, 12), where: "worker", message: "TypeError: x at background.js:3", count: 3 }],
       setup: ["Surface: panel · touch", "Keys saved: Anthropic yes, OpenAI no"],
     });
     expect(text).toContain("- Run: ask (#3)");
@@ -249,7 +250,7 @@ describe("full debug log", () => {
     expect(text).toContain("+0.00s  step:ok Did: click “See all reviews”");
     // A quiet panel opening stays one line.
     expect(text).toMatch(/- #2 startup at .* → ready\n- #1/);
-    expect(text).toContain("### Unexpected errors\n- 1970");
+    expect(text).toContain("### Unexpected errors\n- 2026-06-");
     expect(text).toContain("worker (×3): TypeError: x at background.js:3");
     expect(text).toContain("### Setup\n- Build: Scout AI Assistant 0.1.0 (debug) · Safari 27 on macOS");
     expect(text).toContain("- Keys saved: Anthropic yes, OpenAI no");
