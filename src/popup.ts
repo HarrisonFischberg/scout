@@ -1898,6 +1898,32 @@ async function main(): Promise<void> {
     });
   }
 
+  async function confirmOpen(input: unknown): Promise<ToolDecision> {
+    const url = String((input as { url?: unknown } | null)?.url ?? "");
+    return askTool({
+      title: "Open this address?",
+      what: "Scout wants to open a new tab at:",
+      items: [url.slice(0, 300)],
+      choices: [
+        { label: "Open tab", value: "confirmed" },
+        { label: "Cancel", value: "declined", safe: true },
+      ],
+    });
+  }
+
+  async function confirmRunTask(goal: string): Promise<boolean> {
+    const d = await askTool({
+      title: "Start a Scout mode task?",
+      what: "The chat wants Scout to act on this page to:",
+      items: [goal.slice(0, 300)],
+      choices: [
+        { label: "Start task", value: "confirmed" },
+        { label: "Cancel", value: "declined", safe: true },
+      ],
+    });
+    return d === "confirmed";
+  }
+
   /** Asks when the site is set to ask; undefined when Settings already decides (the host enforces it). */
   async function askScreenshot(model: string): Promise<ToolDecision | undefined> {
     const now = await activeTab();
@@ -1930,6 +1956,7 @@ async function main(): Promise<void> {
     trace("tool:request " + (/^\w{1,30}$/.test(ev.name) ? ev.name : "unknown"));
     let decision: ToolDecision | undefined;
     if (ev.name === "close_tabs") decision = await confirmClose(ev.input);
+    else if (ev.name === "open_tab") decision = await confirmOpen(ev.input);
     else if (ev.name === "screenshot_visible") decision = await askScreenshot(v.model);
     // The answer ended (Stop, error) or the server timed the request out while asking.
     if (store.get(id)?.status !== "streaming" || !store.pendingTools(id).some((t) => t.request_id === ev.request_id)) return;
@@ -1938,9 +1965,12 @@ async function main(): Promise<void> {
       // Part 3: the Scout server asked for a task mid-answer. The user is asked
       // first; the answer continues with the task's outcome.
       const goal = typeof (ev.input as { goal?: unknown } | null)?.goal === "string" ? ((ev.input as { goal: string }).goal) : "";
-      result = goal.trim()
-        ? await runTaskForChat(goal)
-        : { status: "schema-error", text: "run_task needs a goal.", site: hostOf(tab.url ?? "") ?? "" };
+      const site = hostOf(tab.url ?? "") ?? "";
+      result = !goal.trim()
+        ? { status: "schema-error", text: "run_task needs a goal.", site }
+        : (await confirmRunTask(goal))
+          ? await runTaskForChat(goal)
+          : { status: "declined", text: "The user chose not to start the task.", site };
     } else
     try {
       result = await request<ToolResult>(
