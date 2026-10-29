@@ -165,7 +165,10 @@ describe("tab tools", () => {
     const h = host();
     expect((await h.run({ name: "open_tab", input: { url: "javascript:alert(1)" } })).status).toBe("schema-error");
     expect((await h.run({ name: "open_tab", input: { url: "https://bank.test/" } })).status).toBe("blocked-by-user");
-    const r = await h.run({ name: "open_tab", input: { url: "https://docs.test/" } });
+    expect((await h.run({ name: "open_tab", input: { url: "https://docs.test/" } })).status).toBe("error");
+    expect((await h.run({ name: "open_tab", input: { url: "https://docs.test/" }, decision: "declined" })).status).toBe("declined");
+    expect(h.calls).toEqual([]);
+    const r = await h.run({ name: "open_tab", input: { url: "https://docs.test/" }, decision: "confirmed" });
     expect(r).toMatchObject({ status: "ok", opened_tab: 9 });
   });
 
