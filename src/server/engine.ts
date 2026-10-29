@@ -286,9 +286,22 @@ export class ScoutServer {
             roundText += ev.delta;
             full += delta;
             this.emit(run, { kind: "text", delta });
-          } else if (ev.type === "source" && !cited.has(ev.url)) {
-            cited.set(ev.url, ev.title);
-            this.emit(run, { kind: "citation", url: ev.url, ...(ev.title ? { title: ev.title } : {}) });
+          } else if (ev.type === "source") {
+            if (!cited.has(ev.url)) {
+              cited.set(ev.url, ev.title);
+              this.emit(run, { kind: "citation", url: ev.url, ...(ev.title ? { title: ev.title } : {}) });
+            }
+            // The provider's own citation: number it as the panel does (earlier
+            // part, pages, then web sources) so it shows as a linked chip.
+            if (ev.cite && full && !/\n\s*$/.test(full)) {
+              const n = (req.prefix_sources?.length ?? 0) + req.pages.length + [...cited.keys()].indexOf(ev.url) + 1;
+              const marker = " [" + n + "]";
+              if (!full.endsWith(marker)) {
+                roundText += marker;
+                full += marker;
+                this.emit(run, { kind: "text", delta: marker });
+              }
+            }
           } else if (ev.type === "tool_call") calls.push(ev);
           else if (ev.type === "usage") {
             usage.inputTokens += ev.usage.inputTokens;

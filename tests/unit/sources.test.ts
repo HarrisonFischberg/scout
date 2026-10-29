@@ -30,6 +30,23 @@ describe("answer sources", () => {
     expect(answerText("Hi", [])).toBe("Hi");
   });
 
+
+  it("parses the search tool's own [12-1] markers as citations no source matches, so they are dropped", () => {
+    expect(parseInline("Firm [12-1, 12-10].")).toEqual([
+      { type: "text", text: "Firm " },
+      { type: "cite", n: 0 },
+      { type: "cite", n: 0 },
+      { type: "text", text: "." },
+    ]);
+  });
+
+  it("copies the answer without markers no source matches", () => {
+    expect(answerText("Half as much [2-4]. Firm [1, 12-1]. Code items[1].", [{ url: "https://a.test/x" }])).toBe(
+      "Half as much. Firm [1]. Code items[1].\n\nSources:\n[1] https://a.test/x",
+    );
+    expect(answerText("Firm [12-1].", [])).toBe("Firm.");
+  });
+
   it("saves addresses without query or fragment", () => {
     expect(savedUrl("https://shop.test/cart?session=abc#top")).toBe("https://shop.test/cart");
     expect(savedUrl("not a url")).toBe("");
