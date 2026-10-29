@@ -34,6 +34,8 @@ import { identifyMerchant, sellsLine } from "./merchant";
 import { formatMoney } from "./money";
 import { codesWithContext, MAX_STORE_CODES, type StoreCode } from "./store";
 import { guessCodes } from "./guesses";
+import { readOwnSite } from "./own-site";
+import { countSites, noteRefused, parseRefused, parseSiteStats, rankPending, REFUSED_KEY, SITE_STATS_KEY } from "./priority";
 import { parseWorked, rememberedCodes, updateWorked, WORKED_KEY } from "./memory";
 import { mostlyExpired, type RejectKind } from "./reasons";
 import type { CouponPage } from "./tab-page";
@@ -129,9 +131,12 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     // The merchant: the tab's host, less checkout-only subdomains, and the
     // name the page gives itself. All page data, used only as search words.
     const meta = await page.meta().catch(() => null);
-    const merchant = identifyMerchant(snap.url, meta ?? {});
+    // Links on the page too: on a hosted checkout (shop.app) one of them is the store's own site.
+    const links = [...(meta?.links ?? []), ...snap.elements.flatMap((e) => (e.href ? [e.href] : []))];
+    const merchant = identifyMerchant(snap.url, { ...(meta ?? {}), links });
     const sells = sellsLine(meta);
-    trace("coupons:merchant " + (merchant.host === merchant.domain ? "store-host" : "other-host") + (meta?.siteName ? " named" : "") + (sells ? " sells" : ""));
+    const linked = merchant.domain !== identifyMerchant(snap.url, { ...(meta ?? {}), links: [] }).domain;
+    trace("coupons:merchant " + (merchant.host === merchant.domain ? "store-host" : "other-host") + (linked ? " linked" : "") + (meta?.siteName ? " named" : "") + (sells ? " sells" : ""));
     const ac = new AbortController();
     run.signal.addEventListener("abort", () => ac.abort(), { once: true });
     // Waits run here, not in the page, so they outlast a page that reloads.
@@ -205,6 +210,11 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     const remembered = rememberedCodes(worked, merchant.domain).filter((c) => !onSite.some((s) => s.code === c.code));
     trace("coupons:remembered " + remembered.length);
     onSite.unshift(...remembered);
+    // What this device learned (src/coupons/priority.ts): which coupon sites' codes work, and what this store refused lately.
+    const stored = async (key: string): Promise<unknown> => (storage ? (await storage.get(key).catch(() => ({}) as Record<string, unknown>))[key] : undefined);
+    const siteStats = parseSiteStats(await stored(SITE_STATS_KEY));
+    const refused = parseRefused(await stored(REFUSED_KEY))[merchant.domain] ?? {};
+    trace("coupons:learned sites=" + Object.keys(siteStats).length + " refused=" + Object.keys(refused).length);
     // Milestones for one search: "Found 5 coupons…", then "Found 10 more…"
     // at most every few seconds (a quicker find adds to the last line).
     let tried = 0;
@@ -245,6 +255,35 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     if (onSite.length) first.found(onSite.length);
     const queue = new CodeQueue();
     const storeFound = new Set(onSite.map((c) => c.code));
+    // The store's own site (home page and its promotion pages), read quietly while the web search runs; its codes go first.
+    const named = !/^(?:\d{1,3}\.){3}\d{1,3}$|^localhost$/.test(merchant.domain) && merchant.domain.includes(".");
+    let ownDone = false;
+    const held: CouponCandidate[][] = [];
+    const toTest = (list: CouponCandidate[]): void => void (ownDone ? queue.push(list) : held.push(list));
+    const ownSite = (named ? readOwnSite(deps.tabs, merchant.domain, { signal: ac.signal }) : Promise.resolve({ codes: [], pages: 0 }))
+      .catch(() => ({ codes: [], pages: 0 }))
+      .then((r) => {
+        const fresh = r.codes.filter((c) => !storeFound.has(c.code)).map((c) => asStore(c, c.url));
+        trace("coupons:own-site pages=" + r.pages + " codes=" + fresh.length);
+        for (const c of fresh) storeFound.add(c.code);
+        if (fresh.length && !run.isStopped) {
+          discovery.store += fresh.length;
+          queue.push(fresh);
+          first.found(fresh.length);
+        }
+        // The search's codes wait for this read (OWN_SITE_MS at most), so the store's own codes are tested first.
+        ownDone = true;
+        for (const h of held.splice(0)) queue.push(h);
+      });
+    // A code the search found on the store's own domain is the store's own code.
+    const onStoreSite = (url: string): boolean => {
+      try {
+        const h = new URL(url).hostname.toLowerCase();
+        return h === merchant.domain || h.endsWith("." + merchant.domain);
+      } catch {
+        return false;
+      }
+    };
     trace("coupons:search");
     // Sites that refused the reader on this device go to a background tab first; each fetch is counted.
     let readerHosts = parseReaderHosts(storage ? (await storage.get(READER_HOSTS_KEY).catch(() => ({}) as Record<string, unknown>))[READER_HOSTS_KEY] : undefined);
@@ -269,8 +308,9 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     const searching = suggestCodes(client, searchModel, merchant, ac.signal, {
           ...(sells ? { sells } : {}),
       browser: browserPages,
-      onFound: (fresh) => {
-        queue.push(fresh);
+      onFound: (found) => {
+        const fresh = found.map((c): CouponCandidate => (named && c.sourceUrl && onStoreSite(c.sourceUrl) && c.origin !== "store" ? { ...c, origin: "store" } : c));
+        toTest(fresh);
         first.found(fresh.filter((c) => !storeFound.has(c.code)).length);
       },
       ...(deps.effort ? { effort: deps.effort } : {}),
@@ -314,7 +354,8 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     let guessed = 0;
     const known = new Set<string>(onSite.map((c) => c.code));
     const searched = searching
-      .then((sug) => {
+      .then(async (sug) => {
+        await ownSite;
         addUsage(sug, searchModel);
         tally(sug);
         if (sug.error) trace("coupons:search-error " + sug.error.code);
@@ -343,7 +384,10 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         first.done();
         return sug;
       })
-      .finally(() => queue.close());
+      .finally(async () => {
+        await ownSite;
+        queue.close();
+      });
     let best: number | null = null;
     const kinds: RejectKind[] = [];
     const outcome = await runCouponSearch({
@@ -353,6 +397,7 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
       incoming: queue,
       control: run,
       delayMs: 250,
+      rank: (pending, attempts) => rankPending(pending, attempts, { merchant, sites: siteStats, refused }),
       askMore: (state) => {
         steps.end();
         return deps.askMore(state, run.signal);
@@ -402,6 +447,17 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
       },
       onAttempt: (a, index, _total, currency) => {
         if (a.kind) kinds.push(a.kind);
+        // Saved as each code is tested: a run Safari closes in the background still counts (owner's sproos log 2026-10-29).
+        if (storage && !a.combo) {
+          void withLock(REFUSED_KEY, async () => {
+            const all = parseRefused((await storage.get(REFUSED_KEY))[REFUSED_KEY]);
+            await storage.set({ [REFUSED_KEY]: noteRefused(all, merchant.domain, [a]) });
+          }).catch(() => undefined);
+          void withLock(SITE_STATS_KEY, async () => {
+            const all = parseSiteStats((await storage.get(SITE_STATS_KEY))[SITE_STATS_KEY]);
+            await storage.set({ [SITE_STATS_KEY]: countSites(all, [a]) });
+          }).catch(() => undefined);
+        }
         // Stage words only: the group of the store's reply (never its words) and where the code came from.
         trace("coupons:attempt " + index + (a.combo ? " combo" : "") + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none") + (a.kind ? " " + a.kind : "") + " from " + sourceLabel(a));
         emit({ kind: "attempt", attempt: a, ...(currency ? { currency } : {}) });
@@ -433,7 +489,7 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         if (JSON.stringify(next) !== JSON.stringify(saved)) await storage.set({ [WORKED_KEY]: next });
       }).catch(() => undefined);
     }
-    trace("coupons:status " + outcome.status + (outcome.best ? " best" : " none") + (outcome.applied ? " applied" : ""));
+    trace("coupons:status " + outcome.status + (outcome.best ? " best" : " none") + (outcome.applied ? " applied" : "") + (outcome.reapplied ? " reapply=" + outcome.reapplied : ""));
     if (outcome.status === "no_codes") {
       // Nothing to test: say so plainly; the cart stays as it was.
       const stopped = discovery.error?.code === "stopped" || run.isStopped;
