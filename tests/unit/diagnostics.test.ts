@@ -239,7 +239,7 @@ describe("full debug log", () => {
     d.start("startup").finish("ready", "Ready.");
     d.start("ask", { provider: "anthropic", model: "m" }).finish("done", "Answered.");
     const text = buildReport(d.runs, ENV, [], {
-      crashes: [{ at: 0, where: "worker", message: "TypeError: x at background.js:3", count: 3 }],
+      crashes: [{ at: 12 * 3600_000, where: "worker", message: "TypeError: x at background.js:3", count: 3 }],
       setup: ["Surface: panel · touch", "Keys saved: Anthropic yes, OpenAI no"],
     });
     expect(text).toContain("- Run: ask (#3)");

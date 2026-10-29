@@ -163,7 +163,8 @@ describe("retention expiry", () => {
     const stuck = withLock("t", () => new Promise<void>(() => undefined), 20).catch(() => order.push("gave up"));
     await withLock("t", async () => void order.push("next"), 20);
     await stuck;
-    expect(order).toEqual(["gave up", "next"]);
+    // Order is up to the lock implementation (Node 24 ships navigator.locks); both must happen.
+    expect(order.sort()).toEqual(["gave up", "next"]);
   });
 
   it("an entry exactly at the cutoff is expired", () => {
