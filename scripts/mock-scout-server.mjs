@@ -17,6 +17,9 @@
 //   [mock:slow]                   stream slowly (for Stop and reconnect tests),
 //   [mock:long]                   stream 40 words over about 24 s (close and reopen the panel meanwhile),
 //   [mock:error]                  answer HTTP 500.
+//   [mock:cited]                  an answer whose web citations come as search result
+//                                 citations (page in `source`), with the "[12-1]" markers
+//                                 the model sometimes writes (owner report 2026-10-29).
 // Without a marker it streams a sample answer with Markdown, a table, code, and math.
 //
 // Scout mode (Part 3): a request that offers the `act` tool is a task turn.
@@ -121,6 +124,16 @@ function plan(body) {
     return { text: "Let me use a tool. ", tool: { name: tool[1], input } };
   }
   if (/\[mock:error\]/.test(all)) return { status: 500 };
+  if (/\[mock:cited\]/.test(all)) {
+    const cite = (source, title, n) => ({ type: "search_result_location", source, title, cited_text: "Mock passage", search_result_index: n, start_block_index: 1, end_block_index: 1 });
+    return {
+      blocks: [
+        { text: "Big Joe Fuf costs about half as much as Moon Pod [2-4]", citations: [cite("https://reviews.example/fuf", "Fuf review", 2)] },
+        { text: ". It is firm and good for reading [12-1, 12-10]", citations: [cite("https://beanbags.example/guide", "Bean bag guide", 12)] },
+        { text: ".\n\n- Built for one person [12-9]." },
+      ],
+    };
+  }
   if (/\[mock:long\]/.test(all)) {
     return { text: Array.from({ length: 40 }, (_, i) => "w" + (i + 1) + (i === 39 ? "." : " ")), delay: 600 };
   }
@@ -137,6 +150,18 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function stream(res, p) {
   res.writeHead(200, { ...CORS, "content-type": "text/event-stream", "cache-control": "no-cache" });
   sse(res, { type: "message_start", message: { usage: { input_tokens: 25, output_tokens: 1 } } });
+  if (p.blocks) {
+    for (const [i, b] of p.blocks.entries()) {
+      sse(res, { type: "content_block_start", index: i, content_block: { type: "text", text: "" } });
+      for (const c of b.citations ?? []) sse(res, { type: "content_block_delta", index: i, delta: { type: "citations_delta", citation: c } });
+      sse(res, { type: "content_block_delta", index: i, delta: { type: "text_delta", text: b.text } });
+      sse(res, { type: "content_block_stop", index: i });
+      await wait(15);
+    }
+    sse(res, { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 40 } });
+    sse(res, { type: "message_stop" });
+    return res.end();
+  }
   sse(res, { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } });
   const pieces = Array.isArray(p.text) ? p.text : [p.text];
   for (let i = 0; i < pieces.length; i++) {

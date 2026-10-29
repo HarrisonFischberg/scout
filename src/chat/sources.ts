@@ -48,9 +48,21 @@ export function siteHue(url: string): number {
   return h;
 }
 
+/**
+ * Drops citation markers no source matches, as the panel does: "[12-1]" (the
+ * search tool's own result-passage numbers) or a number past the list.
+ * Only markers after a space, so code such as "items[1]" stays.
+ */
+export function dropUnmatchedCites(text: string, count: number): string {
+  return text.replace(/[ \t]+\[(\d{1,3}(?:-\d{1,3})?(?:\s*,\s*\d{1,3}(?:-\d{1,3})?)*)\](?!\()/g, (all, list: string) => {
+    const kept = list.split(",").map((x) => x.trim()).filter((x) => /^\d+$/.test(x) && Number(x) >= 1 && Number(x) <= count);
+    return kept.length === list.split(",").length ? all : kept.length ? " [" + kept.join(", ") + "]" : "";
+  });
+}
+
 /** The answer as copied or shared: its Markdown, then the numbered sources it may cite. */
 export function answerText(answer: string, sources: Source[]): string {
-  const text = answer.trim();
+  const text = dropUnmatchedCites(answer.trim(), sources.length);
   if (!sources.length) return text;
   const lines = sources.map((s, i) => "[" + (i + 1) + "] " + (s.title ? s.title + " (" + s.url + ")" : s.url));
   return text + "\n\nSources:\n" + lines.join("\n");
