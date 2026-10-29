@@ -38,6 +38,8 @@ export interface ProbeResult {
   /** A password, card, or similar field. */
   redacted?: boolean;
   disabled?: boolean;
+  /** A read-only text field: a person cannot type into it, so Scout does not either. */
+  readonly?: boolean;
   /** Inside a form, so Enter may submit it. */
   inForm?: boolean;
 }
@@ -85,6 +87,7 @@ export function performTaskAction(page: TaskPage, action: TaskAction): TaskActio
         const el = page.probe(action.target ?? "focused");
         if (!el) return fail(name, "no_target", action.target ? "Nothing is at " + targetLabel(action.target) + "." : "No element has focus. Click a field first.");
         if (el.disabled) return fail(name, "disabled", "That field is disabled.");
+        if (el.readonly) return fail(name, "not_typeable", "That field is read-only.");
         if (!page.type(action.target, action.text)) return fail(name, "not_typeable", "That element does not accept text.");
         return { ok: true, action: name, message: "Typed " + action.text.length + " characters into " + targetLabel(action.target) + "." };
       }
@@ -92,6 +95,7 @@ export function performTaskAction(page: TaskPage, action: TaskAction): TaskActio
         const el = page.probe(action.target);
         if (!el) return fail(name, "no_target", "Nothing is at " + targetLabel(action.target) + ".");
         if (el.disabled) return fail(name, "disabled", "That field is disabled.");
+        if (el.readonly) return fail(name, "not_typeable", "That field is read-only.");
         if (!page.fill(action.target, action.value)) return fail(name, "not_typeable", "That element is not a field.");
         return { ok: true, action: name, message: "Filled " + targetLabel(action.target) + " with " + action.value.length + " characters." };
       }
