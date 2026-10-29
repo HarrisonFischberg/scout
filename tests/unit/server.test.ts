@@ -105,6 +105,17 @@ describe("ScoutServer", () => {
     ]);
   });
 
+  it("drops citations that are not web pages, so no javascript: link reaches the panel (QA 2026-10-29)", async () => {
+    const { s, saved } = server(
+      scripted([[text("Answer"), { type: "source", url: "javascript:alert(1)", title: "x", cite: true }, { type: "source", url: "data:text/html,hi" }, { type: "done" }]]),
+    );
+    s.start(REQ);
+    const events = await collect(s, "m1");
+    expect(JSON.stringify(events)).not.toMatch(/javascript:|data:text/);
+    expect(saved[0]?.sources).toEqual([{ url: "https://shop.test/a", title: "Test shop", kind: "page" }]);
+    expect(saved[0]?.answer).toBe("Answer");
+  });
+
   it("links the provider's own citations as numbered markers (owner report 2026-10-29)", async () => {
     const { s, saved } = server(
       scripted([

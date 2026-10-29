@@ -200,3 +200,15 @@ describe("chat.start schema", () => {
     expect(checkSchema(REQUESTS["chat.start"].payload, payload)).toBeNull();
   });
 });
+
+describe("what a content script may ask the worker (QA 2026-10-29)", () => {
+  it("stays limited to opening the panel, pinging and stopping a task", async () => {
+    const { REQUESTS } = await import("../../src/bridge/messages");
+    const fromContent = Object.entries(REQUESTS)
+      .filter(([, spec]) => (spec.senders as readonly string[]).includes("content"))
+      .map(([type]) => type)
+      .sort();
+    // Anything new here runs on a request from a page's tab: review it before widening this list.
+    expect(fromContent).toEqual(["panel.open", "panel.warm", "ping", "task.control"]);
+  });
+});

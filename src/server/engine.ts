@@ -117,7 +117,7 @@ export function toolResultsTurn(calls: Array<{ name: string }>, replies: ToolRep
     calls
       .map((c, i) => {
         const r = replies[i]!;
-        const body = r.text.replace(/<\/?tool_result[^>]*>/gi, "");
+        const body = r.text.replace(/<\s*\/?\s*tool_result[^>]*>/gi, "");
         return '<tool_result name="' + c.name.replace(/[^\w-]/g, "") + '" status="' + r.status + '">\n' + body + "\n</tool_result>";
       })
       .join("\n\n");
@@ -287,6 +287,8 @@ export class ScoutServer {
             full += delta;
             this.emit(run, { kind: "text", delta });
           } else if (ev.type === "source") {
+            // Web pages only: a citation becomes a link in the panel (QA 2026-10-29: no javascript: or data: sources).
+            if (!/^https?:\/\//i.test(ev.url)) continue;
             if (!cited.has(ev.url)) {
               cited.set(ev.url, ev.title);
               this.emit(run, { kind: "citation", url: ev.url, ...(ev.title ? { title: ev.title } : {}) });
