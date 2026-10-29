@@ -92,7 +92,7 @@ describe("Find coupons on random stores (seeded)", () => {
       const store = randomStore(seed);
       const cart = cartOf(store);
       const before = cart.totalNow();
-      const out = await runCouponSearch({ page: pageOf(cart), codes: store.candidates.map((code) => ({ code, origin: "reported" as const })) });
+      const out = await runCouponSearch({ page: pageOf(cart), codes: store.candidates.map((code) => ({ code, origin: "reported" as const, sourceUrl: "https://deals.test/list" })) });
       const after = cart.totalNow();
       const ctx = "seed " + seed + " " + JSON.stringify(store);
 
@@ -150,7 +150,7 @@ describe("the cart changes during a run (QA 2026-10-29)", () => {
       },
       reload: async () => undefined,
     };
-    const out = await runCouponSearch({ page: pageOf(cart), codes: ["BIG20", "NOPE", "SMALL10"].map((code) => ({ code, origin: "reported" as const })) });
+    const out = await runCouponSearch({ page: pageOf(cart), codes: ["BIG20", "NOPE", "SMALL10"].map((code) => ({ code, origin: "reported" as const, sourceUrl: "https://deals.test/list" })) });
     // SMALL10 on the smaller cart ($54) must not be reported as saving $46 on the $100 cart.
     expect(out.applied).toBe(false);
     expect(out.message).toMatch(/cart changed/i);
