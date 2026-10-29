@@ -66,8 +66,10 @@ export type StreamEvent =
    * A page the provider's web search returned, fetched, or cited. `text` is
    * the quoted passage of a citation; `page` is the text of a page the
    * model fetched (Anthropic web fetch); `age` is the search result's age.
+   * `cite` marks the point in the answer text that cites this page (sent
+   * after the cited text), so the panel can link it there.
    */
-  | { type: "source"; url: string; title?: string; text?: string; page?: string; age?: string }
+  | { type: "source"; url: string; title?: string; text?: string; page?: string; age?: string; cite?: true }
   /**
    * The outcome of a page the model asked the provider to fetch (Anthropic
    * web fetch): `ok` with the text length, or the provider's error code

@@ -105,6 +105,25 @@ test("key and Apple Intelligence: when Apple can't answer, the key's model does"
   expect(bodies).toHaveLength(1);
 });
 
+// Owner, 2026-10-28: a button under Apple's answer asks the key's model instead, in its place.
+test("key and Apple Intelligence: Ask Claude under Apple's answer replaces it with the key's answer", async ({ page }) => {
+  const { bodies } = await openPopup(page, { key: "sk-test-synthetic", apple: true });
+  await page.getByLabel("Ask about this page").fill("How much is the widget?");
+  await page.getByRole("button", { name: "Send" }).click();
+  const log = page.getByRole("log", { name: "Conversation" });
+  await expect(log.getByText("On device: the widget costs $10.")).toBeVisible();
+  const askKey = log.getByRole("button", { name: "Ask Claude" });
+  await expect(askKey).toBeVisible();
+  await askKey.click();
+  await expect(log.getByText("with free shipping.")).toBeVisible();
+  await expect(log.getByText("On device: the widget costs $10.")).toBeHidden();
+  await expect(log.getByRole("button", { name: "Ask Claude" })).toBeHidden();
+  // Asked once, with Apple's answer left out of the history it sends.
+  expect(bodies).toHaveLength(1);
+  expect(bodies[0]).not.toContain("On device");
+  await expect(log.getByText("How much is the widget?")).toHaveCount(1);
+});
+
 test("no key with Apple Intelligence: Find coupons explains it needs a key", async ({ page }) => {
   await openPopup(page, { key: null, apple: true });
   await page.getByRole("button", { name: "More actions" }).click();

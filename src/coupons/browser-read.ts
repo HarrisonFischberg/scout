@@ -32,9 +32,11 @@ export interface PageBrowser {
   quiet?: boolean;
 }
 
-/** Why a page went to the browser. */
-/** Why a page went to the browser; "blocked": its site keeps refusing the reader, so it went to the browser first. */
-export type BrowserReason = "refused" | "failed" | "short" | "masked" | "blocked";
+/**
+ * Why a page went to the browser; "blocked": its site keeps refusing the reader, so it went to the browser first;
+ * "major": one of the big coupon sites' pages for the store, read on every run (src/coupons/codes.ts `MAJOR_COUPON_SITES`).
+ */
+export type BrowserReason = "refused" | "failed" | "short" | "masked" | "blocked" | "major";
 
 export interface BrowserTarget {
   url: string;

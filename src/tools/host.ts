@@ -4,7 +4,7 @@
 // panel asks the user first where a tool needs it (close_tabs, screenshots)
 // and passes the answer as `decision`; the host refuses without it.
 import { checkSchema } from "../bridge/messages";
-import { fencePage } from "../chat/prompt";
+import { fencePage, unfence } from "../chat/prompt";
 import { cleanUrl } from "../context/clean";
 import type { TabRead, TabRef } from "../context/gather";
 import { blockedBy, hostOf, screenshotDecision, type PageAccess, type ScreenshotChoice } from "../permissions/gate";
@@ -138,7 +138,7 @@ async function run(req: ToolRequest, deps: ToolHostDeps): Promise<ToolResult> {
       const body = lines.length ? lines.join("\n") : "No matches.";
       return result(
         "ok",
-        "<untrusted_page_content>\n" + body.replace(/<\/?untrusted_page_content>/gi, "") + "\n</untrusted_page_content>" + (notes.length ? "\n" + notes.join(" ") : ""),
+        "<untrusted_page_content>\n" + unfence(body) + "\n</untrusted_page_content>" + (notes.length ? "\n" + notes.join(" ") : ""),
         sitesOf(found),
       );
     }
@@ -174,6 +174,8 @@ async function run(req: ToolRequest, deps: ToolHostDeps): Promise<ToolResult> {
       const host = hostOf(url);
       if (!host) return result("schema-error", "Only http and https addresses can be opened.");
       if (blockedBy(url, access, admin)) return result("blocked-by-user", "The user blocked this site.", host);
+      if (req.decision === "declined") return result("declined", "The user chose not to open this address.", host);
+      if (req.decision !== "confirmed") return result("error", "Opening a tab needs the user's confirmation.", host);
       const tab = await deps.openTab(url);
       return result("ok", "Opened tab " + tab.id + " in the background: " + cleanUrl(url), host, { opened_tab: tab.id });
     }

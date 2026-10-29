@@ -125,6 +125,30 @@ describe("per-tab conversations", () => {
   });
 });
 
+describe("panel and worker changing tab state at once (audit 2026-10-27)", () => {
+  it("opening the panel on a new tab ends with one chat, marked open", async () => {
+    const s = fakeStorage();
+    // The panel picks the tab's chat while the worker records the panel as open (port hello).
+    const [conv] = await Promise.all([conversationForTab(s, 5, 1000), setPanelOpen(s, 5, true, 1000)]);
+    expect((await loadTabStates(s))["5"]).toMatchObject({ conv, open: true });
+  });
+
+  it("a private tab opened while another private tab closes stays on the private list", async () => {
+    const s = fakeStorage();
+    const a = await conversationForTab(s, 1, 1000, true);
+    // Slow reads, as in Safari, so the two changes overlap.
+    const get = s.get.bind(s);
+    s.get = async (keys) => {
+      const got = await get(keys);
+      await new Promise((r) => setTimeout(r, 5));
+      return got;
+    };
+    const [, b] = await Promise.all([forgetTab(s, 1), conversationForTab(s, 2, 1001, true)]);
+    expect(s.data[PRIVATE_CONVS_KEY]).toEqual({ "2": [b] });
+    expect(a).not.toBe(b);
+  });
+});
+
 describe("toolbar icon", () => {
   it("picks the light or dark monochrome set, and the active set", () => {
     expect(toolbarIcon(false)["16"]).toBe("icons/toolbar-16.png");

@@ -94,6 +94,11 @@ declare const browser: {
       clear(): Promise<void>;
       remove?(keys: string[]): Promise<void>;
     };
+    /** Kept while Safari runs, cleared when it quits; survives the worker being unloaded. */
+    session?: {
+      get(keys: string | string[]): Promise<Record<string, unknown>>;
+      set(items: Record<string, unknown>): Promise<void>;
+    };
     onChanged?: {
       addListener(fn: (changes: Record<string, { oldValue?: unknown; newValue?: unknown }>, area: string) => void): void;
     };

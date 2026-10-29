@@ -13,6 +13,7 @@ import { runCouponJob, type CouponEvent } from "../coupons/job";
 import type { CouponPage } from "../coupons/tab-page";
 import type { Provider } from "../keychain";
 import type { BatchState } from "../coupons/finder";
+import { formatMoney } from "../coupons/money";
 import { ProviderError } from "../providers/errors";
 import type { Effort, ProviderClient } from "../providers/types";
 
@@ -30,6 +31,13 @@ export interface CouponHostDeps {
   overlay(tabId: number, req: OverlayRequest): Promise<unknown>;
   save(entry: { at: number; conv: string; question: string; answer: string; site?: string }): Promise<void>;
   now(): number;
+  /**
+   * Where each running run's progress is kept, so a worker that Safari
+   * unloaded and started again can save what the run had found as a chat
+   * (owner report 2026-10-28). The worker passes storage.session when Safari
+   * has it, so nothing is left on disk after Safari quits.
+   */
+  progress?: { get(key: string): Promise<Record<string, unknown>>; set(items: Record<string, unknown>): Promise<void> };
   /** How long a finished run stays available for coupons.status. Default 2 minutes. */
   keepMs?: number;
   askTimeoutMs?: number;
@@ -55,12 +63,36 @@ export interface CouponRunView {
   done: boolean;
 }
 
+/** Storage key of the running runs' progress (CouponHostDeps.progress). */
+export const COUPON_PROGRESS_KEY = "couponProgress";
+
+/** What a run had done so far: no page text, no page address. */
+export interface CouponProgress {
+  tab_id: number;
+  conv: string;
+  site?: string;
+  started_at: number;
+  tried: number;
+  best?: { code: string; saving: number; currency?: string };
+}
+
+/**
+ * A run the worker lost (Safari unloaded it mid-run) and saved as a chat when
+ * it started again. The panel on that tab shows it once.
+ */
+export interface LostCouponRun {
+  conv: string;
+  at: number;
+  answer: string;
+}
+
 interface RunRecord extends CouponRunView {
   control: AgentControl;
   seq: number;
   pending?: { prompt_id: string; resolve: (more: boolean) => void };
   /** Settles once the run has ended and saved its summary. */
   finished?: Promise<void>;
+  progress: CouponProgress;
 }
 
 let counter = 0;
@@ -68,8 +100,49 @@ let counter = 0;
 export class CouponHost {
   private readonly runs = new Map<number, RunRecord>();
   private readonly watchers = new Map<number, Set<Pick<PortLike, "postMessage">>>();
+  private readonly lost = new Map<number, LostCouponRun>();
+  /** Progress writes, one at a time, after the runs a restarted worker lost are saved. */
+  private writes: Promise<void>;
+  /** Settles once runs lost by an earlier worker are saved as chats. The worker waits on it before status and list. */
+  readonly ready: Promise<void>;
 
-  constructor(private readonly deps: CouponHostDeps) {}
+  constructor(private readonly deps: CouponHostDeps) {
+    this.ready = this.recover();
+    this.writes = this.ready;
+  }
+
+  /**
+   * Safari unloaded the worker during a run (owner report 2026-10-28: the
+   * search went on, the reopened panel was empty and Chats had nothing). The
+   * run cannot go on, but what it found is saved as a chat, and the panel on
+   * that tab shows it.
+   */
+  private async recover(): Promise<void> {
+    const store = this.deps.progress;
+    if (!store) return;
+    const got = await store.get(COUPON_PROGRESS_KEY).catch(() => ({}) as Record<string, unknown>);
+    const runs = parseProgress(got[COUPON_PROGRESS_KEY]);
+    if (!runs.length) return;
+    await store.set({ [COUPON_PROGRESS_KEY]: {} }).catch(() => undefined);
+    for (const p of runs) {
+      const at = Math.max(this.deps.now(), p.started_at);
+      const answer = lostSummary(p);
+      await this.deps.save({ at, conv: p.conv, question: COUPON_QUESTION, answer, ...(p.site ? { site: p.site } : {}) }).catch(() => undefined);
+      this.lost.set(p.tab_id, { conv: p.conv, at, answer });
+    }
+  }
+
+  /** Writes every running run's progress (one write at a time). */
+  private saveProgress(): Promise<void> {
+    const store = this.deps.progress;
+    if (!store) return Promise.resolve();
+    this.writes = this.writes.then(async () => {
+      const all: Record<string, CouponProgress> = {};
+      for (const r of this.runs.values()) if (!r.done) all[String(r.tab_id)] = r.progress;
+      await store.set({ [COUPON_PROGRESS_KEY]: all }).catch(() => undefined);
+    });
+    return this.writes;
+  }
 
   private timer(fn: () => void, ms: number): unknown {
     return (this.deps.setTimer ?? ((f, t) => setTimeout(f, t)))(fn, ms);
@@ -87,9 +160,12 @@ export class CouponHost {
   }
 
   /** The run on a tab, running or recently finished, with every event so far. */
-  status(tabId: number): { run?: CouponRunView } {
+  status(tabId: number): { run?: CouponRunView; lost?: LostCouponRun } {
     const r = this.runs.get(tabId);
-    if (!r) return {};
+    if (!r) {
+      const lost = this.lost.get(tabId);
+      return lost ? { lost } : {};
+    }
     return { run: { tab_id: r.tab_id, started_at: r.started_at, conv: r.conv, ...(r.site ? { site: r.site } : {}), events: [...r.events], done: r.done, ...(r.pending ? { prompt_id: r.pending.prompt_id } : {}) } };
   }
 
@@ -118,6 +194,10 @@ export class CouponHost {
     // run, so a report sent after closing the panel still shows where each code
     // came from (owner report 2026-10-19 began at attempt 26). Page URLs are not kept.
     if (e.kind !== "page") r.events.push(wire);
+    if (e.kind === "attempt" || e.kind === "step") {
+      if (e.kind === "attempt") track(r.progress, e);
+      void this.saveProgress();
+    }
     const payload = { tab_id: r.tab_id, ...wire };
     for (const port of [...(this.watchers.get(r.tab_id) ?? [])]) {
       try {
@@ -130,13 +210,27 @@ export class CouponHost {
 
   /** Starts a run on a tab. The panel has already checked consent and the key. */
   async start(p: { tab_id: number; window_id?: number; provider: Provider; model: string; effort?: Effort; conv?: string; phone?: boolean; site?: string }): Promise<{ started_at: number }> {
+    await this.ready;
     if (this.running(p.tab_id)) throw new BridgeError("blocked-by-user", "Scout is already finding coupons on this tab.");
     // Blocked sites are never read or acted on, the same rule as Scout mode (src/permissions/gate.ts).
     const blocked = await this.deps.blocked?.(p.tab_id);
     if (blocked) throw new BridgeError("blocked-by-user", blocked);
     const control = new AgentControl();
-    const r: RunRecord = { tab_id: p.tab_id, started_at: this.deps.now(), conv: p.conv ?? "", ...(p.site ? { site: p.site } : {}), events: [], done: false, control, seq: 0 };
+    const startedAt = this.deps.now();
+    const site = p.site ? { site: p.site } : {};
+    const r: RunRecord = {
+      tab_id: p.tab_id,
+      started_at: startedAt,
+      conv: p.conv ?? "",
+      ...site,
+      events: [],
+      done: false,
+      control,
+      seq: 0,
+      progress: { tab_id: p.tab_id, conv: p.conv ?? "", ...site, started_at: startedAt, tried: 0 },
+    };
     this.runs.set(p.tab_id, r);
+    this.lost.delete(p.tab_id);
     const trace = (stage: string): void => this.emit(r, { kind: "trace", stage });
     let client: ProviderClient;
     let page: CouponPage;
@@ -147,6 +241,7 @@ export class CouponHost {
       // Diagnostics say why (owner report 2026-10-26: "Could not reach this page" with no stages).
       trace("coupons:start-failed " + failReason(err));
       this.runs.delete(p.tab_id);
+      void this.saveProgress();
       if (err instanceof BridgeError) throw err;
       // No permission, no key: say so, not "could not reach" (owner report 2026-10-27).
       if (err instanceof ProviderError) throw new BridgeError("unhandled", err.userMessage);
@@ -156,6 +251,7 @@ export class CouponHost {
       void this.deps.overlay(p.tab_id, req).catch(() => trace("coupons:overlay-failed"));
     };
     overlay({ type: "overlay:show", taskId: "coupons:" + p.tab_id, state: "running" });
+    void this.saveProgress();
     r.finished = runCouponJob({
       page,
       provider: client,
@@ -174,10 +270,21 @@ export class CouponHost {
       },
       emit: (e) => this.emit(r, e),
     })
-      .then(async (done) => {
+      .then(
+        (done) => done.summary,
+        // A run that failed outright still ends as a chat, never as nothing.
+        (err: unknown) => {
+          trace("coupons:failed " + failReason(err));
+          const summary = "Scout's coupon search stopped with an error. " + progressWords(r.progress) + " Tap Find coupons to try again.";
+          this.emit(r, { kind: "done", status: "error", message: failReason(err), outcome: "error", summary, tone: "error", status_text: "", usage: { inputTokens: 0, outputTokens: 0 } });
+          return summary;
+        },
+      )
+      .then(async (summary) => {
         r.done = true;
         overlay({ type: "overlay:hide" });
-        await this.deps.save({ at: this.deps.now(), conv: p.conv ?? "", question: COUPON_QUESTION, answer: done.summary, ...(p.site ? { site: p.site } : {}) }).catch(() => undefined);
+        await this.deps.save({ at: this.deps.now(), conv: p.conv ?? "", question: COUPON_QUESTION, answer: summary, ...(p.site ? { site: p.site } : {}) }).catch(() => undefined);
+        await this.saveProgress();
       })
       .finally(() => {
         r.done = true;
@@ -247,6 +354,39 @@ export class CouponHost {
   stopForTab(tabId: number): void {
     this.runs.get(tabId)?.control.stop();
   }
+}
+
+/** Keeps the run's count of codes tried and its best saving so far. */
+function track(p: CouponProgress, e: Extract<CouponEvent, { kind: "attempt" }>): void {
+  p.tried++;
+  const a = e.attempt;
+  if (a.accepted === false || a.saving === null || a.saving <= 0 || (p.best && p.best.saving >= a.saving)) return;
+  p.best = { code: a.code, saving: a.saving, ...(e.currency ? { currency: e.currency } : {}) };
+}
+
+function progressWords(p: CouponProgress): string {
+  if (p.tried === 0) return "No codes were tried yet.";
+  const tried = "It tried " + p.tried + (p.tried === 1 ? " code" : " codes");
+  return p.best ? tried + ". Best so far: " + p.best.code + ", saving " + formatMoney(p.best.saving, p.best.currency) + "." : tried + " and none saved anything yet.";
+}
+
+/** The chat's answer for a run the worker lost. */
+export function lostSummary(p: CouponProgress): string {
+  return "Scout's coupon search stopped before it finished, because Safari closed Scout in the background. " + progressWords(p) + " Check the discount box before you pay, and tap Find coupons to search again.";
+}
+
+// Stored data is untrusted input: malformed rows are dropped.
+export function parseProgress(raw: unknown): CouponProgress[] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+  const out: CouponProgress[] = [];
+  for (const v of Object.values(raw as Record<string, unknown>)) {
+    const r = v as Partial<CouponProgress> | null;
+    if (!r || typeof r.tab_id !== "number" || typeof r.conv !== "string" || typeof r.started_at !== "number" || typeof r.tried !== "number") continue;
+    const b = r.best;
+    const best = b && typeof b.code === "string" && typeof b.saving === "number" ? { code: b.code.slice(0, 64), saving: b.saving, ...(typeof b.currency === "string" ? { currency: b.currency.slice(0, 8) } : {}) } : undefined;
+    out.push({ tab_id: r.tab_id, conv: r.conv, ...(typeof r.site === "string" ? { site: r.site } : {}), started_at: r.started_at, tried: Math.max(0, Math.floor(r.tried)), ...(best ? { best } : {}) });
+  }
+  return out;
 }
 
 /** One event as flat port fields: the attempt row and usage are nested objects. */

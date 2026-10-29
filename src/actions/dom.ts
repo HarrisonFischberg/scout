@@ -46,7 +46,7 @@ function wrap(el: Element, pointer?: Pointer, aboveSheet = false): ActionEl {
     tag: el.tagName.toLowerCase(),
     type: el instanceof HTMLInputElement ? el.type : undefined,
     get disabled() {
-      return (el as HTMLButtonElement).disabled === true || el.getAttribute("aria-disabled") === "true";
+      return el.matches(":disabled") || el.getAttribute("aria-disabled") === "true";
     },
     get connected() {
       return el.isConnected;
