@@ -13,6 +13,10 @@ export interface MerchantMeta {
   title?: string;
   /** The page's meta description: what the store says it sells. */
   description?: string;
+  /** Addresses the page links to (logo, "Return to cart"): on a hosted checkout, one of them is the store. */
+  links?: string[];
+  /** The page the user came from (document.referrer). */
+  referrer?: string;
 }
 
 export interface Merchant {
@@ -34,7 +38,8 @@ const UTILITY_LABELS = new Set([
 // Second-level public suffixes where the registrable domain has three labels.
 const TWO_LEVEL_TLDS = new Set(["co.uk", "org.uk", "ac.uk", "com.au", "net.au", "co.nz", "co.jp", "com.br", "com.mx", "co.za", "com.sg", "com.hk", "co.in", "co.kr", "com.tr"]);
 // Hosted checkouts whose domain is the platform, not the store.
-const PLATFORM_HOSTS = /(?:^|\.)(?:myshopify\.com|shopifycdn\.com|shop\.app|bigcommerce\.com|mybigcommerce\.com|squarespace\.com|wixsite\.com|myshoplaza\.com)$/i;
+const PLATFORM_HOSTS =
+  /(?:^|\.)(?:myshopify\.com|shopify\.com|shopifycdn\.com|shop\.app|bigcommerce\.com|mybigcommerce\.com|squarespace\.com|wixsite\.com|myshoplaza\.com|stripe\.com|paypal\.com|klarna\.com|afterpay\.com|affirm\.com|fastspring\.com|gumroad\.com|lemonsqueezy\.com|paddle\.com|recurly\.com|chargebee\.com)$/i;
 const TITLE_NOISE =
   /^(?:(?:your\s+)?(?:shopping\s+)?(?:cart|bag|basket)(?:\s+page)?|checkout|check\s+out|order|review|payment|shipping|information|home|welcome|secure\s+checkout|my\s+cart|view\s+cart)$/i;
 const NAME_NOISE = /\s*[-–|:]\s*(?:official\s+(?:site|store|website)|online\s+store|shop(?:ping)?|home)\s*$|[®™©]/gi;
@@ -110,6 +115,14 @@ export function identifyMerchant(url: string, meta: MerchantMeta = {}): Merchant
       // keep the platform domain
     }
   }
+  // No canonical (shop.app, Stripe Checkout; owner's sproos log 2026-10-29:
+  // every coupon page was read for "shop.app"): the store is the site the
+  // checkout links back to (logo, "Return to cart") or the one the user came
+  // from, when it carries the store's name.
+  if (PLATFORM_HOSTS.test(domain)) {
+    const named = cleanName(meta.siteName) || brandFromTitle(meta.title, (host.split(".")[0] ?? "").replace(/-/g, " "));
+    domain = linkedStore(named, meta, url) ?? domain;
+  }
   // An IP address or "localhost" names no store (local fixtures): the page's own name or "this store".
   const bare = /^(?:\d{1,3}\.){3}\d{1,3}$|^localhost$|^\[/.test(domain);
   const label = bare ? "" : PLATFORM_HOSTS.test(domain) ? (host.split(".")[0] ?? "").replace(/-/g, " ") : (domain.split(".")[0] ?? "");
@@ -121,6 +134,36 @@ export function identifyMerchant(url: string, meta: MerchantMeta = {}): Merchant
     if (t.length >= 3) names.add(t);
   }
   return { host, domain, brand, names: [...names] };
+}
+
+// Sites a checkout links to that are never the store itself.
+const NOT_STORE = /(?:^|\.)(?:google|bing|yahoo|duckduckgo|facebook|instagram|tiktok|twitter|youtube|pinterest|apple|linkedin)\.[a-z.]+$|^(?:x\.com|t\.co)$/i;
+
+/**
+ * The store's domain from the links on a hosted checkout and the referrer:
+ * a non-platform site whose name matches the store's, most linked first.
+ * Untrusted page data: only ever used as the store's name and its own pages to read.
+ */
+function linkedStore(brand: string, meta: MerchantMeta, base: string): string | null {
+  const flat = squash(brand);
+  if (flat.length < 3) return null;
+  const counts = new Map<string, number>();
+  for (const href of [...(meta.links ?? []), ...(meta.referrer ? [meta.referrer] : [])]) {
+    let h = "";
+    try {
+      const u = new URL(href, base);
+      if (!/^https?:$/.test(u.protocol)) continue;
+      h = u.hostname.toLowerCase();
+    } catch {
+      continue;
+    }
+    const d = storeDomain(h);
+    if (!d.includes(".") || PLATFORM_HOSTS.test(d) || NOT_STORE.test(d)) continue;
+    const label = squash(coreLabel(d.split(".")[0] ?? "")) || squash(d.split(".")[0] ?? "");
+    const matches = label.length >= 3 && (flat.includes(label) || label.includes(flat) || squash(d.split(".")[0] ?? "").includes(flat));
+    if (matches) counts.set(d, (counts.get(d) ?? 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 }
 
 /** Whether `text` names the store (for pages the search returns). */
