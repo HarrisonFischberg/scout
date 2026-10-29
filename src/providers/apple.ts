@@ -106,6 +106,19 @@ export function applePrompt(messages: ChatMessage[], max = APPLE_PROMPT_CHARS): 
 const COULD_NOT =
   /\b(?:i(?:'m| am) (?:sorry|unable|not able)|i (?:can't|cannot|can not|couldn't|could not|don't know|do not know|don't have|do not have|lack)|as an ai|my (?:knowledge|training)(?: data)? (?:cutoff|only goes))\b/i;
 
+// Questions about things that change (prices, news, scores, weather) with no
+// page to answer from. Apple's model has no web access and, asked anyway,
+// makes up an answer instead of saying NEEDS_WEB (live QA 2026-10-29: a
+// "closing price yesterday" got an invented number), so these go straight to
+// the key's model. The question is checked, not the model's own confidence.
+const FRESH =
+  /\b(?:today|tonight|yesterday|tomorrow|this (?:morning|afternoon|evening|week|weekend|month)|last night|right now|currently|latest|recent(?:ly)?|news|headlines?|stocks?|share price|closing price|market cap|exchange rate|bitcoin|crypto|weather|forecast|scores?|standings|who won|election|polls?|open now|opening hours)\b/i;
+
+/** True when a question with no page needs current facts, so Apple's model is skipped. */
+export function needsFreshFacts(question: string, hasPage: boolean): boolean {
+  return !hasPage && FRESH.test(question);
+}
+
 /** True when Apple's reply is empty or says it can't answer, so a key's model should try instead (owner, 2026-10-27). */
 export function appleCouldNotAnswer(text: string): boolean {
   const t = text.trim().replace(/[\u2018\u2019]/g, "'");
