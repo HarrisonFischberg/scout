@@ -1,0 +1,109 @@
+{
+  "meta": {
+    "dataset": "chat-v1",
+    "mode": "router",
+    "model": "claude-haiku-5-5",
+    "repeat": 2,
+    "at": "2026-10-29T07:14:55.412Z",
+    "node": "v24.22.0",
+    "keyHttpCalls": 2
+  },
+  "results": [
+    {
+      "id": "grounded-price",
+      "kind": "grounding",
+      "pass": true,
+      "fails": [],
+      "route": "apple",
+      "ms": 1389,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "webSearches": 0
+      },
+      "costUsd": 0,
+      "tools": [],
+      "text": "The widget is priced at $17.50 [1]. Would you like to know more about shipping options?"
+    },
+    {
+      "id": "grounded-price",
+      "kind": "grounding",
+      "pass": true,
+      "fails": [],
+      "route": "apple",
+      "ms": 773,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "webSearches": 0
+      },
+      "costUsd": 0,
+      "tools": [],
+      "text": "The widget is priced at $17.50 [1]. Would you like more information about shipping options?"
+    },
+    {
+      "id": "simple-math",
+      "kind": "local",
+      "pass": true,
+      "fails": [],
+      "route": "apple",
+      "ms": 1136,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "webSearches": 0
+      },
+      "costUsd": 0,
+      "tools": [],
+      "text": "**391**\n\n- 17 × 23 = 391\n- No further calculations needed\n- Direct multiplication result\n- Final answer confirmed\n- No additional steps required"
+    },
+    {
+      "id": "simple-math",
+      "kind": "local",
+      "pass": true,
+      "fails": [],
+      "route": "apple",
+      "ms": 1331,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "webSearches": 0
+      },
+      "costUsd": 0,
+      "tools": [],
+      "text": "**17 times 23 equals 391.**\n\n- 17 × 23 = 391\n- Multiplication is straightforward here\n- No need for further calculation\n- Direct result from basic arithmetic\n- Final answer is complete"
+    },
+    {
+      "id": "current-info",
+      "kind": "escalation",
+      "pass": true,
+      "fails": [],
+      "route": "key",
+      "ms": 5816,
+      "usage": {
+        "inputTokens": 7689,
+        "outputTokens": 835,
+        "webSearches": 1
+      },
+      "costUsd": 0.0111864,
+      "tools": [],
+      "text": "The most recent close I found is **$343.83**, on October 28, 2026. That would be yesterday if today is October 29, but I can't confirm today's date from my search.\n\n- Stock Analysis and Yahoo Finance both list 343.83 at close on Oct 28, 2026, 4:00 PM EDT [2].\n- Investing.com reports the same figure, saying Apple closed Wednesday at $343.83 [8].\n- Another source gives $343.46 for the close \"yesterday,\" but its table is dated October 16, 2026, so it looks older and I'd rely on the October 28 figure."
+    },
+    {
+      "id": "current-info",
+      "kind": "escalation",
+      "pass": true,
+      "fails": [],
+      "route": "key",
+      "ms": 4290,
+      "usage": {
+        "inputTokens": 7689,
+        "outputTokens": 628,
+        "webSearches": 1
+      },
+      "costUsd": 0.0110829,
+      "tools": [],
+      "text": "**$343.83**, the closing price for Apple (AAPL) on October 28, 2026, the most recent full session in my search results.\n\n- Yahoo Finance lists the close at 343.83, down 3.27 (0.94%) from the prior close of 347.10 [3].\n- An Investing.com analysis also gives the Wednesday close as $343.83 [8].\n- I'm assuming today is October 29, 2026, so yesterday is October 28. If you're asking on a different day, check a live quote.\n\n[3, 8]"
+    }
+  ]
+}
