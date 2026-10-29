@@ -164,8 +164,10 @@ export const REQUESTS = {
         open_page: { object: { url: "string", title: "string" } },
         /** model "apple-on-device" with a key saved: the key's model, used when Apple's model can't answer. */
         fallback: { object: { provider: { enum: ["anthropic", "openai"] }, model: "string", effort: { enum: EFFORTS } }, optional: ["effort"] },
+        /** "Ask Claude" under Apple's answer: the saved answer this one replaces. */
+        replaces: "string",
       },
-      optional: ["effort", "shared", "display_question", "answer_prefix", "prefix_sources", "site", "scope", "open_page", "fallback"],
+      optional: ["effort", "shared", "display_question", "answer_prefix", "prefix_sources", "site", "scope", "open_page", "fallback", "replaces"],
     },
   },
   "chat.stop": { senders: ["panel"], payload: { object: { message_id: "string" } } },

@@ -1,8 +1,9 @@
 // Owner, 2026-10-27: chat asks Apple's on-device model first and uses the
 // key's model only when Apple can't answer. Scripted providers; no network.
 import { describe, expect, it } from "vitest";
-import { APPLE_MODEL, AppleModelError, appleCouldNotAnswer } from "../../src/providers/apple";
-import type { ProviderClient, StreamEvent } from "../../src/providers/types";
+import { APPLE_MODEL, AppleModelError, appleCouldNotAnswer, applePrompt, appleRepeats } from "../../src/providers/apple";
+import { APPLE_NEEDS_WEB } from "../../src/chat/prompt";
+import type { ChatMessage, ChatRequest, ProviderClient, StreamEvent } from "../../src/providers/types";
 import { ScoutServer, type StartRequest } from "../../src/server/engine";
 import { fromWire, toWire, type NumberedEvent } from "../../src/server/protocol";
 import { ConversationStore } from "../../src/chat/store";
@@ -135,5 +136,95 @@ describe("appleCouldNotAnswer", () => {
 
   it("still spots the model naming its own knowledge cutoff", () => {
     expect(appleCouldNotAnswer("My knowledge cutoff is before that event.")).toBe(true);
+  });
+});
+
+// Owner report 2026-10-28: "best wall dimmer that dims to 5%" got six vague
+// replies from Apple, each asking "traditional or smart?" again, with [1]
+// markers and no sources, and never a product. Expected: Apple hands a
+// question that needs the web to the key's model, which researches it.
+describe("Apple hands research questions to the key's model", () => {
+  const ASK = "Would you like to explore specific traditional wall-mounted models, or should we look into alternatives?";
+  const CHAT: StartRequest = {
+    ...REQ,
+    question: "traditional wall mounted",
+    pages: [],
+    scope: "page",
+    history: [
+      { role: "user", content: "i want to find the best dimmer switch for my lamp, that dims as low as possible" },
+      { role: "assistant", content: "Options are limited [1]. " + ASK },
+    ],
+  };
+
+  function capture(reply: string) {
+    const c = client("apple", () => answer(reply)) as ReturnType<typeof client> & { reqs: ChatRequest[] };
+    c.reqs = [];
+    const inner = c.stream.bind(c);
+    c.stream = (r: ChatRequest) => {
+      c.reqs.push(r);
+      return inner(r);
+    };
+    return c;
+  }
+
+  it("falls back when Apple says the answer needs the web, and the word never shows", async () => {
+    const apple = capture(APPLE_NEEDS_WEB);
+    const { events, asked } = await run(apple, client("anthropic", KEYED), CHAT);
+    expect(asked).toEqual([APPLE_MODEL, "claude-haiku-5-5"]);
+    expect(events.map((e) => e.event.kind)).toEqual(["start", "handoff", "text", "usage", "done"]);
+    expect(JSON.stringify(events)).not.toContain(APPLE_NEEDS_WEB);
+    // Apple is told how to ask for the web, and gets the no-page rules (no [1], no repeated questions).
+    expect(apple.reqs[0]?.system).toContain(APPLE_NEEDS_WEB);
+    expect(apple.reqs[0]?.system).toContain("never write markers like [1]");
+    expect(apple.reqs[0]?.system).not.toContain("end it with that page's number");
+  });
+
+  it("falls back when Apple asks the same question as its last reply", async () => {
+    const { events } = await run(capture("Traditional switches rarely go that low. " + ASK), client("anthropic", KEYED), CHAT);
+    expect(events[events.length - 1]?.event).toEqual({ kind: "done", text: "Claude: $10." });
+  });
+
+  it("removes [n] markers from Apple's answer when there were no sources", async () => {
+    const { events } = await run(capture("Lutron's Diva goes to about 1% [1]. The Leviton SureSlide works too [1, 2]."), client("anthropic", KEYED), CHAT);
+    expect(events[events.length - 1]?.event).toEqual({ kind: "done", text: "Lutron's Diva goes to about 1%. The Leviton SureSlide works too." });
+  });
+
+  it("keeps the chat's first message in Apple's prompt after it scrolls out", () => {
+    const msgs: ChatMessage[] = [
+      { role: "user", content: "best dimmer switch for my lamp" },
+      { role: "assistant", content: "Smart or traditional?" },
+      { role: "user", content: "wall mounted" },
+      { role: "assistant", content: "Smart or traditional?" },
+      { role: "user", content: "traditional" },
+      { role: "assistant", content: "Smart or traditional?" },
+      { role: "user", content: "traditional wall mounted" },
+    ];
+    expect(applePrompt(msgs)).toContain("User: best dimmer switch for my lamp");
+  });
+
+  it("does not count a different follow-up question as a repeat", () => {
+    expect(appleRepeats("Here are three. Do you want ones under $30?", [{ role: "assistant", content: "Smart or traditional?" }])).toBe(false);
+    expect(appleRepeats("Here are three.", [{ role: "assistant", content: "Smart or traditional?" }])).toBe(false);
+  });
+});
+
+describe("Ask Claude under Apple's answer", () => {
+  it("goes straight to the key's model and saves in place of Apple's answer", async () => {
+    const saved: Array<{ answer: string; replaces?: string }> = [];
+    const keyed = client("anthropic", KEYED);
+    const apple = client("apple", () => answer("Apple."));
+    const req: StartRequest = { ...REQ, model: "claude-haiku-5-5", fallback: undefined, replaces: "Apple's vague answer" };
+    delete req.fallback;
+    const s = new ScoutServer({
+      provider: async (_p, model) => (model === APPLE_MODEL ? apple : keyed),
+      tools: async () => [],
+      save: async (e) => void saved.push(e),
+      now: () => 1,
+    });
+    s.start(req);
+    await new Promise<void>((resolve) => s.subscribe(req.message_id, 0, (n) => n.event.kind === "done" && resolve()));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(apple.calls).toBe(0);
+    expect(saved[0]).toMatchObject({ answer: "Claude: $10.", replaces: "Apple's vague answer" });
   });
 });

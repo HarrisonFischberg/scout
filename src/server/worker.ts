@@ -176,17 +176,22 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     save: async (e) => {
       if (!storage) return;
       const { retention } = await loadSettings(storage);
-      await appendHistory(storage, retention, {
-        at: e.at,
-        question: e.question,
-        answer: e.answer,
-        kind: "chat",
-        conv: e.conv,
-        ...(e.site ? { site: e.site } : {}),
-        ...(e.shared.length ? { shared: e.shared } : {}),
-        // Addresses without query or fragment, which can hold session tokens.
-        ...(e.sources.length ? { sources: e.sources.map((x) => ({ ...x, url: savedUrl(x.url) })).filter((x) => x.url) } : {}),
-      });
+      await appendHistory(
+        storage,
+        retention,
+        {
+          at: e.at,
+          question: e.question,
+          answer: e.answer,
+          kind: "chat",
+          conv: e.conv,
+          ...(e.site ? { site: e.site } : {}),
+          ...(e.shared.length ? { shared: e.shared } : {}),
+          // Addresses without query or fragment, which can hold session tokens.
+          ...(e.sources.length ? { sources: e.sources.map((x) => ({ ...x, url: savedUrl(x.url) })).filter((x) => x.url) } : {}),
+        },
+        e.replaces !== undefined ? { conv: e.conv, question: e.question, answer: e.replaces } : undefined,
+      );
     },
     now: () => Date.now(),
   });
@@ -302,6 +307,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
       scope?: "page" | "general";
       open_page?: { url: string; title: string };
       fallback?: { provider: Provider; model: string; effort?: Effort };
+      replaces?: string;
     }) => {
       server.start(p);
       return { message_id: p.message_id };
