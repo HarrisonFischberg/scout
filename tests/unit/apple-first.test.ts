@@ -325,3 +325,32 @@ describe("after the handoff (QA 2026-10-29)", () => {
     expect(events[events.length - 1]?.event).toEqual({ kind: "done", text: "", stopped: true });
   });
 });
+
+describe("current-information questions skip Apple (live QA 2026-10-29)", () => {
+  // Live run: Apple's model answered "yesterday's Apple closing price" with a made-up number and no handoff.
+  it("goes straight to the key's model when there is no page and the question needs fresh facts", async () => {
+    const apple = client("apple", () => answer("Apple closed at 194.25 yesterday."));
+    const keyed = client("anthropic", KEYED);
+    const { fallback: _f, ...base } = REQ;
+    for (const question of ["What was the closing price of Apple stock yesterday?", "What's the weather in Denver today?", "Latest news about the Fed?", "Who won the game last night?"]) {
+      const { asked } = await run(apple, keyed, { ...base, fallback: REQ.fallback, pages: [], scope: "general", question, message_id: question });
+      expect(asked, question).toEqual(["claude-haiku-5-5"]);
+    }
+    expect(apple.calls).toBe(0);
+  });
+
+  it("keeps Apple for page questions and timeless ones", async () => {
+    const apple = client("apple", () => answer("It costs $10."));
+    const keyed = client("anthropic", KEYED);
+    await run(apple, keyed, { ...REQ, question: "What is the latest price on this page?", message_id: "p" });
+    await run(apple, keyed, { ...REQ, pages: [], scope: "general", question: "What is 17 times 23?", message_id: "q" });
+    expect(apple.calls).toBe(2);
+    expect(keyed.calls).toBe(0);
+  });
+
+  it("without a key, Apple still answers (it is the only model)", async () => {
+    const { fallback: _f, ...noKey } = REQ;
+    const { asked } = await run(client("apple", () => answer("I can't check live prices.")), client("anthropic", KEYED), { ...noKey, pages: [], question: "Apple stock price today?" });
+    expect(asked).toEqual([APPLE_MODEL]);
+  });
+});

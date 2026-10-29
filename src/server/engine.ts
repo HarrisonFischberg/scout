@@ -15,7 +15,7 @@ import { APPLE_NO_PAGE_PROMPT, APPLE_WEB_RULE, buildMessages, chatSystemPrompt, 
 import { CHAT_MAX_TOKENS } from "../chat/session";
 import type { Provider } from "../keychain";
 import { ProviderError } from "../providers/errors";
-import { APPLE_MODEL, AppleModelError, appleCouldNotAnswer, appleRepeats, stripSourceMarkers } from "../providers/apple";
+import { APPLE_MODEL, AppleModelError, appleCouldNotAnswer, appleRepeats, needsFreshFacts, stripSourceMarkers } from "../providers/apple";
 import type { ChatMessage, ContentPart, Effort, ProviderClient, ToolSpec, Usage } from "../providers/types";
 import type { ToolStatus } from "../tools/registry";
 import type { NumberedEvent, ServerEvent } from "./protocol";
@@ -249,7 +249,7 @@ export class ScoutServer {
     this.emit(run, { kind: "start" });
     try {
       // Apple first: its answer stands unless it can't answer; then the key's model runs as usual.
-      const tryApple = req.model === APPLE_MODEL && !!req.fallback;
+      const tryApple = req.model === APPLE_MODEL && !!req.fallback && !needsFreshFacts(req.question, req.pages.length > 0);
       const apple = tryApple ? await this.askApple(req, signal) : null;
       if (apple !== null) {
         full = apple;
