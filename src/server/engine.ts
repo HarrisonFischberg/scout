@@ -11,11 +11,11 @@
 // be echoed between rounds.
 import { BridgeError } from "../bridge/messages";
 import type { QuestionScope } from "../chat/intent";
-import { buildMessages, chatSystemPrompt, fenceOpenPage, type PageContext } from "../chat/prompt";
+import { APPLE_NO_PAGE_PROMPT, APPLE_WEB_RULE, buildMessages, chatSystemPrompt, fenceOpenPage, type PageContext } from "../chat/prompt";
 import { CHAT_MAX_TOKENS } from "../chat/session";
 import type { Provider } from "../keychain";
 import { ProviderError } from "../providers/errors";
-import { APPLE_MODEL, AppleModelError, appleCouldNotAnswer } from "../providers/apple";
+import { APPLE_MODEL, AppleModelError, appleCouldNotAnswer, appleRepeats, stripSourceMarkers } from "../providers/apple";
 import type { ChatMessage, ContentPart, Effort, ProviderClient, ToolSpec, Usage } from "../providers/types";
 import type { ToolStatus } from "../tools/registry";
 import type { NumberedEvent, ServerEvent } from "./protocol";
@@ -54,6 +54,8 @@ export interface StartRequest {
    * can't). Owner, 2026-10-27: Apple first, the key as a fallback.
    */
   fallback?: { provider: Provider; model: string; effort?: Effort };
+  /** "Ask Claude" under Apple's answer (owner, 2026-10-28): the saved answer this one replaces. */
+  replaces?: string;
 }
 
 /** Most web searches one chat answer may run (each is billed by the provider). Five leaves room to retry a lookup with new wording (2026-10-23). */
@@ -79,7 +81,7 @@ export interface EngineDeps {
   provider(p: Provider, model: string): Promise<ProviderClient>;
   /** Tools to offer the model now (src/tools/registry.ts offeredTools). */
   tools(): Promise<ToolSpec[]>;
-  save(entry: { at: number; conv: string; question: string; answer: string; shared: SharedRef[]; sources: SourceRef[]; site?: string }): Promise<void>;
+  save(entry: { at: number; conv: string; question: string; answer: string; shared: SharedRef[]; sources: SourceRef[]; site?: string; replaces?: string }): Promise<void>;
   now(): number;
   /** How long a tool request waits for the panel. Default 2 minutes. */
   toolTimeoutMs?: number;
@@ -220,17 +222,19 @@ export class ScoutServer {
   private async askApple(req: StartRequest, signal: AbortSignal): Promise<string | null> {
     try {
       const apple = await this.deps.provider(req.provider, APPLE_MODEL);
+      const noPage = req.pages.length === 0;
       let text = "";
       for await (const ev of apple.stream({
         model: APPLE_MODEL,
-        system: chatSystemPrompt({ scope: req.scope }),
+        system: (noPage ? APPLE_NO_PAGE_PROMPT : chatSystemPrompt({ scope: req.scope })) + " " + APPLE_WEB_RULE,
         messages: buildMessages(req.history, req.question, req.pages[0] ?? null, req.pages.slice(1)),
         maxTokens: CHAT_MAX_TOKENS,
         signal,
       })) {
         if (ev.type === "text") text += ev.delta;
       }
-      return appleCouldNotAnswer(text) ? null : text;
+      if (appleCouldNotAnswer(text) || appleRepeats(text, req.history)) return null;
+      return noPage ? stripSourceMarkers(text) : text;
     } catch {
       return null;
     }
@@ -245,13 +249,14 @@ export class ScoutServer {
     this.emit(run, { kind: "start" });
     try {
       // Apple first: its answer stands unless it can't answer; then the key's model runs as usual.
-      const apple = req.model === APPLE_MODEL && req.fallback ? await this.askApple(req, signal) : null;
+      const tryApple = req.model === APPLE_MODEL && !!req.fallback;
+      const apple = tryApple ? await this.askApple(req, signal) : null;
       if (apple !== null) {
         full = apple;
         this.emit(run, { kind: "text", delta: apple });
       }
       const use = req.model === APPLE_MODEL && req.fallback ? req.fallback : req;
-      if (apple === null && req.fallback && req.model === APPLE_MODEL && !signal.aborted) this.emit(run, { kind: "handoff" });
+      if (apple === null && tryApple && !signal.aborted) this.emit(run, { kind: "handoff" });
       const provider = apple === null && !signal.aborted ? await this.deps.provider(use.provider, use.model) : null;
       const tools = await this.deps.tools().catch(() => [] as ToolSpec[]);
       const openPage = req.scope === "general" && req.pages.length === 0 && tools.length > 0 ? req.open_page : undefined;
@@ -328,6 +333,7 @@ export class ScoutServer {
           question: req.display_question ?? req.question,
           answer: (req.answer_prefix ?? "") + full,
           ...(req.site ? { site: req.site } : {}),
+          ...(req.replaces !== undefined ? { replaces: req.replaces } : {}),
           shared: [...(req.shared ?? []), ...run.shared],
           // Numbered as the panel numbers them: earlier part, pages, then citations.
           sources: [
