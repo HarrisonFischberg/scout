@@ -81,6 +81,7 @@ export function createOpenAI(cfg: ProviderConfig): ProviderClient {
                 type: "source",
                 url: ev.annotation.url,
                 ...(typeof ev.annotation.title === "string" ? { title: ev.annotation.title } : {}),
+                cite: true,
               };
             }
             break;
