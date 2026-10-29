@@ -28,6 +28,20 @@ interface Block {
 type RawBlock = Record<string, unknown>;
 
 /**
+ * The page a citation points to. Web search citations carry `url`; with
+ * dynamic filtering (web_search_20260209) results reach the model as search
+ * result blocks, whose citations carry the page in `source` instead (owner
+ * report 2026-10-29: such answers showed "[12-1]" and no sources).
+ */
+export function citationPage(c: unknown): { url: string; title?: string } | null {
+  const o = (c ?? {}) as Record<string, unknown>;
+  const url = typeof o.url === "string" ? o.url : typeof o.source === "string" ? o.source : "";
+  if (!/^https?:\/\//i.test(url)) return null;
+  const title = typeof o.title === "string" && o.title ? o.title : typeof o.document_title === "string" && o.document_title ? o.document_title : undefined;
+  return { url, ...(title ? { title } : {}) };
+}
+
+/**
  * Server tools (web search, web fetch) run in a loop on Anthropic's side that
  * ends the turn with stop_reason "pause_turn" after a set number of steps,
  * often before the model has written its answer. The turn goes on when it is
@@ -182,8 +196,9 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
               if (d.type === "text_delta") {
                 yield { type: "text", delta: d.text };
                 if (kept) kept.text = String(kept.text ?? "") + d.text;
-              } else if (d.type === "citations_delta" && typeof d.citation?.url === "string") {
-                yield { type: "source", url: d.citation.url, ...(typeof d.citation.cited_text === "string" ? { text: d.citation.cited_text } : {}) };
+              } else if (d.type === "citations_delta" && d.citation) {
+                const cp = citationPage(d.citation);
+                if (cp) yield { type: "source", ...cp, ...(typeof d.citation.cited_text === "string" ? { text: d.citation.cited_text } : {}) };
                 if (kept) kept.citations = [...(Array.isArray(kept.citations) ? kept.citations : []), d.citation];
               } else if (d.type === "thinking_delta") {
                 if (kept) kept.thinking = String(kept.thinking ?? "") + (d.thinking ?? "");
@@ -203,6 +218,17 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
                   kept.input = JSON.parse(b.json);
                 } catch {
                   throw new ProviderError("anthropic", "stream_error");
+                }
+              }
+              // The cited text is complete: say which pages it cites, once each.
+              if (kept?.type === "text" && Array.isArray(kept.citations)) {
+                const seen = new Set<string>();
+                for (const c of kept.citations) {
+                  const cp = citationPage(c);
+                  if (cp && !seen.has(cp.url)) {
+                    seen.add(cp.url);
+                    yield { type: "source", ...cp, cite: true };
+                  }
                 }
               }
               if (kept?.type === "server_tool_use" && kept.name === "web_fetch") {

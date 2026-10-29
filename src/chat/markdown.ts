@@ -16,6 +16,7 @@ export type Inline =
   | { type: "text"; text: string }
   | { type: "code"; text: string }
   | { type: "math"; tex: string }
+  /** `n` is 0 for a marker no source can match. */
   | { type: "cite"; n: number }
   | { type: "strong"; children: Inline[] }
   | { type: "em"; children: Inline[] }
@@ -39,6 +40,8 @@ export type Block =
 
 const SAFE_URL = /^https?:\/\//i;
 
+const CITE_ITEM = "\\d{1,3}(?:-\\d{1,3})?";
+
 // Order matters: code first (its content is literal), then math (also
 // literal), links, citations, then the longest emphasis markers. No
 // lookbehind: Safari 16.0–16.3 lacks it.
@@ -50,7 +53,8 @@ const INLINE = new RegExp(
     // so prices like "$10 and $20" stay text.
     "(^|[^\\\\\\w$])\\$([^\\s$](?:[^$\\n]*?[^\\s$\\\\])?)\\$(?![\\d\\w])",
     "\\[([^\\]]+)\\]\\(((?:[^()\\s]|\\([^()\\s]*\\))+)\\)", // 5,6 link (URL may hold one level of parentheses)
-    "\\[(\\d{1,2}(?:\\s*,\\s*\\d{1,2})*)\\](?!\\()", // 7 citation [n] or [n, m]
+    // 7 citation [n] or [n, m]; also the search tool's own "[12-1]" (result-passage), which no source matches.
+    "\\[(" + CITE_ITEM + "(?:\\s*,\\s*" + CITE_ITEM + ")*)\\](?!\\()",
     "\\*\\*\\*([^*\\s](?:[^*]*[^*\\s])?)\\*\\*\\*", // 8 bold italic
     "\\*\\*([^*\\s](?:[^*]*[^*\\s])?)\\*\\*", // 9 bold
     "__([^_\\s](?:[^_]*[^_\\s])?)__", // 10 bold (underscores)
@@ -78,7 +82,7 @@ export function parseInline(src: string): Inline[] {
     } else if (m[5] !== undefined && m[6] !== undefined) {
       if (SAFE_URL.test(m[6])) out.push({ type: "link", href: m[6], children: parseInline(m[5]) });
       else pushText(m[5]);
-    } else if (m[7] !== undefined) for (const n of m[7].split(",")) out.push({ type: "cite", n: Number(n) });
+    } else if (m[7] !== undefined) for (const n of m[7].split(",")) out.push({ type: "cite", n: /-/.test(n) ? 0 : Number(n) });
     else if (m[8] !== undefined) out.push({ type: "strong", children: [{ type: "em", children: parseInline(m[8]) }] });
     else if (m[9] !== undefined) out.push({ type: "strong", children: parseInline(m[9]) });
     else if (m[10] !== undefined) out.push({ type: "strong", children: parseInline(m[10]) });
@@ -246,15 +250,14 @@ function mountInline(doc: Document, parent: Node, nodes: Inline[], opts: RenderO
     if (n.type === "text") parent.appendChild(doc.createTextNode(n.text));
     else if (n.type === "math") parent.appendChild(texToMathML(doc, n.tex, false));
     else if (n.type === "cite") {
-      const src = opts.sources?.[n.n - 1];
-      if (src && SAFE_URL.test(src.url)) {
-        if (!cites.includes(n.n)) cites.push(n.n);
-        const next = nodes[i + 1];
-        const before = parent.lastChild;
-        if (before?.nodeType === 3 && (!next || next.type === "cite" || (next.type === "text" && /^[\s.,;:!?)]/.test(next.text)))) {
-          before.textContent = (before.textContent ?? "").replace(/\s+$/, "");
-        }
-      } else parent.appendChild(doc.createTextNode("[" + n.n + "]"));
+      const src = n.n > 0 ? opts.sources?.[n.n - 1] : undefined;
+      const before = parent.lastChild;
+      // A marker that matches no source is dropped, never shown raw (owner report 2026-10-29).
+      if (src && SAFE_URL.test(src.url) && !cites.includes(n.n)) cites.push(n.n);
+      const next = nodes[i + 1];
+      if (before?.nodeType === 3 && (!next || next.type === "cite" || (next.type === "text" && /^[\s.,;:!?)]/.test(next.text)))) {
+        before.textContent = (before.textContent ?? "").replace(/\s+$/, "");
+      }
     } else if (n.type === "code") {
       const el = doc.createElement("code");
       el.textContent = n.text;
