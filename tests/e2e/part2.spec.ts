@@ -282,6 +282,18 @@ test("answers render tables, code with a Copy button, math, and numbered sources
   await expect(answer.locator("p").first()).toHaveText("This is a sample answer from the Scout mock server. shop");
 });
 
+test("web citations show as linked chips with a sources list, never as raw [12-1] markers", async ({ page }) => {
+  // Owner report 2026-10-29: "where are the sources?"
+  await openPopup(page);
+  await ask(page, "Firm bean bag for sitting? [mock:cited]");
+  const answer = lastAnswer(page);
+  await expect(answer.getByRole("button", { name: /sources?$/ })).toBeVisible();
+  await expect(answer.locator("p").first().locator("a.cite")).toHaveText(["reviews", "beanbags"]);
+  await expect(answer.locator("a.cite").first()).toHaveAttribute("href", "https://reviews.example/fuf");
+  await expect(answer.locator("p").first()).toHaveText("Big Joe Fuf costs about half as much as Moon Pod. It is firm and good for reading. reviews beanbags");
+  await expect(answer.locator("li").first()).toHaveText("Built for one person.");
+});
+
 /** Records clipboard writes; no share sheet, so Share falls back to copying. */
 async function stubClipboard(page: Page): Promise<void> {
   await page.addInitScript(() => {

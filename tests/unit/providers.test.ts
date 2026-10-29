@@ -160,6 +160,25 @@ describe("web search (T019)", () => {
     expect(ev).toContainEqual({ type: "source", url: "https://deals.test/a", title: "Deals" });
   });
 
+  it("anthropic: takes search result citations (page in `source`) as sources and marks where they are cited", async () => {
+    const cite = { type: "search_result_location", source: "https://beanbags.test/fuf", title: "Fuf review", cited_text: "half the price", search_result_index: 12, start_block_index: 1, end_block_index: 1 };
+    const f: FetchLike = async () =>
+      sse([
+        { type: "message_start", message: { usage: { input_tokens: 5, output_tokens: 1 } } },
+        { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
+        { type: "content_block_delta", index: 0, delta: { type: "citations_delta", citation: cite } },
+        { type: "content_block_delta", index: 0, delta: { type: "citations_delta", citation: { ...cite, cited_text: "firm" } } },
+        { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Costs half as much" } },
+        { type: "content_block_stop", index: 0 },
+        { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 3 } },
+      ]);
+    const ev = await collect(createProvider("anthropic", { apiKey: "k", fetch: f }).stream(search));
+    expect(ev).toContainEqual({ type: "source", url: "https://beanbags.test/fuf", title: "Fuf review", text: "half the price" });
+    expect(ev.filter((e) => e.type === "source" && e.cite)).toEqual([{ type: "source", url: "https://beanbags.test/fuf", title: "Fuf review", cite: true }]);
+    // The marker comes after the cited text.
+    expect(ev.findIndex((e) => e.type === "source" && e.cite)).toBeGreaterThan(ev.findIndex((e) => e.type === "text"));
+  });
+
   it("anthropic: reports how many web searches ran, for the cost line", async () => {
     const f: FetchLike = async () =>
       sse([
@@ -188,7 +207,7 @@ describe("web search (T019)", () => {
     // The pages each search returned are asked for, so a code's page can be checked against them.
     expect(JSON.parse(body).include).toEqual(["web_search_call.action.sources"]);
     expect(ev).toContainEqual({ type: "source", url: "https://deals.test/a" });
-    expect(ev).toContainEqual({ type: "source", url: "https://deals.test/b", title: "More" });
+    expect(ev).toContainEqual({ type: "source", url: "https://deals.test/b", title: "More", cite: true });
   });
 
   it("sends the fetch tool on its own when only page reads are asked for", async () => {
