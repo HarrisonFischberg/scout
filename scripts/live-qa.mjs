@@ -125,14 +125,16 @@ async function runCase(c) {
   const end = events[events.length - 1];
   const text = end.kind === "done" ? end.text : "";
   const usage = events.filter((e) => e.kind === "usage").reduce((u, e) => ({ inputTokens: u.inputTokens + e.usage.inputTokens, outputTokens: u.outputTokens + e.usage.outputTokens, webSearches: (u.webSearches ?? 0) + (e.usage.webSearches ?? 0) }), { inputTokens: 0, outputTokens: 0, webSearches: 0 });
-  const route = mode === "key" ? "key" : events.some((e) => e.kind === "handoff") ? "key" : "apple";
+  // The key's model answered when it reported usage (after a handoff, or when the router skipped Apple).
+  const route = mode === "key" || events.some((e) => e.kind === "usage") ? "key" : "apple";
   const fails = [];
   if (end.kind !== "done") fails.push("ended with " + end.kind + (end.code ? " " + end.code : ""));
   for (const w of c.includes ?? []) if (!text.toLowerCase().includes(w.toLowerCase())) fails.push("missing " + JSON.stringify(w));
   for (const w of c.excludes ?? []) if (text.toLowerCase().includes(w.toLowerCase())) fails.push("contains " + JSON.stringify(w));
   if (c.matches && !new RegExp(c.matches, "i").test(text)) fails.push("does not match /" + c.matches + "/");
   if (c.notMatches && new RegExp(c.notMatches, "i").test(text)) fails.push("matches /" + c.notMatches + "/");
-  if (c.tool && toolCalls[0]?.name !== c.tool) fails.push("tool " + (toolCalls[0]?.name ?? "none") + ", expected " + c.tool);
+  // Apple's model has no tools, so a tool case only counts where the key's model can answer.
+  if (c.tool && mode !== "apple" && toolCalls[0]?.name !== c.tool) fails.push("tool " + (toolCalls[0]?.name ?? "none") + ", expected " + c.tool);
   if (mode === "router" && c.route && route !== c.route) fails.push("route " + route + ", expected " + c.route);
   const cost = usage.inputTokens || usage.outputTokens ? estimateCostUsd(model, usage) : 0;
   return { id: c.id, kind: c.kind, pass: fails.length === 0, fails, route, ms: Date.now() - started, usage, costUsd: cost, tools: toolCalls, text: text.slice(0, 600) };
