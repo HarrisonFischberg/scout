@@ -130,15 +130,18 @@ export interface PageContext {
   text: string;
 }
 
+/** Removes anything that reads as the fence tag (any case, spacing or attributes), so page text cannot open or close it. */
+export const unfence = (t: string): string => t.replace(/<\s*\/?\s*untrusted_page_content[^>]*>/gi, "");
+
 export function fencePage(page: PageContext, budget = PAGE_CHAR_BUDGET): string {
   const truncated = page.text.length > budget;
   const body = truncated ? page.text.slice(0, budget) : page.text;
-  // A page cannot close the fence early by embedding the closing tag.
-  const safe = body.replace(/<\/?untrusted_page_content>/gi, "");
+  // A page cannot close the fence early by embedding the closing tag, in its text or its title (QA 2026-10-29).
+  const safe = unfence(body);
   return [
     "<untrusted_page_content>",
-    "URL: " + page.url,
-    "Title: " + page.title,
+    "URL: " + unfence(page.url),
+    "Title: " + unfence(page.title),
     "",
     safe,
     truncated ? "\n[page text truncated]" : "",
@@ -160,7 +163,7 @@ export function fenceOpenPage(page: { url: string; title: string }): string {
   } catch {
     // Not an address: keep it as given.
   }
-  const safe = (t: string) => t.replace(/<\/?untrusted_page_content>/gi, "").slice(0, 300);
+  const safe = (t: string) => unfence(t).slice(0, 300);
   return ["<untrusted_page_content>", "Open page (text not included)", "Address: " + safe(where), "Title: " + safe(page.title), "</untrusted_page_content>"].join("\n");
 }
 

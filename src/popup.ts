@@ -6,7 +6,7 @@
 // shows its action log, Stop, and the sensitive-action confirmation
 // (Stop is the composer's button), and the Permissions screen in Settings.
 import { classifyQuestion, pageWords, type QuestionScope } from "./chat/intent";
-import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
+import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, unfence, type PageContext } from "./chat/prompt";
 import { chipSources, renderMarkdown } from "./chat/markdown";
 import { answerText, fillSourceCard, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
 import { ConversationStore, type StoredMessage } from "./chat/store";
@@ -2515,7 +2515,7 @@ async function main(): Promise<void> {
     const out = await startTask(goal, "chat");
     if (!out) return { status: "error", text: "The task could not start.", site };
     if (out.status === "done") {
-      return { status: "ok", text: "<untrusted_page_content>\n" + out.summary.replace(/<\/?untrusted_page_content>/gi, "") + "\n</untrusted_page_content>", site, shared: { title: "Scout mode task", host: site } };
+      return { status: "ok", text: "<untrusted_page_content>\n" + unfence(out.summary) + "\n</untrusted_page_content>", site, shared: { title: "Scout mode task", host: site } };
     }
     return { status: out.status === "stopped" ? "declined" : "error", text: "The task ended early (" + out.status + "): " + out.summary, site };
   }
