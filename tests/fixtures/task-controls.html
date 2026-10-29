@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Task controls fixture</title></head>
+<body>
+  <!-- QA 2026-10-29: controls a browser task must not act on, and ones it must. -->
+  <form id="f">
+    <fieldset disabled>
+      <legend>Shipping (locked)</legend>
+      <label>Locked name <input id="locked" value=""></label>
+      <button id="locked-save" type="button" onclick="document.body.dataset.saved='yes'">Save locked</button>
+    </fieldset>
+    <label>Order total <input id="total" value="$42.00" readonly></label>
+    <label>Notes <input id="notes" value="keep me"></label>
+    <label>Name <input id="name" value=""></label>
+    <button id="go" type="button" onclick="document.body.dataset.clicked='yes'">Go</button>
+  </form>
+</body>
+</html>

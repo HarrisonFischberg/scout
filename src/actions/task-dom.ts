@@ -71,7 +71,9 @@ function describe(el: Element): ProbeResult {
     ...(el instanceof HTMLInputElement || el instanceof HTMLButtonElement ? { type: el.type.toLowerCase() } : {}),
     ...(el instanceof HTMLAnchorElement ? { href: el.href.slice(0, 200) } : {}),
     ...(redacted ? { redacted: true } : {}),
-    ...((el as HTMLButtonElement).disabled === true || el.getAttribute("aria-disabled") === "true" ? { disabled: true } : {}),
+    // :disabled also covers controls inside a disabled <fieldset> (QA 2026-10-29).
+    ...(el.matches(":disabled") || el.getAttribute("aria-disabled") === "true" ? { disabled: true } : {}),
+    ...((el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) && el.readOnly ? { readonly: true } : {}),
     ...(el.closest("form") ? { inForm: true } : {}),
   };
 }
