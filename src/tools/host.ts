@@ -174,6 +174,8 @@ async function run(req: ToolRequest, deps: ToolHostDeps): Promise<ToolResult> {
       const host = hostOf(url);
       if (!host) return result("schema-error", "Only http and https addresses can be opened.");
       if (blockedBy(url, access, admin)) return result("blocked-by-user", "The user blocked this site.", host);
+      if (req.decision === "declined") return result("declined", "The user chose not to open this address.", host);
+      if (req.decision !== "confirmed") return result("error", "Opening a tab needs the user's confirmation.", host);
       const tab = await deps.openTab(url);
       return result("ok", "Opened tab " + tab.id + " in the background: " + cleanUrl(url), host, { opened_tab: tab.id });
     }
