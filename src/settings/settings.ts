@@ -201,13 +201,23 @@ export async function appendHistory(
   storage: StorageArea,
   retention: Retention,
   entry: HistoryEntry | HistoryEntry[],
+  /** An earlier answer the new one takes the place of ("Ask Claude" under Apple's answer). */
+  replaces?: { conv: string; question: string; answer: string },
 ): Promise<void> {
   const added = Array.isArray(entry) ? entry : [entry];
   if (retention === "off" || !added.length) return;
   const now = Math.max(...added.map((e) => e.at));
   await withLock(HISTORY_KEY, async () => {
     const got = await storage.get(HISTORY_KEY);
-    const next = pruneHistory([...parseHistory(got[HISTORY_KEY]), ...added], retention, now);
+    const old = parseHistory(got[HISTORY_KEY]);
+    for (let i = old.length - 1; replaces && i >= 0; i--) {
+      const e = old[i]!;
+      if (e.conv === replaces.conv && e.question === replaces.question && e.answer === replaces.answer) {
+        old.splice(i, 1);
+        break;
+      }
+    }
+    const next = pruneHistory([...old, ...added], retention, now);
     await storage.set({ [HISTORY_KEY]: next });
   });
 }

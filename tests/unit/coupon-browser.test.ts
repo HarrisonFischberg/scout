@@ -4,7 +4,8 @@
 // the codes there. Synthetic stores, pages and codes only; the tab is a fake.
 import { describe, expect, it } from "vitest";
 import { BROWSER_MAX_PAGES, browserRead, browserTrace, codeAlone, couponControls, revealedCodes, type PageBrowser } from "../../src/coupons/browser-read";
-import { suggestCodes } from "../../src/coupons/codes";
+import { majorSitePages, suggestCodes } from "../../src/coupons/codes";
+import { identifyMerchant } from "../../src/coupons/merchant";
 import type { ProviderClient, StreamEvent, ChatRequest } from "../../src/providers";
 import type { SnapElement, Snapshot } from "../../src/snapshot/snapshot";
 
@@ -250,7 +251,9 @@ describe("sites that keep refusing the reader go to the browser first", () => {
     expect(readNote).not.toMatch(/coupert\.com|hotdeals\.com|dealhack\.com/);
     expect(readNote).toMatch(/wethrift\.com\/synthshop/);
     expect(request).toMatch(/Do not open pages on these sites with web_fetch.*coupert\.com, hotdeals\.com, dealhack\.com/);
-    expect(opened.sort()).toEqual(["https://dealhack.com/coupons/synthshop", "https://us.hotdeals.com/store/synthshop-coupon", "https://usa.coupert.com/coupons/synthshop-test-discount-code"].sort());
+    // The big coupon sites' pages for the store are read quietly too, never by the reader.
+    expect(opened.sort()).toEqual(["https://dealhack.com/coupons/synthshop", "https://us.hotdeals.com/store/synthshop-coupon", "https://usa.coupert.com/coupons/synthshop-test-discount-code", ...majorSitePages(identifyMerchant("https://www.synthshop.test/"))].sort());
+    expect(request).not.toMatch(/joinhoney\.com\/shop|retailmenot\.com\/view/);
   });
 
   it("a search result on such a site, about this store, opens in the browser without a fetch", async () => {
@@ -299,5 +302,46 @@ describe("sites that keep refusing the reader go to the browser first", () => {
     expect(r.browserPages).toHaveLength(3);
     expect(most).toBe(2);
     expect(learned).toEqual(["https://deals.test/synthshop-a false", "https://deals.test/synthshop-b false", "https://deals.test/synthshop-c false", "https://ok.test/synthshop true"]);
+  });
+});
+
+// Owner request 2026-10-29: the most popular coupon sites are searched on every run.
+describe("the big coupon sites", () => {
+  it("builds each site's page for the store, none for a local fixture", () => {
+    const pages = majorSitePages(identifyMerchant("https://www.synthshop.test/cart"));
+    expect(pages).toContain("https://www.joinhoney.com/shop/synthshop");
+    expect(pages).toContain("https://www.retailmenot.com/view/synthshop.test");
+    expect(pages).toContain("https://www.rakuten.com/shop/synthshop");
+    expect(pages).toContain("https://joincheckmate.com/merchants/synthshop.test");
+    expect(pages).toContain("https://thekrazycouponlady.com/coupons/synthshop");
+    expect(majorSitePages(identifyMerchant("http://127.0.0.1:4317/cart"))).toEqual([]);
+  });
+
+  it("reads their pages quietly; a page with nothing on it is not sent to the model", async () => {
+    const seen: ChatRequest[] = [];
+    const p: ProviderClient = {
+      id: "anthropic",
+      async *stream(req) {
+        seen.push(req);
+        yield { type: "text", delta: "NONE\n" };
+      },
+    };
+    const tabs: PageBrowser = {
+      quiet: true,
+      open: async (u) => (u.includes("joinhoney.com") ? 1 : u.includes("retailmenot.com") ? 2 : null),
+      read: async (tab) =>
+        tab === 1
+          ? snap("https://www.joinhoney.com/shop/synthshop", FILLER + "\nSynthetic Shop: use code HONEYSYNTH for 10% off")
+          : snap("https://www.retailmenot.com/view/synthshop.test", FILLER + "\nSynthetic Shop: 3 codes. Show code"),
+      click: async () => false,
+      close: async () => undefined,
+      wait: async () => undefined,
+    };
+    const r = await suggestCodes(p, "m", "www.synthshop.test", undefined, { browser: { tabs, allow: async () => true } });
+    expect(r.codes.map((c) => c.code)).toContain("HONEYSYNTH");
+    expect(r.browserPages.filter((x) => x.reason === "major").length).toBe(majorSitePages(identifyMerchant("https://www.synthshop.test/")).length);
+    const shown = String(seen.find((q) => !q.webSearch && !q.webFetch)?.messages[0]?.content);
+    expect(shown).toContain("joinhoney.com/shop/synthshop");
+    expect(shown).not.toContain("retailmenot.com/view/synthshop.test>>>");
   });
 });

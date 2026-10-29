@@ -131,6 +131,15 @@ describe("retention expiry", () => {
     expect((s.data.history as HistoryEntry[]).map((e) => e.question).sort()).toEqual(["b1", "b2", "chat", "coupons"]);
   });
 
+  // Owner, 2026-10-28: "Ask Claude" under Apple's answer replaces it in the saved chat too.
+  it("a replacing save drops the answer it replaces, and only that one", async () => {
+    const apple = { ...entry(0, "dimmer"), conv: "c", answer: "Apple's vague answer" };
+    const other = { ...entry(0, "dimmer"), conv: "d", answer: "Apple's vague answer" };
+    const s = fakeStorage({ history: [apple, other] });
+    await appendHistory(s, "7", { ...apple, answer: "Lutron Diva, Leviton SureSlide" }, { conv: "c", question: "dimmer", answer: "Apple's vague answer" });
+    expect((s.data.history as HistoryEntry[]).map((e) => e.conv + ":" + e.answer)).toEqual(["d:Apple's vague answer", "c:Lutron Diva, Leviton SureSlide"]);
+  });
+
   // Review 2026-10-24: a save that had read the old list wrote it all back after Clear history.
   it("Clear history waits for a save already under way, so deleted entries do not come back", async () => {
     const s = fakeStorage({ history: [entry(0, "old")] });
@@ -154,7 +163,8 @@ describe("retention expiry", () => {
     const stuck = withLock("t", () => new Promise<void>(() => undefined), 20).catch(() => order.push("gave up"));
     await withLock("t", async () => void order.push("next"), 20);
     await stuck;
-    expect(order).toEqual(["gave up", "next"]);
+    // Order is up to the lock implementation (Node 24 ships navigator.locks); both must happen.
+    expect(order.sort()).toEqual(["gave up", "next"]);
   });
 
   it("an entry exactly at the cutoff is expired", () => {

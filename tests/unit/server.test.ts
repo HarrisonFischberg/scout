@@ -105,6 +105,44 @@ describe("ScoutServer", () => {
     ]);
   });
 
+  it("drops citations that are not web pages, so no javascript: link reaches the panel (QA 2026-10-29)", async () => {
+    const { s, saved } = server(
+      scripted([[text("Answer"), { type: "source", url: "javascript:alert(1)", title: "x", cite: true }, { type: "source", url: "data:text/html,hi" }, { type: "done" }]]),
+    );
+    s.start(REQ);
+    const events = await collect(s, "m1");
+    expect(JSON.stringify(events)).not.toMatch(/javascript:|data:text/);
+    expect(saved[0]?.sources).toEqual([{ url: "https://shop.test/a", title: "Test shop", kind: "page" }]);
+    expect(saved[0]?.answer).toBe("Answer");
+  });
+
+  it("links the provider's own citations as numbered markers (owner report 2026-10-29)", async () => {
+    const { s, saved } = server(
+      scripted([
+        [
+          text("Big Joe Fuf costs half as much"),
+          { type: "source", url: "https://a.test/x", title: "A", text: "half" },
+          { type: "source", url: "https://a.test/x", title: "A", cite: true },
+          text(". It is firm"),
+          { type: "source", url: "https://b.test/y", cite: true },
+          { type: "source", url: "https://b.test/y", cite: true },
+          text("."),
+          { type: "done" },
+        ],
+      ]),
+    );
+    s.start({ ...REQ, prefix_sources: [{ url: "https://old.test/", title: "" }] });
+    const events = await collect(s, "m1");
+    // Earlier part 1, page 2, then web sources 3 and 4; the same marker is not repeated.
+    expect(last(events)?.event).toEqual({ kind: "done", text: "Big Joe Fuf costs half as much [3]. It is firm [4]." });
+    expect(saved[0]?.sources).toEqual([
+      { url: "https://old.test/" },
+      { url: "https://shop.test/a", title: "Test shop", kind: "page" },
+      { url: "https://a.test/x", title: "A", kind: "web" },
+      { url: "https://b.test/y", kind: "web" },
+    ]);
+  });
+
   it("offers web search with a budget for the whole answer, and tells the model when to use it", async () => {
     const provider = scripted([
       [{ type: "tool_call", id: "t", name: "read_page", input: {} }, { type: "usage", usage: { inputTokens: 1, outputTokens: 1, webSearches: 2 } }],

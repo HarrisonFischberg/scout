@@ -171,6 +171,8 @@ export interface CouponTester {
   apply(code: string): Promise<number | null>;
   /** Leaves the cart as the user expects: winner applied, or original codes back. */
   finish(winner: string | null): Promise<void>;
+  /** Puts the original codes back and says whether the total is still the baseline; false when the cart changed during the run. */
+  unchanged?(): Promise<boolean>;
 }
 
 export interface TesterError {
@@ -242,6 +244,12 @@ async function cartTester(cart: CartApi, page?: CouponPage): Promise<CouponTeste
       if (winner === null) await cart.update(original);
       // The cart page shows stale totals after API changes; reload it.
       await cart.reload();
+    },
+    async unchanged() {
+      const r = await cart.update(original);
+      // No answer or slow down: unknown, so the re-apply check below decides as before.
+      if (!r || "rateLimited" in r) return true;
+      return Math.abs(r.total - start.total) <= EPS;
     },
   };
 }
@@ -857,6 +865,11 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
           ? "No code lowered the total, and no more codes were found."
           : "No code lowered the total.";
     return result(stoppedEarly ?? "done", message, exhausted ? { exhausted } : {});
+  }
+  // Savings are measured against the starting cart: if the shopper changed it meanwhile, no comparison holds (QA 2026-10-29).
+  if (tester.unchanged && !(await tester.unchanged().catch(() => true))) {
+    await tester.finish(null).catch(() => undefined);
+    return result("error", "Your cart changed while I was testing codes, so I can't tell which code saves the most. Your own codes are back as they were. Try Find coupons again.");
   }
   // Apply the winner (later attempts replaced it) and confirm with a fresh read.
   // A slow checkout can miss the first try (owner's sproos log 2026-10-29:

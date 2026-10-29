@@ -6,7 +6,7 @@
 // shows its action log, Stop, and the sensitive-action confirmation
 // (Stop is the composer's button), and the Permissions screen in Settings.
 import { classifyQuestion, pageWords, type QuestionScope } from "./chat/intent";
-import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, type PageContext } from "./chat/prompt";
+import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, unfence, type PageContext } from "./chat/prompt";
 import { chipSources, renderMarkdown } from "./chat/markdown";
 import { answerText, fillSourceCard, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
 import { ConversationStore, type StoredMessage } from "./chat/store";
@@ -139,6 +139,8 @@ function savedProviders(keys: SavedKeys): Set<Provider> {
 }
 
 const PROVIDER_NAME: Record<Provider, string> = { anthropic: "Anthropic", openai: "OpenAI" };
+/** The key's model by its everyday name, for the button under Apple's answers. */
+const ASSISTANT_NAME: Record<Provider, string> = { anthropic: "Claude", openai: "ChatGPT" };
 
 async function listTabs(): Promise<TabInfo[]> {
   try {
@@ -672,7 +674,7 @@ async function main(): Promise<void> {
   }
 
   /** The row under a finished chat answer. */
-  function answerActions(bubble: HTMLElement, turn: { question: string; answer: string; sources?: Source[] }): HTMLElement {
+  function answerActions(bubble: HTMLElement, turn: { question: string; answer: string; sources?: Source[] }, askKey?: () => void): HTMLElement {
     const sources = turn.sources ?? [];
     const row = document.createElement("div");
     row.className = "answer-actions";
@@ -728,6 +730,16 @@ async function main(): Promise<void> {
 
     const branch = actionButton("branch", "Branch from this answer", () => void branchFrom(bubble));
     row.append(copy, share, good, bad, branch);
+    // Under the latest answer Apple's model wrote: ask the key's model instead (owner, 2026-10-28).
+    if (askKey && session) {
+      const redo = document.createElement("button");
+      redo.type = "button";
+      redo.className = "ask-key";
+      redo.textContent = "Ask " + ASSISTANT_NAME[session.settings.provider];
+      redo.title = "Ask " + PROVIDER_NAME[session.settings.provider] + " with your key, with web search, and replace this answer";
+      redo.addEventListener("click", askKey);
+      row.appendChild(redo);
+    }
 
     if (sources.length) {
       const listId = "sources-" + Math.random().toString(36).slice(2, 10);
@@ -1676,7 +1688,9 @@ async function main(): Promise<void> {
     // After Apple's model couldn't answer, a new label shows the work goes on (owner, 2026-10-27).
     else v.bubble.innerHTML = '<span class="thinking">' + PULSE + "<span>" + (m.handoff ? "Looking deeper…" : "Thinking…") + "</span></span>";
     if (v.closed && m.status === "complete" && !m.stopped && text && cut >= text.length) {
-      v.bubble.appendChild(answerActions(v.bubble, { question: v.question, answer: text, sources: allSources(v, m) }));
+      const byApple = v.appleFirst && !m.usage;
+      const askKey = byApple ? () => void ask(v.question, { redoOf: { bubble: v.bubble, answer: text } }) : undefined;
+      v.bubble.appendChild(answerActions(v.bubble, { question: v.question, answer: text, sources: allSources(v, m) }, askKey));
     }
     followEnd();
   }
@@ -1884,6 +1898,32 @@ async function main(): Promise<void> {
     });
   }
 
+  async function confirmOpen(input: unknown): Promise<ToolDecision> {
+    const url = String((input as { url?: unknown } | null)?.url ?? "");
+    return askTool({
+      title: "Open this address?",
+      what: "Scout wants to open a new tab at:",
+      items: [url.slice(0, 300)],
+      choices: [
+        { label: "Open tab", value: "confirmed" },
+        { label: "Cancel", value: "declined", safe: true },
+      ],
+    });
+  }
+
+  async function confirmRunTask(goal: string): Promise<boolean> {
+    const d = await askTool({
+      title: "Start a Scout mode task?",
+      what: "The chat wants Scout to act on this page to:",
+      items: [goal.slice(0, 300)],
+      choices: [
+        { label: "Start task", value: "confirmed" },
+        { label: "Cancel", value: "declined", safe: true },
+      ],
+    });
+    return d === "confirmed";
+  }
+
   /** Asks when the site is set to ask; undefined when Settings already decides (the host enforces it). */
   async function askScreenshot(model: string): Promise<ToolDecision | undefined> {
     const now = await activeTab();
@@ -1916,6 +1956,7 @@ async function main(): Promise<void> {
     trace("tool:request " + (/^\w{1,30}$/.test(ev.name) ? ev.name : "unknown"));
     let decision: ToolDecision | undefined;
     if (ev.name === "close_tabs") decision = await confirmClose(ev.input);
+    else if (ev.name === "open_tab") decision = await confirmOpen(ev.input);
     else if (ev.name === "screenshot_visible") decision = await askScreenshot(v.model);
     // The answer ended (Stop, error) or the server timed the request out while asking.
     if (store.get(id)?.status !== "streaming" || !store.pendingTools(id).some((t) => t.request_id === ev.request_id)) return;
@@ -1924,9 +1965,12 @@ async function main(): Promise<void> {
       // Part 3: the Scout server asked for a task mid-answer. The user is asked
       // first; the answer continues with the task's outcome.
       const goal = typeof (ev.input as { goal?: unknown } | null)?.goal === "string" ? ((ev.input as { goal: string }).goal) : "";
-      result = goal.trim()
-        ? await runTaskForChat(goal)
-        : { status: "schema-error", text: "run_task needs a goal.", site: hostOf(tab.url ?? "") ?? "" };
+      const site = hostOf(tab.url ?? "") ?? "";
+      result = !goal.trim()
+        ? { status: "schema-error", text: "run_task needs a goal.", site }
+        : (await confirmRunTask(goal))
+          ? await runTaskForChat(goal)
+          : { status: "declined", text: "The user chose not to start the task.", site };
     } else
     try {
       result = await request<ToolResult>(
@@ -1977,7 +2021,14 @@ async function main(): Promise<void> {
     read_current: boolean;
   }
 
-  async function ask(text: string, opts: { continueOf?: { bubble: HTMLElement; question: string; partial: string; shared: MessageView["shared"]; sources: Source[] } } = {}): Promise<void> {
+  async function ask(
+    text: string,
+    opts: {
+      continueOf?: { bubble: HTMLElement; question: string; partial: string; shared: MessageView["shared"]; sources: Source[] };
+      /** "Ask Claude" under Apple's answer: the key's model answers the same question in its place. */
+      redoOf?: { bubble: HTMLElement; answer: string };
+    } = {},
+  ): Promise<void> {
     const trimmed = text.trim();
     await sessionReady();
     if (!trimmed || activeChat || couponRun || task || !session) return;
@@ -1985,7 +2036,8 @@ async function main(): Promise<void> {
     // Apple's on-device model sends nothing off the device, so there is nothing to consent to.
     if (!s.apple && !consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     const cont = opts.continueOf;
-    const extra = cont ? [] : [...attached.values()];
+    const redo = opts.redoOf;
+    const extra = cont || redo ? [] : [...attached.values()];
     // Asked first: the permission prompt needs this click's user gesture.
     let granted = extra.length === 0;
     if (!granted) {
@@ -1996,7 +2048,7 @@ async function main(): Promise<void> {
     // A general question goes without the page (src/chat/intent.ts); the page
     // stays shared with the answer, so read_page can still fetch it.
     // The standalone page has no page to send; it keeps the usual prompt.
-    const scope: QuestionScope = cont
+    const scope: QuestionScope = cont || redo
       ? (lastScope ?? "page")
       : STANDALONE
         ? "page"
@@ -2016,7 +2068,15 @@ async function main(): Promise<void> {
     activeChat = id;
     let bubble: HTMLElement;
     if (cont) bubble = cont.bubble;
-    else {
+    else if (redo) {
+      bubble = redo.bubble;
+      // Apple's answer leaves the chat and the memory; the new one takes its place.
+      const last = history[history.length - 1];
+      if (last?.role === "assistant" && textOf(last.content) === redo.answer) history.splice(-2, 2);
+      if (turns[turns.length - 1]?.bubble === bubble) turns.pop();
+      trace("apple:ask-key");
+    } else {
+      document.querySelectorAll(".ask-key").forEach((b) => b.remove());
       addMessage("user", isSummary ? "Summarize page" : trimmed);
       question.value = "";
       autosize();
@@ -2024,7 +2084,7 @@ async function main(): Promise<void> {
       bubble = addMessage("assistant", "");
     }
     const v = newView(id, bubble, cont ? cont.question : trimmed, s.settings.model, cont ? cont.partial + (/\s$/.test(cont.partial) ? "" : " ") : "");
-    if (s.appleFirst && !cont) v.appleFirst = true;
+    if (s.appleFirst && !cont && !redo) v.appleFirst = true;
     renderView(id);
     status.textContent = cont ? "Finishing the answer." : STANDALONE || scope === "general" ? "Waiting for the answer." : "Reading the page and waiting for the answer.";
     setBusy(true);
@@ -2089,6 +2149,7 @@ async function main(): Promise<void> {
           ...(pageSite ? { site: pageSite } : {}),
           scope,
           ...(scope === "general" && !STANDALONE && !cont && tab.url && tab.title ? { open_page: { url: tab.url, title: tab.title } } : {}),
+          ...(redo ? { replaces: redo.answer } : {}),
           ...(cont
             ? { display_question: cont.question, answer_prefix: v.prefix, prefix_sources: cont.sources.map((x) => ({ url: x.url, title: x.title ?? "" })) }
             : {}),
@@ -2454,7 +2515,7 @@ async function main(): Promise<void> {
     const out = await startTask(goal, "chat");
     if (!out) return { status: "error", text: "The task could not start.", site };
     if (out.status === "done") {
-      return { status: "ok", text: "<untrusted_page_content>\n" + out.summary.replace(/<\/?untrusted_page_content>/gi, "") + "\n</untrusted_page_content>", site, shared: { title: "Scout mode task", host: site } };
+      return { status: "ok", text: "<untrusted_page_content>\n" + unfence(out.summary) + "\n</untrusted_page_content>", site, shared: { title: "Scout mode task", host: site } };
     }
     return { status: out.status === "stopped" ? "declined" : "error", text: "The task ended early (" + out.status + "): " + out.summary, site };
   }
@@ -2838,16 +2899,33 @@ async function main(): Promise<void> {
   }
 
   type CouponRunView = { started_at: number; conv?: string; events: Array<Record<string, unknown>>; done: boolean; prompt_id?: string };
+  type LostCouponRun = { conv: string; at: number; answer: string };
+  /** A run Safari ended by unloading the worker, saved as a chat when the worker started again (CouponHost.recover). */
+  let couponLost: LostCouponRun | null = null;
 
   /** The worker's run on this tab (running or just finished), and live events that came while asking. */
   async function readCouponRun(): Promise<{ run: CouponRunView; buffered: Array<Record<string, unknown>> } | null> {
     if (tab.id === undefined || !port) return null;
     couponBuffer = [];
     watchTab();
-    const got = await request<{ run?: CouponRunView }>(toWorker, "coupons.status", { tab_id: tab.id }, { timeoutMs: 3_000 }).catch(() => null);
+    const got = await request<{ run?: CouponRunView; lost?: LostCouponRun }>(toWorker, "coupons.status", { tab_id: tab.id }, { timeoutMs: 5_000 }).catch(() => null);
     const buffered = couponBuffer;
     couponBuffer = null;
+    couponLost = got?.lost ?? null;
     return got?.run ? { run: got.run, buffered } : null;
+  }
+
+  /** Shows a lost run's saved chat entry on its own chat, once (it may already be shown from history). */
+  function showLostRun(): void {
+    const l = couponLost;
+    if (!l || !conv || l.conv !== conv || turns.some((t) => t.entry.kind === "coupons" && t.entry.at === l.at)) return;
+    trace("coupons:lost");
+    const entry: HistoryEntry = { at: l.at, question: COUPON_QUESTION, answer: l.answer, kind: "coupons" };
+    addMessage("user", COUPON_QUESTION, { mode: "Find coupons" });
+    addMessage("assistant", l.answer);
+    turns.push({ entry });
+    updateEmpty();
+    scrollToEnd();
   }
 
   /** Shows a run in the chat and replays its events so far (a finished run ends with its summary). */
@@ -2870,7 +2948,8 @@ async function main(): Promise<void> {
   async function resumeCoupons(): Promise<void> {
     if (couponRun) return;
     const got = await readCouponRun();
-    if (!got || couponRun) return;
+    if (!got) return showLostRun();
+    if (couponRun) return;
     const r = got.run;
     // The run belongs to a chat New chat left: the chip leads back to it.
     if (r.conv && conv && r.conv !== conv) {
@@ -2963,6 +3042,7 @@ async function main(): Promise<void> {
     showEntries(r ? entries.filter((e) => !(e.kind === "coupons" && e.at >= r.started_at)) : entries);
     if (r && got) replayCouponRun(r, got.buffered);
     else if (got && !got.run.done && !couponAway) sendCouponAway(got.run.conv ?? "", got.run.prompt_id ? "ask" : "running");
+    else if (!got) showLostRun();
     status.textContent = "";
     updateEmpty();
     trace("conversation:open " + entries.length);
@@ -2993,9 +3073,10 @@ async function main(): Promise<void> {
   }
 
   async function renderChats(): Promise<void> {
-    const [entries, runs, visible] = await Promise.all([
+    // The worker first, so a run it lost and has just saved as a chat is in the history read after.
+    const runs = port ? await request<{ runs: RunRow[] }>(toWorker, "coupons.list", {}, { timeoutMs: 5_000 }).then((r) => r.runs).catch(() => []) : [];
+    const [entries, visible] = await Promise.all([
       storage ? loadHistory(storage, settings.retention, Date.now()).catch(() => []) : [],
-      port ? request<{ runs: RunRow[] }>(toWorker, "coupons.list", {}, { timeoutMs: 3_000 }).then((r) => r.runs).catch(() => []) : [],
       visibleConvs(),
     ]);
     const chats = summarizeChats(entries, {
