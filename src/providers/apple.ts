@@ -52,6 +52,8 @@ export class AppleModelError extends Error {
           ? "Apple's on-device model declined this request."
           : code === "unavailable"
             ? "Apple Intelligence isn't available on this device."
+            : code === "timeout"
+              ? "Apple's on-device model took too long to answer. Try again."
             : "Apple's on-device model couldn't answer. Try again.",
     );
     this.name = "AppleModelError";
@@ -134,22 +136,41 @@ export function appleRepeats(text: string, history: ChatMessage[]): boolean {
   return !!prev && lastQuestion(textOf(prev.content)) === q;
 }
 
+/** Longest wait for one on-device reply; a native call that never answers would otherwise hang the chat (QA 2026-10-29). */
+export const APPLE_TIMEOUT_MS = 60_000;
+
 /** A provider client for the chat engine, over native messaging to Apple's model. */
-export function createApple(send: NativeSend): ProviderClient {
+export function createApple(send: NativeSend, opts: { timeoutMs?: number } = {}): ProviderClient {
+  const timeoutMs = opts.timeoutMs ?? APPLE_TIMEOUT_MS;
   return {
     id: "apple",
     async *stream(req: ChatRequest): AsyncGenerator<StreamEvent, void, void> {
       const system = req.system ? fitText(req.system, APPLE_SYSTEM_CHARS) : undefined;
       const maxTokens = Math.min(req.maxTokens, APPLE_MAX_TOKENS);
-      let text: string;
+      // Ends early on Stop (resolves null) or after the time limit (throws), so neither waits on the native side.
+      const bounded = (call: Promise<string>): Promise<string | null> => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let onAbort = (): void => undefined;
+        const stop = new Promise<null>((resolve, reject) => {
+          timer = setTimeout(() => reject(new AppleModelError("timeout")), timeoutMs);
+          onAbort = () => resolve(null);
+          if (req.signal?.aborted) resolve(null);
+          req.signal?.addEventListener("abort", onAbort, { once: true });
+        });
+        return Promise.race([call, stop]).finally(() => {
+          clearTimeout(timer);
+          req.signal?.removeEventListener("abort", onAbort);
+        });
+      };
+      let text: string | null;
       try {
-        text = await appleGenerate(send, { system, prompt: applePrompt(req.messages), maxTokens });
+        text = await bounded(appleGenerate(send, { system, prompt: applePrompt(req.messages), maxTokens }));
       } catch (err) {
         // Too long even after cutting: try once more with half the page.
         if (!(err instanceof AppleModelError) || err.code !== "too_long") throw err;
-        text = await appleGenerate(send, { system, prompt: applePrompt(req.messages, APPLE_PROMPT_CHARS / 2), maxTokens });
+        text = await bounded(appleGenerate(send, { system, prompt: applePrompt(req.messages, APPLE_PROMPT_CHARS / 2), maxTokens }));
       }
-      if (req.signal?.aborted) return;
+      if (text === null || req.signal?.aborted) return;
       yield { type: "text", delta: text };
       yield { type: "stop", reason: "end_turn" };
       yield { type: "done" };

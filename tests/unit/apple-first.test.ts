@@ -1,12 +1,13 @@
 // Owner, 2026-10-27: chat asks Apple's on-device model first and uses the
 // key's model only when Apple can't answer. Scripted providers; no network.
 import { describe, expect, it } from "vitest";
-import { APPLE_MODEL, AppleModelError, appleCouldNotAnswer, applePrompt, appleRepeats } from "../../src/providers/apple";
+import { APPLE_MODEL, AppleModelError, appleCouldNotAnswer, applePrompt, appleRepeats, createApple } from "../../src/providers/apple";
 import { APPLE_NEEDS_WEB } from "../../src/chat/prompt";
 import type { ChatMessage, ChatRequest, ProviderClient, StreamEvent } from "../../src/providers/types";
 import { ScoutServer, type StartRequest } from "../../src/server/engine";
 import { fromWire, toWire, type NumberedEvent } from "../../src/server/protocol";
 import { ConversationStore } from "../../src/chat/store";
+import { ProviderError } from "../../src/providers/errors";
 
 const REQ: StartRequest = {
   message_id: "m1",
@@ -226,5 +227,101 @@ describe("Ask Claude under Apple's answer", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(apple.calls).toBe(0);
     expect(saved[0]).toMatchObject({ answer: "Claude: $10.", replaces: "Apple's vague answer" });
+  });
+});
+
+describe("a stuck Apple model (QA 2026-10-29)", () => {
+  // Native messaging to Apple's model that never answers.
+  const stuckSend = () => new Promise<unknown>(() => undefined);
+
+  it("hands off to the key's model after the time limit instead of hanging", async () => {
+    const keyed = client("anthropic", KEYED);
+    const { events, asked } = await run(createApple(stuckSend, { timeoutMs: 20 }), keyed);
+    expect(events[events.length - 1]?.event).toEqual({ kind: "done", text: "Claude: $10." });
+    expect(asked).toEqual([APPLE_MODEL, "claude-haiku-5-5"]);
+    expect(keyed.calls).toBe(1);
+  });
+
+  it("stops at once when the user presses Stop, without calling the key's model or saving", async () => {
+    const keyed = client("anthropic", KEYED);
+    const saved: unknown[] = [];
+    const s = new ScoutServer({
+      provider: async (_p, model) => (model === APPLE_MODEL ? createApple(stuckSend) : keyed),
+      tools: async () => [],
+      save: async (e) => void saved.push(e),
+      now: () => 1,
+    });
+    s.start(REQ);
+    const events: NumberedEvent[] = [];
+    const ended = new Promise<void>((resolve) =>
+      s.subscribe(REQ.message_id, 0, (n) => {
+        events.push(n);
+        if (n.event.kind === "done" || n.event.kind === "error") resolve();
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 5));
+    expect(s.stop(REQ.message_id)).toBe(true);
+    await Promise.race([ended, new Promise((_, rej) => setTimeout(() => rej(new Error("Stop did not end the answer")), 500))]);
+    expect(events[events.length - 1]?.event).toEqual({ kind: "done", text: "", stopped: true });
+    expect(events.some((e) => e.event.kind === "handoff")).toBe(false);
+    expect(keyed.calls).toBe(0);
+    expect(saved).toEqual([]);
+  });
+
+  it("without a key, a stuck model ends in a plain error, not a spinner", async () => {
+    const { fallback: _, ...noKey } = REQ;
+    const { events } = await run(createApple(stuckSend, { timeoutMs: 20 }), client("anthropic", KEYED), noKey);
+    expect(events[events.length - 1]?.event.kind).toBe("error");
+  });
+});
+
+describe("after the handoff (QA 2026-10-29)", () => {
+  const cantAnswer = () => client("apple", () => answer("I'm sorry, I can't help with current prices."));
+
+  for (const code of ["auth_invalid", "rate_limited", "provider_unavailable", "network", "no_credit"] as const) {
+    it("a " + code + " failure of the key's model is one plain error: no retry loop, no second Apple call", async () => {
+      const apple = cantAnswer();
+      const keyed = client("anthropic", () => {
+        throw new ProviderError("anthropic", code, code === "auth_invalid" ? 401 : code === "rate_limited" ? 429 : 500);
+      });
+      const { events, asked } = await run(apple, keyed);
+      const last = events[events.length - 1]?.event;
+      expect(last?.kind).toBe("error");
+      expect(JSON.stringify(last)).not.toMatch(/sk-ant/);
+      expect(apple.calls).toBe(1);
+      expect(keyed.calls).toBe(1);
+      expect(asked).toEqual([APPLE_MODEL, "claude-haiku-5-5"]);
+      expect(events.filter((e) => e.event.kind === "handoff")).toHaveLength(1);
+    });
+  }
+
+  it("Stop while the key's model is being set up never starts it", async () => {
+    const keyed = client("anthropic", KEYED);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const s = new ScoutServer({
+      provider: async (_p, model) => {
+        if (model === APPLE_MODEL) return cantAnswer();
+        await gate;
+        return keyed;
+      },
+      tools: async () => [],
+      save: async () => undefined,
+      now: () => 1,
+    });
+    s.start(REQ);
+    const events: NumberedEvent[] = [];
+    const ended = new Promise<void>((resolve) =>
+      s.subscribe(REQ.message_id, 0, (n) => {
+        events.push(n);
+        if (n.event.kind === "done" || n.event.kind === "error") resolve();
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 5));
+    s.stop(REQ.message_id);
+    release();
+    await ended;
+    expect(keyed.calls).toBe(0);
+    expect(events[events.length - 1]?.event).toEqual({ kind: "done", text: "", stopped: true });
   });
 });
