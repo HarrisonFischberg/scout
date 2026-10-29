@@ -114,7 +114,6 @@ test("key and Apple Intelligence: Ask Claude under Apple's answer replaces it wi
   await expect(log.getByText("On device: the widget costs $10.")).toBeVisible();
   const askKey = log.getByRole("button", { name: "Ask Claude" });
   await expect(askKey).toBeVisible();
-  if (process.env.SCOUT_SHOT) await page.screenshot({ path: process.env.SCOUT_SHOT });
   await askKey.click();
   await expect(log.getByText("with free shipping.")).toBeVisible();
   await expect(log.getByText("On device: the widget costs $10.")).toBeHidden();
