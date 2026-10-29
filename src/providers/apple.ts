@@ -4,6 +4,7 @@
 // One reply per request (no streaming, no tools, no web search). The model's
 // context is about 4,000 tokens, so long prompts are cut to fit.
 import type { NativeSend } from "../keychain";
+import { APPLE_NEEDS_WEB } from "../chat/prompt";
 import { textOf, type ChatMessage, type ChatRequest, type ProviderClient, type StreamEvent } from "./types";
 
 /** The model id used when Scout runs on Apple's on-device model (no key). */
@@ -84,7 +85,12 @@ export function fitText(text: string, max: number): string {
 /** The conversation as one prompt: earlier turns briefly, the newest message in full (cut to fit). */
 export function applePrompt(messages: ChatMessage[], max = APPLE_PROMPT_CHARS): string {
   const last = messages[messages.length - 1];
-  const earlier = messages.slice(0, -1).slice(-4).map((m) => (m.role === "user" ? "User: " : "Assistant: ") + fitText(textOf(m.content), 600));
+  const before = messages.slice(0, -1);
+  const recent = before.slice(-4);
+  // The chat's first message says what it is about; keep it when it scrolls out (owner report 2026-10-28).
+  const first = before.find((m) => m.role === "user");
+  const kept = first && !recent.includes(first) ? [first, ...recent] : recent;
+  const earlier = kept.map((m) => (m.role === "user" ? "User: " : "Assistant: ") + fitText(textOf(m.content), 600));
   const head = earlier.length ? "Earlier in this conversation:\n" + earlier.join("\n") + "\n\n" : "";
   const room = Math.max(1_000, max - head.length);
   return head + fitText(last ? textOf(last.content) : "", room);
@@ -101,8 +107,31 @@ const COULD_NOT =
 /** True when Apple's reply is empty or says it can't answer, so a key's model should try instead (owner, 2026-10-27). */
 export function appleCouldNotAnswer(text: string): boolean {
   const t = text.trim().replace(/[\u2018\u2019]/g, "'");
-  if (!t) return true;
+  if (!t || t.includes(APPLE_NEEDS_WEB)) return true;
   return t.length < 700 && COULD_NOT.test(t.slice(0, 300));
+}
+
+/** Source markers like [1] or [1, 2], for a reply that had no numbered sources. */
+export function stripSourceMarkers(text: string): string {
+  return text.replace(/ ?\[\d+(?:\s*,\s*\d+)*\]/g, "");
+}
+
+/** The last question in a text, lowercased without punctuation. */
+function lastQuestion(text: string): string {
+  const qs = text.match(/[^.?!\n]*\?/g);
+  return qs ? qs[qs.length - 1].toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim() : "";
+}
+
+/**
+ * True when Apple's reply asks the same question as its previous reply (owner
+ * report 2026-10-28: "traditional or smart?" asked again after each answer),
+ * so the key's model should answer instead.
+ */
+export function appleRepeats(text: string, history: ChatMessage[]): boolean {
+  const q = lastQuestion(text);
+  if (!q) return false;
+  const prev = [...history].reverse().find((m) => m.role === "assistant");
+  return !!prev && lastQuestion(textOf(prev.content)) === q;
 }
 
 /** A provider client for the chat engine, over native messaging to Apple's model. */

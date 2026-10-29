@@ -139,6 +139,8 @@ function savedProviders(keys: SavedKeys): Set<Provider> {
 }
 
 const PROVIDER_NAME: Record<Provider, string> = { anthropic: "Anthropic", openai: "OpenAI" };
+/** The key's model by its everyday name, for the button under Apple's answers. */
+const ASSISTANT_NAME: Record<Provider, string> = { anthropic: "Claude", openai: "ChatGPT" };
 
 async function listTabs(): Promise<TabInfo[]> {
   try {
@@ -672,7 +674,7 @@ async function main(): Promise<void> {
   }
 
   /** The row under a finished chat answer. */
-  function answerActions(bubble: HTMLElement, turn: { question: string; answer: string; sources?: Source[] }): HTMLElement {
+  function answerActions(bubble: HTMLElement, turn: { question: string; answer: string; sources?: Source[] }, askKey?: () => void): HTMLElement {
     const sources = turn.sources ?? [];
     const row = document.createElement("div");
     row.className = "answer-actions";
@@ -728,6 +730,16 @@ async function main(): Promise<void> {
 
     const branch = actionButton("branch", "Branch from this answer", () => void branchFrom(bubble));
     row.append(copy, share, good, bad, branch);
+    // Under the latest answer Apple's model wrote: ask the key's model instead (owner, 2026-10-28).
+    if (askKey && session) {
+      const redo = document.createElement("button");
+      redo.type = "button";
+      redo.className = "ask-key";
+      redo.textContent = "Ask " + ASSISTANT_NAME[session.settings.provider];
+      redo.title = "Ask " + PROVIDER_NAME[session.settings.provider] + " with your key, with web search, and replace this answer";
+      redo.addEventListener("click", askKey);
+      row.appendChild(redo);
+    }
 
     if (sources.length) {
       const listId = "sources-" + Math.random().toString(36).slice(2, 10);
@@ -1676,7 +1688,9 @@ async function main(): Promise<void> {
     // After Apple's model couldn't answer, a new label shows the work goes on (owner, 2026-10-27).
     else v.bubble.innerHTML = '<span class="thinking">' + PULSE + "<span>" + (m.handoff ? "Looking deeper…" : "Thinking…") + "</span></span>";
     if (v.closed && m.status === "complete" && !m.stopped && text && cut >= text.length) {
-      v.bubble.appendChild(answerActions(v.bubble, { question: v.question, answer: text, sources: allSources(v, m) }));
+      const byApple = v.appleFirst && !m.usage;
+      const askKey = byApple ? () => void ask(v.question, { redoOf: { bubble: v.bubble, answer: text } }) : undefined;
+      v.bubble.appendChild(answerActions(v.bubble, { question: v.question, answer: text, sources: allSources(v, m) }, askKey));
     }
     followEnd();
   }
@@ -1977,7 +1991,14 @@ async function main(): Promise<void> {
     read_current: boolean;
   }
 
-  async function ask(text: string, opts: { continueOf?: { bubble: HTMLElement; question: string; partial: string; shared: MessageView["shared"]; sources: Source[] } } = {}): Promise<void> {
+  async function ask(
+    text: string,
+    opts: {
+      continueOf?: { bubble: HTMLElement; question: string; partial: string; shared: MessageView["shared"]; sources: Source[] };
+      /** "Ask Claude" under Apple's answer: the key's model answers the same question in its place. */
+      redoOf?: { bubble: HTMLElement; answer: string };
+    } = {},
+  ): Promise<void> {
     const trimmed = text.trim();
     await sessionReady();
     if (!trimmed || activeChat || couponRun || task || !session) return;
@@ -1985,7 +2006,8 @@ async function main(): Promise<void> {
     // Apple's on-device model sends nothing off the device, so there is nothing to consent to.
     if (!s.apple && !consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     const cont = opts.continueOf;
-    const extra = cont ? [] : [...attached.values()];
+    const redo = opts.redoOf;
+    const extra = cont || redo ? [] : [...attached.values()];
     // Asked first: the permission prompt needs this click's user gesture.
     let granted = extra.length === 0;
     if (!granted) {
@@ -1996,7 +2018,7 @@ async function main(): Promise<void> {
     // A general question goes without the page (src/chat/intent.ts); the page
     // stays shared with the answer, so read_page can still fetch it.
     // The standalone page has no page to send; it keeps the usual prompt.
-    const scope: QuestionScope = cont
+    const scope: QuestionScope = cont || redo
       ? (lastScope ?? "page")
       : STANDALONE
         ? "page"
@@ -2016,7 +2038,15 @@ async function main(): Promise<void> {
     activeChat = id;
     let bubble: HTMLElement;
     if (cont) bubble = cont.bubble;
-    else {
+    else if (redo) {
+      bubble = redo.bubble;
+      // Apple's answer leaves the chat and the memory; the new one takes its place.
+      const last = history[history.length - 1];
+      if (last?.role === "assistant" && textOf(last.content) === redo.answer) history.splice(-2, 2);
+      if (turns[turns.length - 1]?.bubble === bubble) turns.pop();
+      trace("apple:ask-key");
+    } else {
+      document.querySelectorAll(".ask-key").forEach((b) => b.remove());
       addMessage("user", isSummary ? "Summarize page" : trimmed);
       question.value = "";
       autosize();
@@ -2024,7 +2054,7 @@ async function main(): Promise<void> {
       bubble = addMessage("assistant", "");
     }
     const v = newView(id, bubble, cont ? cont.question : trimmed, s.settings.model, cont ? cont.partial + (/\s$/.test(cont.partial) ? "" : " ") : "");
-    if (s.appleFirst && !cont) v.appleFirst = true;
+    if (s.appleFirst && !cont && !redo) v.appleFirst = true;
     renderView(id);
     status.textContent = cont ? "Finishing the answer." : STANDALONE || scope === "general" ? "Waiting for the answer." : "Reading the page and waiting for the answer.";
     setBusy(true);
@@ -2089,6 +2119,7 @@ async function main(): Promise<void> {
           ...(pageSite ? { site: pageSite } : {}),
           scope,
           ...(scope === "general" && !STANDALONE && !cont && tab.url && tab.title ? { open_page: { url: tab.url, title: tab.title } } : {}),
+          ...(redo ? { replaces: redo.answer } : {}),
           ...(cont
             ? { display_question: cont.question, answer_prefix: v.prefix, prefix_sources: cont.sources.map((x) => ({ url: x.url, title: x.title ?? "" })) }
             : {}),

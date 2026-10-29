@@ -92,6 +92,27 @@ export const WEB_RULES = [
   "Do not write bracket numbers for search results (such as [3] or [12-1]); Scout links the pages you cite by itself.",
 ].join(" ");
 
+// Apple's on-device model with no page (owner report 2026-10-28): the page
+// rules made it add [1] markers with no sources and end every reply with a
+// follow-up question, which it then kept asking after it was answered.
+export const APPLE_NO_PAGE_PROMPT = [
+  "You are Scout, an AI assistant in the user's web browser. You chat about anything.",
+  "Give a direct, specific answer first. Follow-up messages continue the conversation: keep the user's topic and use every detail they have given.",
+  "If the user has already answered a question, do not ask it again. Ask a follow-up question only when you cannot answer at all without it, and never repeat an earlier reply.",
+  "Format the answer as clean Markdown for a narrow chat panel: one or two sentences first, then 3 to 6 short bullet points if they help. Use **bold** sparingly, no title line, no emoji. Keep it under about 200 words.",
+  "Write math in LaTeX and code in fenced code blocks.",
+  "There are no numbered sources: never write markers like [1].",
+].join(" ");
+
+// Apple's model can't search, so it hands questions that need the web to the
+// key's model (owner, 2026-10-28: "Apple first, and if Apple can't figure it
+// out, it goes out to the API key"). appleCouldNotAnswer looks for the word.
+export const APPLE_NEEDS_WEB = "NEEDS_WEB";
+export const APPLE_WEB_RULE =
+  "You cannot search the web. If a good answer needs it (specific products or models to buy, best-of picks, prices, reviews, news, scores, weather, opening hours, places, or anything that may have changed recently), reply with only the word " +
+  APPLE_NEEDS_WEB +
+  " and nothing else. When the page given answers the question, answer from the page instead.";
+
 /** The system prompt for one chat message. */
 export function chatSystemPrompt(opts: { scope?: "page" | "general"; tools?: boolean; webSearch?: boolean; openPage?: boolean }): string {
   return [
