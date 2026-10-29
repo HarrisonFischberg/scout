@@ -53,8 +53,27 @@ if (!g[FLAG]) {
     const raw = v instanceof HTMLLinkElement ? v.href : v?.content;
     return typeof raw === "string" && raw.trim() ? raw.trim().slice(0, 200) : undefined;
   };
-  const pageMeta = (): { title: string; siteName?: string; canonical?: string; description?: string } => ({
+  // Sites the page links to, as origins only (no paths or queries): on a hosted
+  // checkout (shop.app) one of them is the store (src/coupons/merchant.ts).
+  const linkedOrigins = (): string[] => {
+    const out = new Set<string>();
+    for (const a of document.querySelectorAll<HTMLAnchorElement>("a[href]")) {
+      if (/^https?:$/.test(a.protocol) && a.origin !== location.origin) out.add(a.origin);
+      if (out.size >= 40) break;
+    }
+    return [...out];
+  };
+  const referrerOrigin = (): string | undefined => {
+    try {
+      return document.referrer ? new URL(document.referrer).origin : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const pageMeta = (): { title: string; siteName?: string; canonical?: string; description?: string; links?: string[]; referrer?: string } => ({
     title: document.title.slice(0, 200),
+    links: linkedOrigins(),
+    ...(referrerOrigin() ? { referrer: referrerOrigin() } : {}),
     ...(meta('meta[name="description"]') ?? meta('meta[property="og:description"]') ? { description: meta('meta[name="description"]') ?? meta('meta[property="og:description"]') } : {}),
     ...(meta('meta[property="og:site_name"]') ?? meta('meta[name="application-name"]') ? { siteName: meta('meta[property="og:site_name"]') ?? meta('meta[name="application-name"]') } : {}),
     ...(meta('link[rel="canonical"]') ? { canonical: meta('link[rel="canonical"]') } : {}),

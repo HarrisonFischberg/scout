@@ -102,6 +102,8 @@ export interface CouponOutcome {
   best?: CouponAttempt;
   /** True when the best code was applied and a fresh read confirmed the total. */
   applied: boolean;
+  /** How re-applying the winner went, for the debug log. */
+  reapplied?: "first" | "retry" | "failed";
   /** Codes left untested because the user stopped between batches. */
   untested: number;
   /** True when the user asked for more codes and none could be found. */
@@ -508,6 +510,13 @@ async function pageTester(
         const snap = await look();
         return snap ? (totalOf(snap)?.amount ?? null) : null;
       }
+      // Already on the order (a slow store that applied it after the first try was judged): typing it again could take it off.
+      const now = await look();
+      const t = now ? totalOf(now)?.amount : undefined;
+      if (now && t !== undefined && t < baseline - EPS && showsCode(now.text, code)) {
+        kept = { code, total: t };
+        return t;
+      }
       return (await tryCode(code)).total;
     },
     async finish(winner) {
@@ -572,6 +581,11 @@ export class CodeQueue implements AsyncIterable<CouponCandidate[]> {
     } else this.items.push(list);
   }
 
+  /** Every list already pushed and not yet taken, as one list. */
+  takeReady(): CouponCandidate[] {
+    return this.items.splice(0).flat();
+  }
+
   /** No more codes will come (the search ended or was stopped). */
   close(): void {
     this.closed = true;
@@ -616,6 +630,10 @@ export interface CouponInput extends TesterOptions {
   now?: () => number;
   /** Finds codes not in `known` (a new web search). Used only after askMore says yes; a stream is tested as it arrives. */
   findMore?: (known: string[]) => Promise<CouponCandidate[]> | AsyncIterable<CouponCandidate[]>;
+  /** Puts the codes still waiting in testing order, before each try (src/coupons/priority.ts). */
+  rank?: (pending: CouponCandidate[], attempts: CouponAttempt[]) => CouponCandidate[];
+  /** Wait before the second try at re-applying the winner (default 1500 ms). */
+  reapplyRetryMs?: number;
   /** Called just before each code is tried. */
   onTry?: (code: string) => void;
   /** `currency` as the store prints it, for showing amounts. */
@@ -695,6 +713,11 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
   // One round per search: the codes it found, tested as they arrive (owner,
   // 2026-10-17: test as many as the search found, not a fixed batch).
   let feed: AsyncIterator<CouponCandidate[]> | undefined = input.incoming?.[Symbol.asyncIterator]();
+  // Codes already waiting in a CodeQueue join before the next pick, so the ranking sees all of them.
+  let source: AsyncIterable<CouponCandidate[]> | undefined = input.incoming;
+  const ready = (): void => {
+    if (feed && source instanceof CodeQueue) add(source.takeReady());
+  };
   /** How many codes were known when the latest extra search started. */
   let searchedFrom: number | null = null;
   const now = input.now ?? Date.now;
@@ -713,6 +736,8 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
         add(next.value);
         continue;
       }
+      ready();
+      if (input.rank && codes.length - i > 1) codes.splice(i, codes.length - i, ...input.rank(codes.slice(i), attempts));
       const cand = codes[i]!;
       if (halted()) {
         stoppedEarly = "stopped";
@@ -778,7 +803,10 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
     if (!more || halted()) break;
     searchedFrom = codes.length;
     const found = input.findMore(codes.map((c) => c.code));
-    if (Symbol.asyncIterator in found) feed = found[Symbol.asyncIterator]();
+    if (Symbol.asyncIterator in found) {
+      source = found;
+      feed = found[Symbol.asyncIterator]();
+    }
     else add(await found.catch(() => []));
   }
   if (feed) await feed.return?.();
@@ -831,11 +859,24 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
     return result(stoppedEarly ?? "done", message, exhausted ? { exhausted } : {});
   }
   // Apply the winner (later attempts replaced it) and confirm with a fresh read.
-  const total = await tester.apply(best.code).catch(() => null);
-  const applied = total !== null && total <= best.total + 0.005;
+  // A slow checkout can miss the first try (owner's sproos log 2026-10-29:
+  // "I couldn't re-apply it"); one more after a short wait, which on the page
+  // path first reads whether the code is already on the order.
+  const winnerTotal = best.total;
+  const reapply = async (): Promise<boolean> => {
+    const total = await tester.apply(best.code).catch(() => null);
+    return total !== null && total <= winnerTotal + 0.005;
+  };
+  let reapplied: CouponOutcome["reapplied"] = "first";
+  let applied = await reapply();
+  if (!applied && !halted()) {
+    await new Promise((res) => setTimeout(res, input.reapplyRetryMs ?? 1500));
+    applied = await reapply();
+    reapplied = applied ? "retry" : "failed";
+  } else if (!applied) reapplied = "failed";
   await tester.finish(applied ? best.code : null).catch(() => undefined);
   const shown = best.combo ? best.combo.join(" + ") : best.code;
-  return result(stoppedEarly ?? "done", applied ? "Best code " + shown + " applied." : "Best code " + shown + " could not be re-applied.", { applied });
+  return result(stoppedEarly ?? "done", applied ? "Best code " + shown + " applied." : "Best code " + shown + " could not be re-applied.", { applied, reapplied });
 }
 
 /** "45 seconds", "1 minute", "1 min 30 s": how long a run has gone, for the checkpoint question. */
