@@ -1,0 +1,28 @@
+{
+  "categories": [
+    "other"
+  ],
+  "summary": {
+    "en-US": "Your AI assistant in the browser. Summarize pages, ask questions, compare tabs, fill forms and find coupons. Your own key."
+  },
+  "description": {
+    "en-US": "Scout AI Assistant puts a friendly AI helper in your browser's toolbar. Click Scout on any page and:\n\n- Summarize a long page into the short version\n- Ask questions about what you're reading\n- Compare information across your open tabs\n- Let Scout mode click, type and fill out forms for you, with a stop button always on screen\n- Find coupon codes at checkout and try them for you\n\nBring your own key: Scout uses your Anthropic or OpenAI API key, and you pay your provider directly for what you use. Scout shows an estimated cost after each answer.\n\nPrivate by design: there is no Scout account and no Scout server. Your questions, and the page you ask about, go straight from your browser to the AI provider you picked, only after you allow it. Your key stays in this browser's local storage and is never synced. No analytics, no ads, no tracking.\n\nAlso available for Safari on Mac, iPhone and iPad.\n\nScout AI Assistant is made by Rare Creatures LLC and is not made by or connected to Google, Mozilla, Apple, Anthropic or OpenAI."
+  },
+  "homepage": {
+    "url": {
+      "en-US": "https://rarecreatures.app/apps/scout/"
+    }
+  },
+  "support_url": {
+    "url": {
+      "en-US": "https://rarecreatures.app/support/"
+    }
+  },
+  "support_email": {
+    "en-US": "hello@rarecreatures.app"
+  },
+  "version": {
+    "license": "all-rights-reserved",
+    "approval_notes": "Build: Node 22, `npm ci && npm run build:firefox` produces dist/firefox/ from the uploaded source.\nScout needs the user's own Anthropic or OpenAI API key; the owner can give a test key on request. innerHTML is used only for Scout's own fixed markup and for Markdown rendered from escaped text."
+  }
+}

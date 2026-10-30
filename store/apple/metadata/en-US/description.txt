@@ -1,0 +1,21 @@
+Scout AI Browser Assistant puts a friendly AI helper in Safari. Open Scout from the Safari toolbar on any page and:
+
+• Get the short version of a long article, recipe or report
+• Ask questions about what you're reading
+• Compare information across your open tabs (Mac)
+• Let Scout mode click, type and fill out forms for you, with a Stop button always on screen and a check with you before anything like buying, signing in or sending
+• Find coupon codes at checkout: Scout looks for codes posted online, adds a few common codes marked as guesses, tries them in the store's own coupon box, and keeps the one that saves the most
+• Talk instead of type with the microphone button (Mac)
+
+BRING YOUR OWN KEY
+Scout works with your own Anthropic or OpenAI API key, and you pay your provider directly for what you use. Scout shows an estimated cost after each answer. Scout itself is free, with no subscription and no in-app purchases.
+
+PRIVATE BY DESIGN
+There is no Scout account and no Scout server. Scout asks before it sends anything to an AI provider, and then your question and the page you ask about go straight from your device to the provider you picked. Your key stays in your Keychain. No analytics, no ads, no tracking.
+
+HOW IT WORKS
+Scout is a Safari extension. After installing, open the Scout app once and follow the steps to turn Scout on in Safari. On iPhone and iPad that's Settings > Apps > Safari > Extensions; on Mac, Safari > Settings > Extensions. Then tap Scout in Safari's toolbar and add your key in Scout's Settings.
+
+Coupons depend on each store: some stores don't have a coupon box Scout can reach, and some block automated entry, so not every checkout will find a saving.
+
+Scout AI Browser Assistant is made by Rare Creatures LLC. It is not made by or connected to Anthropic or OpenAI.
