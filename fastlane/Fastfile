@@ -39,7 +39,26 @@ def review_information(live)
   }
 end
 
+# Dry run: App Store Connect has no dry run for listings (deliver's
+# verify_only only checks an exported binary), so check store/apple locally.
+LIMITS = { "name" => 30, "subtitle" => 30, "promotional_text" => 170, "keywords" => 100, "description" => 4000 }
+
+def check_listing(platform)
+  require "deliver"
+  shots = Deliver::Loader.load_app_screenshots(File.join(STORE, "screenshots", platform == "osx" ? "mac" : "ios"), false)
+  UI.user_error!("no screenshots for #{platform}") if shots.empty?
+  UI.message("screenshots: #{shots.map { |s| s.display_type }.tally}")
+  LIMITS.each do |name, max|
+    length = File.read(File.join(STORE, "metadata/en-US/#{name}.txt"), encoding: "UTF-8").strip.length
+    UI.user_error!("#{name}.txt is #{length} characters (max #{max})") if length > max
+  end
+  JSON.parse(File.read(File.join(STORE, "age_rating.json")))
+  review_information(false)
+  UI.success("store/apple listing for #{platform} looks ready (not sent; run with --live)")
+end
+
 def deliver_listing(platform, build_number:, live:)
+  return check_listing(platform) unless live
   deliver(
     platform: platform,
     app_version: "1.0",
@@ -51,8 +70,7 @@ def deliver_listing(platform, build_number:, live:)
     app_review_information: review_information(live),
     overwrite_screenshots: true,
     force: true,
-    verify_only: !live,
-    submit_for_review: live,
+    submit_for_review: true,
     automatic_release: false,
     precheck_include_in_app_purchases: false,
     submission_information: {
