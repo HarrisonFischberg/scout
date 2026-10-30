@@ -6,6 +6,7 @@
 # Secrets come only from environment variables; none are stored in the repo.
 set -euo pipefail
 cd "$(dirname "$0")"
+export LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 # fastlane needs a UTF-8 locale
 TARGET="${1:-all}"; shift || true
 LIVE=false; LANE=release
 for arg in "$@"; do
