@@ -1,9 +1,9 @@
 # Store listings: Chrome Web Store and Firefox Add-ons
 
-Draft text for the owner to paste. Written 2026-10-19. Uses the name
+Text for the Chrome Web Store and Firefox Add-ons listings. Written 2026-10-19; moved here from docs/ on 2026-10-30. `./release.sh firefox --live` sends the Firefox text from `store/firefox/amo-metadata.json`; the Chrome API takes only the package, so Chrome text and screenshots (`store/chrome/screenshots/`) are pasted once by hand. Uses the name
 "Scout AI Assistant". Nothing here is submitted by Claude:
 each store submission waits for the owner's go-ahead. Safari/App Store fields stay
-in `docs/app-store-listing.md`.
+in `store/apple/metadata/`.
 
 ## Packages
 
