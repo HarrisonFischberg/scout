@@ -1,0 +1,83 @@
+# App Store releases for Scout (iPhone/iPad and Mac). Run through ./release.sh
+# (release/README.md); fastlane/README.md lists the lanes. Archiving and upload
+# reuse scripts/archive-testflight.sh, which also cleans up the Mac's Safari
+# registration afterwards. Listing text, age rating and screenshots live in
+# store/apple/. Authenticates with the App Store Connect API key in ASC_KEY_ID,
+# ASC_ISSUER_ID and ASC_KEY_PATH; the key file stays outside the repo.
+
+skip_docs
+
+ROOT = File.expand_path("..", __dir__)
+STORE = File.join(ROOT, "store/apple")
+
+def asc_key
+  app_store_connect_api_key(
+    key_id: ENV.fetch("ASC_KEY_ID"),
+    issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+    key_filepath: File.expand_path(ENV.fetch("ASC_KEY_PATH"))
+  )
+end
+
+def archive(platform, env = {}, upload: true)
+  env = env.merge("SCOUT_PLATFORMS" => platform)
+  sh(env, File.join(ROOT, "scripts/archive-testflight.sh"), *(upload ? [] : ["--no-upload"]))
+end
+
+# Review contact and notes come from store/apple/metadata/review_information;
+# the phone number and the reviewer's test key come from the environment so
+# neither is committed.
+def review_information(live)
+  dir = File.join(STORE, "metadata/review_information")
+  read = ->(name) { File.read(File.join(dir, "#{name}.txt")).strip }
+  {
+    first_name: read.("first_name"),
+    last_name: read.("last_name"),
+    email_address: read.("email_address"),
+    phone_number: live ? ENV.fetch("SCOUT_REVIEW_PHONE") : ENV.fetch("SCOUT_REVIEW_PHONE", "+1 000 000 0000"),
+    demo_required: false,
+    notes: read.("notes").sub("{{TEST_KEY}}", live ? ENV.fetch("SCOUT_REVIEW_TEST_KEY") : "(test key added on --live)")
+  }
+end
+
+def deliver_listing(platform, build_number:, live:)
+  deliver(
+    platform: platform,
+    app_version: "1.0",
+    build_number: build_number,
+    skip_binary_upload: true,
+    metadata_path: File.join(STORE, "metadata"),
+    screenshots_path: File.join(STORE, "screenshots", platform == "osx" ? "mac" : "ios"),
+    app_rating_config_path: File.join(STORE, "age_rating.json"),
+    app_review_information: review_information(live),
+    overwrite_screenshots: true,
+    force: true,
+    verify_only: !live,
+    submit_for_review: live,
+    automatic_release: false,
+    precheck_include_in_app_purchases: false,
+    submission_information: {
+      export_compliance_uses_encryption: false,
+      add_id_info_uses_idfa: false,
+      content_rights_contains_third_party_content: true
+    }
+  )
+end
+
+{ ios: ["iOS", "ios"], mac: ["macOS", "osx"] }.each do |lane_platform, (script_platform, deliver_platform)|
+  platform lane_platform do
+    before_all { asc_key }
+
+    desc "Archive with the next 0.N version and upload to TestFlight (live: false only archives)"
+    lane :beta do |options|
+      archive(script_platform, upload: options[:live].to_s == "true")
+    end
+
+    desc "Archive version 1.0, upload it, push listing and screenshots, submit for review (live: false archives and checks the listing only)"
+    lane :release do |options|
+      live = options[:live].to_s == "true"
+      build = Time.now.utc.strftime("%Y%m%d.%H%M")
+      archive(script_platform, { "SCOUT_VERSION" => "1.0", "SCOUT_BUILD_NUMBER" => build }, upload: live)
+      deliver_listing(deliver_platform, build_number: build, live: live)
+    end
+  end
+end
