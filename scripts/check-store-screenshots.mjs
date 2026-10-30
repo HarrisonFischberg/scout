@@ -12,7 +12,7 @@ import { pathToFileURL } from "node:url";
 
 /** Accepted width x height per device folder (portrait and landscape). */
 export const SIZES = {
-  iphone: ["1179x2556", "2556x1179", "1206x2622", "2622x1206"],
+  iphone: ["1320x2868", "2868x1320", "1290x2796", "2796x1290", "1179x2556", "2556x1179", "1206x2622", "2622x1206"],
   ipad: ["2064x2752", "2752x2064", "2048x2732", "2732x2048"],
   mac: ["1280x800", "1440x900", "2560x1600", "2880x1800"],
 };

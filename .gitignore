@@ -22,3 +22,9 @@ apple/Extension/Resources/content.js
 apple/Extension/Resources/icons/
 apple/Extension/Resources/edge.js
 apple/Extension/Resources/overlay.js
+# Release secrets and fastlane output (release/README.md). Keys live outside the repo.
+*.p8
+*.keystore
+*.jks
+fastlane/report.xml
+fastlane/test_output/
