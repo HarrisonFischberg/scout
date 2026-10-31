@@ -3,7 +3,7 @@
 // Synthetic pages and codes only; fetch is a fake.
 import { describe, expect, it } from "vitest";
 import { browserRead } from "../../src/coupons/browser-read";
-import { htmlSnapshot, jsonCodes, parseHtml, quietPages } from "../../src/coupons/quiet-read";
+import { htmlSnapshot, isPublicWebUrl, jsonCodes, parseHtml, quietPages } from "../../src/coupons/quiet-read";
 
 const FILLER = "<p>Synthetic Shop coupons and promo codes, updated today.</p>".repeat(6);
 
@@ -87,5 +87,59 @@ describe("quiet page browser", () => {
     const r = await browserRead([target], b, { now: () => (t += 10) });
     expect(waited).toBe(0);
     expect(r.pages[0]!.outcome).toBe("timeout");
+  });
+});
+
+describe("quiet reads stay on the public web", () => {
+  it("accepts public http(s) pages and refuses local, private and metadata addresses", () => {
+    for (const ok of ["https://coupons.test/synth", "http://www.retailmenot.com/view/x", "https://8.8.8.8/", "https://[2606:4700::1111]/"]) {
+      expect(isPublicWebUrl(ok)).toBe(true);
+    }
+    for (const bad of [
+      "http://localhost:3000/",
+      "http://app.localhost/",
+      "http://127.0.0.1/",
+      "http://2130706433/",
+      "http://0x7f.1/",
+      "http://10.0.0.1/admin",
+      "http://172.20.1.1/",
+      "http://192.168.1.1/",
+      "http://169.254.169.254/latest/meta-data/",
+      "http://100.100.1.1/",
+      "http://0.0.0.0/",
+      "http://[::1]/",
+      "http://[::ffff:127.0.0.1]/",
+      "http://[fd00::1]/",
+      "http://[fe80::1]/",
+      "http://router/",
+      "http://printer.local/",
+      "http://nas.home.arpa/",
+      "https://user:pw@coupons.test/",
+      "file:///etc/hosts",
+      "ftp://coupons.test/",
+      "javascript:alert(1)",
+      "not a url",
+    ]) {
+      expect(isPublicWebUrl(bad), bad).toBe(false);
+    }
+  });
+
+  it("never downloads a private address, even with access to every site", async () => {
+    const url = "http://192.168.1.1/coupons";
+    const f = fakeFetch({ [url]: { html: page("Use code SYNTH15") } });
+    const r = await browserRead([{ url, reason: "blocked" as const }], quietPages({ fetch: f.fetch, hasAccess: async () => true }), { now: () => 0 });
+    expect(f.calls).toHaveLength(0);
+    expect(r.pages[0]!.outcome).toBe("no_access");
+  });
+
+  it("drops a public page that redirected to a private address", async () => {
+    const fetchFn = async (): Promise<Response> => {
+      const res = new Response(page("Use code SYNTH15 for 15% off"), { headers: { "content-type": "text/html" } });
+      Object.defineProperty(res, "url", { value: "http://127.0.0.1:8080/internal" });
+      return res;
+    };
+    const r = await browserRead([{ url: "https://coupons.test/synth", reason: "blocked" as const }], quietPages({ fetch: fetchFn, hasAccess: async () => true }), { now: () => 0 });
+    expect(r.pages[0]!.outcome).toBe("error");
+    expect(r.codes).toHaveLength(0);
   });
 });

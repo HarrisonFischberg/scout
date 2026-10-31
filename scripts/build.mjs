@@ -4,7 +4,7 @@
 import { build } from "esbuild";
 import { execFileSync } from "node:child_process";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { CHROME_SHIM, ESBUILD_TARGET, TARGETS, manifestFor } from "./targets.mjs";
 
 const root = new URL("..", import.meta.url).pathname;
@@ -50,7 +50,9 @@ await build({
 
 await writeFile(join(out, "manifest.json"), JSON.stringify(manifestFor(target, manifest), null, 2) + "\n");
 // Toolbar + extension icons (rendered from design/icons by scripts/render-icons.mjs).
-await cp(join(src, "icons"), join(out, "icons"), { recursive: true });
+// Dotfiles (.DS_Store and the like) never ship in a package.
+const notDotfile = (path) => !basename(path).startsWith(".");
+await cp(join(src, "icons"), join(out, "icons"), { recursive: true, filter: notDotfile });
 const popupHtml = await readFile(join(src, "popup.html"), "utf8");
 await writeFile(
   join(out, "popup.html"),
@@ -63,6 +65,6 @@ console.log(`built ${target} extension to ${out} (${release ? "release" : "debug
 if (target !== "safari") {
   const zip = join(root, "dist", `scout-${target}-${manifest.version}${release ? "" : "-debug"}.zip`);
   await rm(zip, { force: true });
-  execFileSync("zip", ["-qr", "-X", zip, "."], { cwd: out });
+  execFileSync("zip", ["-qr", "-X", zip, ".", "-x", ".*", "*/.*"], { cwd: out });
   console.log(`packaged ${zip}`);
 }
