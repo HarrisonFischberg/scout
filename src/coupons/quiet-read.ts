@@ -12,6 +12,50 @@ import { buildSnapshot, type SnapNode, type Snapshot } from "../snapshot/snapsho
 import type { PageBrowser } from "./browser-read";
 
 export const QUIET_FETCH_MS = 15_000;
+
+/**
+ * Whether a coupon page address may be downloaded quietly: http(s) on a public
+ * host only. Coupon links come from search results and pages, so a link to
+ * the user's router, a local dev server or a cloud metadata address
+ * (localhost, 10.x, 192.168.x, 169.254.169.254, fc00::/7 ...) is never fetched
+ * from the worker, which runs with Scout's site access.
+ */
+export function isPublicWebUrl(raw: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+  if (u.username || u.password) return false;
+  const host = u.hostname.toLowerCase().replace(/\.$/, "");
+  if (host.startsWith("[")) return isPublicIpv6(host.slice(1, -1));
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) return isPublicIpv4(host);
+  // Single-label names ("router", "nas") and local-only suffixes are on the user's network.
+  if (!host.includes(".")) return false;
+  return !/\.(?:localhost|local|internal|intranet|lan|home|arpa|home\.arpa|corp)$/.test(host);
+}
+
+function isPublicIpv4(host: string): boolean {
+  const [a, b] = host.split(".").map(Number) as [number, number, number, number];
+  if (a === 0 || a === 10 || a === 127 || a >= 224) return false;
+  if (a === 169 && b === 254) return false;
+  if (a === 172 && b >= 16 && b <= 31) return false;
+  if (a === 192 && b === 168) return false;
+  if (a === 100 && b >= 64 && b <= 127) return false; // carrier-grade NAT
+  if (a === 198 && (b === 18 || b === 19)) return false; // benchmarking
+  return true;
+}
+
+function isPublicIpv6(host: string): boolean {
+  if (host === "::" || host === "::1") return false;
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(host);
+  if (mapped) return isPublicIpv4(mapped[1]!);
+  if (/^::ffff:/.test(host)) return false; // mapped IPv4 written in hex
+  // fc00::/7 unique local, fe80::/10 link local, ff00::/8 multicast.
+  return !/^(?:f[cd]|fe[89ab]|ff)/.test(host);
+}
 /** Bytes of HTML read from one page; coupon pages are well under this. */
 export const QUIET_MAX_BYTES = 3_000_000;
 const SNAPSHOT = { maxElements: 600, maxTextChars: 60_000 };
@@ -156,11 +200,14 @@ export function quietPages(deps: QuietDeps): PageBrowser {
       } catch {
         return null;
       }
+      if (!isPublicWebUrl(url)) return null;
       if (!(await deps.hasAccess(origin).catch(() => false))) return null;
       const ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), deps.timeoutMs ?? QUIET_FETCH_MS);
       try {
         const res = await deps.fetch(url, { credentials: "omit", redirect: "follow", signal: ctl.signal, headers: { Accept: "text/html,application/xhtml+xml" } });
+        // A public page may redirect to a private address; never read that.
+        if (res.url && !isPublicWebUrl(res.url)) throw new Error("redirected off the public web");
         if (!res.ok) throw new Error("http " + res.status);
         const type = res.headers.get("content-type") ?? "";
         if (type && !/html|xml/i.test(type)) throw new Error("not html");
