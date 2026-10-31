@@ -68,6 +68,21 @@ export function answerText(answer: string, sources: Source[]): string {
   return text + "\n\nSources:\n" + lines.join("\n");
 }
 
+/**
+ * The address to put in a link's href, or null. Only http and https: source
+ * and coupon links come from model output and web pages, so a javascript:,
+ * data: or extension URL must never become clickable.
+ */
+export function linkHref(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:" ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
 /** URL kept with saved history: no query or fragment, which can hold session tokens. */
 export function savedUrl(url: string): string {
   try {
@@ -96,11 +111,14 @@ export function fillSourceCard(doc: Document, card: HTMLElement, src: Source): v
   const name = doc.createElement("span");
   name.textContent = displayHost(src.url) || siteName(src.url);
   head.append(siteIcon(doc, src.url), name);
-  const title = doc.createElement("a");
+  const href = linkHref(src.url);
+  const title = doc.createElement(href ? "a" : "span");
   title.className = "cite-title";
-  title.href = src.url;
-  title.target = "_blank";
-  title.rel = "noopener noreferrer";
+  if (href) {
+    title.setAttribute("href", href);
+    title.setAttribute("target", "_blank");
+    title.setAttribute("rel", "noopener noreferrer");
+  }
   title.textContent = src.title || src.url;
   card.append(head, title);
   if (src.snippet) {
