@@ -46,9 +46,11 @@ firefox() {
   git archive --format=zip -o "$src" HEAD
   if [ "$LIVE" = true ]; then
     need AMO_JWT_ISSUER AMO_JWT_SECRET
-    npx --yes web-ext@10.8.0 sign --source-dir dist/firefox --channel listed \
-      --amo-metadata store/firefox/amo-metadata.json --upload-source-code "$src" \
-      --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET" --artifacts-dir dist
+    # Key and secret go in through web-ext's own env vars, not the command
+    # line, so they never show in `ps` or shell history.
+    WEB_EXT_API_KEY="$AMO_JWT_ISSUER" WEB_EXT_API_SECRET="$AMO_JWT_SECRET" \
+      npx --yes web-ext@10.8.0 sign --source-dir dist/firefox --channel listed \
+      --amo-metadata store/firefox/amo-metadata.json --upload-source-code "$src" --artifacts-dir dist
   else
     echo "dry run: would submit dist/firefox (version $VERSION) and $src to Firefox Add-ons"
   fi
