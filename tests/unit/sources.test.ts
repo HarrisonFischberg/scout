@@ -1,7 +1,7 @@
 // Answer sources (owner items 10 and 12): chip names, copied text, saved URLs.
 import { describe, expect, it } from "vitest";
 import { parseInline } from "../../src/chat/markdown";
-import { answerText, displayHost, savedUrl, siteName } from "../../src/chat/sources";
+import { answerText, displayHost, linkHref, savedUrl, siteName } from "../../src/chat/sources";
 
 describe("answer sources", () => {
   it("names a site by its registrable name", () => {
@@ -50,5 +50,13 @@ describe("answer sources", () => {
   it("saves addresses without query or fragment", () => {
     expect(savedUrl("https://shop.test/cart?session=abc#top")).toBe("https://shop.test/cart");
     expect(savedUrl("not a url")).toBe("");
+  });
+
+  it("links only http and https sources (model and page output is untrusted)", () => {
+    expect(linkHref("https://r.test/w?q=1")).toBe("https://r.test/w?q=1");
+    expect(linkHref("http://shop.test/")).toBe("http://shop.test/");
+    for (const bad of ["javascript:alert(1)", " JavaScript:alert(1)", "data:text/html,<b>x</b>", "safari-web-extension://abc/popup.html", "file:///etc/passwd", "not a url", "", undefined]) {
+      expect(linkHref(bad)).toBeNull();
+    }
   });
 });

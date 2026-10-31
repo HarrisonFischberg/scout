@@ -8,7 +8,7 @@
 import { classifyQuestion, pageWords, type QuestionScope } from "./chat/intent";
 import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, unfence, type PageContext } from "./chat/prompt";
 import { chipSources, renderMarkdown } from "./chat/markdown";
-import { answerText, fillSourceCard, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
+import { answerText, fillSourceCard, linkHref, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
 import { ConversationStore, type StoredMessage } from "./chat/store";
 import { MAX_EXTRA_TABS, type TabInfo } from "./chat/tabs";
 import { formatMoney } from "./coupons/money";
@@ -765,10 +765,13 @@ async function main(): Promise<void> {
       list.hidden = true;
       for (const s of sources) {
         const li = document.createElement("li");
-        const a = document.createElement("a");
-        a.href = s.url;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
+        const href = linkHref(s.url);
+        const a = document.createElement(href ? "a" : "span");
+        if (href) {
+          a.setAttribute("href", href);
+          a.setAttribute("target", "_blank");
+          a.setAttribute("rel", "noopener noreferrer");
+        }
         const site = document.createElement("span");
         site.className = "source-site";
         site.textContent = siteName(s.url);
@@ -2619,9 +2622,10 @@ async function main(): Promise<void> {
     source.className = "source";
     source.append("· ");
     const label = originLabel(a);
-    if (a.sourceUrl) {
+    const sourceHref = linkHref(a.sourceUrl);
+    if (sourceHref) {
       const link = document.createElement("a");
-      link.href = a.sourceUrl;
+      link.href = sourceHref;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       link.textContent = label;
