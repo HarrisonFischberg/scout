@@ -14,6 +14,8 @@ struct OnboardingView: View {
     static let scoutPageURL = URL(string: "https://rarecreatures.app/apps/scout/")!
 
     let progress: SetupProgress
+    /// iOS: skip Safari and chat in the app (owner request 2026-11-01). Nil hides the button.
+    var onChat: (() -> Void)? = nil
     @Environment(\.openURL) private var openURL
 
     // Glasshouse look (owner choice 2026-10-26): cool canvas, the Scout truck
@@ -40,6 +42,11 @@ struct OnboardingView: View {
                     StepCard(number: step.rawValue + 1, title: title(step), state: state(step)) {
                         content(step)
                     }
+                }
+                if let onChat {
+                    Button("Just chat with Scout in this app", action: onChat)
+                        .font(.system(.body).weight(.semibold))
+                        .padding(.top, 4)
                 }
                 Link("Privacy policy", destination: Self.privacyPolicyURL)
                     .padding(.top, 4)

@@ -113,6 +113,17 @@ export const APPLE_WEB_RULE =
   APPLE_NEEDS_WEB +
   " and nothing else. When the page given answers the question, answer from the page instead.";
 
+// The Scout app's own chat (owner request 2026-11-01: "just open the app to
+// ask it an AI question about a random thing"). No browser and no page, so
+// none of the page or tool rules; the same answer format and web search.
+export const APP_INTRO =
+  "You are Scout, an AI assistant in the Scout app on the user's iPhone. You chat about anything. There is no web page open: answer every message as a general question.";
+
+/** The system prompt for the Scout app's chat. */
+export function appSystemPrompt(opts: { webSearch: boolean }): string {
+  return [APP_INTRO, FORMAT_RULES, ...(opts.webSearch ? [WEB_RULES] : [])].join(" ");
+}
+
 /** The system prompt for one chat message. */
 export function chatSystemPrompt(opts: { scope?: "page" | "general"; tools?: boolean; webSearch?: boolean; openPage?: boolean }): string {
   return [
