@@ -28,3 +28,4 @@ apple/Extension/Resources/overlay.js
 *.jks
 fastlane/report.xml
 fastlane/test_output/
+apple/App/Chat/

@@ -64,6 +64,9 @@
 		EE5F07BE2F2AA2E880B14BDB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B4986E15F6D4CE7B6EBDAC66 /* Assets.xcassets */; };
 		F1B11E8D9F04B01567E493A5 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D39F086632970ACBCAF6106 /* SafariWebExtensionHandler.swift */; };
 		FB325DAB0C9A7453A5A13044 /* HostAppAccessibilityUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D979F8F918F26FE818AFE57A /* HostAppAccessibilityUITests.swift */; };
+		E9A79478AD2000A1E67B79A9 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB603BBC6C050B5B5E64398 /* ChatView.swift */; };
+		E80CF39DC89FDDC1C6C005B3 /* Chat in Resources */ = {isa = PBXBuildFile; fileRef = B954DB96DD114EFAD46E4D11 /* Chat */; };
+		5C2A981A88509A362E8C82E6 /* AppleModelBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02D25D2E94EE1E968D89BA9D /* AppleModelBridge.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -152,6 +155,8 @@
 		D6984060B5995FB15A70F7EB /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		D979F8F918F26FE818AFE57A /* HostAppAccessibilityUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HostAppAccessibilityUITests.swift; sourceTree = "<group>"; };
 		FFE46ABD9E4B81390D9346BB /* SafariScout.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = SafariScout.entitlements; sourceTree = "<group>"; };
+		EFB603BBC6C050B5B5E64398 /* ChatView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		B954DB96DD114EFAD46E4D11 /* Chat */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Chat; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -295,6 +300,8 @@
 				C0898E4411DC78748C6C84C6 /* SetupStatus.swift */,
 				1FFF3A7A6FFAC4C38E60D00F /* SafariScoutApp.swift */,
 				D6984060B5995FB15A70F7EB /* ContentView.swift */,
+				EFB603BBC6C050B5B5E64398 /* ChatView.swift */,
+				B954DB96DD114EFAD46E4D11 /* Chat */,
 				7A1C0D4E2B9F46C3A8E5D1A5 /* OnboardingView.swift */,
 				899B4FA63AA1A90BAC21BB4C /* Info.plist */,
 				FFE46ABD9E4B81390D9346BB /* SafariScout.entitlements */,
@@ -497,6 +504,7 @@
 			files = (
 				EE5F07BE2F2AA2E880B14BDB /* Assets.xcassets in Resources */,
 				8D7D9B0716DBF1217C50A15E /* PrivacyInfo.xcprivacy in Resources */,
+				E80CF39DC89FDDC1C6C005B3 /* Chat in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -556,6 +564,8 @@
 				432C9AE3398D8889519FDAFD /* ContentView.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1A3 /* OnboardingView.swift in Sources */,
 				7A1C0D4E2B9F46C3A8E5D1A6 /* KeychainStore.swift in Sources */,
+				E9A79478AD2000A1E67B79A9 /* ChatView.swift in Sources */,
+				5C2A981A88509A362E8C82E6 /* AppleModelBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

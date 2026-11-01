@@ -22,6 +22,9 @@ done
 for f in popup.js background.js; do
   if grep -q '"apiKey:"' "apple/Extension/Resources/$f"; then echo "release $f contains the browser key storage"; bad=1; fi
 done
+# The app's own chat (src/app/chat.ts) reads the key from the Keychain bridge
+# only; its stand-in key for tests outside the app is debug only.
+if grep -q "scout.app.devKey" apple/App/Chat/app-chat.js; then echo "release app-chat.js contains the stand-in key storage"; bad=1; fi
 npm run --silent build
 [ $bad -eq 0 ] && echo "release bundle clean"
 exit $bad
