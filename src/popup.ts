@@ -29,6 +29,7 @@ import { DEV_MOCK_KEY, DEV_MOCK_URL, mockServerUrl } from "./server/dev";
 import { fromWire } from "./server/protocol";
 import type { ToolDecision, ToolResult } from "./tools/host";
 import { ALL_SITES, PAGE_BUTTON_KEY, pageButtonOffered, parsePageButton, platformOs, reachText, type PageButton } from "./panel/edge";
+import { DraftSaver, loadDraft, saveDraft } from "./panel/draft";
 import { conversationForTab, parsePrivateConvs, PRIVATE_CONVS_KEY, reopenConversation, startNewConversation, tabKey } from "./panel/state";
 import { summarizeChats, whenText } from "./chat/list";
 import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/consent";
@@ -461,6 +462,7 @@ async function main(): Promise<void> {
   // Read alongside the model lists below.
   const convRead = storage ? conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "") : Promise.resolve("");
   let conv = "";
+  const draftRead = storage ? loadDraft(storage, tabKey(tab.id), Date.now()).catch(() => "") : Promise.resolve("");
   let port: PanelPort | null = null;
   if (browser.runtime.connect && tab.id !== undefined) {
     const tabId = tab.id;
@@ -555,6 +557,7 @@ async function main(): Promise<void> {
       `Mode: ${mode() === "scout" ? "Scout mode" : "Chat"}`,
       `Settings: ${settings.provider} / ${settings.model} · effort ${settings.effort} · history ${settings.retention}`,
       `Keys saved: Anthropic ${keyed.has("anthropic") ? "yes" : "no"}, OpenAI ${keyed.has("openai") ? "yes" : "no"}`,
+      `Apple's model: ${appleFirstOn ? "on" : "off"} in Settings${session?.appleFirst || session?.apple ? " · in use" : ""}`,
       `Sharing allowed: Anthropic ${consent.has("anthropic") ? "yes" : "no"}, OpenAI ${consent.has("openai") ? "yes" : "no"}${consentSaveError ? " · not saved: " + consentSaveError : ""}`,
       `Page: ${hostOf(tab.url ?? "") ?? "none"}${tab.incognito ? " · private" : ""}`,
       `Busy: ${[activeChat && "answering", task && "Scout mode", couponRun && "Find coupons"].filter(Boolean).join(", ") || "no"}`,
@@ -1031,7 +1034,14 @@ async function main(): Promise<void> {
     else current = disabledRun;
     // Asked alongside the Keychain read: chat uses Apple's model with or without a key.
     const appleCheck: Promise<AppleStatus> = TARGET === "safari" ? appleStatus(nativeSend) : Promise.resolve({ available: false, reason: "not_safari" });
+    // Read again on every connect, so a switch turned off in another Scout
+    // window (or before an update) is never lost to a stale copy here.
+    const appleRead = storage
+      ? storage.get(APPLE_FIRST_KEY).then((g) => (appleFirstOn = g[APPLE_FIRST_KEY] !== false)).catch(() => appleFirstOn)
+      : Promise.resolve(appleFirstOn);
     const keys = await (firstKeys ?? readKeys());
+    await appleRead;
+    void appleCheck.then((a) => (appleHere = a.available));
     if (firstKeys && __SCOUT_DEBUG__) trace("open:keys " + Math.round(performance.now()) + " ms");
     firstKeys = null;
     const found = findKey(settings, keys);
@@ -1049,7 +1059,8 @@ async function main(): Promise<void> {
       // No key: chat on Apple's on-device model when this device has it. The
       // key stays an optional upgrade for stronger models, Scout mode and coupons.
       const apple = await appleCheck;
-      if (apple.available) {
+      // Turned off in Settings: off means off, even with no key (owner, 2026-11-01).
+      if (apple.available && appleFirstOn) {
         session = { settings: { ...settings, model: APPLE_MODEL }, provider: createApple(nativeSend), apple: true };
         noKey.hidden = true;
         composer.hidden = false;
@@ -1060,7 +1071,10 @@ async function main(): Promise<void> {
         updateEmpty();
         return;
       }
-      noKeyApple.textContent = TARGET === "safari" ? "Apple Intelligence can't be used here: " + APPLE_UNAVAILABLE_TEXT[apple.reason] : "";
+      noKeyApple.textContent =
+        TARGET !== "safari" ? ""
+        : apple.available ? "Apple's on-device model is turned off in Settings."
+        : "Apple Intelligence can't be used here: " + APPLE_UNAVAILABLE_TEXT[apple.reason];
       noKeyApple.hidden = TARGET !== "safari";
       session = null;
       status.textContent = "No API key saved.";
@@ -1128,11 +1142,27 @@ async function main(): Promise<void> {
     question.focus();
   });
 
+  // Unsent text comes back when the panel reopens on this tab (owner request
+  // 2026-11-01; src/panel/draft.ts). Every change to the box, typed or set by
+  // Scout (cleared on send, dictation), goes through autosize, which saves it.
+  const savedDraft = await draftRead;
+  const drafts = storage ? new DraftSaver((t) => saveDraft(storage, tabKey(tab.id), t, Date.now()), savedDraft) : null;
   const autosize = (): void => {
     question.style.height = "auto";
     question.style.height = Math.min(question.scrollHeight, 140) + "px";
+    drafts?.changed(question.value);
   };
   question.addEventListener("input", autosize);
+  if (savedDraft && !question.value) {
+    question.value = savedDraft;
+    autosize();
+  }
+  // The panel closing (another tab, a tap on the page) saves what's typed at once.
+  const flushDraft = (): void => void drafts?.flush(question.value);
+  window.addEventListener("pagehide", flushDraft);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushDraft();
+  });
 
   // ---------- Mic (owner, 2026-10-17; src/panel/voice.ts) ----------
   // Speech to text into the box, nothing more: the user sends it with Send.
@@ -1243,9 +1273,21 @@ async function main(): Promise<void> {
     openai:
       '<svg class="i glyph" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="4"/><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(120 12 12)"/></svg>',
   };
-  const menuItems = (): HTMLButtonElement[] => Array.from(modelMenu.querySelectorAll<HTMLButtonElement>('[role="radio"]'));
+  const menuItems = (): HTMLButtonElement[] => Array.from(modelMenu.querySelectorAll<HTMLButtonElement>('[role="radio"], [role="checkbox"]'));
   /** Providers with a key in the Keychain, read on each connect. */
   let keyed = new Set<Provider>();
+  /** Apple's on-device model can run here (last connect). */
+  let appleHere = false;
+
+  /** The one place the "Use Apple's model first" switch changes: Settings and the Models sheet. */
+  async function setAppleFirst(on: boolean): Promise<void> {
+    appleFirstOn = on;
+    el<HTMLInputElement>("apple-first").checked = on;
+    trace("apple-first:" + (on ? "on" : "off"));
+    // Saved before reconnecting, which reads it back.
+    await (storage?.set({ [APPLE_FIRST_KEY]: on }) ?? Promise.resolve()).catch(() => trace("apple-first:not saved"));
+    await connect();
+  }
 
   function menuGroup(group: HTMLElement, items: Array<{ key: string; label: string; glyph?: string; checked: boolean; pick: () => void }>): void {
     group.replaceChildren(
@@ -1273,6 +1315,25 @@ async function main(): Promise<void> {
   const menuProviders = (): Provider[] => (["anthropic", "openai"] as const).filter((p) => keyed.has(p) || p === activeSettings().provider);
 
   function renderModelMenu(): void {
+    const appleGroup = el("model-menu-apple");
+    appleGroup.hidden = !appleHere;
+    appleGroup.replaceChildren();
+    if (appleHere) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.key = "apple-first";
+      b.setAttribute("role", "checkbox");
+      b.setAttribute("aria-checked", String(appleFirstOn));
+      const text = document.createElement("span");
+      text.textContent = "Apple's model first";
+      b.append(text);
+      b.insertAdjacentHTML("beforeend", CHECK_ICON);
+      b.addEventListener("click", () => {
+        closeModelMenu(true);
+        void setAppleFirst(!appleFirstOn);
+      });
+      appleGroup.append(b);
+    }
     const cur = activeSettings();
     const providers = menuProviders();
     const list = withModel(knownModels[cur.provider], cur.provider, cur.model);
@@ -1379,7 +1440,7 @@ async function main(): Promise<void> {
       closeModelMenu(true);
     } else if (e.key === "Tab") {
       // Modal: focus moves between the close button and the checked rows.
-      const stops = [el<HTMLButtonElement>("model-menu-close"), ...items.filter((b) => b.tabIndex === 0)];
+      const stops = [el<HTMLButtonElement>("model-menu-close"), ...items.filter((b) => b.tabIndex === 0 || b.getAttribute("role") === "checkbox")];
       const i = stops.indexOf(document.activeElement as HTMLButtonElement);
       e.preventDefault();
       stops[(i + (e.shiftKey ? stops.length - 1 : 1)) % stops.length]?.focus();
@@ -3734,10 +3795,14 @@ async function main(): Promise<void> {
     appleFirstBox.checked = appleFirstOn;
     el("apple-first-row").hidden = !st.available;
   }
-  appleFirstBox.addEventListener("change", () => {
-    appleFirstOn = appleFirstBox.checked;
-    void storage?.set({ [APPLE_FIRST_KEY]: appleFirstOn }).catch(() => undefined);
-    trace("apple-first:" + (appleFirstOn ? "on" : "off"));
+  appleFirstBox.addEventListener("change", () => void setAppleFirst(appleFirstBox.checked));
+  // Changed in another Scout window (the Mac page or another window's panel).
+  browser.storage?.onChanged?.addListener((changes, area) => {
+    if (area !== "local" || !(APPLE_FIRST_KEY in changes)) return;
+    const on = changes[APPLE_FIRST_KEY]?.newValue !== false;
+    if (on === appleFirstOn) return;
+    appleFirstOn = on;
+    appleFirstBox.checked = on;
     void connect();
   });
   appleTry.addEventListener("click", () => {

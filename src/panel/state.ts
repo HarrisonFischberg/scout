@@ -4,6 +4,7 @@
 // the worker also updates it from the panel port and drops closed tabs.
 import { CHAT_START_KEY, HISTORY_KEY, type StorageArea } from "../settings/settings";
 import { withLock } from "../settings/lock";
+import { dropAllDrafts, dropDraft } from "./draft";
 
 export const TAB_STATE_KEY = "tabState";
 
@@ -23,7 +24,7 @@ export interface TabState {
 
 export type TabStates = Record<string, TabState>;
 
-type Store = Pick<StorageArea, "get" | "set">;
+type Store = Pick<StorageArea, "get" | "set" | "remove">;
 
 /** Tabs without an id (tabs.query failed) share one slot. */
 export const tabKey = (tabId: number | undefined): string => (tabId === undefined ? "none" : String(tabId));
@@ -168,6 +169,7 @@ export function setPanelOpen(storage: Store, tabId: number | undefined, open: bo
 export function forgetTab(storage: Store, tabId: number): Promise<void> {
   return tabLock(async () => {
     await dropPrivate(storage, tabId);
+    await dropDraft(storage, tabKey(tabId)).catch(() => undefined);
     const states = await loadTabStates(storage);
     if (!(tabKey(tabId) in states)) return;
     delete states[tabKey(tabId)];
@@ -175,10 +177,11 @@ export function forgetTab(storage: Store, tabId: number): Promise<void> {
   });
 }
 
-/** Tab ids are reused after Safari restarts, so old mappings are dropped at startup. */
+/** Tab ids are reused after Safari restarts, so old mappings (and unsent drafts) are dropped at startup. */
 export function clearTabStates(storage: Store): Promise<void> {
   return tabLock(async () => {
     await dropPrivate(storage);
+    await dropAllDrafts(storage).catch(() => undefined);
     await saveTabStates(storage, {});
   });
 }
