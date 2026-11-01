@@ -330,6 +330,7 @@
       .sheet-list button > svg.check { margin-left: auto; color: var(--accent-text); visibility: hidden; }
       .sheet-list button[aria-checked="true"] { font-weight: 600; }
       .sheet-list button[aria-checked="true"] > svg.check { visibility: visible; }
+      #model-menu-apple { margin-bottom: 12px; }
       .sheet-label { margin: 16px 4px 6px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
       .sheet-note { margin: 12px 4px 0; font-size: 13px; color: var(--text-muted); }
       #plus-menu {
@@ -1008,6 +1009,8 @@
           </button>
         </div>
         <div class="sheet-body">
+          <!-- Owner, 2026-11-01: Apple's model can be turned off right here, next to the model it hands off to. -->
+          <div id="model-menu-apple" class="sheet-list" hidden></div>
           <div id="model-menu-models" class="sheet-list" role="radiogroup" aria-label="Models"></div>
           <h3 id="model-menu-effort-title" class="sheet-label">Effort</h3>
           <div id="model-menu-efforts" class="sheet-list" role="radiogroup" aria-label="Effort levels"></div>
@@ -1063,7 +1066,7 @@
           <p id="apple-status" class="hint" role="status">Checking this device…</p>
           <div id="apple-first-row" hidden>
             <label class="check"><input id="apple-first" type="checkbox" aria-describedby="apple-first-help" />Use Apple's model first</label>
-            <p id="apple-first-help" class="hint">On: chat, Summarize and Explain ask Apple's model first. When it can't answer, Scout asks the model for your API key instead. Scout mode and Find coupons always use your key.</p>
+            <p id="apple-first-help" class="hint">On: chat, Summarize and Explain ask Apple's model first. When it can't answer, Scout asks the model for your API key instead. Off: Scout never uses Apple's model, with or without a key. Scout mode and Find coupons always use your key.</p>
           </div>
           <div class="row"><button id="apple-try" class="btn" type="button" hidden>Try Apple's model</button></div>
           <p id="apple-result" class="hint" role="status"></p>
