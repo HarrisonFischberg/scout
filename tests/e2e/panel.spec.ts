@@ -36,7 +36,17 @@ async function openPanel(page: Page, tab: { id: number; incognito?: boolean }): 
           id: "scout-test",
           getURL: (p: string) => location.origin + "/" + p,
           sendMessage: async () => ({ ok: true }),
-          sendNativeMessage: async (_app: string, m: { type: string }) => (m.type === "keychain.get" ? { ok: true, value: key } : { ok: true }),
+          sendNativeMessage: async (_app: string, m: { type: string }) => {
+            if (m.type === "keychain.get") return { ok: true, value: key };
+            // Apple's on-device model, when a test turns it on (src/providers/apple.ts).
+            const apple = ss.getItem("__apple") === "1";
+            if (m.type === "ai.apple.status") return apple ? { ok: true, available: true } : { ok: true, available: false, reason: "device_not_eligible" };
+            if (m.type === "ai.apple.generate") {
+              ss.setItem("__appleCalls", String(Number(ss.getItem("__appleCalls") ?? "0") + 1));
+              return { ok: true, text: "On device: markets are up." };
+            }
+            return { ok: true };
+          },
           onMessage: { addListener() {} },
           // runtime.connect and the worker come from tests/e2e/worker.ts.
         },
@@ -375,3 +385,75 @@ for (const failure of ["rejects", "never answers"] as const) {
     await expect(page.locator("#settings-saved")).toHaveText("Could not clear chat history. Try again.", { timeout: 8_000 });
   });
 }
+
+// Owner request 2026-11-01: text typed in the box comes back when the panel
+// reopens on the same tab, stays out of other tabs, and goes once sent.
+test("unsent text is kept per tab and restored when the panel reopens", async ({ page }) => {
+  await page.route("https://api.anthropic.com/v1/messages", (r) =>
+    r.fulfill({ status: 200, contentType: "text/event-stream", body: sse("Answer for this tab.") }),
+  );
+  await openPanel(page, { id: 1 });
+  const box = page.getByLabel("Ask about this page");
+  await box.pressSequentially("What moved the");
+  await switchTab(page, { id: 2 });
+  await expect(box).toHaveValue("");
+  await switchTab(page, { id: 1 });
+  await expect(box).toHaveValue("What moved the");
+
+  await box.press("End");
+  await box.pressSequentially(" market today?");
+  await box.press("Enter");
+  await expect(page.getByRole("log").getByText("Answer for this tab.")).toBeVisible();
+  await expect(box).toHaveValue("");
+  await switchTab(page, { id: 1 });
+  await expect(page.getByRole("log").getByText("What moved the market today?")).toBeVisible();
+  await expect(box).toHaveValue("");
+});
+
+// Owner request 2026-11-01: Apple's model turned off in Settings stays off on
+// every later open, and nothing uses it.
+test("Apple's model turned off stays off after the panel reopens", async ({ page }) => {
+  let asked = 0;
+  await page.route("https://api.anthropic.com/v1/messages", (r) => {
+    asked++;
+    return r.fulfill({ status: 200, contentType: "text/event-stream", body: sse("Claude: markets are up.") });
+  });
+  await page.addInitScript(() => sessionStorage.setItem("__apple", "1"));
+  await openPanel(page, { id: 1 });
+  await expect(page.getByRole("button", { name: /^Apple \+ / })).toBeVisible();
+  await page.getByRole("button", { name: "Settings" }).click();
+  const box = page.getByLabel("Use Apple's model first");
+  await expect(box).toBeChecked();
+  await box.uncheck();
+  await expect(page.getByRole("button", { name: /^Apple \+ / })).toHaveCount(0);
+
+  for (const tab of [2, 1]) {
+    await switchTab(page, { id: tab });
+    await expect(page.getByRole("button", { name: /change model or effort/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Apple \+ / })).toHaveCount(0);
+  }
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByLabel("Use Apple's model first")).not.toBeChecked();
+  await page.getByRole("button", { name: "Back to chat" }).click();
+
+  await page.getByLabel("Ask about this page").fill("What moved the market today?");
+  await page.getByLabel("Ask about this page").press("Enter");
+  await expect(page.getByRole("log").getByText("Claude: markets are up.")).toBeVisible();
+  expect(asked).toBe(1);
+  expect(await page.evaluate(() => sessionStorage.getItem("__appleCalls"))).toBeNull();
+});
+
+test("Apple's model can be turned off from the Models sheet, and stays off", async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem("__apple", "1"));
+  await openPanel(page, { id: 1 });
+  await page.getByRole("button", { name: /^Apple \+ / }).click();
+  const row = page.getByRole("checkbox", { name: "Apple's model first" });
+  await expect(row).toHaveAttribute("aria-checked", "true");
+  await row.click();
+  await expect(page.getByRole("button", { name: /^Apple \+ / })).toHaveCount(0);
+  await switchTab(page, { id: 2 });
+  await expect(page.getByRole("button", { name: /change model or effort/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Apple \+ / })).toHaveCount(0);
+  await page.getByRole("button", { name: /change model or effort/ }).click();
+  await expect(page.getByRole("checkbox", { name: "Apple's model first" })).toHaveAttribute("aria-checked", "false");
+});
