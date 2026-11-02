@@ -4,6 +4,7 @@
 // and sources. The key comes from the Keychain the Safari extension uses, over
 // the app's native bridge; it is read for each answer and never stored here.
 import { renderMarkdown } from "../chat/markdown";
+import { cachedLook, cacheLook, LOOKS, lookById, pageCache, parseLook, readSharedLook, writeSharedLook, type LookId } from "../panel/look";
 import { answerText, displayHost, linkHref, siteIcon, siteName, type Source } from "../chat/sources";
 import { formatCostLine } from "../cost";
 import type { NativeSend } from "../keychain";
@@ -58,8 +59,8 @@ function nativeBridge(): NativeSend {
   if (handler) return (message) => handler.postMessage(message);
   if (__SCOUT_DEBUG__) {
     return async (message) => {
-      const m = (message ?? {}) as { type?: string; value?: string };
-      const k = "scout.app.devKey";
+      const m = (message ?? {}) as { type?: string; account?: string; value?: string };
+      const k = "scout.app.devKey" + (m.account && m.account !== "anthropic" ? "." + m.account : "");
       if (m.type === "keychain.get") return { ok: true, value: storage.getItem(k) ?? undefined };
       if (m.type === "keychain.set") return storage.setItem(k, String(m.value ?? "")), { ok: true };
       if (m.type === "keychain.delete") return storage.removeItem(k), { ok: true };
@@ -456,7 +457,59 @@ async function refreshSettings(): Promise<void> {
   updateEmpty();
 }
 
+// ---------- Look (Settings > Look, owner request 2026-11-02) ----------
+// The same six looks as Scout in Safari (src/panel/look.ts), and the same
+// choice: it is shared with the extension through the Keychain group, so a
+// pick on either side shows on the other the next time it opens.
+const lookCache = pageCache();
+
+function showLook(id: LookId): void {
+  document.documentElement.dataset.look = id;
+  $("empty-title").textContent = lookById(id).greeting.title || "Ask Scout anything";
+  cacheLook(lookCache, id);
+  for (const i of document.querySelectorAll<HTMLInputElement>('input[name="look"]')) i.checked = i.value === id;
+}
+
+async function syncLook(): Promise<void> {
+  const shared = await readSharedLook(send);
+  if (shared && shared !== document.documentElement.dataset.look) showLook(shared);
+}
+
+function buildLookPicker(): void {
+  const list = $("look-list");
+  for (const look of LOOKS) {
+    const label = document.createElement("label");
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "look";
+    input.value = look.id;
+    const sw = document.createElement("span");
+    sw.className = "sw";
+    sw.setAttribute("aria-hidden", "true");
+    for (const c of look.swatch) {
+      const dot = document.createElement("i");
+      dot.style.background = c;
+      sw.appendChild(dot);
+    }
+    const name = document.createElement("span");
+    name.textContent = look.name;
+    const blurb = document.createElement("span");
+    blurb.className = "blurb";
+    blurb.textContent = look.blurb;
+    label.append(input, sw, name, blurb);
+    input.addEventListener("change", () => {
+      if (!input.checked) return;
+      const id = parseLook(input.value);
+      showLook(id);
+      void writeSharedLook(send, id);
+    });
+    list.appendChild(label);
+  }
+}
+
 function wire(): void {
+  buildLookPicker();
+  showLook(cachedLook(lookCache));
   const select = $<HTMLSelectElement>("model-select");
   for (const m of BUILTIN_MODELS.anthropic) {
     const o = document.createElement("option");
@@ -529,12 +582,16 @@ function wire(): void {
 
   // Coming back to the app: the key may have changed in Safari.
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") void refreshSettings();
+    if (document.visibilityState === "visible") {
+      void refreshSettings();
+      void syncLook();
+    }
   });
 }
 
 async function start(): Promise<void> {
   wire();
+  void syncLook();
   const [key, apple] = await Promise.all([getKey(), appleStatus(send)]);
   state.hasKey = !!key;
   state.appleReady = apple.available;

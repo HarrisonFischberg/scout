@@ -86,3 +86,31 @@ export function cacheLook(store: Pick<Storage, "setItem"> | undefined, id: LookI
     // Not fatal: storage.local still has it; the next open may start in the default look for a moment.
   }
 }
+
+/**
+ * On iPhone the look is shared between Scout in Safari and the Scout app's own
+ * chat (owner request 2026-11-02), through the Keychain group they already
+ * share for the API key. It is only a look id, not a secret; the item is
+ * named "look" next to the provider keys.
+ */
+export const SHARED_LOOK_ACCOUNT = "look";
+
+type Send = (message: unknown) => Promise<unknown>;
+
+/** The look saved by the other side (app or extension), or null when none or unreadable. */
+export async function readSharedLook(send: Send): Promise<LookId | null> {
+  try {
+    const r = (await send({ type: "keychain.get", account: SHARED_LOOK_ACCOUNT })) as { ok?: boolean; value?: unknown } | undefined;
+    return r?.ok && LOOKS.some((l) => l.id === r.value) ? (r.value as LookId) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeSharedLook(send: Send, id: LookId): Promise<void> {
+  try {
+    await send({ type: "keychain.set", account: SHARED_LOOK_ACCOUNT, value: id });
+  } catch {
+    // Not fatal: this side keeps the look; the other side keeps its own until the next change.
+  }
+}
