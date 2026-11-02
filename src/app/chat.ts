@@ -15,6 +15,7 @@ import { BUILTIN_MODELS } from "../providers/models";
 import type { Effort } from "../providers/types";
 import { DEFAULT_EFFORT, DEFAULT_MODEL } from "../settings/settings";
 import { ask } from "./ask";
+import { LAST_STARTERS_KEY, pickStarters } from "./starters";
 import { chatTitle, deleteChat, historyFor, loadChats, newChatId, saveChats, upsertChat, type AppChat, type AppTurn, type TextStorage } from "./chats";
 
 declare global {
@@ -357,9 +358,32 @@ async function submit(text: string): Promise<void> {
   scrollToEnd();
 }
 
+/** Four fresh starter questions, different from the last set shown. */
+function renderStarters(): void {
+  let avoid: string[] = [];
+  try {
+    avoid = JSON.parse(storage.getItem(LAST_STARTERS_KEY) ?? "[]") as string[];
+  } catch {
+    avoid = [];
+  }
+  const picked = pickStarters({ web: state.hasKey, avoid: Array.isArray(avoid) ? avoid : [] });
+  storage.setItem(LAST_STARTERS_KEY, JSON.stringify(picked));
+  $("starters").replaceChildren(
+    ...picked.map((text) => {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = text;
+      li.appendChild(b);
+      return li;
+    }),
+  );
+}
+
 function newChat(): void {
   state.running?.abort();
   state.chat = null;
+  renderStarters();
   renderThread();
   question.focus();
 }
@@ -542,9 +566,10 @@ function wire(): void {
     if (state.running) state.running.abort();
     else void submit(question.value);
   });
-  for (const b of $("starters").querySelectorAll("button")) {
-    b.addEventListener("click", () => void submit(b.textContent ?? ""));
-  }
+  $("starters").addEventListener("click", (e) => {
+    const b = (e.target as Element).closest("button");
+    if (b) void submit(b.textContent ?? "");
+  });
   $("new-btn").addEventListener("click", newChat);
   $("chats-new").addEventListener("click", () => {
     $<HTMLDialogElement>("chats").close();
@@ -597,6 +622,7 @@ async function start(): Promise<void> {
   state.appleReady = apple.available;
   // A fresh chat on every launch, like the Claude app; earlier ones are under Chats.
   state.chat = null;
+  renderStarters();
   renderThread();
   void refreshSettings();
 }
