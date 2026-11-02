@@ -78,3 +78,20 @@ describe("looks", () => {
     }
   });
 });
+
+describe("look shared with the Scout app (owner 2026-11-02)", () => {
+  it("reads a known look from the shared Keychain item, and nothing else", async () => {
+    const { readSharedLook, writeSharedLook, SHARED_LOOK_ACCOUNT } = await import("../../src/panel/look");
+    const sent: unknown[] = [];
+    expect(await readSharedLook(async (m) => (sent.push(m), { ok: true, value: "bento" }))).toBe("bento");
+    expect(sent).toEqual([{ type: "keychain.get", account: SHARED_LOOK_ACCOUNT }]);
+    expect(await readSharedLook(async () => ({ ok: true, value: "aurora" }))).toBeNull();
+    expect(await readSharedLook(async () => ({ ok: true }))).toBeNull();
+    expect(await readSharedLook(async () => ({ ok: false, error: "keychain_error" }))).toBeNull();
+    expect(await readSharedLook(async () => { throw new Error("no native"); })).toBeNull();
+    const written: unknown[] = [];
+    await writeSharedLook(async (m) => (written.push(m), { ok: true }), "pebble");
+    expect(written).toEqual([{ type: "keychain.set", account: "look", value: "pebble" }]);
+    await expect(writeSharedLook(async () => { throw new Error("no native"); }, "pebble")).resolves.toBeUndefined();
+  });
+});

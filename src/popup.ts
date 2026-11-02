@@ -48,7 +48,7 @@ import { closeWhenHidden } from "./panel/dismiss";
 import { dockComposer } from "./panel/dock";
 import { hintedProvider, KEY_HINT_KEY, parseKeyHint, sameHint, type KeyHint } from "./panel/warm";
 import { isStandalone, openStandalone } from "./panel/standalone";
-import { applyLook, cachedLook, cacheLook, defaultLook, LOOK_KEY, LOOKS, pageCache, parseLook, type LookId } from "./panel/look";
+import { applyLook, cachedLook, cacheLook, defaultLook, LOOK_KEY, LOOKS, pageCache, parseLook, readSharedLook, SHARED_LOOK_ACCOUNT, writeSharedLook, type LookId } from "./panel/look";
 import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } from "./providers/models";
 import {
   appendHistory,
@@ -406,6 +406,7 @@ async function main(): Promise<void> {
       showLook(id);
       trace("look:" + id);
       void storage?.set({ [LOOK_KEY]: id }).catch(() => undefined);
+      if (TARGET === "safari") void writeSharedLook(nativeSend, id);
     });
     lookInputs.push(input);
     el("look-list").appendChild(label);
@@ -414,9 +415,16 @@ async function main(): Promise<void> {
   if (storage) {
     void storage
       .get(LOOK_KEY)
-      .then((got) => {
+      .then(async (got) => {
         // No saved look (never chosen, or Delete all data) is the default, whatever the cache says.
         showLook(parseLook(got[LOOK_KEY], HOME_LOOK));
+        // On iPhone the Scout app's chat shares the look (Keychain group); a newer pick there wins.
+        if (TARGET !== "safari") return;
+        const shared = await readSharedLook(nativeSend);
+        if (shared && shared !== got[LOOK_KEY]) {
+          showLook(shared);
+          await storage.set({ [LOOK_KEY]: shared });
+        }
       })
       .catch(() => undefined);
   }
@@ -4001,6 +4009,7 @@ async function main(): Promise<void> {
         for (const p of ["anthropic", "openai"] as const) void tellWorkerConsent(p, false);
         diag?.forget();
         showLook(HOME_LOOK);
+        if (TARGET === "safari") void nativeSend({ type: "keychain.delete", account: SHARED_LOOK_ACCOUNT }).catch(() => undefined);
         clearThread();
         conv = "";
         await connect(false);

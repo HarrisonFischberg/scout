@@ -40,19 +40,24 @@ const ANSWER = sse([
   { type: "message_stop" },
 ]);
 
-async function openApp(page: Page, opts: { key: string | null; apple?: boolean }): Promise<{ bodies: Array<Record<string, unknown>> }> {
+async function openApp(page: Page, opts: { key: string | null; apple?: boolean; look?: string }): Promise<{ bodies: Array<Record<string, unknown>> }> {
   const bodies: Array<Record<string, unknown>> = [];
   await page.addInitScript(
-    ({ key, apple }) => {
-      let saved: string | null = key;
-      const w = window as unknown as { webkit: unknown; __setupOpened?: boolean };
+    ({ key, apple, look }) => {
+      // The shared Keychain: the API key and the look id the Safari extension also reads.
+      const saved: Record<string, string> = {};
+      if (key) saved.anthropic = key;
+      if (look) saved.look = look;
+      const w = window as unknown as { webkit: unknown; __setupOpened?: boolean; __keychain?: Record<string, string> };
+      w.__keychain = saved;
       w.webkit = {
         messageHandlers: {
           scout: {
             postMessage: async (m: { type?: string; account?: string; value?: string }) => {
-              if (m.type === "keychain.get") return saved ? { ok: true, value: saved } : { ok: true };
-              if (m.type === "keychain.set") return (saved = m.value ?? null), { ok: true };
-              if (m.type === "keychain.delete") return (saved = null), { ok: true };
+              const account = m.account ?? "";
+              if (m.type === "keychain.get") return saved[account] ? { ok: true, value: saved[account] } : { ok: true };
+              if (m.type === "keychain.set") return (saved[account] = m.value ?? ""), { ok: true };
+              if (m.type === "keychain.delete") return delete saved[account], { ok: true };
               if (m.type === "ai.apple.status") return apple ? { ok: true, available: true } : { ok: true, available: false, reason: "device_not_eligible" };
               if (m.type === "ai.apple.generate") return { ok: true, text: "Apple says hi." };
               if (m.type === "app.setup") return (w.__setupOpened = true), { ok: true };
@@ -62,7 +67,7 @@ async function openApp(page: Page, opts: { key: string | null; apple?: boolean }
         },
       };
     },
-    { key: opts.key, apple: !!opts.apple },
+    { key: opts.key, apple: !!opts.apple, look: opts.look ?? null },
   );
   await page.route("https://api.anthropic.com/**", async (route) => {
     const req = route.request();
@@ -176,5 +181,32 @@ test.describe("Scout app chat", () => {
     await expect(page.locator(".msg.assistant")).toContainText("Claude Sonnet 5.5");
     expect(bodies[0]!.model).toBe("claude-sonnet-5-5");
     expect(bodies[0]!.output_config).toBeUndefined();
+  });
+  test("Settings: the look picker offers the six Safari looks and saves the pick to the shared Keychain", async ({ page }) => {
+    await openApp(page, { key: KEY });
+    await expect(page.locator("html")).toHaveAttribute("data-look", "glasshouse");
+    await page.getByRole("button", { name: "Settings" }).click();
+    const looks = page.getByRole("dialog", { name: "Settings" }).getByRole("radio");
+    await expect(looks).toHaveCount(6);
+    await expect(page.getByRole("radio", { name: /Glasshouse/ })).toBeChecked();
+    await page.getByRole("radio", { name: /Night Ops/ }).check();
+    await expect(page.locator("html")).toHaveAttribute("data-look", "nightops");
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __keychain: Record<string, string> }).__keychain.look)).toBe("nightops");
+    // The API key is untouched by the look.
+    expect(await page.evaluate(() => (window as unknown as { __keychain: Record<string, string> }).__keychain.anthropic)).toBe("sk-ant-test-synthetic-key-0000000000");
+    await page.getByRole("button", { name: "Close" }).click();
+    await expect(page.getByRole("heading", { name: "What should Scout do?" })).toBeVisible();
+  });
+
+  test("opens in the look picked in Scout in Safari", async ({ page }) => {
+    await openApp(page, { key: KEY, look: "cinema" });
+    await expect(page.locator("html")).toHaveAttribute("data-look", "cinema");
+    await expect(page.getByRole("heading", { name: "What's the plan?" })).toBeVisible();
+  });
+
+  test("an unknown shared look keeps Glasshouse", async ({ page }) => {
+    await openApp(page, { key: KEY, look: "aurora" });
+    await expect(page.getByRole("heading", { name: "Ask Scout anything" })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("data-look", "glasshouse");
   });
 });
