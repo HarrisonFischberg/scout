@@ -13,6 +13,7 @@ import { buildSnapshot, fromElement, type SnapNode, type Snapshot } from "./snap
 
 import { CONTENT_HANDLER as HANDLER, type ContentRequest } from "./content-api";
 import { storeCartInfo, storeCartUpdate } from "./coupons/carts";
+import { domCodeTree, pageCodes } from "./coupons/page-codes";
 import { codesWithContext, storeHomeText } from "./coupons/store";
 
 const FLAG = "__safariScoutContent";
@@ -90,6 +91,7 @@ if (!g[FLAG]) {
     if (req.type === "scout:cart-info") return storeCartInfo();
     if (req.type === "scout:cart-update") return storeCartUpdate(String(req.discount ?? ""));
     if (req.type === "scout:store-codes") return storeHomeText().then((t) => (t ? codesWithContext(t) : []));
+    if (req.type === "scout:page-codes") return document.body ? pageCodes(domCodeTree(document.body)) : [];
     if (req.type === "scout:page-meta") return pageMeta();
     if (req.type === "scout:reload") {
       // Let the reply reach the popup first, then refresh the cart view.
