@@ -59,8 +59,8 @@ struct ChatWebView: UIViewRepresentable {
 
     final class Coordinator: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate, WKUIDelegate {
         var onSetup: () -> Void
-        /// Only the provider keys; the extension's own markers stay out of reach of the page.
-        static let accounts: Set<String> = ["anthropic", "openai"]
+        /// The provider keys and the look id shared with Scout in Safari; the extension's own markers stay out of reach of the page.
+        static let accounts: Set<String> = ["anthropic", "openai", "look"]
 
         init(onSetup: @escaping () -> Void) {
             self.onSetup = onSetup
