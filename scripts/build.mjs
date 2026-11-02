@@ -59,6 +59,33 @@ await writeFile(
   release ? popupHtml.replace(/\s*<!-- debug:start[\s\S]*?<!-- debug:end -->/g, "") : popupHtml,
 );
 
+// The iOS app's own chat screen (src/app/chat.ts, owner request 2026-11-01),
+// bundled into the app target's Chat folder. Safari builds only: Chrome and
+// Firefox have no app.
+if (target === "safari") {
+  const appOut = join(root, "apple", "App", "Chat");
+  await mkdir(appOut, { recursive: true });
+  await build({
+    entryPoints: { "app-chat": join(src, "app", "chat.ts") },
+    outdir: appOut,
+    bundle: true,
+    format: "iife",
+    target: ESBUILD_TARGET.safari,
+    platform: "browser",
+    logLevel: "warning",
+    minifySyntax: release,
+    minifyWhitespace: release,
+    minifyIdentifiers: release,
+    treeShaking: true,
+    define: {
+      __SCOUT_DEBUG__: release ? "false" : "true",
+      __SCOUT_VERSION__: JSON.stringify(manifest.version),
+      __SCOUT_TARGET__: JSON.stringify(target),
+    },
+  });
+  await cp(join(src, "app.html"), join(appOut, "chat.html"));
+}
+
 console.log(`built ${target} extension to ${out} (${release ? "release" : "debug"})`);
 
 // Store package: the folder's contents zipped at the root, as both stores expect.

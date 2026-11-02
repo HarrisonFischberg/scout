@@ -7,20 +7,82 @@ import AppKit
 // (get Scout ready) and no tab bar: setup until every step is done, one
 // short check and a success screen the first time, then a "ready" home.
 // If the key is removed later, setup comes back on its own.
+// iPhone (owner request 2026-11-01): once there is a key or Apple's model, or
+// the person chose to chat in the app, the app opens straight into Scout's
+// own chat (ChatView.swift) and setup moves behind its Settings.
 struct ContentView: View {
     @State private var status = SetupStatus()
     @AppStorage("setup.celebrated") private var celebrated = false
     @State private var screen: Screen = .setup
     @Environment(\.scenePhase) private var scenePhase
+    #if os(iOS)
+    @AppStorage("chat.chosen") private var chatChosen = false
+    @State private var loaded = false
+    @State private var showSetup = false
+    #endif
 
     enum Screen { case setup, checking, success, ready }
 
     var body: some View {
+        #if os(iOS)
+        Group {
+            if !loaded {
+                Color.trailCanvas.ignoresSafeArea()
+            } else if showsChat {
+                ChatScreen(onSetup: { showSetup = true })
+                    .sheet(isPresented: $showSetup, onDismiss: { Task { await status.refresh() } }) { setupSheet }
+            } else {
+                setupFlow
+            }
+        }
+        .task {
+            await status.refresh()
+            loaded = true
+        }
+        #else
+        setupFlow
+        #endif
+    }
+
+    #if os(iOS)
+    /// Chat is the home screen when it can answer (a key or Apple's model), or when the person chose it.
+    private var showsChat: Bool {
+        chatChosen || status.progress.hasKey == true || status.progress.appleReady
+    }
+
+    /// Safari setup, opened from the chat's Settings.
+    private var setupSheet: some View {
+        NavigationStack {
+            Group {
+                if status.progress.isComplete {
+                    ReadyView()
+                } else {
+                    OnboardingView(progress: status.progress)
+                }
+            }
+            .background(Color.trailCanvas.ignoresSafeArea())
+            .navigationTitle("Scout in Safari")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showSetup = false }
+                }
+            }
+        }
+        .task { await status.refresh() }
+    }
+    #endif
+
+    private var setupFlow: some View {
         NavigationStack {
             Group {
                 switch screen {
                 case .setup:
+                    #if os(iOS)
+                    OnboardingView(progress: status.progress, onChat: { chatChosen = true })
+                    #else
                     OnboardingView(progress: status.progress)
+                    #endif
                 case .checking:
                     centered {
                         StagedProgressView(title: "Checking your setup", stages: checks) { outcome in
@@ -173,7 +235,7 @@ struct PrivacyCostsView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Scout sends page content to the provider you choose, using your own key. The key is stored in Keychain on this device.")
                 Text("Your provider bills your account for every request Scout makes, at the provider's prices. Scout shows an estimated cost after each answer or task.")
-                Text("To replace or remove your key, open Scout in Safari, then Settings.")
+                Text("To replace or remove your key, open Settings in the Scout app's chat, or Scout's Settings in Safari.")
                 Link("Privacy policy", destination: OnboardingView.privacyPolicyURL)
             }
             .font(.system(.body))
