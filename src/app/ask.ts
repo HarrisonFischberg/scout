@@ -3,7 +3,7 @@
 // general questions do (src/server/engine.ts), without a page or browser tools.
 // Apple's on-device model answers when there is no key, or first when the
 // user turned "Apple first" on; it hands off to Claude when it can't answer.
-import { APPLE_NO_PAGE_PROMPT, APPLE_WEB_RULE, appSystemPrompt } from "../chat/prompt";
+import { APPLE_CHAT_WEB_RULE, APPLE_NO_PAGE_PROMPT, appSystemPrompt } from "../chat/prompt";
 import { CHAT_MAX_TOKENS } from "../chat/session";
 import type { Source } from "../chat/sources";
 import { AppleModelError, appleCouldNotAnswer, appleRepeats, needsFreshFacts, stripSourceMarkers } from "../providers/apple";
@@ -47,7 +47,7 @@ async function askApple(apple: ProviderClient, input: AskInput, mustAnswer: bool
   let text = "";
   for await (const ev of apple.stream({
     model: "apple",
-    system: APPLE_NO_PAGE_PROMPT + (mustAnswer ? "" : " " + APPLE_WEB_RULE),
+    system: APPLE_NO_PAGE_PROMPT + (mustAnswer ? "" : " " + APPLE_CHAT_WEB_RULE),
     messages: [...input.history, { role: "user", content: input.question }],
     maxTokens: CHAT_MAX_TOKENS,
     ...(input.signal ? { signal: input.signal } : {}),

@@ -200,6 +200,23 @@ describe("ScoutServer", () => {
     expect(content).toMatch(/<\/untrusted_page_content>\n\nUser message: How many people died\?$/);
   });
 
+  // Owner report 2026-11-02: the full-window page answered "I couldn't read the page you have open because that tab wasn't shared".
+  it("runs a plain chat (the full-window page) like any chat assistant: no page talk, no browser tools, web search kept", async () => {
+    const provider = scripted([[text("The EHG has a Magpul grip."), { type: "done" }]]);
+    const { s } = server(provider);
+    s.start({ ...REQ, question: "How is the LCP MAX EHG different?", pages: [], shared: [], scope: "chat", open_page: { url: "https://shop.test/a", title: "Test shop" } });
+    await collect(s, "m1");
+    const req = provider.seen[0]!;
+    expect(req.tools).toBeUndefined();
+    expect(req.webSearch).toBe(true);
+    expect(req.system).toContain("not attached to a web page or browser tab");
+    expect(req.system).toContain("You can search the web.");
+    for (const page of ["in the user's web browser", "is included with each message", "read_page", "search_tabs", "untrusted_page_content", "Pages are numbered", "narrow chat panel", "the page title"]) {
+      expect(req.system).not.toContain(page);
+    }
+    expect(textOf(last(req.messages)!.content)).toBe("How is the LCP MAX EHG different?");
+  });
+
   it("keeps the page rules for a page question", async () => {
     const provider = scripted([[text("$10."), { type: "done" }]]);
     const { s } = server(provider);

@@ -353,6 +353,13 @@ async function main(): Promise<void> {
   const composer = el<HTMLFormElement>("composer");
   const question = el<HTMLTextAreaElement>("question");
   question.placeholder = ASK_HINT;
+  // The full-window page is a plain chat (owner, 2026-11-02): no page, no tabs to attach.
+  if (STANDALONE) {
+    el("composer-help").textContent = "Press Enter to send, Shift+Enter for a new line.";
+    document.querySelector('label[for="question"]')!.textContent = "Ask anything";
+    const tryIt = el("key-works").querySelector("span");
+    if (tryIt) tryIt.innerHTML = "<b>Your key works.</b> Ask anything.";
+  }
   const send = el<HTMLButtonElement>("send");
   const stop = el<HTMLButtonElement>("stop");
   const mic = el<HTMLButtonElement>("mic");
@@ -1540,7 +1547,7 @@ async function main(): Promise<void> {
     question.setAttribute("aria-activedescendant", "mention-" + mention.index);
   }
   function updateMentions(): void {
-    const at = mode() === "chat" ? mentionAt(question.value, question.selectionStart ?? question.value.length) : null;
+    const at = mode() === "chat" && !STANDALONE ? mentionAt(question.value, question.selectionStart ?? question.value.length) : null;
     const items = at ? suggestTabs(at.query, others, new Set(attached.keys())) : [];
     if (!at || !items.length) return closeMentions();
     mention = { start: at.start, items, index: 0 };
@@ -2109,7 +2116,7 @@ async function main(): Promise<void> {
     if (!s.apple && !consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     const cont = opts.continueOf;
     const redo = opts.redoOf;
-    const extra = cont || redo ? [] : [...attached.values()];
+    const extra = cont || redo || STANDALONE ? [] : [...attached.values()];
     // Asked first: the permission prompt needs this click's user gesture.
     let granted = extra.length === 0;
     if (!granted) {
@@ -2119,11 +2126,11 @@ async function main(): Promise<void> {
     const isSummary = trimmed === SUMMARIZE_QUESTION;
     // A general question goes without the page (src/chat/intent.ts); the page
     // stays shared with the answer, so read_page can still fetch it.
-    // The standalone page has no page to send; it keeps the usual prompt.
-    const scope: QuestionScope = cont || redo
-      ? (lastScope ?? "page")
-      : STANDALONE
-        ? "page"
+    // The full-window page is a plain chat with no page or browser (owner, 2026-11-02).
+    const scope: QuestionScope = STANDALONE
+      ? "chat"
+      : cont || redo
+        ? (lastScope ?? "page")
         : isSummary
           ? "page"
           : classifyQuestion({ question: trimmed, pageTitle: pageWords(tab.title, tab.url), attachedTabs: extra.length, ...(lastScope ? { previous: lastScope } : {}) });
@@ -2168,7 +2175,7 @@ async function main(): Promise<void> {
       v.shared = [...cont.shared];
       v.sources = [...cont.sources];
     }
-    else {
+    else if (!STANDALONE) {
       // Spec 6: the current tab when shared, plus the attached tabs. Nothing else.
       const ctx = await request<ContextReply>(
         toWorker,

@@ -6,7 +6,8 @@
 // miss is cheap: the model can still call read_page when the message turns out
 // to be about the page (GENERAL_SCOPE_RULES).
 
-export type QuestionScope = "page" | "general";
+/** "chat": a plain chat with no page or browser at all (the full-window Scout page). */
+export type QuestionScope = "page" | "general" | "chat";
 
 export interface ScopeInput {
   question: string;
