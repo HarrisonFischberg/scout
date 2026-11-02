@@ -18,6 +18,8 @@ export type ContentRequest =
   | { type: "scout:cart-update"; discount: string }
   // Codes the store's home page advertises (same origin); only the codes and the words around them come back.
   | { type: "scout:store-codes" }
+  // Codes this page shows anywhere, hidden parts included (src/coupons/page-codes.ts); only codes and nearby words come back.
+  | { type: "scout:page-codes" }
   // How the page names the store (meta tags), to identify the merchant behind a checkout host.
   | { type: "scout:page-meta" }
   | { type: "scout:reload" };

@@ -14,7 +14,39 @@ const PATTERNS = [
   new RegExp("\\bcodes?\\s*(?:is|:|=|-|–|—)?\\s*" + QUOTE + TOKEN, "gi"),
   // "enter SAVE15 at checkout", "use WELCOME10 for 10% off", "apply FALL20 to get"
   new RegExp("\\b(?:use|enter|apply|redeem)\\s+" + QUOTE + TOKEN + QUOTE + "\\s+(?:at\\s+check-?out|for|to\\s+(?:get|save|receive))", "gi"),
+  // "Coupon: SAVE15", "Promo - FALL20", "Discount = BF2026" (a separator is required, so "coupon below" is not read)
+  new RegExp("\\b(?:coupon|promo|discount|voucher)\\s*(?::|=|-|–|—)\\s*" + QUOTE + TOKEN, "gi"),
 ];
+
+// Looser (owner report 2026-11-02, bunkerkc.com showed KCMO15 and Scout found
+// nothing): a code-like word printed in capitals with a digit (KCMO15,
+// BF2026, 15OFF), anywhere near offer words such as "15% off", "save",
+// "coupon" or "promo", without "use code" in front. Tested after the strict
+// ones; product numbers ("SKU AB1234"), sizes and units are left out.
+const LOOSE_TOKEN = /(?<![A-Za-z0-9_-])[A-Z0-9][A-Z0-9-]{3,19}(?![A-Za-z0-9_-])/g;
+const LOOSE_NEAR = 60;
+const OFFER_WORDS = /\bcodes?\b|coupon|promo|discount|voucher|\d{1,2}\s?%\s*off|[$€£]\s?\d+\s*off|\bsave\b|\bextra\b.{0,12}\boff\b|\boff\s+(?:sitewide|everything|your|all)/i;
+const PRODUCT_PREFIX = /\b(?:sku|model|item|part|style|upc|mpn|ean|isbn|gtin|serial)\s*(?:#|no\.?|number)?\s*[:#.]?\s*$|#\s*$/i;
+const UNIT = /^\d+(?:AM|PM|ST|ND|RD|TH|OZ|MM|CM|IN|FT|LB|LBS|GB|TB|MB|ML|KG|HZ|MP|PC|PCS|PK|XL|XXL|XS|MAH|MPH|HP|CC|W|V)$|^[A-Z]{1,2}\d{1,2}$|^(?:USB|HDMI|MP3|MP4|COVID19|H2O|CO2|4K|8K|5G|4G|3D|2D)\w*$/;
+
+/** Code-like words near offer words, with their position and the words around them. */
+function looseHits(text: string): Array<{ at: number; code: string; context: string }> {
+  const out: Array<{ at: number; code: string; context: string }> = [];
+  for (const m of text.matchAll(LOOSE_TOKEN)) {
+    const raw = m[0];
+    const at = m.index ?? 0;
+    if (!/\d/.test(raw) || !/[A-Z].*[A-Z]/.test(raw) || UNIT.test(raw)) continue;
+    // A dash-joined part number ("AB-12-CD") or a date-like word is not a code.
+    if ((raw.match(/-/g) ?? []).length > 1) continue;
+    if (PRODUCT_PREFIX.test(text.slice(Math.max(0, at - 16), at))) continue;
+    const near = text.slice(Math.max(0, at - LOOSE_NEAR), at + raw.length + LOOSE_NEAR);
+    if (!OFFER_WORDS.test(near)) continue;
+    const code = normalizeCode(raw);
+    if (!code || NOT_CODES.has(code)) continue;
+    out.push({ at, code, context: text.slice(Math.max(0, at - CONTEXT_CHARS), at + raw.length + CONTEXT_CHARS).replace(/\s+/g, " ").trim() });
+  }
+  return out;
+}
 
 // Words that follow "code" on store pages but are not codes.
 const NOT_CODES = new Set([
@@ -35,16 +67,17 @@ export interface StoreCode {
 
 /**
  * Codes advertised in `text`, in page order, with the words around each.
- * Strict on purpose: the code must be written in capitals (digits allowed)
- * right after a phrase such as "use code" or "promo code:", so ordinary
- * words are not picked up.
+ * Strict matches first: a code right after a phrase such as "use code" or
+ * "promo code:", written in capitals or with a digit. Then looser ones: a
+ * capitalised word with a digit near offer words ("15% OFF · KCMO15").
  */
 export function codesWithContext(text: string, max = MAX_STORE_CODES): StoreCode[] {
   const hits: Array<{ at: number; code: string; context: string }> = [];
   for (const re of PATTERNS) {
     for (const m of text.matchAll(re)) {
       const raw = m[1] ?? "";
-      if (raw !== raw.toUpperCase()) continue;
+      // Written in capitals, or with a digit ("use code kcmo15"), so "code below" is not a code.
+      if (raw !== raw.toUpperCase() && !/\d/.test(raw)) continue;
       const code = normalizeCode(raw);
       if (!code || NOT_CODES.has(code)) continue;
       const at = m.index ?? 0;
@@ -52,8 +85,10 @@ export function codesWithContext(text: string, max = MAX_STORE_CODES): StoreCode
       hits.push({ at, code, context });
     }
   }
+  // Strict matches in page order first, then the looser ones.
+  const ordered = [...hits.sort((a, b) => a.at - b.at), ...looseHits(text)];
   const out: StoreCode[] = [];
-  for (const h of hits.sort((a, b) => a.at - b.at)) {
+  for (const h of ordered) {
     if (!out.some((o) => o.code === h.code)) out.push({ code: h.code, context: h.context });
     if (out.length >= max) break;
   }

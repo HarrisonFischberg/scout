@@ -137,6 +137,11 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     const sells = sellsLine(meta);
     const linked = merchant.domain !== identifyMerchant(snap.url, { ...(meta ?? {}), links: [] }).domain;
     trace("coupons:merchant " + (merchant.host === merchant.domain ? "store-host" : "other-host") + (linked ? " linked" : "") + (meta?.siteName ? " named" : "") + (sells ? " sells" : ""));
+    // Codes this page shows anywhere: the snapshot's text, and the whole page
+    // read in the tab (hidden popups, banner slides, image labels; page-codes.ts).
+    const shownRaw = [...codesWithContext(snap.text), ...((await page.pageCodes?.().catch((): StoreCode[] => [])) ?? [])];
+    const shown = shownRaw.filter((c, i) => shownRaw.findIndex((o) => o.code === c.code) === i).slice(0, MAX_STORE_CODES);
+    trace("coupons:page-codes " + shown.length);
     const ac = new AbortController();
     run.signal.addEventListener("abort", () => ac.abort(), { once: true });
     // Waits run here, not in the page, so they outlast a page that reloads.
@@ -178,11 +183,13 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     }
     if ("error" in tester) {
       trace("coupons:method none status " + tester.error);
+      // No box here (a product page): still say which codes the page itself shows.
+      const seen = tester.error === "no_form" && shown.length ? " " + shownCodesLine(shown.map((c) => c.code)) : "";
       return finish({
         status: tester.error,
-        message: tester.message,
+        message: tester.message + seen,
         outcome: tester.error === "stopped" ? "stopped" : "error",
-        summary: tester.message + (tester.error === "no_form" ? " No codes were searched for or tested." : ""),
+        summary: tester.message + seen + (tester.error === "no_form" ? " No codes were searched for or tested." : ""),
         tone: "error",
         status_text: couponStatusText(tester.error),
       });
@@ -198,7 +205,7 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
     const asStore = (c: StoreCode, sourceUrl: string): CouponCandidate => ({ code: c.code, origin: "store", sourceUrl, context: c.context });
     const onSite = rankCandidates(
       mergeCandidates(
-        codesWithContext(snap.text).map((c) => asStore(c, snap.url)),
+        shown.map((c) => asStore(c, snap.url)),
         (await page.storeCodes().catch((): StoreCode[] => [])).map((c) => asStore(c, storeUrl)),
       ).slice(0, MAX_STORE_CODES),
       merchant,
@@ -520,6 +527,12 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
 }
 
 /** Where a tested code came from, for the run trace: the site's host only (no path or query). */
+/** "This page shows the code KCMO15. Open your cart …": for a page with codes but no coupon box. */
+export function shownCodesLine(codes: string[]): string {
+  const list = codes.length <= 1 ? (codes[0] ?? "") : codes.slice(0, -1).join(", ") + " and " + codes[codes.length - 1];
+  return "This page shows " + (codes.length === 1 ? "the code " : "the codes ") + list + ". Open your cart and run Find coupons there to try " + (codes.length === 1 ? "it" : "them") + ".";
+}
+
 export function sourceLabel(a: { origin: string; sourceUrl?: string }): string {
   if (a.sourceUrl) {
     try {

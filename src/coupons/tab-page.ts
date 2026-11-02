@@ -18,6 +18,8 @@ export interface CouponPage {
   cart: CartApi;
   /** Codes the store's home page advertises, with the words around each. */
   storeCodes(): Promise<StoreCode[]>;
+  /** Codes this page shows anywhere (popups, hidden banner slides, image labels), with the words around each. */
+  pageCodes?(): Promise<StoreCode[]>;
   /** How the page names the store (meta tags). */
   meta(): Promise<MerchantMeta | null>;
 }
@@ -96,17 +98,20 @@ export async function tabCouponPage(tabId: number, opts: { aboveSheet?: boolean;
       update: async (discount: string) => (await call({ type: "scout:cart-update", discount })) as CartState | { rateLimited: true } | null,
       reload: async () => void (await call({ type: "scout:reload" })),
     },
-    storeCodes: async () => {
-      const codes = await call({ type: "scout:store-codes" });
-      return Array.isArray(codes)
-        ? codes.filter((c): c is StoreCode => !!c && typeof (c as StoreCode).code === "string" && typeof (c as StoreCode).context === "string").slice(0, MAX_STORE_CODES)
-        : [];
-    },
+    storeCodes: async () => storeCodeList(await call({ type: "scout:store-codes" })),
+    pageCodes: async () => storeCodeList(await call({ type: "scout:page-codes" })),
     meta: async () => {
       const m = (await call({ type: "scout:page-meta" })) as MerchantMeta | null;
       return m && typeof m === "object" ? m : null;
     },
   };
+}
+
+/** Codes as the content script returned them (page data), checked for shape. */
+function storeCodeList(codes: unknown): StoreCode[] {
+  return Array.isArray(codes)
+    ? codes.filter((c): c is StoreCode => !!c && typeof (c as StoreCode).code === "string" && typeof (c as StoreCode).context === "string").slice(0, MAX_STORE_CODES)
+    : [];
 }
 
 const originOf = (url: string): string | null => {
