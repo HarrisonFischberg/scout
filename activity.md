@@ -2239,3 +2239,15 @@ Owner after #79: "it brings up the keyboard but doesnt activate the microphone".
 - Built: the iOS app opens straight into a chat screen once there is a key or Apple's model (or the person taps "Just chat with Scout in this app" in setup). The screen is a web page built from `src/app/chat.ts` + `src/app.html` into `apple/App/Chat/` (gitignored, made by `npm run build`), shown by `apple/App/ChatView.swift` in a WKWebView. It reuses the panel's Anthropic provider (streaming, web search, pause_turn resume), Markdown renderer, source chips and "N sources" list, cost line and key check. Native bridge (`window.webkit.messageHandlers.scout`, reply-style): Keychain get/set/delete for provider accounts only (the same shared Keychain item as the extension, so the key is entered once), Apple's on-device model (`AppleModelBridge`), and "Safari setup" which opens the old setup screens in a sheet. Web links open in Safari; the page cannot navigate away.
 - Choices (defaults, owner may change): Claude answers every question (model from Settings, default Haiku 5.5 at High, like the panel); Apple's model answers only with no key, or first when "Use Apple's model first" is turned on in the app's Settings (off by default). Chats are saved on the iPhone with a Chats list and New chat; every launch starts a new chat. One-time consent dialog before anything is sent to Anthropic. Key field in the app when no key is saved.
 - Evidence: `tests/unit/app-chat.test.ts` (16), `tests/e2e/app-chat.spec.ts` (4: consent, answer with chip and sources, follow-up history, Chats list, reload persistence, key entry with a rejected and an accepted key, Apple-only answer, model choice and Safari setup bridge) pass on Chromium; WebKit is not installed in the cloud sandbox. Screenshots at /mnt/project-files/app-chat/. Swift could not be compiled here (no Xcode): the Xcode build, XCTest/UI audit and a real-iPhone check are pending on the Mac.
+
+## 2026-11-02 App chat: fresh starter questions each launch
+
+Harold asked for four new suggested questions every time the iOS app loads
+instead of the fixed four. `src/app/starters.ts` holds a built-in pool of 60
+questions in 11 topics; each launch and each New chat picks four from four
+different topics, avoiding the last set shown (kept in app web storage). No
+API call. Web questions (news today, weather, new movies, tech, scores) only
+appear when Claude with web search answers, not with Apple's model only.
+Evidence: `tests/unit/app-starters.test.ts` (4), new e2e in
+`tests/e2e/app-chat.spec.ts` (8/8 on Chromium in the cloud; WebKit not
+installed here).
