@@ -230,9 +230,8 @@ test.describe("Scout app starter questions", () => {
   // Owner request 2026-11-02: paste or pick images and have Claude read them.
   test("a picked photo shows as a thumbnail, goes to Claude, and the saved chat keeps only a note", async ({ page }) => {
     const { bodies } = await openApp(page, { key: KEY });
-    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
     await expect(page.getByRole("button", { name: "Add image" })).toBeVisible();
-    await page.locator("#img-pick").setInputFiles({ name: "a.png", mimeType: "image/png", buffer: png });
+    await page.locator("#img-pick").setInputFiles("src/icons/toolbar-128.png");
     const tray = page.getByRole("group", { name: "Attached images" });
     await expect(tray.locator("img")).toHaveCount(1);
     // Images alone can be sent.
@@ -257,8 +256,7 @@ test.describe("Scout app starter questions", () => {
 
   test("without a key, an image question says it needs one", async ({ page }) => {
     const { bodies } = await openApp(page, { key: null, apple: true });
-    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
-    await page.locator("#img-pick").setInputFiles({ name: "a.png", mimeType: "image/png", buffer: png });
+    await page.locator("#img-pick").setInputFiles("src/icons/toolbar-128.png");
     await page.getByLabel("Message").fill("What is this?");
     await page.getByRole("button", { name: "Send" }).click();
     await expect(page.getByText("Reading images needs an API key.")).toBeVisible();

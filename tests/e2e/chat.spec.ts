@@ -365,7 +365,8 @@ async function pasteImage(page: Page, width: number, height: number): Promise<vo
 }
 
 function pngWidth(base64: string): number {
-  return Buffer.from(base64, "base64").readUInt32BE(16);
+  const b = atob(base64);
+  return ((b.charCodeAt(16) << 24) | (b.charCodeAt(17) << 16) | (b.charCodeAt(18) << 8) | b.charCodeAt(19)) >>> 0;
 }
 
 test("a pasted image shows as a thumbnail, can be removed, and goes to the provider scaled down", async ({ page }) => {
@@ -407,8 +408,7 @@ test("Add image in the + menu picks a file", async ({ page }) => {
   await openPopup(page, { key: "sk-test-synthetic" });
   await page.getByRole("button", { name: "More actions" }).click();
   await expect(page.getByRole("button", { name: "Add image" })).toBeVisible();
-  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
-  await page.locator("#img-pick").setInputFiles({ name: "a.png", mimeType: "image/png", buffer: png });
+  await page.locator("#img-pick").setInputFiles("src/icons/toolbar-128.png");
   await expect(page.getByRole("group", { name: "Attached images" }).locator("img")).toHaveCount(1);
 });
 
