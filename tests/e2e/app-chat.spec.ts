@@ -210,3 +210,20 @@ test.describe("Scout app chat", () => {
     await expect(page.locator("html")).toHaveAttribute("data-look", "glasshouse");
   });
 });
+
+test.describe("Scout app starter questions", () => {
+  test("shows four fresh starters on each launch and on New chat", async ({ page }) => {
+    await openApp(page, { key: "sk-ant-test-key" });
+    const starters = page.getByRole("list", { name: "Try asking" }).getByRole("button");
+    await expect(starters).toHaveCount(4);
+    const first = await starters.allTextContents();
+    await page.reload();
+    await expect(starters).toHaveCount(4);
+    const second = await starters.allTextContents();
+    for (const t of second) expect(first).not.toContain(t);
+    await page.getByRole("button", { name: "New chat" }).first().click();
+    await expect(starters).toHaveCount(4);
+    const third = await starters.allTextContents();
+    for (const t of third) expect(second).not.toContain(t);
+  });
+});
