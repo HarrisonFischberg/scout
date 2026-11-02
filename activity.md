@@ -2243,7 +2243,7 @@ Owner after #79: "it brings up the keyboard but doesnt activate the microphone".
 ## 2026-11-02 App chat: fresh starter questions each launch
 
 Harold asked for four new suggested questions every time the iOS app loads
-instead of the fixed four. `src/app/starters.ts` holds a built-in pool of 60
+instead of the fixed four. `src/app/starters.ts` holds a built-in pool of 123
 questions in 11 topics; each launch and each New chat picks four from four
 different topics, avoiding the last set shown (kept in app web storage). No
 API call. Web questions (news today, weather, new movies, tech, scores) only

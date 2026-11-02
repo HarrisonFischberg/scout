@@ -8,7 +8,7 @@ function seeded(seed: number): () => number {
 
 describe("app starter questions", () => {
   it("has a large pool with no duplicates", () => {
-    expect(STARTERS.length).toBeGreaterThanOrEqual(50);
+    expect(STARTERS.length).toBeGreaterThanOrEqual(120);
     expect(new Set(STARTERS.map((s) => s.text)).size).toBe(STARTERS.length);
   });
 
