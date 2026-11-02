@@ -226,4 +226,42 @@ test.describe("Scout app starter questions", () => {
     const third = await starters.allTextContents();
     for (const t of third) expect(second).not.toContain(t);
   });
+
+  // Owner request 2026-11-02: paste or pick images and have Claude read them.
+  test("a picked photo shows as a thumbnail, goes to Claude, and the saved chat keeps only a note", async ({ page }) => {
+    const { bodies } = await openApp(page, { key: KEY });
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+    await expect(page.getByRole("button", { name: "Add image" })).toBeVisible();
+    await page.locator("#img-pick").setInputFiles({ name: "a.png", mimeType: "image/png", buffer: png });
+    const tray = page.getByRole("group", { name: "Attached images" });
+    await expect(tray.locator("img")).toHaveCount(1);
+    // Images alone can be sent.
+    await expect(page.getByRole("button", { name: "Send" })).toBeEnabled();
+    await page.getByLabel("Message").fill("What is this?");
+    await page.getByRole("button", { name: "Send" }).click();
+    await page.getByRole("button", { name: "Agree and send" }).click();
+    await expect(page.locator(".msg.assistant").last()).toContainText("It's sunny in Paris today.");
+    await expect(page.locator(".msg.user .msg-images img")).toHaveCount(1);
+    await expect(tray).toBeHidden();
+    const content = bodies[0]!.messages as Array<{ content: Array<Record<string, any>> }>;
+    expect(content[0]!.content[0]).toEqual({ type: "text", text: "What is this?" });
+    expect(content[0]!.content[1]).toMatchObject({ type: "image", source: { type: "base64", media_type: "image/png" } });
+    const saved = await page.evaluate(() => JSON.stringify(localStorage));
+    expect(saved).not.toContain(content[0]!.content[1]!.source.data);
+    // Reopened from Chats, the question shows "1 image".
+    await page.getByRole("button", { name: "New chat" }).first().click();
+    await page.getByRole("button", { name: "Chats" }).click();
+    await page.getByRole("dialog", { name: "Chats" }).getByRole("button", { name: /^What is this\?/ }).click();
+    await expect(page.locator(".msg.user .img-note")).toHaveText("1 image");
+  });
+
+  test("without a key, an image question says it needs one", async ({ page }) => {
+    const { bodies } = await openApp(page, { key: null, apple: true });
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+    await page.locator("#img-pick").setInputFiles({ name: "a.png", mimeType: "image/png", buffer: png });
+    await page.getByLabel("Message").fill("What is this?");
+    await page.getByRole("button", { name: "Send" }).click();
+    await expect(page.getByText("Reading images needs an API key.")).toBeVisible();
+    expect(bodies).toHaveLength(0);
+  });
 });

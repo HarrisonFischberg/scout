@@ -54,6 +54,8 @@ export class AppleModelError extends Error {
             ? "Apple Intelligence isn't available on this device."
             : code === "timeout"
               ? "Apple's on-device model took too long to answer. Try again."
+            : code === "images"
+              ? "Reading images needs an API key. Apple's on-device model can't see images."
             : "Apple's on-device model couldn't answer. Try again.",
     );
     this.name = "AppleModelError";

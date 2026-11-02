@@ -166,8 +166,10 @@ export const REQUESTS = {
         fallback: { object: { provider: { enum: ["anthropic", "openai"] }, model: "string", effort: { enum: EFFORTS } }, optional: ["effort"] },
         /** "Ask Claude" under Apple's answer: the saved answer this one replaces. */
         replaces: "string",
+        /** Images pasted into the ask box, already scaled and re-encoded (src/chat/images.ts). */
+        images: { array: { object: { mediaType: { enum: ["image/jpeg", "image/png"] }, data: "string", width: "number", height: "number" } } },
       },
-      optional: ["effort", "shared", "display_question", "answer_prefix", "prefix_sources", "site", "scope", "open_page", "fallback", "replaces"],
+      optional: ["effort", "shared", "display_question", "answer_prefix", "prefix_sources", "site", "scope", "open_page", "fallback", "replaces", "images"],
     },
   },
   "chat.stop": { senders: ["panel"], payload: { object: { message_id: "string" } } },

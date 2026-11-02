@@ -176,7 +176,7 @@ export function consentText(p: Provider): ConsentText {
       "Scout sends your requests to " + name + ", a third-party AI provider, using your own API key. " +
       "Each time you use Scout, " + name + " receives:",
     items: [
-      "Your messages and the tasks you type.",
+      "Your messages and the tasks you type, and any images you add to a message.",
       "When a request uses the page (questions, Summarize, Scout mode, Find coupons): the page's address, title, description, and text. " +
         "What you typed into forms, password fields, and hidden fields are left out, and passwords, keys, and tokens found on the page are removed. " +
         "Scout mode and Find coupons also send the page's links, buttons, and form fields, with password and card fields hidden. Scout mode sends them again after each step it takes.",

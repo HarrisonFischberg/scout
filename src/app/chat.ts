@@ -14,6 +14,7 @@ import { checkKey, looksLikeKey } from "../providers/keytest";
 import { BUILTIN_MODELS } from "../providers/models";
 import type { Effort } from "../providers/types";
 import { DEFAULT_EFFORT, DEFAULT_MODEL } from "../settings/settings";
+import { IMAGES_NEED_KEY, MAX_IMAGES, imageFiles, messageThumbs, prepareImage, questionFor, renderTray, type PastedImage } from "../chat/images";
 import { ask } from "./ask";
 import { LAST_STARTERS_KEY, pickStarters } from "./starters";
 import { chatTitle, deleteChat, historyFor, loadChats, newChatId, saveChats, upsertChat, type AppChat, type AppTurn, type TextStorage } from "./chats";
@@ -216,10 +217,18 @@ function sourceRow(s: Source): HTMLLIElement {
   return li;
 }
 
-function userBubble(text: string): HTMLElement {
+/** A question; with images just sent, their thumbnails; a saved one notes them (images aren't saved). */
+function userBubble(text: string, images: readonly PastedImage[] | number = 0): HTMLElement {
   const el = document.createElement("div");
   el.className = "msg user";
   el.textContent = text;
+  if (typeof images !== "number" && images.length) el.prepend(messageThumbs(images));
+  else if (typeof images === "number" && images > 0) {
+    const note = document.createElement("span");
+    note.className = "img-note";
+    note.textContent = images === 1 ? "1 image" : images + " images";
+    el.prepend(note);
+  }
   return el;
 }
 
@@ -238,7 +247,7 @@ function assistantBubble(turn: AppTurn, cost?: string): HTMLElement {
 function renderThread(): void {
   thread.replaceChildren();
   const turns = state.chat?.turns ?? [];
-  for (const t of turns) thread.appendChild(t.role === "user" ? userBubble(t.text) : assistantBubble(t));
+  for (const t of turns) thread.appendChild(t.role === "user" ? userBubble(t.text, t.images ?? 0) : assistantBubble(t));
   updateEmpty();
   scrollToEnd();
 }
@@ -259,7 +268,7 @@ function updateEmpty(): void {
 
 function updateSend(): void {
   const running = !!state.running;
-  sendBtn.disabled = !running && (!question.value.trim() || (!state.hasKey && !state.appleReady));
+  sendBtn.disabled = !running && ((!question.value.trim() && !pending.length) || (!state.hasKey && !state.appleReady));
   sendBtn.setAttribute("aria-label", running ? "Stop" : "Send");
   $("send-icon").toggleAttribute("hidden", running);
   $("stop-icon").toggleAttribute("hidden", !running);
@@ -292,23 +301,55 @@ function askConsent(): Promise<boolean> {
   });
 }
 
+// Pasted or picked images (owner request 2026-11-02), scaled and re-encoded
+// first (src/chat/images.ts); thumbnails sit above the ask box until sent.
+const pending: PastedImage[] = [];
+
+function showTray(): void {
+  renderTray($("img-tray"), pending, (i) => {
+    pending.splice(i, 1);
+    showTray();
+  });
+  updateSend();
+}
+
+async function addImages(files: File[]): Promise<void> {
+  for (const f of files.slice(0, Math.max(0, MAX_IMAGES - pending.length))) {
+    try {
+      const img = await prepareImage(f);
+      if (pending.length < MAX_IMAGES) pending.push(img);
+    } catch (err) {
+      thread.appendChild(assistantBubble({ role: "assistant", text: err instanceof Error ? err.message : "Scout couldn't open that image.", error: true }));
+      scrollToEnd();
+    }
+  }
+  showTray();
+}
+
 async function submit(text: string): Promise<void> {
-  const q = text.trim();
+  const typed = text.trim();
+  const q = questionFor(typed, pending.length);
   if (!q || state.running) return;
   const key = await getKey();
   state.hasKey = !!key;
   const useApple = state.appleReady && (!key || state.settings.appleFirst);
   if (!key && !state.appleReady) return updateEmpty();
+  if (pending.length && !key) {
+    thread.appendChild(assistantBubble({ role: "assistant", text: IMAGES_NEED_KEY, error: true }));
+    return scrollToEnd();
+  }
   if (key && !(await askConsent())) return;
 
   question.value = "";
   autosize();
+  const images = pending.splice(0);
+  showTray();
   const chat: AppChat = state.chat ?? { id: newChatId(), title: chatTitle(q), at: Date.now(), turns: [] };
   const history = historyFor(chat.turns);
-  chat.turns.push({ role: "user", text: q });
+  chat.turns.push({ role: "user", text: q, ...(images.length ? { images: images.length } : {}) });
   chat.at = Date.now();
   state.chat = chat;
-  thread.appendChild(userBubble(q));
+  thread.appendChild(userBubble(typed, images));
 
   const live = document.createElement("div");
   live.className = "msg assistant";
@@ -333,6 +374,7 @@ async function submit(text: string): Promise<void> {
     appleFirst: state.settings.appleFirst,
     history,
     question: q,
+    ...(images.length ? { images } : {}),
     signal: controller.signal,
     onText: (t) => {
       cancelAnimationFrame(frame);
@@ -553,6 +595,19 @@ function wire(): void {
   question.addEventListener("input", () => {
     autosize();
     updateSend();
+  });
+  question.addEventListener("paste", (e) => {
+    const files = imageFiles(e.clipboardData?.items);
+    if (!files.length) return;
+    e.preventDefault();
+    void addImages(files);
+  });
+  $("img-add").addEventListener("click", () => $<HTMLInputElement>("img-pick").click());
+  $<HTMLInputElement>("img-pick").addEventListener("change", (e) => {
+    const input = e.target as HTMLInputElement;
+    const files = imageFiles(input.files);
+    input.value = "";
+    void addImages(files);
   });
   question.addEventListener("keydown", (e) => {
     // Return sends on a hardware keyboard; Shift-Return adds a line.
