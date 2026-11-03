@@ -108,7 +108,9 @@ test.describe("Scout app chat", () => {
     const body = bodies[0]!;
     expect(body.model).toBe("claude-haiku-5-5");
     expect(JSON.stringify(body.tools)).toContain("web_search");
-    expect(String(body.system)).toContain("Scout app");
+    // A plain chat (owner 2026-11-02): no page or browser in the prompt.
+    expect(String(body.system)).toContain("not attached to a web page or browser tab");
+    expect(String(body.system)).not.toContain("in the user's web browser");
     expect(body.messages).toEqual([{ role: "user", content: "What's the weather in Paris?" }]);
 
     // A follow-up sends the conversation so far, without citation markers.
