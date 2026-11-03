@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { summarizeChats, whenText } from "../../src/chat/list";
 import { deleteConversation, loadHistory, siteOf, type HistoryEntry, type StorageArea } from "../../src/settings/settings";
 
-const titles = { summarize: (q: string) => q === "SUMMARIZE", coupons: "Find coupons", agent: "Scout mode" };
+const titles = { label: (q: string) => (q === "SUMMARIZE" ? "Summarize page" : q), coupons: "Find coupons", agent: "Scout mode" };
 
 function fakeStorage(initial: Record<string, unknown> = {}): StorageArea & { data: Record<string, unknown> } {
   const data: Record<string, unknown> = { ...initial };

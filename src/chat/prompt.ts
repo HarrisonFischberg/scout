@@ -178,6 +178,21 @@ export const SUMMARIZE_QUESTION =
 /** Earlier wording, still found in saved history. */
 export const LEGACY_SUMMARIZE_QUESTIONS = ["Summarize this page in a few bullet points."];
 
+/** "Explain the key points": a short summary on top, a little detail below (owner, 2026-11-03: "too much data"). */
+export const EXPLAIN_QUESTION =
+  "Explain the key points of this page. Start with a summary of at most 3 bullet points, one short sentence each, that together cover what matters most. " +
+  "Then add a heading \"More detail\" with at most 4 short bullet points that add something the summary left out; skip it if there is nothing to add. " +
+  "No introduction and no closing line.";
+/** Earlier wording, still found in saved history. */
+export const LEGACY_EXPLAIN_QUESTIONS = ["Explain the most important points on this page."];
+
+/** What the thread and the chats list show for a starter's long instruction; the question itself otherwise. */
+export function starterLabel(question: string): string {
+  if (question === SUMMARIZE_QUESTION || LEGACY_SUMMARIZE_QUESTIONS.includes(question)) return "Summarize page";
+  if (question === EXPLAIN_QUESTION || LEGACY_EXPLAIN_QUESTIONS.includes(question)) return "Explain key points";
+  return question;
+}
+
 /** The open page's title and address, without its text, for a general message (OPEN_PAGE_RULES). */
 export function fenceOpenPage(page: { url: string; title: string }): string {
   let where = page.url;
