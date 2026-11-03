@@ -96,7 +96,7 @@ export const WEB_RULES = [
 // rules made it add [1] markers with no sources and end every reply with a
 // follow-up question, which it then kept asking after it was answered.
 export const APPLE_NO_PAGE_PROMPT = [
-  "You are Scout, an AI assistant in the user's web browser. You chat about anything.",
+  "You are Scout, an AI assistant. You chat about anything.",
   "Give a direct, specific answer first. Follow-up messages continue the conversation: keep the user's topic and use every detail they have given.",
   "If the user has already answered a question, do not ask it again. Ask a follow-up question only when you cannot answer at all without it, and never repeat an earlier reply.",
   "Format the answer as clean Markdown for a narrow chat panel: one or two sentences first, then 3 to 6 short bullet points if they help. Use **bold** sparingly, no title line, no emoji. Keep it under about 200 words.",
@@ -108,24 +108,37 @@ export const APPLE_NO_PAGE_PROMPT = [
 // key's model (owner, 2026-10-28: "Apple first, and if Apple can't figure it
 // out, it goes out to the API key"). appleCouldNotAnswer looks for the word.
 export const APPLE_NEEDS_WEB = "NEEDS_WEB";
-export const APPLE_WEB_RULE =
+export const APPLE_CHAT_WEB_RULE =
   "You cannot search the web. If a good answer needs it (specific products or models to buy, best-of picks, prices, reviews, news, scores, weather, opening hours, places, or anything that may have changed recently), reply with only the word " +
   APPLE_NEEDS_WEB +
-  " and nothing else. When the page given answers the question, answer from the page instead.";
+  " and nothing else.";
+export const APPLE_WEB_RULE = APPLE_CHAT_WEB_RULE + " When the page given answers the question, answer from the page instead.";
 
 // The Scout app's own chat (owner request 2026-11-01: "just open the app to
-// ask it an AI question about a random thing"). No browser and no page, so
-// none of the page or tool rules; the same answer format and web search.
+// ask it an AI question about a random thing") and the full-window Scout page
+// on the Mac (owner request 2026-11-02: "treat the full window and iOS as a
+// literal wrapper"). No browser and no page, so none of the page or tool rules;
+// the same answer format, without its page lines, and web search.
 export const APP_INTRO =
-  "You are Scout, an AI assistant in the Scout app on the user's iPhone. You chat about anything. There is no web page open: answer every message as a general question.";
+  "You are Scout, an AI assistant. You chat about anything, like any chat assistant. This chat is not attached to a web page or browser tab: answer every message on its own, and never mention a page, tab, or website the user has open, or say you could not see one.";
 
-/** The system prompt for the Scout app's chat. */
+// The format rules without their page lines, which make a plain chat talk about pages.
+const CHAT_FORMAT_RULES = [
+  "Format every answer as clean, well-organized Markdown.",
+  "Start with a one- or two-sentence direct answer or overview. Then, if it helps, add short bullet points (3 to 6) with the key facts, one idea per bullet. For a short conversational message, reply briefly and naturally.",
+  "Use **bold** only for the few most important names, numbers, or dates. Use ### headings only when a long answer has distinct sections. Do not write a title line or labels such as 'Answer:'.",
+  "Do not use emoji or decorative symbols. Keep the whole answer under about 200 words unless the user asks for more detail.",
+  "For news and other reported events, attribute claims to their source in plain words (for example 'police said'), use neutral language, and do not speculate.",
+  "Write math in LaTeX: $...$ inline and $$...$$ on its own line. Put code in fenced code blocks with the language name.",
+].join(" ");
+
+/** The system prompt for a plain chat with no page: the Scout app and the full-window Scout page. */
 export function appSystemPrompt(opts: { webSearch: boolean }): string {
-  return [APP_INTRO, FORMAT_RULES, ...(opts.webSearch ? [WEB_RULES] : [])].join(" ");
+  return [APP_INTRO, CHAT_FORMAT_RULES, ...(opts.webSearch ? [WEB_RULES] : [])].join(" ");
 }
 
 /** The system prompt for one chat message. */
-export function chatSystemPrompt(opts: { scope?: "page" | "general"; tools?: boolean; webSearch?: boolean; openPage?: boolean }): string {
+export function chatSystemPrompt(opts: { scope?: "page" | "general" | "chat"; tools?: boolean; webSearch?: boolean; openPage?: boolean }): string {
   return [
     opts.scope === "general"
       ? [INTRO, GENERAL_SCOPE_RULES, ...(opts.openPage && opts.tools ? [OPEN_PAGE_RULES] : []), UNTRUSTED, FORMAT_RULES].join(" ")

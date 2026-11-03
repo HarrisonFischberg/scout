@@ -305,7 +305,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
       display_question?: string;
       answer_prefix?: string;
       prefix_sources?: Array<{ url: string; title: string }>;
-      scope?: "page" | "general";
+      scope?: "page" | "general" | "chat";
       open_page?: { url: string; title: string };
       fallback?: { provider: Provider; model: string; effort?: Effort };
       replaces?: string;

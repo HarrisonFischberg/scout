@@ -12,7 +12,7 @@
 import { BridgeError } from "../bridge/messages";
 import { withImages, type PastedImage } from "../chat/images";
 import type { QuestionScope } from "../chat/intent";
-import { APPLE_NO_PAGE_PROMPT, APPLE_WEB_RULE, buildMessages, chatSystemPrompt, fenceOpenPage, type PageContext } from "../chat/prompt";
+import { APPLE_CHAT_WEB_RULE, APPLE_NO_PAGE_PROMPT, APPLE_WEB_RULE, appSystemPrompt, buildMessages, chatSystemPrompt, fenceOpenPage, type PageContext } from "../chat/prompt";
 import { CHAT_MAX_TOKENS } from "../chat/session";
 import type { Provider } from "../keychain";
 import { ProviderError } from "../providers/errors";
@@ -45,7 +45,10 @@ export interface StartRequest {
   prefix_sources?: Array<{ url: string; title: string }>;
   /** Host of the page the chat is on (the chats menu). */
   site?: string;
-  /** "general": the panel judged the message unrelated to the page and sent none (src/chat/intent.ts). */
+  /**
+   * "general": the panel judged the message unrelated to the page and sent none (src/chat/intent.ts).
+   * "chat": a plain chat with no page or browser (the full-window Scout page): no browser tools, no page talk.
+   */
   scope?: QuestionScope;
   /** A general message's open page: title and address only, so the model can tell when it is relevant. */
   open_page?: { url: string; title: string };
@@ -229,7 +232,9 @@ export class ScoutServer {
       let text = "";
       for await (const ev of apple.stream({
         model: APPLE_MODEL,
-        system: (noPage ? APPLE_NO_PAGE_PROMPT : chatSystemPrompt({ scope: req.scope })) + " " + APPLE_WEB_RULE,
+        system: req.scope === "chat"
+          ? APPLE_NO_PAGE_PROMPT + " " + APPLE_CHAT_WEB_RULE
+          : (noPage ? APPLE_NO_PAGE_PROMPT : chatSystemPrompt({ scope: req.scope })) + " " + APPLE_WEB_RULE,
         messages: buildMessages(req.history, req.question, req.pages[0] ?? null, req.pages.slice(1)),
         maxTokens: CHAT_MAX_TOKENS,
         signal,
@@ -264,7 +269,9 @@ export class ScoutServer {
       if (hasImages && use.model === APPLE_MODEL) throw new AppleModelError("images");
       if (apple === null && tryApple && !signal.aborted) this.emit(run, { kind: "handoff" });
       const provider = apple === null && !signal.aborted ? await this.deps.provider(use.provider, use.model) : null;
-      const tools = await this.deps.tools().catch(() => [] as ToolSpec[]);
+      const plain = req.scope === "chat";
+      // A plain chat has no browser to use, so it gets no browser tools.
+      const tools = plain ? [] : await this.deps.tools().catch(() => [] as ToolSpec[]);
       const openPage = req.scope === "general" && req.pages.length === 0 && tools.length > 0 ? req.open_page : undefined;
       const question = openPage ? fenceOpenPage(openPage) + "\n\nUser message: " + req.question : req.question;
       const messages: ChatMessage[] = buildMessages(req.history, question, req.pages[0] ?? null, req.pages.slice(1));
@@ -282,7 +289,9 @@ export class ScoutServer {
         const calls: Array<{ id: string; name: string; input: unknown }> = [];
         for await (const ev of provider.stream({
           model: use.model,
-          system: chatSystemPrompt({ scope: req.scope, tools: tools.length > 0, webSearch: searchesLeft > 0, openPage: !!openPage }),
+          system: plain
+            ? appSystemPrompt({ webSearch: searchesLeft > 0 })
+            : chatSystemPrompt({ scope: req.scope, tools: tools.length > 0, webSearch: searchesLeft > 0, openPage: !!openPage }),
           messages,
           ...(offer ? { tools } : {}),
           ...(searchesLeft > 0 ? { webSearch: true, webSearchMaxUses: searchesLeft } : {}),

@@ -159,7 +159,7 @@ export const REQUESTS = {
         /** Host of the page the chat is on, saved to title it in the chats menu. */
         site: "string",
         /** "general": judged unrelated to the page, sent without it (src/chat/intent.ts). */
-        scope: { enum: ["page", "general"] },
+        scope: { enum: ["page", "general", "chat"] },
         /** General questions: the open page's address and title only, so the model can choose to read it. */
         open_page: { object: { url: "string", title: "string" } },
         /** model "apple-on-device" with a key saved: the key's model, used when Apple's model can't answer. */
