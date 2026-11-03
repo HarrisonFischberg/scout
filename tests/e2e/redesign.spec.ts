@@ -383,7 +383,13 @@ test("Open in new tab: the header button opens Scout as its own page, which hide
   await expect(page.getByRole("button", { name: "More actions" })).toBeHidden();
   await expect(page.getByRole("radio", { name: "Scout" })).toBeHidden();
 
-  await page.getByRole("textbox").fill("What is 2 + 2?");
+  // A plain chat (owner 2026-11-02): no page or tab wording, and @ attaches no tab.
+  const box = page.getByRole("textbox", { name: "Ask anything" });
+  await expect(box).toBeVisible();
+  await expect(page.locator("#composer-help")).not.toContainText("tab");
+  await box.fill("@");
+  await expect(page.locator("#mention-list")).toBeHidden();
+  await box.fill("What is 2 + 2?");
   await page.keyboard.press("Enter");
   await expect(page.getByText("The widget costs")).toBeVisible();
   await expect(page.getByText("Could not read this page")).toHaveCount(0);
