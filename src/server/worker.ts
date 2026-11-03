@@ -20,6 +20,7 @@ import { savedUrl } from "../chat/sources";
 import { appendHistory, loadSettings, type StorageArea } from "../settings/settings";
 import { runTool, type ToolDecision, type ToolHostDeps } from "../tools/host";
 import { shrinkScreenshot } from "../tools/image";
+import { MAX_IMAGES, type PastedImage } from "../chat/images";
 import { ToolLog } from "../tools/log";
 import { offeredTools, type ToolStatus } from "../tools/registry";
 import { DEV_MOCK_KEY, mockServerUrl } from "./dev";
@@ -308,8 +309,10 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
       open_page?: { url: string; title: string };
       fallback?: { provider: Provider; model: string; effort?: Effort };
       replaces?: string;
+      images?: PastedImage[];
     }) => {
-      server.start(p);
+      // At most MAX_IMAGES, as the panel allows.
+      server.start(p.images && p.images.length > MAX_IMAGES ? { ...p, images: p.images.slice(0, MAX_IMAGES) } : p);
       return { message_id: p.message_id };
     },
     "chat.stop": (p: { message_id: string }) => ({ stopped: server.stop(p.message_id) }),

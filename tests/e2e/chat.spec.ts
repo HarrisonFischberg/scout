@@ -347,3 +347,89 @@ test("a provider fallback is announced in the conversation", async ({ page }) =>
     page.getByRole("log").getByText("No OpenAI key is saved, so Scout is using your Anthropic key."),
   ).toBeVisible();
 });
+
+// Owner request 2026-11-02: paste images into Scout and have Claude read them.
+async function pasteImage(page: Page, width: number, height: number): Promise<void> {
+  await page.getByLabel("Ask about this page").evaluate(async (el, size) => {
+    const c = document.createElement("canvas");
+    c.width = size.width;
+    c.height = size.height;
+    const ctx = c.getContext("2d")!;
+    ctx.fillStyle = "#3a7";
+    ctx.fillRect(0, 0, size.width, size.height);
+    const blob = await new Promise<Blob>((r) => c.toBlob((b) => r(b!), "image/png"));
+    const dt = new DataTransfer();
+    dt.items.add(new File([blob], "shot.png", { type: "image/png" }));
+    el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+  }, { width, height });
+}
+
+function pngWidth(base64: string): number {
+  const b = atob(base64);
+  return ((b.charCodeAt(16) << 24) | (b.charCodeAt(17) << 16) | (b.charCodeAt(18) << 8) | b.charCodeAt(19)) >>> 0;
+}
+
+test("a pasted image shows as a thumbnail, can be removed, and goes to the provider scaled down", async ({ page }) => {
+  const { bodies } = await openPopup(page, { key: "sk-test-synthetic" });
+  await pasteImage(page, 3000, 2000);
+  const tray = page.getByRole("group", { name: "Attached images" });
+  await expect(tray.locator("img")).toHaveCount(1);
+  await pasteImage(page, 400, 300);
+  await expect(tray.locator("img")).toHaveCount(2);
+  await tray.getByRole("button", { name: "Remove image 2" }).click();
+  await expect(tray.locator("img")).toHaveCount(1);
+
+  // Images alone send a default question.
+  await page.getByRole("button", { name: "Send" }).click();
+  const log = page.getByRole("log", { name: "Conversation" });
+  await expect(log.getByText("with free shipping.")).toBeVisible();
+  await expect(log.locator(".msg.user .msg-images img")).toHaveCount(1);
+  await expect(tray).toBeHidden();
+  expect(bodies).toHaveLength(1);
+  const body = JSON.parse(bodies[0]!) as { messages: Array<{ role: string; content: unknown }> };
+  const last = body.messages[body.messages.length - 1]!.content as Array<Record<string, any>>;
+  expect(last[0]).toMatchObject({ type: "text" });
+  expect(String(last[0]!.text)).toContain("What's in this image?");
+  // An image question is not a page question: the page text stays out.
+  expect(String(last[0]!.text)).not.toContain("Widget costs $10.");
+  expect(last[1]).toMatchObject({ type: "image", source: { type: "base64", media_type: "image/png" } });
+  expect(pngWidth(last[1]!.source.data)).toBe(1568);
+
+  // A follow-up carries a note, not the image again.
+  await page.getByLabel("Ask about this page").fill("What color is it?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect.poll(() => bodies.length).toBe(2);
+  const second = JSON.parse(bodies[1]!) as { messages: Array<{ role: string; content: unknown }> };
+  expect(second.messages[0]!.content).toBe("What's in this image?\n\n[1 image was attached to this message.]");
+  expect(bodies[1]).not.toContain('"type":"image"');
+});
+
+test("Add image in the + menu picks a file", async ({ page }) => {
+  await openPopup(page, { key: "sk-test-synthetic" });
+  await page.getByRole("button", { name: "More actions" }).click();
+  await expect(page.getByRole("button", { name: "Add image" })).toBeVisible();
+  await page.locator("#img-pick").setInputFiles("src/icons/toolbar-128.png");
+  await expect(page.getByRole("group", { name: "Attached images" }).locator("img")).toHaveCount(1);
+});
+
+test("no key with Apple Intelligence: an image question says it needs a key and sends nothing", async ({ page }) => {
+  const { bodies } = await openPopup(page, { key: null, apple: true });
+  await pasteImage(page, 200, 200);
+  await page.getByLabel("Ask about this page").fill("What is this?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("Reading images needs an API key.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add API key" })).toBeVisible();
+  expect(bodies).toHaveLength(0);
+  // The image stays, ready once a key is added.
+  await expect(page.getByRole("group", { name: "Attached images" }).locator("img")).toHaveCount(1);
+});
+
+test("key and Apple Intelligence: an image question skips Apple and goes to the key's model", async ({ page }) => {
+  const { bodies } = await openPopup(page, { key: "sk-test-synthetic", apple: true });
+  await pasteImage(page, 200, 200);
+  await page.getByLabel("Ask about this page").fill("What is this?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("with free shipping.")).toBeVisible();
+  expect(bodies).toHaveLength(1);
+  expect(await page.evaluate(() => (globalThis as unknown as { __applePrompts?: string[] }).__applePrompts ?? [])).toEqual([]);
+});

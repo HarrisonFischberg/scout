@@ -2,6 +2,7 @@
 // iPhone, with a Chats list and New chat, like the Claude app). Kept in the
 // app's own web storage on the device; never synced and never sent anywhere
 // except as the conversation the user continues.
+import { historyText } from "../chat/images";
 import { dropUnmatchedCites, linkHref, type Source } from "../chat/sources";
 import type { ChatMessage } from "../providers/types";
 
@@ -14,6 +15,8 @@ export interface AppTurn {
   model?: string;
   /** Assistant only: the answer failed; `text` is the error shown. */
   error?: true;
+  /** User only: how many images were sent with it (the images themselves are not saved). */
+  images?: number;
 }
 
 export interface AppChat {
@@ -78,6 +81,7 @@ export function loadChats(storage: TextStorage): AppChat[] {
         ...(sources?.length ? { sources } : {}),
         ...(typeof r.model === "string" ? { model: r.model } : {}),
         ...(r.error === true ? { error: true as const } : {}),
+        ...(r.role === "user" && typeof r.images === "number" && r.images > 0 ? { images: Math.min(Math.floor(r.images), 10) } : {}),
       });
     }
     if (!turns.length) continue;
@@ -121,7 +125,7 @@ export function historyFor(turns: AppTurn[]): ChatMessage[] {
     if (q.role !== "user" || a?.role !== "assistant") continue;
     i++;
     if (a.error || !a.text.trim()) continue;
-    out.push({ role: "user", content: q.text }, { role: "assistant", content: dropUnmatchedCites(a.text, 0).trim() });
+    out.push({ role: "user", content: historyText(q.text, q.images ?? 0) }, { role: "assistant", content: dropUnmatchedCites(a.text, 0).trim() });
   }
   return out.slice(-HISTORY_TURNS);
 }

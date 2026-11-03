@@ -21,6 +21,7 @@ import { BridgeError, envelope, newRequestId, request, type Envelope } from "./b
 import { connectPanelPort, type PanelPort } from "./bridge/port";
 import type { ReadStatus, SharedTab } from "./context/gather";
 import { dropMention, mentionAt, sharedLabel, suggestTabs, toolLabel } from "./panel/attach";
+import { IMAGES_NEED_KEY, MAX_IMAGES, describeImages, historyText, imageFiles, messageThumbs, prepareImage, questionFor, renderTray, type PastedImage } from "./chat/images";
 import { cutAt, nextShown } from "./panel/typing";
 import { hostOf, loadPageAccess, normalizeSite, parsePolicy, savePageAccess, screenshotDecision, withoutAlwaysAllow, type PageAccess } from "./permissions/gate";
 import { KIND_LABEL, type SensitiveKind } from "./safety/classifier";
@@ -1489,6 +1490,68 @@ async function main(): Promise<void> {
   // ---------- Attached tabs (Part 2, spec 6): only tabs the user picks ----------
   // Picked by typing @, shown as chips above the field,
   // and sent with every question until removed. Nothing else is read.
+  // ---------- Pasted images (owner request 2026-11-02) ----------
+  // Paste into the ask box, drop onto it, or "Add image" in the + menu. Each
+  // is scaled and re-encoded first (src/chat/images.ts); thumbnails sit above
+  // the ask box until sent or removed. The debug log gets counts and sizes only.
+  const pending: PastedImage[] = [];
+  const imgTray = el("img-tray");
+  const imgPick = el<HTMLInputElement>("img-pick");
+  function showTray(): void {
+    renderTray(imgTray, pending, (i) => {
+      pending.splice(i, 1);
+      trace("images:removed");
+      showTray();
+      question.focus();
+    });
+  }
+  async function addImages(files: File[]): Promise<void> {
+    if (!files.length) return;
+    const room = MAX_IMAGES - pending.length;
+    if (room <= 0) {
+      status.textContent = "You can add up to " + MAX_IMAGES + " images. Remove one first.";
+      return;
+    }
+    if (files.length > room) status.textContent = "Only " + MAX_IMAGES + " images fit in one message.";
+    for (const f of files.slice(0, room)) {
+      try {
+        const img = await prepareImage(f);
+        if (pending.length >= MAX_IMAGES) break;
+        pending.push(img);
+        trace("images:added " + describeImages([img]));
+      } catch (err) {
+        status.textContent = err instanceof Error ? err.message : "Scout couldn't open that image.";
+        trace("images:failed");
+      }
+    }
+    showTray();
+  }
+  question.addEventListener("paste", (e) => {
+    const files = imageFiles(e.clipboardData?.items);
+    if (!files.length) return;
+    // An image copied from a web page also carries its address as text; keep the box clean.
+    e.preventDefault();
+    void addImages(files);
+  });
+  composer.addEventListener("dragover", (e) => {
+    if ([...(e.dataTransfer?.types ?? [])].includes("Files")) e.preventDefault();
+  });
+  composer.addEventListener("drop", (e) => {
+    const files = imageFiles(e.dataTransfer?.files);
+    if (!files.length) return;
+    e.preventDefault();
+    void addImages(files);
+  });
+  imgPick.addEventListener("change", () => {
+    const files = imageFiles(imgPick.files);
+    imgPick.value = "";
+    void addImages(files);
+  });
+  el("img-add").addEventListener("click", () => {
+    closePlus();
+    imgPick.click();
+  });
+
   const attachedBox = el("attached");
   const mentionList = el<HTMLUListElement>("mention-list");
 
@@ -1720,6 +1783,8 @@ async function main(): Promise<void> {
     model: string;
     /** Asked Apple's model first; no usage means Apple answered, usage means the key's model did. */
     appleFirst?: boolean;
+    /** Images pasted with the question; a Continue sends them again. Never saved. */
+    images?: PastedImage[];
     /** Tabs this answer may read: the current tab when shared, attached tabs, tabs it opened. */
     scope: number[];
     /** Numbered sources [n]: the pages sent with the question (after a Continue, the earlier part's sources). */
@@ -1805,7 +1870,7 @@ async function main(): Promise<void> {
     renderView(id);
     const full = v.prefix + m.text;
     if (m.status === "complete" && !m.stopped) {
-      history.push({ role: "user", content: v.question }, { role: "assistant", content: full });
+      history.push({ role: "user", content: historyText(v.question, v.images?.length ?? 0) }, { role: "assistant", content: full });
       // Without snippets: they quote page text, which history never keeps.
       const sources = allSources(v, m).map(({ url, title, kind }) => ({ url, ...(title ? { title } : {}), ...(kind ? { kind } : {}) }));
       turns.push({ bubble: v.bubble, entry: { at: Date.now(), question: v.question, answer: full, kind: "chat", ...(sources.length ? { sources } : {}), ...(v.shared.length ? { shared: v.shared } : {}) } });
@@ -1830,7 +1895,7 @@ async function main(): Promise<void> {
         more.textContent = "Continue";
         more.addEventListener("click", () => {
           err.remove();
-          void ask(CONTINUE_PROMPT, { continueOf: { bubble: v.bubble, question: v.question, partial: full, shared: v.shared, sources: allSources(v, m) } });
+          void ask(CONTINUE_PROMPT, { continueOf: { bubble: v.bubble, question: v.question, partial: full, shared: v.shared, sources: allSources(v, m), ...(v.images ? { images: v.images } : {}) } });
         });
         err.appendChild(more);
       } else if (!full) {
@@ -2103,15 +2168,24 @@ async function main(): Promise<void> {
   async function ask(
     text: string,
     opts: {
-      continueOf?: { bubble: HTMLElement; question: string; partial: string; shared: MessageView["shared"]; sources: Source[] };
+      continueOf?: { bubble: HTMLElement; question: string; partial: string; shared: MessageView["shared"]; sources: Source[]; images?: PastedImage[] };
       /** "Ask Claude" under Apple's answer: the key's model answers the same question in its place. */
       redoOf?: { bubble: HTMLElement; answer: string };
     } = {},
   ): Promise<void> {
-    const trimmed = text.trim();
+    const typed = text.trim();
+    // Pasted images go with a new question (and again with its Continue).
+    const images = opts.continueOf ? (opts.continueOf.images ?? []) : opts.redoOf ? [] : pending.slice();
+    const trimmed = questionFor(typed, images.length);
     await sessionReady();
     if (!trimmed || activeChat || couponRun || task || !session) return;
     const s = session;
+    // Apple's on-device model can't see images; without a key there is no one to hand them to.
+    if (images.length && s.apple) {
+      const err = addMessage("error", IMAGES_NEED_KEY);
+      err.insertBefore(errorAction("Add API key", () => void openSettings(true)), err.querySelector(".diag-copy"));
+      return;
+    }
     // Apple's on-device model sends nothing off the device, so there is nothing to consent to.
     if (!s.apple && !consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     const cont = opts.continueOf;
@@ -2133,7 +2207,9 @@ async function main(): Promise<void> {
         ? (lastScope ?? "page")
         : isSummary
           ? "page"
-          : classifyQuestion({ question: trimmed, pageTitle: pageWords(tab.title, tab.url), attachedTabs: extra.length, ...(lastScope ? { previous: lastScope } : {}) });
+          : images.length
+            ? "general"
+            : classifyQuestion({ question: trimmed, pageTitle: pageWords(tab.title, tab.url), attachedTabs: extra.length, ...(lastScope ? { previous: lastScope } : {}) });
     lastScope = scope;
     trace("scope:" + scope);
     startRun(isSummary ? "summarize" : "ask", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model, question: cont ? cont.question : trimmed });
@@ -2156,14 +2232,21 @@ async function main(): Promise<void> {
       trace("apple:ask-key");
     } else {
       document.querySelectorAll(".ask-key").forEach((b) => b.remove());
-      addMessage("user", isSummary ? "Summarize page" : trimmed);
+      const userMsg = addMessage("user", isSummary ? "Summarize page" : typed);
+      if (images.length) {
+        userMsg.prepend(messageThumbs(images));
+        trace("images:sent " + images.length + " (" + describeImages(images) + ")");
+        pending.length = 0;
+        showTray();
+      }
       question.value = "";
       autosize();
       closeMentions();
       bubble = addMessage("assistant", "");
     }
     const v = newView(id, bubble, cont ? cont.question : trimmed, s.settings.model, cont ? cont.partial + (/\s$/.test(cont.partial) ? "" : " ") : "");
-    if (s.appleFirst && !cont && !redo) v.appleFirst = true;
+    if (s.appleFirst && !cont && !redo && !images.length) v.appleFirst = true;
+    if (images.length) v.images = images;
     renderView(id);
     status.textContent = cont ? "Finishing the answer." : STANDALONE || scope === "general" ? "Waiting for the answer." : "Reading the page and waiting for the answer.";
     setBusy(true);
@@ -2229,6 +2312,7 @@ async function main(): Promise<void> {
           scope,
           ...(scope === "general" && !STANDALONE && !cont && tab.url && tab.title ? { open_page: { url: tab.url, title: tab.title } } : {}),
           ...(redo ? { replaces: redo.answer } : {}),
+          ...(images.length ? { images } : {}),
           ...(cont
             ? { display_question: cont.question, answer_prefix: v.prefix, prefix_sources: cont.sources.map((x) => ({ url: x.url, title: x.title ?? "" })) }
             : {}),
@@ -3264,7 +3348,8 @@ async function main(): Promise<void> {
   composer.addEventListener("submit", (event) => {
     event.preventDefault();
     closePlus();
-    if (mode() === "scout") void runTask(question.value);
+    if (mode() === "scout" && pending.length) status.textContent = "Images go with Chat questions. Switch to Chat to ask about them.";
+    else if (mode() === "scout") void runTask(question.value);
     else void ask(question.value);
   });
   question.addEventListener("keydown", (event) => {

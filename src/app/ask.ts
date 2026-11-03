@@ -4,6 +4,7 @@
 // Apple's on-device model answers when there is no key, or first when the
 // user turned "Apple first" on; it hands off to Claude when it can't answer.
 import { APPLE_CHAT_WEB_RULE, APPLE_NO_PAGE_PROMPT, appSystemPrompt } from "../chat/prompt";
+import { IMAGES_NEED_KEY, withImages, type PastedImage } from "../chat/images";
 import { CHAT_MAX_TOKENS } from "../chat/session";
 import type { Source } from "../chat/sources";
 import { AppleModelError, appleCouldNotAnswer, appleRepeats, needsFreshFacts, stripSourceMarkers } from "../providers/apple";
@@ -22,6 +23,8 @@ export interface AskInput {
   appleFirst?: boolean;
   history: ChatMessage[];
   question: string;
+  /** Images pasted or picked with this question (src/chat/images.ts). Claude only: Apple can't see them. */
+  images?: PastedImage[];
   signal?: AbortSignal;
   /** The answer so far, with citation markers, on every change. */
   onText: (text: string) => void;
@@ -61,9 +64,11 @@ async function askApple(apple: ProviderClient, input: AskInput, mustAnswer: bool
 export async function ask(input: AskInput): Promise<AskResult> {
   const { claude, apple, signal } = input;
   if (!claude && !apple) return { text: "", sources: [], model: "", error: NO_MODEL };
+  const hasImages = (input.images?.length ?? 0) > 0;
+  if (hasImages && !claude) return { text: "", sources: [], model: "apple", error: IMAGES_NEED_KEY };
 
   // Apple answers alone without a key; first (and hands off) when the user chose it.
-  const tryApple = !!apple && (!claude || (!!input.appleFirst && !needsFreshFacts(input.question, false)));
+  const tryApple = !!apple && !hasImages && (!claude || (!!input.appleFirst && !needsFreshFacts(input.question, false)));
   if (tryApple) {
     try {
       const text = await askApple(apple!, input, !claude);
@@ -89,7 +94,7 @@ export async function ask(input: AskInput): Promise<AskResult> {
     for await (const ev of claude.client.stream({
       model: claude.model,
       system: appSystemPrompt({ webSearch: true }),
-      messages: [...input.history, { role: "user", content: input.question }],
+      messages: [...input.history, { role: "user", content: withImages(input.question, input.images ?? []) }],
       webSearch: true,
       webSearchMaxUses: APP_WEB_SEARCHES,
       maxTokens: CHAT_MAX_TOKENS,

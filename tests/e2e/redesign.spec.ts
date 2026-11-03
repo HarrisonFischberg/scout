@@ -197,7 +197,9 @@ test("the + menu opens by keyboard, Escape closes it and returns focus", async (
   await plus.focus();
   await page.keyboard.press("Enter");
   await expect(plus).toHaveAttribute("aria-expanded", "true");
-  await expect(page.getByRole("button", { name: "Find coupons" })).toBeFocused();
+  // The first item takes focus: Add image (2026-11-02), then Find coupons.
+  await expect(page.getByRole("button", { name: "Add image" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Find coupons" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Find coupons" })).toBeHidden();
   await expect(plus).toBeFocused();

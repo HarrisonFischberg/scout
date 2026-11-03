@@ -10,13 +10,14 @@
 // does (src/agent/loop.ts), so no provider-specific reasoning blocks have to
 // be echoed between rounds.
 import { BridgeError } from "../bridge/messages";
+import { withImages, type PastedImage } from "../chat/images";
 import type { QuestionScope } from "../chat/intent";
 import { APPLE_CHAT_WEB_RULE, APPLE_NO_PAGE_PROMPT, APPLE_WEB_RULE, appSystemPrompt, buildMessages, chatSystemPrompt, fenceOpenPage, type PageContext } from "../chat/prompt";
 import { CHAT_MAX_TOKENS } from "../chat/session";
 import type { Provider } from "../keychain";
 import { ProviderError } from "../providers/errors";
 import { APPLE_MODEL, AppleModelError, appleCouldNotAnswer, appleRepeats, needsFreshFacts, stripSourceMarkers } from "../providers/apple";
-import type { ChatMessage, ContentPart, Effort, ProviderClient, ToolSpec, Usage } from "../providers/types";
+import { textOf, type ChatMessage, type ContentPart, type Effort, type ProviderClient, type ToolSpec, type Usage } from "../providers/types";
 import type { ToolStatus } from "../tools/registry";
 import type { NumberedEvent, ServerEvent } from "./protocol";
 
@@ -59,6 +60,8 @@ export interface StartRequest {
   fallback?: { provider: Provider; model: string; effort?: Effort };
   /** "Ask Claude" under Apple's answer (owner, 2026-10-28): the saved answer this one replaces. */
   replaces?: string;
+  /** Images pasted into the ask box (src/chat/images.ts), sent with this question only. Never saved. */
+  images?: PastedImage[];
 }
 
 /** Most web searches one chat answer may run (each is billed by the provider). Five leaves room to retry a lookup with new wording (2026-10-23). */
@@ -254,13 +257,16 @@ export class ScoutServer {
     this.emit(run, { kind: "start" });
     try {
       // Apple first: its answer stands unless it can't answer; then the key's model runs as usual.
-      const tryApple = req.model === APPLE_MODEL && !!req.fallback && !needsFreshFacts(req.question, req.pages.length > 0);
+      // Apple's on-device model can't see images: those go straight to the key's model.
+      const hasImages = (req.images?.length ?? 0) > 0;
+      const tryApple = req.model === APPLE_MODEL && !!req.fallback && !hasImages && !needsFreshFacts(req.question, req.pages.length > 0);
       const apple = tryApple ? await this.askApple(req, signal) : null;
       if (apple !== null) {
         full = apple;
         this.emit(run, { kind: "text", delta: apple });
       }
       const use = req.model === APPLE_MODEL && req.fallback ? req.fallback : req;
+      if (hasImages && use.model === APPLE_MODEL) throw new AppleModelError("images");
       if (apple === null && tryApple && !signal.aborted) this.emit(run, { kind: "handoff" });
       const provider = apple === null && !signal.aborted ? await this.deps.provider(use.provider, use.model) : null;
       const plain = req.scope === "chat";
@@ -269,6 +275,10 @@ export class ScoutServer {
       const openPage = req.scope === "general" && req.pages.length === 0 && tools.length > 0 ? req.open_page : undefined;
       const question = openPage ? fenceOpenPage(openPage) + "\n\nUser message: " + req.question : req.question;
       const messages: ChatMessage[] = buildMessages(req.history, question, req.pages[0] ?? null, req.pages.slice(1));
+      if (hasImages) {
+        const last = messages[messages.length - 1]!;
+        messages[messages.length - 1] = { role: "user", content: withImages(textOf(last.content), req.images!) };
+      }
       const maxRounds = this.deps.maxRounds ?? 6;
       for (let round = 0; provider && round < maxRounds && !signal.aborted; round++) {
         // The last round offers no tools, so the model has to answer.
