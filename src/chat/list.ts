@@ -16,7 +16,8 @@ export interface ChatSummary {
 }
 
 export interface ChatTitles {
-  summarize: (question: string) => boolean;
+  /** Short label for a starter's long instruction (Summarize, Explain); the question otherwise. */
+  label: (question: string) => string;
   coupons: string;
   agent: string;
 }
@@ -25,7 +26,7 @@ const MAX_TITLE = 80;
 
 function titleOf(e: HistoryEntry, t: ChatTitles): string {
   if (e.kind === "coupons") return t.coupons;
-  const q = t.summarize(e.question) ? "Summarize page" : e.question.replace(/\s+/g, " ").trim();
+  const q = t.label(e.question).replace(/\s+/g, " ").trim();
   const text = e.kind === "agent" ? t.agent + ": " + q : q;
   return text.length > MAX_TITLE ? text.slice(0, MAX_TITLE - 1).trimEnd() + "…" : text;
 }

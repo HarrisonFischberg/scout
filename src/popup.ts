@@ -6,7 +6,7 @@
 // shows its action log, Stop, and the sensitive-action confirmation
 // (Stop is the composer's button), and the Permissions screen in Settings.
 import { classifyQuestion, pageWords, type QuestionScope } from "./chat/intent";
-import { LEGACY_SUMMARIZE_QUESTIONS, SUMMARIZE_QUESTION, unfence, type PageContext } from "./chat/prompt";
+import { EXPLAIN_QUESTION, SUMMARIZE_QUESTION, starterLabel, unfence, type PageContext } from "./chat/prompt";
 import { chipSources, renderMarkdown } from "./chat/markdown";
 import { answerText, fillSourceCard, linkHref, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
 import { ConversationStore, type StoredMessage } from "./chat/store";
@@ -1000,8 +1000,7 @@ async function main(): Promise<void> {
     history.length = 0;
     for (const e of entries) {
       const mode = e.kind === "agent" ? "Scout mode" : e.kind === "coupons" ? "Find coupons" : undefined;
-      const isSummary = e.question === SUMMARIZE_QUESTION || LEGACY_SUMMARIZE_QUESTIONS.includes(e.question);
-      addMessage("user", isSummary ? "Summarize page" : e.question, mode ? { mode } : {});
+      addMessage("user", starterLabel(e.question), mode ? { mode } : {});
       const chat = !e.kind || e.kind === "chat";
       const answer = addMessage("assistant", e.answer, chat ? { sources: e.sources ?? [] } : {});
       if (chat) {
@@ -2205,7 +2204,7 @@ async function main(): Promise<void> {
       ? "chat"
       : cont || redo
         ? (lastScope ?? "page")
-        : isSummary
+        : isSummary || trimmed === EXPLAIN_QUESTION
           ? "page"
           : images.length
             ? "general"
@@ -2232,7 +2231,7 @@ async function main(): Promise<void> {
       trace("apple:ask-key");
     } else {
       document.querySelectorAll(".ask-key").forEach((b) => b.remove());
-      const userMsg = addMessage("user", isSummary ? "Summarize page" : typed);
+      const userMsg = addMessage("user", isSummary || trimmed === EXPLAIN_QUESTION ? starterLabel(trimmed) : typed);
       if (images.length) {
         userMsg.prepend(messageThumbs(images));
         trace("images:sent " + images.length + " (" + describeImages(images) + ")");
@@ -2334,7 +2333,7 @@ async function main(): Promise<void> {
     const got = await request<{ messages: Array<{ message_id: string; question: string; last_seq: number }> }>(toWorker, "chat.active", { conv }, { timeoutMs: 3_000 }).catch(() => null);
     for (const a of got?.messages ?? []) {
       if (views.has(a.message_id) || activeChat) continue;
-      addMessage("user", a.question === SUMMARIZE_QUESTION ? "Summarize page" : a.question);
+      addMessage("user", starterLabel(a.question));
       const v = newView(a.message_id, addMessage("assistant", ""), a.question, activeSettings().model);
       if (tab.id !== undefined) v.scope = [tab.id];
       renderView(a.message_id);
@@ -3244,7 +3243,7 @@ async function main(): Promise<void> {
       visibleConvs(),
     ]);
     const chats = summarizeChats(entries, {
-      summarize: (q) => q === SUMMARIZE_QUESTION || LEGACY_SUMMARIZE_QUESTIONS.includes(q),
+      label: starterLabel,
       coupons: "Find coupons",
       agent: "Scout mode",
     });
@@ -3403,6 +3402,7 @@ async function main(): Promise<void> {
     chip.addEventListener("click", () => {
       const p = chip.dataset.prompt ?? "";
       if (p === "summarize") void ask(SUMMARIZE_QUESTION);
+      else if (p === "explain") void ask(EXPLAIN_QUESTION);
       else if (p === "coupons") void runCoupons();
       else void ask(p);
     });
