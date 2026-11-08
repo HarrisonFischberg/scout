@@ -86,6 +86,8 @@ export function createOpenAI(cfg: ProviderConfig): ProviderClient {
             }
             break;
           case "response.output_item.done":
+            if (ev.item?.type === "reasoning") yield { type: "progress", step: { step: "writing" } };
+            if (ev.item?.type === "web_search_call") yield { type: "progress", step: { step: "results" } };
             if (ev.item?.type === "web_search_call" && Array.isArray(ev.item.action?.sources)) {
               for (const s of ev.item.action.sources) {
                 if (typeof s?.url === "string") yield { type: "source", url: s.url };
@@ -93,6 +95,8 @@ export function createOpenAI(cfg: ProviderConfig): ProviderClient {
             }
             break;
           case "response.output_item.added":
+            if (ev.item?.type === "web_search_call") yield { type: "progress", step: { step: "search" } };
+            else if (ev.item?.type === "reasoning") yield { type: "progress", step: { step: "thinking" } };
             if (ev.item?.type === "function_call") {
               calls.set(ev.item.id, {
                 callId: ev.item.call_id,

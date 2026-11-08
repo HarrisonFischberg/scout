@@ -301,7 +301,7 @@ export const WORKER_EVENTS = {
     object: {
       message_id: "string",
       seq: "number",
-      kind: { enum: ["start", "handoff", "text", "citation", "tool_request", "tool_done", "usage", "done", "error"] },
+      kind: { enum: ["start", "handoff", "step", "text", "citation", "tool_request", "tool_done", "usage", "done", "error"] },
       delta: "string",
       url: "string",
       title: "string",
@@ -316,10 +316,13 @@ export const WORKER_EVENTS = {
       input_tokens: "number",
       output_tokens: "number",
       web_searches: "number",
+      step: "string",
+      detail: "string",
+      count: "number",
     },
     optional: [
       "delta", "url", "title", "request_id", "name", "input", "status", "text", "message", "code", "stopped",
-      "input_tokens", "output_tokens", "web_searches",
+      "input_tokens", "output_tokens", "web_searches", "step", "detail", "count",
     ],
   },
   /** The worker no longer knows this answer (it restarted): nothing more will come. */

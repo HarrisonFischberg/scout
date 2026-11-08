@@ -333,7 +333,8 @@ export class ScoutServer {
                 this.emit(run, { kind: "text", delta: marker });
               }
             }
-          } else if (ev.type === "tool_call") calls.push(ev);
+          } else if (ev.type === "progress") this.emit(run, { kind: "step", step: ev.step });
+          else if (ev.type === "tool_call") calls.push(ev);
           else if (ev.type === "usage") {
             usage.inputTokens += ev.usage.inputTokens;
             usage.outputTokens += ev.usage.outputTokens;

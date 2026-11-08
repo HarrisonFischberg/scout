@@ -7,6 +7,7 @@
 // resubscribes with the last number it has and gets only what it missed.
 import type { Usage } from "../providers/types";
 import type { ToolStatus } from "../tools/registry";
+import { SERVER_STEPS, type ServerStep } from "../chat/steps";
 
 export type ServerEvent =
   /** pending -> streaming */
@@ -15,6 +16,8 @@ export type ServerEvent =
   | { kind: "citation"; url: string; title?: string }
   /** Apple's model couldn't answer and the key's model is taking over (no model named: the switch is seamless). */
   | { kind: "handoff" }
+  /** A big step of the work (searching, reading results, thinking), shown in plain English until the answer starts (src/chat/steps.ts). */
+  | { kind: "step"; step: ServerStep }
   /** The panel runs it through the tool host and posts the result with the same request_id. */
   | { kind: "tool_request"; request_id: string; name: string; input: unknown }
   /** The server has the result; a reopened panel does not run the request again. */
@@ -38,6 +41,13 @@ export function toWire(message_id: string, n: NumberedEvent): Record<string, unk
     case "start":
     case "handoff":
       return base;
+    case "step":
+      return {
+        ...base,
+        step: e.step.step,
+        ...("detail" in e.step && e.step.detail ? { detail: e.step.detail } : {}),
+        ...("count" in e.step && e.step.count ? { count: e.step.count } : {}),
+      };
     case "text":
       return { ...base, delta: e.delta };
     case "citation":
@@ -74,6 +84,21 @@ export function fromWire(p: Record<string, unknown>): { message_id: string; seq:
     case "handoff":
       event = { kind: p.kind };
       break;
+    case "step": {
+      const name = s("step") as ServerStep["step"] | undefined;
+      if (!name || !SERVER_STEPS.includes(name)) break;
+      const detail = s("detail");
+      event = {
+        kind: "step",
+        step:
+          name === "search" || name === "fetch"
+            ? { step: name, ...(detail ? { detail } : {}) }
+            : name === "results"
+              ? { step: name, ...(n("count") ? { count: n("count") } : {}) }
+              : { step: name },
+      };
+      break;
+    }
     case "text":
       event = s("delta") !== undefined ? { kind: "text", delta: s("delta")! } : null;
       break;

@@ -506,6 +506,27 @@
       }
       /* An answer still waiting for its first words (owner item 14). */
       .thinking { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); }
+      /* Plain-English steps (src/panel/step-line.ts): each step sits in the same
+         grid cell, so the leaving one fades up while the next rises in. */
+      .thinking.steps { max-width: 100%; align-items: flex-start; }
+      .thinking.steps .pulse { margin-top: 1px; }
+      .step-stack { display: inline-grid; min-width: 0; }
+      .step-stack .step { grid-area: 1 / 1; overflow-wrap: anywhere; }
+      .step-stack .step.leaving { opacity: 0; }
+      @media (prefers-reduced-motion: no-preference) {
+        .step-stack .step.entering { animation: scout-step-in 0.34s cubic-bezier(0.2, 0.7, 0.2, 1) 0.08s both; }
+        .step-stack .step.leaving { animation: scout-step-out 0.26s ease-in both; }
+        /* A soft light passes over the current step, so the line reads as live. */
+        .step-stack .step.now {
+          background: linear-gradient(90deg, var(--text-secondary) 0%, var(--text-secondary) 40%, var(--text-primary) 50%, var(--text-secondary) 60%, var(--text-secondary) 100%);
+          background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+        }
+        .step-stack .step.now:not(.entering) { animation: scout-step-shine 2.4s linear infinite; }
+        .step-stack .step.now.entering { animation: scout-step-in 0.34s cubic-bezier(0.2, 0.7, 0.2, 1) 0.08s both, scout-step-shine 2.4s linear 0.42s infinite; }
+      }
+      @keyframes scout-step-in { from { opacity: 0; transform: translateY(8px); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
+      @keyframes scout-step-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-8px); filter: blur(2px); } }
+      @keyframes scout-step-shine { from { background-position: 100% 0; } to { background-position: 0% 0; } }
       @keyframes scout-pulse { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
 
       /* iPhone (owner design 2026-10-17): larger starters and a rounder composer.

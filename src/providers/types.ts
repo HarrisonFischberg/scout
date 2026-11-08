@@ -1,5 +1,7 @@
 // Provider layer (T005): one interface over Anthropic Messages and OpenAI
 // Responses. Callers pass `fetch` so tests never touch the network.
+import type { ServerStep } from "../chat/steps";
+
 export type ProviderId = "anthropic" | "openai";
 
 /**
@@ -83,6 +85,8 @@ export type StreamEvent =
    * …). A failed search returns HTTP 200 with an error block, not an error.
    */
   | { type: "search"; ok: boolean; results?: number; error?: string }
+  /** A big step of the work as it starts (a search, a fetch, thinking, writing), for the panel's step line (src/chat/steps.ts). */
+  | { type: "progress"; step: ServerStep }
   /** Why the model's turn ended ("end_turn", "max_tokens", "pause_turn" after the last resume, "refusal"). */
   | { type: "stop"; reason: string }
   | { type: "usage"; usage: Usage }
