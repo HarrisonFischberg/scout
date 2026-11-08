@@ -1,26 +1,32 @@
 #!/usr/bin/env bash
 # One command for every store Scout ships to (release/README.md).
-#   ./release.sh [ios|mac|chrome|firefox|all] [--beta] [--live]
+#   ./release.sh [ios|mac|chrome|firefox|all] [--beta] [--live] [--version X.Y]
 # Dry run by default: builds and checks everything, uploads nothing. --live
 # publishes. --beta sends iOS/Mac to TestFlight instead of App Review.
+# --version sets the App Store version (default 1.0); TestFlight keeps its 0.N.
 # Secrets come only from environment variables; none are stored in the repo.
 set -euo pipefail
 cd "$(dirname "$0")"
 export LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 # fastlane needs a UTF-8 locale
 TARGET="${1:-all}"; shift || true
 LIVE=false; LANE=release
-for arg in "$@"; do
-  case "$arg" in
+while [ $# -gt 0 ]; do
+  case "$1" in
     --live) LIVE=true ;;
     --beta) LANE=beta ;;
-    *) echo "unknown option $arg" >&2; exit 1 ;;
+    --version)
+      [[ "${2:-}" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]] || { echo "--version wants X.Y or X.Y.Z" >&2; exit 1; }
+      export SCOUT_APP_VERSION="$2"; shift ;;
+    *) echo "unknown option $1" >&2; exit 1 ;;
   esac
+  shift
 done
 need() { for v in "$@"; do [ -n "${!v:-}" ] || { echo "missing env var $v (release/README.md)" >&2; exit 1; }; done; }
 VERSION=$(node -p 'require("./src/manifest.json").version')
 
 apple() { # $1 = ios or mac
   need ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_PATH
+  [ "$LIVE:$LANE" = true:release ] && need SCOUT_REVIEW_PHONE SCOUT_REVIEW_TEST_KEY
   fastlane "$1" "$LANE" live:"$LIVE"
 }
 
@@ -66,5 +72,5 @@ case "$TARGET" in
     # Same TestFlight version (0.N) on both Apple platforms.
     export SCOUT_VERSION_NUMBER="${SCOUT_VERSION_NUMBER:-$(( $(cat ~/.scout-testflight-number 2>/dev/null || echo 1) + 1 ))}"
     apple ios; apple mac; chrome; firefox ;;
-  *) echo "usage: ./release.sh [ios|mac|chrome|firefox|all] [--beta] [--live]" >&2; exit 1 ;;
+  *) echo "usage: ./release.sh [ios|mac|chrome|firefox|all] [--beta] [--live] [--version X.Y]" >&2; exit 1 ;;
 esac

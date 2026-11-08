@@ -60,3 +60,30 @@ Diagnostics never contain API keys, page text, or form values; the question
 is included only if the owner opted in. The log stays on the device until the
 user copies it. Release builds contain no debug-only code (native console
 log, drag probe, mock server switch; `npm run check:release`).
+
+## Releasing to the App Store
+
+When Harold says Scout is good for release ("push it to Apple", "ship it", "release it"),
+that message is his approval for the whole Apple release (iPhone/iPad and Mac). Do it end to
+end without asking, except where a step below says stop:
+
+1. Merge the open PRs he named into main (only the ones he named), and work in a fresh worktree off origin/main.
+2. Stop and ask if either gate is open: `docs/app-store-submission.md` says nothing goes to
+   review before the developer account is converted to the Rare Creatures LLC Organization
+   (ask once unless his message says it's done), and `SCOUT_REVIEW_PHONE` and
+   `SCOUT_REVIEW_TEST_KEY` must be set in `~/.zshrc` (ask him to add them there, never in chat).
+3. Pick the version: 1.0 for the first release, then minor for features, patch for fixes. From
+   the second version on, write `store/apple/metadata/en-US/release_notes.txt` from the PRs
+   merged since the last version. Update `description.txt` if a feature in it changed.
+4. Check `docs/data-inventory.md`, the published privacy policy and the App Privacy answers in
+   `docs/app-store-submission.md` still cover any new data flow; if not, stop and tell him,
+   because the policy needs his OK.
+5. `zsh -ic 'cd <worktree> && ./release.sh ios --live --version X.Y && ./release.sh mac --live --version X.Y'`
+   archives, uploads, pushes the listing and screenshots from `store/apple/`, and submits each
+   platform for review with automatic release. Chrome and Firefox go only when he names them:
+   bump `version` in `src/manifest.json`, then `./release.sh chrome --live` / `firefox --live`
+   (Chrome also needs `CWS_EXTENSION_ID`, which isn't set yet).
+6. Commit the version and notes, open a PR and merge it. Tell him one line: the version, the
+   build numbers, that it's waiting for review, and to revoke the review test key once Apple
+   approves. Mention it if the UI changed since the screenshots in `store/apple/screenshots/`
+   (they are rendered by hand from `app-store/art-source/`).

@@ -8,7 +8,7 @@ env vars and the steps Apple doesn't let us automate). Each lane does a dry run 
 | --- | --- | --- |
 | iPhone/iPad TestFlight | `fastlane ios beta live:true` | Next 0.N version, timestamp build, archive, upload to TestFlight |
 | Mac TestFlight | `fastlane mac beta live:true` | Same for the Mac app |
-| iPhone/iPad App Store | `fastlane ios release live:true` | Version 1.0: archive, upload, push listing text, age rating, review notes and screenshots from `store/apple/`, submit for review (manual release after approval) |
+| iPhone/iPad App Store | `fastlane ios release live:true` | Version 1.0 (or `SCOUT_APP_VERSION`): archive, upload, push listing text, age rating, review notes and screenshots from `store/apple/`, submit for review (automatic release after approval) |
 | Mac App Store | `fastlane mac release live:true` | Same for the Mac app |
 
 Archiving and upload go through `scripts/archive-testflight.sh`, which also cleans up the
