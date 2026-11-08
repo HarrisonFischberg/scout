@@ -10,6 +10,7 @@ import { CONTENT_HANDLER, OVERLAY_HANDLER, type ContentRequest, type OverlayRequ
 import { callInjected } from "../content-call";
 import { extractPage, type RawPage } from "../context/extract";
 import { loadVideo, pageFetch, videoPageText, youtubeVideoId, type FetchInit, type FetchResult } from "../context/youtube";
+import { cleanInstagramRead, instagramKind, instagramPageText, MAX_PAGE_IMAGES, PAGE_IMAGE_EDGE, readInstagram, readsInstagramPost } from "../context/instagram";
 import { readTabs, readTab, type GatherDeps, type TabRef } from "../context/gather";
 import { createKeychain, nativeSend, type Provider } from "../keychain";
 import { blockedBy, hostOf, loadPageAccess, parsePolicy, savePageAccess, type ScreenshotChoice } from "../permissions/gate";
@@ -38,6 +39,9 @@ const POLICY_TTL_MS = 5 * 60_000;
 const NAVIGATE_WAIT_MS = 12_000;
 /** Reading a video's captions, inside the page read's own 8 s; the plain page is used after it. */
 const VIDEO_TIMEOUT_MS = 7_000;
+// The Instagram reader seeks a reel for frames within its budget; the page read has 8 s in all (PAGE_TIMEOUT_MS).
+const INSTAGRAM_BUDGET_MS = 4_500;
+const INSTAGRAM_TIMEOUT_MS = 6_500;
 
 // Scout mode's navigate (owner bug report 2026-10-20): page key events never
 // reach Safari's address bar, so the worker sets the tab's URL itself, then
@@ -101,6 +105,24 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
   const extract = async (tabId: number): Promise<unknown> => {
     const [res] = await browser.scripting.executeScript({ target: { tabId }, func: extractPage });
     const raw = res?.result as RawPage | undefined;
+    // An Instagram post, reel or story: the post on screen and its pictures (src/context/instagram.ts).
+    if (raw && readsInstagramPost(raw.url)) {
+      const read = await Promise.race([
+        browser.scripting
+          .executeScript({ target: { tabId }, func: readInstagram, args: [{ maxImages: MAX_PAGE_IMAGES, edge: PAGE_IMAGE_EDGE, frames: 3, budgetMs: INSTAGRAM_BUDGET_MS }] })
+          .then(([r]) => cleanInstagramRead(r?.result))
+          .catch(() => null),
+        new Promise<null>((r) => setTimeout(() => r(null), INSTAGRAM_TIMEOUT_MS)),
+      ]);
+      if (!read) return raw;
+      return {
+        url: raw.url,
+        title: raw.title,
+        text: instagramPageText(read, instagramKind(raw.url) ?? "post"),
+        meta: { site: "Instagram", ...(raw.meta?.lang ? { lang: raw.meta.lang } : {}) },
+        images: read.images,
+      } satisfies RawPage;
+    }
     // A YouTube video: its captions instead of the page around it (src/context/youtube.ts).
     const id = youtubeVideoId(raw?.url);
     if (!raw || !id) return raw;

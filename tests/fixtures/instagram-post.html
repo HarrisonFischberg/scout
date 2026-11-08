@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instagram</title>
+<!-- Synthetic Instagram-like carousel post in a dialog (src/context/instagram.ts). Not Instagram's markup or art. -->
+<style>
+  body { margin: 0; font: 14px system-ui, sans-serif; }
+  .feed img { width: 300px; height: 300px; }
+  [role="dialog"] { position: fixed; inset: 20px; background: #fff; display: flex; gap: 12px; }
+  .slides { display: flex; overflow: hidden; width: 500px; }
+  .slides img { width: 500px; height: 500px; flex: none; }
+  header img { width: 32px; height: 32px; }
+</style>
+</head>
+<body>
+<div class="feed"><article><img alt="A feed photo behind the dialog" src="ig/photo2.jpg"></article></div>
+<div role="dialog">
+  <article>
+    <div class="slides">
+      <img id="s1" alt="May be an image of mountains and text that says 'DAY 1'" src="ig/photo1.jpg">
+      <img id="s2" alt="May be an image of a tent" src="">
+      <img id="s3" alt="Cross-origin slide" src="">
+    </div>
+  </article>
+  <div>
+    <header><img alt="natgeo's profile picture" src="ig/photo2.jpg"> <a href="/natgeo/">natgeo</a></header>
+    <h1 dir="auto">Three days in the Sierra. Swipe for the tent setup. #hiking</h1>
+    <time datetime="2026-10-30T12:00:00.000Z" title="October 30, 2026">Oct 30</time>
+  </div>
+</div>
+<script>
+  // Other slides come from "the CDN": another origin. One allows CORS, one does not.
+  const other = location.protocol + "//" + (location.hostname === "127.0.0.1" ? "localhost" : "127.0.0.1") + ":" + location.port;
+  document.getElementById("s2").src = other + "/ig/photo2.jpg?cors=1";
+  document.getElementById("s3").src = other + "/ig/photo2.jpg";
+</script>
+</body>
+</html>

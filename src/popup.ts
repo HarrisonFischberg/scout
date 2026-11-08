@@ -38,7 +38,8 @@ import { createProvider, textOf, type ChatMessage, type Effort, type ProviderCli
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { isKeyProblem } from "./providers/errors";
 import { APPLE_MODEL, APPLE_MODEL_LABEL, APPLE_UNAVAILABLE_TEXT, appleGenerate, appleStatus, createApple, type AppleStatus } from "./providers/apple";
-import { siteIconUrl, suggestionsFor, VIDEO_SUMMARY_PROMPT, videoStarterLabel } from "./panel/suggestions";
+import { INSTAGRAM_SUMMARY_PROMPT, siteIconUrl, siteStarterLabel, suggestionsFor, VIDEO_SUMMARY_PROMPT } from "./panel/suggestions";
+import { readsInstagramPost } from "./context/instagram";
 import { seekVideo, youtubeVideoId } from "./context/youtube";
 import { joinDictation, Listener, micBlocked, micBlockedHere, micErrorText, recognitionCtor, rememberMic } from "./panel/voice";
 import { PageListener } from "./panel/page-listen";
@@ -2212,7 +2213,7 @@ async function main(): Promise<void> {
       const origins = [...new Set(extra.map((t) => new URL(t.url).origin + "/*"))];
       granted = await browser.permissions.request({ origins }).catch(() => false);
     }
-    const isSummary = trimmed === SUMMARIZE_QUESTION || trimmed === VIDEO_SUMMARY_PROMPT;
+    const isSummary = trimmed === SUMMARIZE_QUESTION || trimmed === VIDEO_SUMMARY_PROMPT || trimmed === INSTAGRAM_SUMMARY_PROMPT;
     // A general question goes without the page (src/chat/intent.ts); the page
     // stays shared with the answer, so read_page can still fetch it.
     // The full-window page is a plain chat with no page or browser (owner, 2026-11-02).
@@ -2220,7 +2221,7 @@ async function main(): Promise<void> {
       ? "chat"
       : cont || redo
         ? (lastScope ?? "page")
-        : isSummary || trimmed === EXPLAIN_QUESTION || videoStarterLabel(trimmed)
+        : isSummary || trimmed === EXPLAIN_QUESTION || siteStarterLabel(trimmed)
           ? "page"
           : images.length
             ? "general"
@@ -2283,6 +2284,9 @@ async function main(): Promise<void> {
         { timeoutMs: 15_000 },
       ).catch(() => null);
       pages = ctx?.pages ?? [];
+      // Sizes only, never the pictures (Instagram reader, src/context/instagram.ts).
+      const pics = pages.flatMap((p) => p.images ?? []);
+      if (pics.length) trace("page:images " + pics.length + " (" + describeImages(pics) + ")");
       const readOk = (st: ReadStatus | undefined): boolean => st === "read" || st === "partial";
       const shared = ctx?.shared ?? [];
       const cur = shared.find((t) => t.tab_id === tab.id);
@@ -3418,8 +3422,8 @@ async function main(): Promise<void> {
   for (const chip of empty.querySelectorAll<HTMLButtonElement>("button[data-prompt]")) {
     chip.addEventListener("click", () => {
       const p = chip.dataset.prompt ?? "";
-      // On a YouTube video, Summarize gives the video summary (VIDEO_SUMMARY_PROMPT).
-      if (p === "summarize") void ask(youtubeVideoId(tab.url) ? VIDEO_SUMMARY_PROMPT : SUMMARIZE_QUESTION);
+      // On a YouTube video, Summarize gives the video summary (VIDEO_SUMMARY_PROMPT); on Instagram, the post summary.
+      if (p === "summarize") void ask(youtubeVideoId(tab.url) ? VIDEO_SUMMARY_PROMPT : readsInstagramPost(tab.url) ? INSTAGRAM_SUMMARY_PROMPT : SUMMARIZE_QUESTION);
       else if (p === "explain") void ask(EXPLAIN_QUESTION);
       else if (p === "coupons") void runCoupons();
       else void ask(p);

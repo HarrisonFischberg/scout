@@ -26,6 +26,8 @@ export interface RawPage {
   meta?: PageMeta;
   /** The page was longer than the extractor's cap. */
   truncated?: boolean;
+  /** Pictures from the page (the Instagram reader only); checked again in toPageContext. */
+  images?: unknown;
 }
 
 export function extractPage(): RawPage {

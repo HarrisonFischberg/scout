@@ -148,7 +148,18 @@ export const REQUESTS = {
         question: "string",
         history: { array: { object: { role: { enum: ["user", "assistant"] }, content: "string" } } },
         /** Cleaned pages from context.read: the current tab first, then attached tabs. */
-        pages: { array: { object: { url: "string", title: "string", text: "string" } } },
+        pages: {
+          array: {
+            object: {
+              url: "string",
+              title: "string",
+              text: "string",
+              /** Pictures from the page (an Instagram post's photos or video frames, src/context/instagram.ts). */
+              images: { array: { object: { mediaType: { enum: ["image/jpeg", "image/png"] }, data: "string", width: "number", height: "number", label: "string" } } },
+            },
+            optional: ["images"],
+          },
+        },
         /** Tabs shown under the message (title, host, read status), saved with the answer. */
         shared: { array: { object: { title: "string", host: "string", status: "string" } } },
         /** Continue after a drop: history shows this question and the answer starts with this text. */

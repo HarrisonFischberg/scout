@@ -22,7 +22,7 @@ export interface ScopeInput {
 // Words that point at what is on screen. "this"/"these" only count before a
 // noun that is not a time ("this weekend" is general).
 const PAGE_NOUNS =
-  "page|site|website|web ?page|article|post|story|blog|product|item|listing|model|recipe|video|thread|review|reviews|comment|comments|" +
+  "page|site|website|web ?page|article|post|story|reel|reels|clip|carousel|caption|slide|pic|blog|product|item|listing|model|recipe|video|thread|review|reviews|comment|comments|" +
   "doc|document|pdf|paper|report|study|deal|offer|sale|price|one|ones|thing|stuff|text|paragraph|section|table|chart|graph|image|picture|photo|" +
   "list|guide|tutorial|course|job|role|position|house|home|apartment|property|car|book|song|album|movie|show|episode|game|app|company|event|" +
   "menu|place|hotel|flight|ticket|tickets|form|email|message|code|error|author|writer|brand|store|shop|seller|plan|policy|terms|contract|result|results|link|links|search";

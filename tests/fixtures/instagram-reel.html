@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instagram</title>
+<!-- Synthetic Instagram-like reel page for the Instagram reader (src/context/instagram.ts). Not Instagram's markup or art. -->
+<meta property="og:url" content="https://www.instagram.com/reel/OTHER/">
+<meta property="og:description" content="Stale description from another post">
+<style>
+  body { margin: 0; font: 14px system-ui, sans-serif; }
+  nav { height: 40px; border-bottom: 1px solid #ddd; }
+  .reel { display: flex; gap: 12px; padding: 12px; height: 680px; }
+  video { width: 360px; height: 640px; background: #000; }
+  .next { margin-top: 40px; }
+  img.avatar { width: 32px; height: 32px; }
+</style>
+</head>
+<body>
+<nav><a href="/">Home</a> <a href="/explore/">Explore</a> <a href="/reels/">Reels</a></nav>
+<main>
+  <div class="reel" id="r1">
+    <video id="v" muted loop playsinline crossorigin="anonymous" poster="ig/photo1.jpg">
+      <source src="ig/reel.webm" type="video/webm">
+      <source src="ig/reel.mp4" type="video/mp4">
+    </video>
+    <div class="side">
+      <div class="who"><img class="avatar" alt="trailcook's profile picture" src="ig/photo2.jpg"> <a href="/trailcook/">trailcook</a> · Follow</div>
+      <span>One-pan camp breakfast in 10 minutes <a href="/explore/tags/camping/">#camping</a> <a href="/explore/tags/breakfast/">#breakfast</a></span>
+      <div><a href="/explore/locations/123/yosemite/">Yosemite National Park</a></div>
+      <div><a href="/reels/audio/999/">trailcook · Original audio</a></div>
+      <div><time datetime="2026-11-01T18:00:00.000Z" title="November 1, 2026">1w</time></div>
+      <div>1,204 likes</div>
+      <div><b>hiker_amy</b> Making this this weekend!</div>
+    </div>
+  </div>
+  <div class="reel next" id="r2">
+    <video muted playsinline src="ig/reel.mp4"></video>
+    <div class="side"><a href="/someoneelse/">someoneelse</a> <span>A different reel's caption that must not be read</span></div>
+  </div>
+</main>
+</body>
+</html>

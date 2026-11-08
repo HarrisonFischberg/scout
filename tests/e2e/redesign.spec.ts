@@ -20,10 +20,10 @@ function sse(text: string): string {
 
 async function openPopup(
   page: Page,
-  opts: { keys?: Record<string, string>; data?: Record<string, unknown>; pageData?: typeof PAGE & { favIconUrl?: string }; path?: string; tabFetch?: Record<string, { status: number; text: string }> } = {},
+  opts: { keys?: Record<string, string>; data?: Record<string, unknown>; pageData?: typeof PAGE & { favIconUrl?: string }; path?: string; tabFetch?: Record<string, { status: number; text: string }>; igRead?: unknown } = {},
 ): Promise<void> {
   await page.addInitScript(
-    ({ keys, data, pageData, tabFetch }) => {
+    ({ keys, data, pageData, tabFetch, igRead }) => {
       const g = globalThis as unknown as Record<string, unknown>;
       // Survive reloads inside one test (simulates reopening the popup).
       const store = (g.sessionStorage as Storage).getItem("__fake");
@@ -58,6 +58,8 @@ async function openPopup(
               const hit = Object.keys(tabFetch ?? {}).find((k) => (a[0] as string).startsWith(k));
               return [{ result: hit ? tabFetch![hit] : { status: 404, text: "" } }];
             }
+            // The Instagram reader (src/context/instagram.ts readInstagram): a synthetic read.
+            if (a.length === 1 && a[0] && typeof a[0] === "object" && "maxImages" in (a[0] as object)) return [{ result: igRead ?? null }];
             // seekVideo(id, seconds): this fake tab has no video player.
             if (a.length === 2 && typeof a[1] === "number") {
               g.__seeks = [...((g.__seeks as unknown[] | undefined) ?? []), a];
@@ -80,7 +82,7 @@ async function openPopup(
       };
     },
     // Sharing with the providers already allowed (consent.spec.ts covers asking).
-    { keys: opts.keys ?? {}, data: { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } }, ...(opts.data ?? {}) }, pageData: opts.pageData ?? PAGE, tabFetch: opts.tabFetch ?? {} },
+    { keys: opts.keys ?? {}, data: { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } }, ...(opts.data ?? {}) }, pageData: opts.pageData ?? PAGE, tabFetch: opts.tabFetch ?? {}, igRead: opts.igRead ?? null },
   );
   await page.route("**/popup.html*", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
@@ -243,6 +245,51 @@ test("on a YouTube video Scout reads the captions, offers video starters, and [m
   await time.click();
   await expect.poll(() => page.evaluate(() => (globalThis as unknown as { __created?: string[] }).__created ?? [])).toEqual(["https://www.youtube.com/watch?v=" + ID + "&t=245s"]);
   expect(await page.evaluate(() => (globalThis as unknown as { __seeks?: unknown[] }).__seeks)).toEqual([[ID, 245]]);
+});
+
+test("on an Instagram reel Scout offers post starters and sends the post's frames with what Instagram says about it", async ({ page }) => {
+  const FRAME = "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==";
+  let sent = "";
+  await openPopup(page, {
+    keys: { anthropic: GOOD_KEY },
+    pageData: { url: "https://www.instagram.com/reel/C9synthetic/", title: "Instagram", text: "Home Explore Reels Messages" },
+    igRead: {
+      url: "https://www.instagram.com/reel/C9synthetic/",
+      title: "Instagram",
+      media: "video",
+      author: "trailcook",
+      caption: "One-pan camp breakfast in 10 minutes #camping",
+      hashtags: ["#camping"],
+      alts: [],
+      duration: 12,
+      current: 3,
+      paused: false,
+      muted: true,
+      subtitles: [],
+      around: "trailcook\n1,204 likes",
+      images: [{ mediaType: "image/jpeg", data: FRAME, width: 1, height: 1, label: "Video frame at 0:03 of 0:12 (what the user is seeing now)" }],
+      blocked: false,
+    },
+  });
+  await page.route("https://api.anthropic.com/v1/messages", (r) => {
+    sent = r.request().postData() ?? "";
+    return r.fulfill({ status: 200, contentType: "text/event-stream", body: sse("A camp breakfast reel by @trailcook.") });
+  });
+  const list = page.getByRole("list", { name: "Suggestions for Instagram" });
+  await expect(list.getByRole("button")).toHaveText(["Summarize this post", "What happens in it?", "Is it true?", "Find what's shown"]);
+  await list.getByRole("button", { name: "Summarize this post" }).click();
+  const log = page.getByRole("log");
+  await expect(log.locator(".msg.user")).toHaveText("Summarize this post");
+  await expect(log.locator(".msg.assistant").last()).toContainText("A camp breakfast reel");
+  const body = JSON.parse(sent) as { messages: Array<{ content: unknown }> };
+  const last = JSON.stringify(body.messages[body.messages.length - 1]);
+  expect(last).toContain("Instagram reel");
+  expect(last).toContain("Account: @trailcook");
+  expect(last).toContain("Picture 1: Video frame at 0:03 of 0:12");
+  expect(last).toContain('"type":"image"');
+  expect(last).toContain(FRAME);
+  // The page's navigation text is replaced by the post.
+  expect(last).not.toContain("Home Explore Reels Messages");
 });
 
 test("Summarize on a YouTube video gives takeaways with headings, and time ranges jump the video to their start", async ({ page }) => {

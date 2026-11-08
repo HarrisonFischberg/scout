@@ -3,7 +3,8 @@
 import type { ChatMessage } from "../providers/types";
 import { shareBudget } from "./tabs";
 import { isVideoText, VIDEO_PAGE_CHARS } from "../context/youtube";
-import { videoStarterLabel } from "../panel/suggestions";
+import { siteStarterLabel } from "../panel/suggestions";
+import type { PageImage } from "./images";
 
 export const PAGE_CHAR_BUDGET = 30_000;
 
@@ -156,6 +157,8 @@ export interface PageContext {
   url: string;
   title: string;
   text: string;
+  /** Pictures from the page (an Instagram post's photos or video frames), sent after the question. Never saved. */
+  images?: PageImage[];
 }
 
 /** Removes anything that reads as the fence tag (any case, spacing or attributes), so page text cannot open or close it. */
@@ -194,7 +197,7 @@ export const LEGACY_EXPLAIN_QUESTIONS = ["Explain the most important points on t
 export function starterLabel(question: string): string {
   if (question === SUMMARIZE_QUESTION || LEGACY_SUMMARIZE_QUESTIONS.includes(question)) return "Summarize page";
   if (question === EXPLAIN_QUESTION || LEGACY_EXPLAIN_QUESTIONS.includes(question)) return "Explain key points";
-  return videoStarterLabel(question) ?? question;
+  return siteStarterLabel(question) ?? question;
 }
 
 /** The open page's title and address, without its text, for a general message (OPEN_PAGE_RULES). */

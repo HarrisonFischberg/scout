@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("../tests/fixtures", import.meta.url)));
 const port = Number(process.argv[2] ?? 4173);
-const types = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript" };
+const types = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".jpg": "image/jpeg", ".png": "image/png", ".mp4": "video/mp4", ".webm": "video/webm" };
 
 // Fake Shopify cart API (T031) for tests/fixtures/shopify-cart.html. One cart
 // per browser, keyed by a cookie, so parallel tests do not share state.
@@ -78,7 +78,18 @@ createServer(async (req, res) => {
   }
   try {
     const body = await readFile(file);
-    res.writeHead(200, { "content-type": types[extname(file)] ?? "application/octet-stream" }).end(body);
+    const headers = { "content-type": types[extname(file)] ?? "application/octet-stream", "accept-ranges": "bytes" };
+    // Instagram reader fixtures: ?cors=1 answers like a CDN that allows any origin.
+    if (new URL(req.url ?? "/", "http://localhost").searchParams.get("cors") === "1") headers["access-control-allow-origin"] = "*";
+    // Byte ranges, so WebKit can play and seek the fixture videos.
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? "");
+    if (range) {
+      const start = range[1] ? Number(range[1]) : Math.max(0, body.length - Number(range[2]));
+      const end = range[1] && range[2] ? Math.min(Number(range[2]), body.length - 1) : body.length - 1;
+      res.writeHead(206, { ...headers, "content-range": `bytes ${start}-${end}/${body.length}`, "content-length": end - start + 1 }).end(body.subarray(start, end + 1));
+      return;
+    }
+    res.writeHead(200, headers).end(body);
   } catch {
     res.writeHead(404).end("not found");
   }

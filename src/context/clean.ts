@@ -4,6 +4,7 @@
 import type { PageContext } from "../chat/prompt";
 import type { PageMeta, RawPage } from "./extract";
 import { isVideoText, VIDEO_PAGE_CHARS } from "./youtube";
+import { cleanPageImages } from "./instagram";
 
 export const REDACTED = "[REDACTED]";
 
@@ -104,5 +105,6 @@ export function toPageContext(raw: unknown, maxChars?: number): { page: PageCont
   }
   const header = metaLines(safeMeta);
   const text = redactSecrets((header.length ? header.join("\n") + "\n\n" : "") + body);
-  return { page: { url: cleanUrl(url), title: redactSecrets(str(r.title).slice(0, 300)), text }, partial };
+  const images = cleanPageImages(r.images);
+  return { page: { url: cleanUrl(url), title: redactSecrets(str(r.title).slice(0, 300)), text, ...(images.length ? { images } : {}) }, partial };
 }

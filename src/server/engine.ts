@@ -10,7 +10,8 @@
 // does (src/agent/loop.ts), so no provider-specific reasoning blocks have to
 // be echoed between rounds.
 import { BridgeError } from "../bridge/messages";
-import { withImages, type PastedImage } from "../chat/images";
+import { pageImagesNote, withImages, type PastedImage } from "../chat/images";
+import { MAX_PAGE_IMAGES } from "../context/instagram";
 import type { QuestionScope } from "../chat/intent";
 import { APPLE_CHAT_WEB_RULE, APPLE_NO_PAGE_PROMPT, APPLE_WEB_RULE, appSystemPrompt, buildMessages, chatSystemPrompt, fenceOpenPage, type PageContext } from "../chat/prompt";
 import { CHAT_MAX_TOKENS } from "../chat/session";
@@ -260,9 +261,13 @@ export class ScoutServer {
       // Apple first: its answer stands unless it can't answer; then the key's model runs as usual.
       // Apple's on-device model can't see images: those go straight to the key's model.
       const hasImages = (req.images?.length ?? 0) > 0;
+      // Pictures read from the page (an Instagram post's photos or video frames): the key's
+      // model sees them; Apple's can't, so with a key they skip Apple, and without one Apple
+      // answers from the page text alone (Instagram's own descriptions, the caption).
+      const pagePics = req.pages.flatMap((p) => p.images ?? []).slice(0, MAX_PAGE_IMAGES);
       // A video transcript longer than Apple's model can read would be answered from its first and last minutes only.
       const longVideo = req.pages.some((p) => isVideoText(p.text) && p.text.length > APPLE_PROMPT_CHARS);
-      const tryApple = req.model === APPLE_MODEL && !!req.fallback && !hasImages && !longVideo && !needsFreshFacts(req.question, req.pages.length > 0);
+      const tryApple = req.model === APPLE_MODEL && !!req.fallback && !hasImages && !pagePics.length && !longVideo && !needsFreshFacts(req.question, req.pages.length > 0);
       const apple = tryApple ? await this.askApple(req, signal) : null;
       if (apple !== null) {
         full = apple;
@@ -278,9 +283,11 @@ export class ScoutServer {
       const openPage = req.scope === "general" && req.pages.length === 0 && tools.length > 0 ? req.open_page : undefined;
       const question = openPage ? fenceOpenPage(openPage) + "\n\nUser message: " + req.question : req.question;
       const messages: ChatMessage[] = buildMessages(req.history, question, req.pages[0] ?? null, req.pages.slice(1));
-      if (hasImages) {
+      const sendPics = use.model === APPLE_MODEL ? [] : pagePics;
+      if (hasImages || sendPics.length) {
         const last = messages[messages.length - 1]!;
-        messages[messages.length - 1] = { role: "user", content: withImages(textOf(last.content), req.images!) };
+        const pasted = req.images ?? [];
+        messages[messages.length - 1] = { role: "user", content: withImages(textOf(last.content) + pageImagesNote(sendPics, pasted.length), [...pasted, ...sendPics]) };
       }
       const maxRounds = this.deps.maxRounds ?? 6;
       for (let round = 0; provider && round < maxRounds && !signal.aborted; round++) {
