@@ -2,6 +2,15 @@ import { ProviderError, errorDetail, errorFromStatus } from "./errors";
 import { readSse } from "./sse";
 import type { ChatMessage, ChatRequest, ProviderClient, ProviderConfig, StreamEvent } from "./types";
 
+/** The site of a page the model fetches, for the step line ("Opening nytimes.com"). */
+function siteOf(url: string): string | null {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "") || null;
+  } catch {
+    return null;
+  }
+}
+
 const DEFAULT_URL = "https://api.anthropic.com/v1/messages";
 
 /** Messages API shape: string content as is, parts as text and base64 image blocks. */
@@ -169,7 +178,9 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
                 yield { type: "search", ok: false, error: typeof cb.content?.error_code === "string" ? cb.content.error_code : "error" };
               }
               if (cb.type === "web_search_tool_result" && Array.isArray(cb.content)) {
-                yield { type: "search", ok: true, results: cb.content.filter((r: { type?: unknown }) => r?.type === "web_search_result").length };
+                const results = cb.content.filter((r: { type?: unknown }) => r?.type === "web_search_result").length;
+                yield { type: "search", ok: true, results };
+                yield { type: "progress", step: { step: "results", ...(results ? { count: results } : {}) } };
                 for (const r of cb.content) {
                   if (r?.type === "web_search_result" && typeof r.url === "string") {
                     yield {
@@ -181,6 +192,7 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
                   }
                 }
               }
+              if (cb.type === "thinking" || cb.type === "redacted_thinking") yield { type: "progress", step: { step: "thinking" } };
               content[ev.index] = { ...cb };
               blocks.set(ev.index, {
                 kind: cb.type === "tool_use" ? "tool_use" : "text",
@@ -234,7 +246,14 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
               if (kept?.type === "server_tool_use" && kept.name === "web_fetch") {
                 const url = (kept.input as { url?: unknown } | undefined)?.url;
                 if (typeof url === "string" && url) asked.set(String(kept.id ?? ""), url);
+                yield { type: "progress", step: { step: "fetch", ...(typeof url === "string" && siteOf(url) ? { detail: siteOf(url)! } : {}) } };
               }
+              if (kept?.type === "server_tool_use" && kept.name === "web_search") {
+                const query = (kept.input as { query?: unknown } | undefined)?.query;
+                yield { type: "progress", step: { step: "search", ...(typeof query === "string" && query.trim() ? { detail: query.trim() } : {}) } };
+              }
+              // Thinking done: the answer's words come next.
+              if (kept?.type === "thinking" || kept?.type === "redacted_thinking") yield { type: "progress", step: { step: "writing" } };
               if (b?.kind === "tool_use") {
                 let input: unknown;
                 try {

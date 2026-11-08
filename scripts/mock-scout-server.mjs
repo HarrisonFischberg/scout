@@ -17,6 +17,8 @@
 //   [mock:slow]                   stream slowly (for Stop and reconnect tests),
 //   [mock:long]                   stream 40 words over about 24 s (close and reopen the panel meanwhile),
 //   [mock:error]                  answer HTTP 500.
+//   [mock:steps]                  think, search the web, read the results, then answer, slowly
+//                                 enough to watch the panel's step line (owner, 2026-11-08),
 //   [mock:cited]                  an answer whose web citations come as search result
 //                                 citations (page in `source`), with the "[12-1]" markers
 //                                 the model sometimes writes (owner report 2026-10-29).
@@ -134,6 +136,7 @@ function plan(body) {
       ],
     };
   }
+  if (/\[mock:steps\]/.test(all)) return { text: SAMPLE.split(/(?<= )/), steps: true };
   if (/\[mock:long\]/.test(all)) {
     return { text: Array.from({ length: 40 }, (_, i) => "w" + (i + 1) + (i === 39 ? "." : " ")), delay: 600 };
   }
@@ -162,11 +165,28 @@ async function stream(res, p) {
     sse(res, { type: "message_stop" });
     return res.end();
   }
-  sse(res, { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } });
+  // Steps first: thinking, a web search and its results, each with a pause.
+  let at = 0;
+  if (p.steps) {
+    const results = Array.from({ length: 6 }, (_, i) => ({ type: "web_search_result", url: "http://127.0.0.1:4317/result-" + (i + 1) + ".html", title: "Result " + (i + 1), encrypted_content: "x" }));
+    sse(res, { type: "content_block_start", index: at, content_block: { type: "thinking", thinking: "" } });
+    await wait(1600);
+    sse(res, { type: "content_block_delta", index: at, delta: { type: "signature_delta", signature: "mock" } });
+    sse(res, { type: "content_block_stop", index: at++ });
+    sse(res, { type: "content_block_start", index: at, content_block: { type: "server_tool_use", id: "srvtoolu_mock_1", name: "web_search", input: {} } });
+    sse(res, { type: "content_block_delta", index: at, delta: { type: "input_json_delta", partial_json: '{"query":"widget price comparison"}' } });
+    sse(res, { type: "content_block_stop", index: at++ });
+    await wait(1800);
+    sse(res, { type: "content_block_start", index: at, content_block: { type: "web_search_tool_result", tool_use_id: "srvtoolu_mock_1", content: results } });
+    sse(res, { type: "content_block_stop", index: at++ });
+    await wait(1800);
+  }
+  const ti = at;
+  sse(res, { type: "content_block_start", index: ti, content_block: { type: "text", text: "" } });
   const pieces = Array.isArray(p.text) ? p.text : [p.text];
   for (let i = 0; i < pieces.length; i++) {
     if (res.destroyed) return;
-    sse(res, { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: pieces[i] } });
+    sse(res, { type: "content_block_delta", index: ti, delta: { type: "text_delta", text: pieces[i] } });
     if (p.drop && i === 5) {
       // Cut the connection mid-answer, as a network drop would.
       await wait(50);
@@ -175,11 +195,11 @@ async function stream(res, p) {
     }
     await wait(p.delay ?? (p.slow ? 150 : 15));
   }
-  sse(res, { type: "content_block_stop", index: 0 });
+  sse(res, { type: "content_block_stop", index: ti });
   if (p.tool) {
-    sse(res, { type: "content_block_start", index: 1, content_block: { type: "tool_use", id: "toolu_mock_1", name: p.tool.name, input: {} } });
-    sse(res, { type: "content_block_delta", index: 1, delta: { type: "input_json_delta", partial_json: JSON.stringify(p.tool.input) } });
-    sse(res, { type: "content_block_stop", index: 1 });
+    sse(res, { type: "content_block_start", index: ti + 1, content_block: { type: "tool_use", id: "toolu_mock_1", name: p.tool.name, input: {} } });
+    sse(res, { type: "content_block_delta", index: ti + 1, delta: { type: "input_json_delta", partial_json: JSON.stringify(p.tool.input) } });
+    sse(res, { type: "content_block_stop", index: ti + 1 });
   }
   sse(res, { type: "message_delta", delta: { stop_reason: p.tool ? "tool_use" : "end_turn" }, usage: { output_tokens: 40 } });
   sse(res, { type: "message_stop" });

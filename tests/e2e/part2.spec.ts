@@ -120,6 +120,18 @@ test("a tool request mid-stream runs and the same answer continues", async ({ pa
   await expect(page.locator("#status")).toContainText("Cost: ");
 });
 
+// Plain-English steps (owner, 2026-11-08): each big step replaces the last until the first words.
+test("the step line follows thinking, a web search and its results, then gives way to the answer", async ({ page }) => {
+  await openPopup(page);
+  await ask(page, "How much is the widget elsewhere? [mock:steps]");
+  const step = lastAnswer(page).locator(".thinking .step.now");
+  await expect(step).toHaveText("Thinking it through…");
+  await expect(step).toHaveText("Searching for “widget price comparison”…");
+  await expect(step).toHaveText("Reading 6 results…");
+  await expect(lastAnswer(page)).toContainText("sample answer");
+  await expect(lastAnswer(page).locator(".thinking")).toHaveCount(0);
+});
+
 test("an unknown tool is rejected with schema-error and logged", async ({ page }) => {
   await openPopup(page);
   await ask(page, "Clean up [mock:tool=delete_history]");

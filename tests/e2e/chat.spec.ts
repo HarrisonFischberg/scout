@@ -163,7 +163,11 @@ test("an answer shows the moving indicator until its first words", async ({ page
   await page.getByRole("button", { name: "Send" }).click();
   const log = page.getByRole("log", { name: "Conversation" });
   await expect(log.locator(".msg.assistant .thinking .pulse")).toHaveCount(1);
-  await expect(log.locator(".msg.assistant .thinking")).toHaveText("Thinking…");
+  // Plain-English steps (owner, 2026-11-08): reading the page, then the model's turn.
+  const step = log.locator(".msg.assistant .thinking .step.now");
+  await expect(step).toHaveText("Reading the page…");
+  await expect(step).toHaveText("Thinking it through…");
+  await expect(log.locator(".msg.assistant .thinking")).toHaveAttribute("aria-live", "polite");
   release();
   await expect(log.getByText("with free shipping.")).toBeVisible();
   await expect(log.locator(".pulse")).toHaveCount(0);

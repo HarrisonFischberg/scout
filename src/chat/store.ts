@@ -5,6 +5,7 @@
 import type { Usage } from "../providers/types";
 import type { ServerEvent } from "../server/protocol";
 import type { ToolStatus } from "../tools/registry";
+import type { Step } from "./steps";
 
 export type MessageStatus = "pending" | "streaming" | "complete" | "error";
 
@@ -27,6 +28,8 @@ export interface StoredMessage {
   usage?: Usage;
   /** Apple's model couldn't answer; the key's model is working on it. */
   handoff?: boolean;
+  /** The latest big step of the work, shown until the answer starts (src/chat/steps.ts). */
+  step?: Step;
   stopped?: boolean;
   error?: { code: string; message: string };
 }
@@ -73,6 +76,10 @@ export class ConversationStore {
         break;
       case "handoff":
         m.handoff = true;
+        m.step = { step: "handoff" };
+        break;
+      case "step":
+        m.step = event.step;
         break;
       case "text":
         m.status = "streaming";
@@ -83,6 +90,7 @@ export class ConversationStore {
         break;
       case "tool_request":
         if (!m.tools.some((t) => t.request_id === event.request_id)) m.tools.push({ request_id: event.request_id, name: event.name, input: event.input });
+        m.step = { step: "tool", name: event.name };
         break;
       case "tool_done": {
         const t = m.tools.find((x) => x.request_id === event.request_id);

@@ -41,6 +41,8 @@ import { APPLE_MODEL, APPLE_MODEL_LABEL, APPLE_UNAVAILABLE_TEXT, appleGenerate, 
 import { INSTAGRAM_SUMMARY_PROMPT, siteIconUrl, siteStarterLabel, suggestionsFor, VIDEO_SUMMARY_PROMPT } from "./panel/suggestions";
 import { readsInstagramPost } from "./context/instagram";
 import { seekVideo, youtubeVideoId } from "./context/youtube";
+import { readingStep, stepText, waitingStep } from "./chat/steps";
+import { createStepLine, type StepLine } from "./panel/step-line";
 import { joinDictation, Listener, micBlocked, micBlockedHere, micErrorText, recognitionCtor, rememberMic } from "./panel/voice";
 import { PageListener } from "./panel/page-listen";
 import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
@@ -1816,6 +1818,12 @@ async function main(): Promise<void> {
     /** The pending animation frame of the reveal, if any. */
     typing: number | null;
     typedAt: number;
+    /** A Summarize starter, for the step wording. */
+    summary?: boolean;
+    /** The panel's own step (reading the page, then waiting); a step the server reports wins. */
+    step?: string;
+    /** The step line while no words have arrived (src/panel/step-line.ts). */
+    stepLine?: StepLine;
     done: () => void;
     finished: Promise<void>;
   }
@@ -1845,8 +1853,16 @@ async function main(): Promise<void> {
     const visible = text.slice(0, cut);
     if (visible) renderMarkdown(document, v.bubble, visible, { sources: allSources(v, m) });
     else if (m.status === "error" || m.status === "complete") v.bubble.textContent = "";
-    // After Apple's model couldn't answer, a new label shows the work goes on (owner, 2026-10-27).
-    else v.bubble.innerHTML = '<span class="thinking">' + PULSE + "<span>" + (m.handoff ? "Looking deeper…" : "Thinking…") + "</span></span>";
+    // Plain-English steps until the first words (owner, 2026-11-08); after Apple's
+    // model couldn't answer, "Looking deeper" shows the work goes on (owner, 2026-10-27).
+    else {
+      const label = m.step ? stepText(m.step, { summary: v.summary === true }) : (v.step ?? "Thinking it through");
+      if (v.stepLine && v.bubble.contains(v.stepLine.el)) v.stepLine.set(label);
+      else {
+        v.stepLine = createStepLine(document, PULSE, label);
+        v.bubble.replaceChildren(v.stepLine.el);
+      }
+    }
     if (v.closed && m.status === "complete" && !m.stopped && text && cut >= text.length) {
       const byApple = v.appleFirst && !m.usage;
       const askKey = byApple ? () => void ask(v.question, { redoOf: { bubble: v.bubble, answer: text } }) : undefined;
@@ -1973,7 +1989,7 @@ async function main(): Promise<void> {
       v.queue = v.queue.then(() => runToolRequest(w.message_id, ev)).catch(() => undefined);
     }
     if (m.status === "complete" || m.status === "error") finalize(w.message_id);
-    else if (w.event.kind === "text" || w.event.kind === "citation" || w.event.kind === "tool_done" || w.event.kind === "handoff") {
+    else if (w.event.kind === "text" || w.event.kind === "citation" || w.event.kind === "tool_done" || w.event.kind === "handoff" || w.event.kind === "step" || w.event.kind === "tool_request") {
       if (w.event.kind === "handoff") trace("apple:handoff");
       renderView(w.message_id);
     }
@@ -2264,8 +2280,16 @@ async function main(): Promise<void> {
     const v = newView(id, bubble, cont ? cont.question : trimmed, s.settings.model, cont ? cont.partial + (/\s$/.test(cont.partial) ? "" : " ") : "");
     if (s.appleFirst && !cont && !redo && !images.length) v.appleFirst = true;
     if (images.length) v.images = images;
+    const video = !!youtubeVideoId(tab.url);
+    v.summary = isSummary;
+    v.step =
+      (cont || redo || STANDALONE
+        ? null
+        : readingStep({ page: scope === "page", video, instagram: readsInstagramPost(tab.url), tabs: granted ? extra.length : 0 })) ??
+      waitingStep({ summary: isSummary, video, continued: !!cont });
     renderView(id);
-    status.textContent = cont ? "Finishing the answer." : STANDALONE || scope === "general" ? "Waiting for the answer." : "Reading the page and waiting for the answer.";
+    // The step line in the answer says what is happening (owner, 2026-11-08); the status line stays clear.
+    status.textContent = "";
     setBusy(true);
     if (!storage) conv = conv || "";
     else if (!conv) conv = await conversationForTab(storage, tab.id, Date.now(), tab.incognito).catch(() => "");
@@ -2308,6 +2332,7 @@ async function main(): Promise<void> {
             ". The answer uses only the pages listed as read. Site access may have been declined, the site may be blocked in Settings, or this browser cannot read background tabs (Safari on iPhone and iPad).",
         );
       }
+      v.step = waitingStep({ summary: isSummary, video, continued: false });
       renderView(id);
     }
 
@@ -2360,7 +2385,7 @@ async function main(): Promise<void> {
       renderView(a.message_id);
       activeChat = a.message_id;
       setBusy(true);
-      status.textContent = "Still answering…";
+      status.textContent = "";
       trace("conversation:resumed");
       subscribe(a.message_id, 0);
     }
