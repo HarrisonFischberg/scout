@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUTTON_KEY, buildReport, describeBrowser, describeCrash, Diagnostics, DIAG_KEY, loadButtonFailures, loadCrashes, MAX_BUTTON_FAILURES, MAX_CRASHES, MAX_RUNS, parseCrashes, recordButtonFailure, recordCrash, scrub, watchCrashes } from "../../src/diagnostics";
+import { BUTTON_KEY, buildReport, describeBrowser, describeCrash, Diagnostics, DIAG_KEY, loadButtonFailures, loadCrashes, MAX_BUTTON_FAILURES, MAX_CRASHES, MAX_RUNS, parseCrashes, recordButtonFailure, recordCrash, scrub, SUPPORT_EMAIL, supportMail, watchCrashes } from "../../src/diagnostics";
 import type { StorageArea } from "../../src/settings/settings";
 
 function memStore(): StorageArea & { data: Record<string, unknown> } {
@@ -94,7 +94,7 @@ describe("buildReport", () => {
     expect(text).toContain("- Page: 127.0.0.1");
     expect(text).toContain("+0.00s  snapshot:start 1");
     expect(text).toContain("- #1 ask at");
-    expect(text).toContain("not recorded (opt in under Diagnostics)");
+    expect(text).toContain("- Question: not recorded");
   });
 
   // Owner report 2026-10-19 (run #227): opening the panel to copy the report
@@ -258,5 +258,23 @@ describe("full debug log", () => {
 
   it("includes setup even before any run", () => {
     expect(buildReport([], ENV, [], { setup: ["Mode: Chat"] })).toContain("### Setup");
+  });
+});
+
+describe("supportMail", () => {
+  it("drafts the note then the report to support, encoded for a mailto: link", () => {
+    const { url, body } = supportMail("  Coupons never finish & the page hangs  ", "## Report\n- Page: shop.test", "0.1.1");
+    expect(url.startsWith(`mailto:${SUPPORT_EMAIL}?subject=`)).toBe(true);
+    const q = new URLSearchParams(url.slice(url.indexOf("?") + 1));
+    expect(q.get("subject")).toBe("Scout AI Assistant 0.1.1 debug logs");
+    expect(q.get("body")).toBe(body);
+    expect(body).toBe("Coupons never finish & the page hangs\n\n## Report\n- Page: shop.test");
+  });
+
+  it("trims a long report without splitting an emoji", () => {
+    const { url, body } = supportMail("x", "a".repeat(5996) + "😀😀", "0.1.1");
+    expect(body).toContain("(trimmed: Copy debug log in the + menu has all of it)");
+    expect(body.length).toBeLessThan(6100);
+    expect(() => decodeURIComponent(url)).not.toThrow();
   });
 });

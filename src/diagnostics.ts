@@ -42,6 +42,22 @@ interface Stored {
 }
 
 export const DIAG_KEY = "diagnostics";
+/** Settings → Send Debug Logs: the note typed so far, kept if the panel closes. */
+export const SUPPORT_DRAFT_KEY = "supportDraft";
+export const SUPPORT_EMAIL = "support@rarecreatures.app";
+/** Longest body put in the mailto: link; some email apps refuse or cut much longer links. */
+const MAIL_BODY_MAX = 6000;
+
+/** Settings → Send Debug Logs: the user's note, then the report, as a draft to support in their email app. */
+export function supportMail(problem: string, report: string, version: string): { url: string; body: string } {
+  let body = `${problem.trim()}\n\n${report}`;
+  if (body.length > MAIL_BODY_MAX) {
+    // Never end on half an emoji: encodeURIComponent throws on a lone surrogate.
+    body = body.slice(0, MAIL_BODY_MAX).replace(/[\uD800-\uDBFF]$/, "") + "\n… (trimmed: Copy debug log in the + menu has all of it)";
+  }
+  const subject = `Scout AI Assistant ${version} debug logs`;
+  return { url: `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, body };
+}
 // Enough to cover a whole session of use, so a bug noticed a few runs later
 // is still in the log (owner request 2026-10-24: "much more robust").
 export const MAX_RUNS = 15;
@@ -397,7 +413,7 @@ export function buildReport(runs: readonly DiagRun[], env: ReportEnv, buttonFail
   if (last.errors.length) lines.push(`- Errors shown: ${last.errors.map((e) => `"${e}"`).join("; ")}`);
   if (last.usage) lines.push(`- Tokens: ${last.usage.inputTokens} in, ${last.usage.outputTokens} out`);
   lines.push(
-    `- Question: ${last.question !== undefined ? `"${last.question}"` : "not recorded (opt in under Diagnostics)"}`,
+    `- Question: ${last.question !== undefined ? `"${last.question}"` : "not recorded"}`,
     "",
     "### Timeline",
   );
