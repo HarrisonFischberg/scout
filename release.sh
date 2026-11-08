@@ -43,7 +43,8 @@ firefox() {
   npx --yes web-ext@10.8.0 lint --source-dir dist/firefox
   # AMO asks for source because the code is bundled; this zip rebuilds it.
   local src="dist/scout-firefox-$VERSION-source.zip"
-  git archive --format=zip -o "$src" HEAD
+  # Only what the build needs (the whole repo is ~165 MB of screenshots and evidence).
+  git archive --format=zip -o "$src" HEAD src scripts package.json package-lock.json tsconfig.json README.md
   if [ "$LIVE" = true ]; then
     need AMO_JWT_ISSUER AMO_JWT_SECRET
     # Key and secret go in through web-ext's own env vars, not the command
