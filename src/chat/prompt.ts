@@ -2,6 +2,8 @@
 // fenced, labelled, and the system prompt says not to follow it.
 import type { ChatMessage } from "../providers/types";
 import { shareBudget } from "./tabs";
+import { isVideoText, VIDEO_PAGE_CHARS } from "../context/youtube";
+import { videoStarterLabel } from "../panel/suggestions";
 
 export const PAGE_CHAR_BUDGET = 30_000;
 
@@ -19,6 +21,8 @@ export const FORMAT_RULES = [
   // Owner item 12 (2026-10-17): the panel shows each [n] as a site chip at the end of its paragraph.
   "Pages are numbered as sources. When a paragraph or bullet uses a page, end it with that page's number in brackets, like [1] or [1, 2]. Do not number facts from your own knowledge.",
   "Write math in LaTeX: $...$ inline and $$...$$ on its own line. Put code in fenced code blocks with the language name.",
+  // YouTube key points (owner, 2026-11-08): the panel turns [4:05] into a link that jumps the video there.
+  "When the page is a video transcript whose lines start with a time like [4:05], put the time each point is discussed in the same form right after the point, for example [4:05]. Use only times from the transcript, never made-up ones.",
 ].join(" ");
 
 // Part 2: the chat can use tools (src/tools/registry.ts). Added to the system
@@ -190,7 +194,7 @@ export const LEGACY_EXPLAIN_QUESTIONS = ["Explain the most important points on t
 export function starterLabel(question: string): string {
   if (question === SUMMARIZE_QUESTION || LEGACY_SUMMARIZE_QUESTIONS.includes(question)) return "Summarize page";
   if (question === EXPLAIN_QUESTION || LEGACY_EXPLAIN_QUESTIONS.includes(question)) return "Explain key points";
-  return question;
+  return videoStarterLabel(question) ?? question;
 }
 
 /** The open page's title and address, without its text, for a general message (OPEN_PAGE_RULES). */
@@ -214,7 +218,10 @@ export function buildMessages(
   extraPages: PageContext[] = [],
 ): ChatMessage[] {
   const pages = page ? [page, ...extraPages] : extraPages;
-  const shares = shareBudget(pages.length, PAGE_CHAR_BUDGET);
+  // A YouTube video's transcript has its own room, about 2 to 3 hours of speech (src/context/youtube.ts); other pages share the usual budget.
+  const plain = shareBudget(pages.filter((p) => !isVideoText(p.text)).length, PAGE_CHAR_BUDGET);
+  let next = 0;
+  const shares = pages.map((p) => (isVideoText(p.text) ? VIDEO_PAGE_CHARS : plain[next++]!));
   const fences = pages.map((p, i) => (pages.length > 1 ? "Source [" + (i + 1) + "]\n" : "") + fencePage(p, shares[i]));
   // Labelled "message", not "question about the page", so an off-topic
   // message is not read as a question about the page.

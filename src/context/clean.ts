@@ -3,6 +3,7 @@
 // without secret parameters, a size cap, and a short metadata header.
 import type { PageContext } from "../chat/prompt";
 import type { PageMeta, RawPage } from "./extract";
+import { isVideoText, VIDEO_PAGE_CHARS } from "./youtube";
 
 export const REDACTED = "[REDACTED]";
 
@@ -82,7 +83,7 @@ const str = (v: unknown): string => (typeof v === "string" ? v : "");
  * cleaned page, or null when it is not a page. `partial` is true when the
  * text was cut to fit.
  */
-export function toPageContext(raw: unknown, maxChars = 60_000): { page: PageContext; partial: boolean } | null {
+export function toPageContext(raw: unknown, maxChars?: number): { page: PageContext; partial: boolean } | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Partial<RawPage> & Record<string, unknown>;
   const url = str(r.url);
@@ -95,8 +96,10 @@ export function toPageContext(raw: unknown, maxChars = 60_000): { page: PageCont
   }
   let body = str(r.text);
   let partial = r.truncated === true;
-  if (body.length > maxChars) {
-    body = body.slice(0, maxChars);
+  // A video's transcript is already fitted to its own, larger budget (src/context/youtube.ts).
+  const max = maxChars ?? (isVideoText(body) ? VIDEO_PAGE_CHARS : 60_000);
+  if (body.length > max) {
+    body = body.slice(0, max);
     partial = true;
   }
   const header = metaLines(safeMeta);

@@ -38,7 +38,8 @@ import { createProvider, textOf, type ChatMessage, type Effort, type ProviderCli
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { isKeyProblem } from "./providers/errors";
 import { APPLE_MODEL, APPLE_MODEL_LABEL, APPLE_UNAVAILABLE_TEXT, appleGenerate, appleStatus, createApple, type AppleStatus } from "./providers/apple";
-import { siteIconUrl, suggestionsFor } from "./panel/suggestions";
+import { siteIconUrl, suggestionsFor, videoStarterLabel } from "./panel/suggestions";
+import { seekVideo } from "./context/youtube";
 import { joinDictation, Listener, micBlocked, micBlockedHere, micErrorText, recognitionCtor, rememberMic } from "./panel/voice";
 import { PageListener } from "./panel/page-listen";
 import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
@@ -919,6 +920,21 @@ async function main(): Promise<void> {
     if (!chip || !matchMedia("(pointer: coarse)").matches || (cardFor === chip && !sourceCard.hidden)) return;
     e.preventDefault();
     showSourceCard(chip);
+  });
+  // YouTube key points: a time like [4:05] jumps the video in the open tab
+  // there; on another page (or if that fails) it opens the video at that time.
+  log.addEventListener("click", (e) => {
+    const a = e.target instanceof Element ? e.target.closest<HTMLAnchorElement>("a.ts") : null;
+    if (!a || STANDALONE || tab.id === undefined) return;
+    e.preventDefault();
+    const open = (): void => void browser.tabs.create?.({ url: a.href })?.catch(() => undefined);
+    void browser.scripting
+      .executeScript({ target: { tabId: tab.id }, func: seekVideo, args: [a.dataset.video ?? "", Number(a.dataset.t)] })
+      .then(([r]) => {
+        trace("video:seek " + (r?.result === true ? "ok" : "open"));
+        if (r?.result !== true) open();
+      })
+      .catch(open);
   });
   document.addEventListener("pointerdown", (e) => {
     if (!sourceCard.hidden && !(e.target instanceof Node && sourceCard.contains(e.target)) && !chipOf(e.target)) hideSourceCard();
@@ -2204,7 +2220,7 @@ async function main(): Promise<void> {
       ? "chat"
       : cont || redo
         ? (lastScope ?? "page")
-        : isSummary || trimmed === EXPLAIN_QUESTION
+        : isSummary || trimmed === EXPLAIN_QUESTION || videoStarterLabel(trimmed)
           ? "page"
           : images.length
             ? "general"
@@ -2231,7 +2247,8 @@ async function main(): Promise<void> {
       trace("apple:ask-key");
     } else {
       document.querySelectorAll(".ask-key").forEach((b) => b.remove());
-      const userMsg = addMessage("user", isSummary || trimmed === EXPLAIN_QUESTION ? starterLabel(trimmed) : typed);
+      const starter = starterLabel(trimmed);
+      const userMsg = addMessage("user", starter !== trimmed ? starter : typed);
       if (images.length) {
         userMsg.prepend(messageThumbs(images));
         trace("images:sent " + images.length + " (" + describeImages(images) + ")");

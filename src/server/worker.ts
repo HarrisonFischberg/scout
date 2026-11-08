@@ -8,7 +8,8 @@ import { envelope, PANEL_EVENTS, checkSchema, type Envelope, type MessageSender,
 import type { PortLike } from "../bridge/port";
 import { CONTENT_HANDLER, OVERLAY_HANDLER, type ContentRequest, type OverlayRequest } from "../content-api";
 import { callInjected } from "../content-call";
-import { extractPage } from "../context/extract";
+import { extractPage, type RawPage } from "../context/extract";
+import { loadVideo, pageFetch, videoPageText, youtubeVideoId, type FetchInit, type FetchResult } from "../context/youtube";
 import { readTabs, readTab, type GatherDeps, type TabRef } from "../context/gather";
 import { createKeychain, nativeSend, type Provider } from "../keychain";
 import { blockedBy, hostOf, loadPageAccess, parsePolicy, savePageAccess, type ScreenshotChoice } from "../permissions/gate";
@@ -35,6 +36,8 @@ import { reopensAfterSwitch } from "../panel/toolbar";
 const POLICY_TTL_MS = 5 * 60_000;
 /** Scout mode's navigate: how long to wait for the new page before observing it anyway. */
 const NAVIGATE_WAIT_MS = 12_000;
+/** Reading a video's captions, inside the page read's own 8 s; the plain page is used after it. */
+const VIDEO_TIMEOUT_MS = 7_000;
 
 // Scout mode's navigate (owner bug report 2026-10-20): page key events never
 // reach Safari's address bar, so the worker sets the tab's URL itself, then
@@ -97,7 +100,25 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
   };
   const extract = async (tabId: number): Promise<unknown> => {
     const [res] = await browser.scripting.executeScript({ target: { tabId }, func: extractPage });
-    return res?.result;
+    const raw = res?.result as RawPage | undefined;
+    // A YouTube video: its captions instead of the page around it (src/context/youtube.ts).
+    const id = youtubeVideoId(raw?.url);
+    if (!raw || !id) return raw;
+    const fetcher = async (path: string, init?: FetchInit): Promise<FetchResult> => {
+      const [r] = await browser.scripting.executeScript({ target: { tabId }, func: pageFetch, args: [path, init ?? {}] });
+      return (r?.result as FetchResult | undefined) ?? { status: 0, text: "" };
+    };
+    const video = await Promise.race([
+      loadVideo(id, fetcher, navigator.language || "en").catch(() => null),
+      new Promise<null>((r) => setTimeout(() => r(null), VIDEO_TIMEOUT_MS)),
+    ]);
+    if (!video) return raw;
+    return {
+      url: raw.url,
+      title: video.title || raw.title,
+      text: videoPageText(video),
+      meta: { site: "YouTube", ...(raw.meta?.lang ? { lang: raw.meta.lang } : {}) },
+    } satisfies RawPage;
   };
   const gatherDeps = async (): Promise<GatherDeps> => ({ tab, extract, access: await access(), admin: await admin() });
 
