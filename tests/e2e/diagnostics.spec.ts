@@ -93,7 +93,7 @@ test("an error offers Copy diagnostics and the report is the Actual behavior", a
 test("Send Debug Logs opens an email to support with the note and the debug log", async ({ page }) => {
   await openPopup(page);
   await page.evaluate(() => {
-    window.open = ((u: string) => void ((window as unknown as { __opened?: string }).__opened = u)) as typeof window.open;
+    window.open = ((u: string) => void ((window as unknown as { __opened?: string }).__opened = u)) as unknown as typeof window.open;
   });
   await page.getByLabel("Ask about this page").fill("What does the widget cost?");
   await page.getByRole("button", { name: "Send" }).click();
