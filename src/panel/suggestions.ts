@@ -85,6 +85,24 @@ export const SHOPPING_SUGGESTIONS: readonly Suggestion[] = [
 export const YOUTUBE_SITE: ShoppingSite = { name: "YouTube", color: "#cc0000" };
 
 /**
+ * Summarize on a YouTube video (owner, 2026-11-08: "as good as Comet"): the
+ * central takeaway, numbered takeaways each with a bold heading, a short
+ * explanation and the time range it covers, then why the video says it
+ * matters. [1:31–3:22] becomes a chip that plays the video from 1:31.
+ */
+export const VIDEO_SUMMARY_PROMPT =
+  "Summarize this video. Start with one sentence that begins \"The video's central takeaway:\" and states its main claim, " +
+  "then one sentence on how the video makes its case. " +
+  "Then a heading \"### Key takeaways\" and a numbered list of 4 to 7 takeaways, ordered so they explain the video best. " +
+  "Write each takeaway as a bold heading that states the point as a full sentence, then on the next line, indented three spaces, " +
+  "2 or 3 sentences on what the video says and why, ending with the time range it covers, like [1:31–3:22]. " +
+  "A range runs from the first to the last transcript line on that point; if the point comes up in more than one place, give each range, like [4:47–6:16; 8:15–10:00]. " +
+  "Then a heading \"### Why it matters\" and one short paragraph on the video's closing argument or why it says this matters, ending with its time range. " +
+  "Attribute claims to the video (for example \"the video argues\"), use only what the video says, and use only times from the transcript. " +
+  "This answer may run to about 450 words. No other introduction and no closing line.\n\n" +
+  "Shape:\nThe video's central takeaway: ...\n\n### Key takeaways\n\n1. **First point as a sentence.**\n   What the video says about it. [1:31–3:22]\n\n### Why it matters\n\n... [12:53–14:51]";
+
+/**
  * On a YouTube video (owner request 2026-11-08), read from its captions
  * (src/context/youtube.ts). Formats from the sources the owner gave: the
  * digest's TL;DR, takeaways and timeline (youtube-digest-skill), its
@@ -100,12 +118,7 @@ export const VIDEO_SUGGESTIONS: readonly Suggestion[] = [
       "If the video is longer than 10 minutes, add a heading \"Timeline\" with one short line per main topic, each starting with its time. " +
       "Use only what the video says. No introduction and no closing line.",
   },
-  {
-    label: "Summarize the video",
-    prompt:
-      "Summarize this video: one or two sentences on what it is about and what it concludes, " +
-      "then 3 to 5 bullet points with the most important facts, each ending with the time it is discussed, like [4:05].",
-  },
+  { label: "Summarize the video", prompt: VIDEO_SUMMARY_PROMPT },
   {
     label: "Is it worth watching?",
     prompt:

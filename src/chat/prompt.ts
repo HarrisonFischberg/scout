@@ -22,7 +22,7 @@ export const FORMAT_RULES = [
   "Pages are numbered as sources. When a paragraph or bullet uses a page, end it with that page's number in brackets, like [1] or [1, 2]. Do not number facts from your own knowledge.",
   "Write math in LaTeX: $...$ inline and $$...$$ on its own line. Put code in fenced code blocks with the language name.",
   // YouTube key points (owner, 2026-11-08): the panel turns [4:05] into a link that jumps the video there.
-  "When the page is a video transcript whose lines start with a time like [4:05], put the time each point is discussed in the same form right after the point, for example [4:05]. Use only times from the transcript, never made-up ones.",
+  "When the page is a video transcript whose lines start with a time like [4:05], put the time each point is discussed in the same form right after the point, for example [4:05], or a time range like [1:31–3:22]. Use only times from the transcript, never made-up ones.",
 ].join(" ");
 
 // Part 2: the chat can use tools (src/tools/registry.ts). Added to the system
