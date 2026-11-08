@@ -3,6 +3,7 @@
 // icon; on any other page the general chips in popup.html stay. Pure functions
 // only, so they are unit-tested without a browser.
 import { youtubeVideoId } from "../context/youtube";
+import { readsInstagramPost } from "../context/instagram";
 
 export interface ShoppingSite {
   /** Shown to assistive tech and as the tile's tooltip. */
@@ -138,9 +139,53 @@ export function videoStarterLabel(question: string): string | null {
   return VIDEO_SUGGESTIONS.find((s) => s.prompt === question)?.label ?? null;
 }
 
+/** Dark enough for white text on the letter tile (5.6:1). */
+export const INSTAGRAM_SITE: ShoppingSite = { name: "Instagram", color: "#b1246a" };
+
+/**
+ * Summarize on an Instagram post, reel or story (owner request 2026-11-08):
+ * read from the post itself (src/context/instagram.ts), its photos or video
+ * frames included. Claude can't hear audio, so the answer says when speech
+ * would matter instead of guessing it.
+ */
+export const INSTAGRAM_SUMMARY_PROMPT =
+  "Summarize this Instagram post. Start with one sentence on what it is (reel, photo, carousel or story), who posted it, and its main point. " +
+  "Then 3 to 5 bullet points on what it shows and says: what happens in the pictures or video frames, any text shown on screen, and what the caption adds. " +
+  "If the post makes claims or is an ad, say so. Use only the pictures and the page, and say when something can't be told from them, such as speech in the video. " +
+  "No introduction and no closing line.";
+
+/** Starters on an Instagram post, reel, story or the feed. */
+export const INSTAGRAM_SUGGESTIONS: readonly Suggestion[] = [
+  { label: "Summarize this post", prompt: INSTAGRAM_SUMMARY_PROMPT },
+  {
+    label: "What happens in it?",
+    prompt:
+      "Describe what happens in this Instagram post, picture by picture in order: the setting, people, objects, actions, and any text on screen. " +
+      "Don't identify anyone from their face; name people only when the post names or tags them. Say what the pictures can't show, such as speech or music, instead of guessing.",
+  },
+  {
+    label: "Is it true?",
+    prompt:
+      "Fact-check this Instagram post. List each claim it makes in the caption, the text on screen or the pictures, and for each say whether it is true, false, misleading or unclear, with a source. " +
+      "Say if the post looks like an ad or a sponsored post.",
+  },
+  {
+    label: "Find what's shown",
+    prompt:
+      "Identify the products, places, food, music and brands shown or tagged in this Instagram post, and where to find or buy them, with links. " +
+      "Don't identify anyone from their face; name people only when the post names or tags them. Say which items you are unsure of.",
+  },
+];
+
+/** The short label a site starter (YouTube or Instagram) shows in the chat; null for any other message. */
+export function siteStarterLabel(question: string): string | null {
+  return videoStarterLabel(question) ?? INSTAGRAM_SUGGESTIONS.find((s) => s.prompt === question)?.label ?? null;
+}
+
 /** The suggestions for a page, with the site they belong to; null means keep the general chips. */
 export function suggestionsFor(url: string | undefined): { site: ShoppingSite; items: readonly Suggestion[] } | null {
   if (youtubeVideoId(url)) return { site: YOUTUBE_SITE, items: VIDEO_SUGGESTIONS };
+  if (readsInstagramPost(url)) return { site: INSTAGRAM_SITE, items: INSTAGRAM_SUGGESTIONS };
   const site = shoppingSite(url);
   return site ? { site, items: SHOPPING_SUGGESTIONS } : null;
 }
