@@ -15,7 +15,7 @@ import { formatMoney } from "./coupons/money";
 import { originLabel } from "./coupons/candidates";
 import { couponStatusText, duration } from "./coupons/finder";
 import { formatCostLine } from "./cost";
-import { BUTTON_KEY, buildReport, CRASH_KEY, describeBrowser, Diagnostics, disabledRun, loadButtonFailures, loadCrashes, parseButtonFailures, parseCrashes, watchCrashes, type ButtonFailure, type Crash, type RunHandle, type RunKind } from "./diagnostics";
+import { BUTTON_KEY, buildReport, CRASH_KEY, describeBrowser, Diagnostics, disabledRun, loadButtonFailures, loadCrashes, parseButtonFailures, parseCrashes, SUPPORT_DRAFT_KEY, SUPPORT_EMAIL, supportMail, watchCrashes, type ButtonFailure, type Crash, type RunHandle, type RunKind } from "./diagnostics";
 import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { BridgeError, envelope, newRequestId, request, type Envelope } from "./bridge/messages";
 import { connectPanelPort, type PanelPort } from "./bridge/port";
@@ -547,11 +547,31 @@ async function main(): Promise<void> {
   {
     const diagBox = el("diag");
     const diagStatus = el("diag-status");
-    const diagQuestion = el<HTMLInputElement>("diag-question");
-    const diagCopy = el<HTMLButtonElement>("diag-copy");
-    diagQuestion.checked = diag?.includeQuestion === true;
-    diagQuestion.addEventListener("change", () => void diag?.setIncludeQuestion(diagQuestion.checked));
-    diagCopy.addEventListener("click", () => void copyDiagnostics(diagCopy.parentElement ?? diagCopy, diagStatus));
+    // The "record the question" opt-in left Settings with the note field; stop and forget for anyone who had it on.
+    if (diag?.includeQuestion) void diag.setIncludeQuestion(false);
+    // Send Debug Logs: a draft to support in the user's email app; Scout sends nothing itself.
+    const problem = el<HTMLTextAreaElement>("diag-problem");
+    const send = el<HTMLButtonElement>("diag-send");
+    const showDraft = (text: string): void => {
+      problem.value = text;
+      send.disabled = text.trim() === "";
+    };
+    void storage?.get(SUPPORT_DRAFT_KEY).then((r) => typeof r[SUPPORT_DRAFT_KEY] === "string" && !problem.value && showDraft(r[SUPPORT_DRAFT_KEY] as string)).catch(() => undefined);
+    problem.addEventListener("input", () => {
+      showDraft(problem.value);
+      void storage?.set({ [SUPPORT_DRAFT_KEY]: problem.value }).catch(() => undefined);
+    });
+    send.addEventListener("click", () => {
+      // Built and copied synchronously, inside the tap (Safari on iPhone refuses clipboard writes after an await).
+      const { url, body } = supportMail(problem.value, diagnosticsReport(), __SCOUT_VERSION__);
+      void navigator.clipboard?.writeText(body).catch(() => undefined);
+      const opening = browser.tabs.create?.({ url });
+      if (opening) void opening.catch(() => window.open(url));
+      else window.open(url);
+      showDraft("");
+      void storage?.set({ [SUPPORT_DRAFT_KEY]: null }).catch(() => undefined);
+      diagStatus.textContent = `Your email app is opening with the debug log filled in: press Send there. It is also copied, so if no email app opens, paste it into an email to ${SUPPORT_EMAIL}.`;
+    });
     // Answers from the local mock server (scripts/mock-scout-server.mjs) instead of Anthropic.
     if (__SCOUT_DEBUG__) {
       const diagMock = el<HTMLInputElement>("diag-mock");
@@ -583,12 +603,6 @@ async function main(): Promise<void> {
       `Busy: ${[activeChat && "answering", task && "Scout mode", couponRun && "Find coupons"].filter(Boolean).join(", ") || "no"}`,
       `Network: ${navigator.onLine ? "online" : "offline"} · ${navigator.language}`,
     ];
-    el("diag-clear").addEventListener("click", () => {
-      buttonFailures = [];
-      crashes = [];
-      void storage?.set({ [BUTTON_KEY]: [], [CRASH_KEY]: [] }).catch(() => undefined);
-      void diag?.clear().then(() => (diagStatus.textContent = "Diagnostics cleared."));
-    });
     diagBox.hidden = false;
   }
 

@@ -80,7 +80,7 @@ test("an error offers Copy diagnostics and the report is the Actual behavior", a
   expect(report).toContain('- Outcome: error — "The API key was rejected.');
   expect(report).toContain("page:read ok");
   expect(report).toContain("model:start");
-  expect(report).toContain("not recorded (opt in under Diagnostics)");
+  expect(report).toContain("- Question: not recorded");
   // Never in a report:
   expect(report).not.toContain(KEY);
   expect(report).not.toContain("SECRET-PAGE-TEXT");
@@ -88,29 +88,44 @@ test("an error offers Copy diagnostics and the report is the Actual behavior", a
   expect(report).not.toContain("What does the widget cost?");
 });
 
-test("the question is included only after opting in", async ({ page }) => {
+// Owner request 2026-11-08: Settings has "Send Debug Logs to support@rarecreatures.app" with a note field
+// instead of the debug-log controls; it opens a draft in the user's email app.
+test("Send Debug Logs opens an email to support with the note and the debug log", async ({ page }) => {
   await openPopup(page);
-  await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByLabel("Also record the question I type").check();
-  await page.getByRole("button", { name: "Back to chat" }).click();
+  await page.evaluate(() => {
+    window.open = ((u: string) => void ((window as unknown as { __opened?: string }).__opened = u)) as unknown as typeof window.open;
+  });
   await page.getByLabel("Ask about this page").fill("What does the widget cost?");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText("The API key was rejected.")).toBeVisible();
-  // exact: the error card also offers "Open Settings".
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page.locator("#diag-copy").click();
-  await expect(page.locator("#diag-status")).toHaveText(/Diagnostics copied/);
-  expect(await copied(page)).toContain('- Question: "What does the widget cost?"');
+  await expect(page.getByRole("heading", { name: "Send Debug Logs to support@rarecreatures.app" })).toBeVisible();
+  const send = page.getByRole("button", { name: "Send Debug Logs" });
+  await expect(send).toBeDisabled();
+  await page.getByLabel("What went wrong?").fill("The answer never arrives.");
+  await send.click();
+  await expect(page.locator("#diag-status")).toHaveText(/Your email app is opening/);
+
+  const url = await page.evaluate(() => (window as unknown as { __opened?: string }).__opened ?? "");
+  expect(url.startsWith("mailto:support@rarecreatures.app?subject=")).toBe(true);
+  const body = new URLSearchParams(url.slice(url.indexOf("?") + 1)).get("body") ?? "";
+  expect(body.startsWith("The answer never arrives.\n\n## Scout AI Assistant diagnostics — Actual behavior")).toBe(true);
+  expect(body).toContain('- Outcome: error — "The API key was rejected.');
+  expect(body).not.toContain(KEY);
+  expect(body).not.toContain("SECRET-PAGE-TEXT");
+  expect(body).not.toContain("What does the widget cost?");
+  expect(await copied(page)).toBe(body);
+  await expect(page.getByLabel("What went wrong?")).toHaveValue("");
+  await expect(send).toBeDisabled();
 });
 
-test("diagnostics controls are reachable and labeled", async ({ page }) => {
+test("the old debug-log controls are gone from Settings", async ({ page }) => {
   await openPopup(page);
   await page.getByRole("button", { name: "Settings" }).click();
-  await expect(page.getByRole("heading", { name: "Diagnostics" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Copy debug log" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Clear diagnostics" })).toBeVisible();
-  await page.getByRole("button", { name: "Clear diagnostics" }).click();
-  await expect(page.locator("#diag-status")).toHaveText("Diagnostics cleared.");
+  await expect(page.getByRole("heading", { name: "Send Debug Logs to support@rarecreatures.app" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Diagnostics" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Clear diagnostics" })).toHaveCount(0);
+  await expect(page.getByLabel("Also record the question I type")).toHaveCount(0);
 });
 
 // Owner request 2026-10-24: one tap from the + menu copies the whole debug

@@ -363,7 +363,7 @@
       #settings-view section:last-child { border-bottom: 0; }
       #settings-view h3 { margin: 0; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.02em; }
       #settings-view .field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
-      #settings-view input[type="text"], #settings-view input[type="password"], #settings-view select {
+      #settings-view input[type="text"], #settings-view input[type="password"], #settings-view select, #settings-view textarea {
         padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border-control); background: var(--bg-surface);
       }
       #site-list { margin: 0; padding-left: 18px; overflow-wrap: anywhere; font-size: 14px; }
@@ -662,7 +662,7 @@
       :root[data-look="apple"] .btn.danger { color: var(--danger); background: var(--bg-surface); }
       :root[data-look="apple"] #settings-view section { border-bottom: 0; margin-top: 6px; }
       :root[data-look="apple"] #settings-view section > h3 { padding: 0 4px; font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--text-muted); }
-      :root[data-look="apple"] #settings-view input[type="text"], :root[data-look="apple"] #settings-view input[type="password"], :root[data-look="apple"] #settings-view select { border: 0; background: var(--bg-surface); border-radius: 10px; padding: 9px 12px; }
+      :root[data-look="apple"] #settings-view input[type="text"], :root[data-look="apple"] #settings-view input[type="password"], :root[data-look="apple"] #settings-view select, :root[data-look="apple"] #settings-view textarea { border: 0; background: var(--bg-surface); border-radius: 10px; padding: 9px 12px; }
       :root[data-look="apple"] .look-list label { border: 0; }
 
       /* ===== Night Ops: dark console, signal lime, mono for machine facts ===== */
@@ -719,7 +719,7 @@
       :root[data-look="nightops"] .trace .attempt.good .code { color: var(--signal); }
       :root[data-look="nightops"] .btn { border-radius: 6px; font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
       :root[data-look="nightops"] #settings-view h3 { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; color: var(--signal); }
-      :root[data-look="nightops"] #settings-view input[type="text"], :root[data-look="nightops"] #settings-view input[type="password"], :root[data-look="nightops"] #settings-view select { border-radius: 6px; background: var(--bg-canvas); font-family: var(--font-mono); font-size: 12px; padding: 8px; }
+      :root[data-look="nightops"] #settings-view input[type="text"], :root[data-look="nightops"] #settings-view input[type="password"], :root[data-look="nightops"] #settings-view select, :root[data-look="nightops"] #settings-view textarea { border-radius: 6px; background: var(--bg-canvas); font-family: var(--font-mono); font-size: 12px; padding: 8px; }
       :root[data-look="nightops"] .look-list label { border-radius: 8px; }
 
       /* Send and Stop keep the text-on-accent color in every look (the per-look .round color must not reach them). */
@@ -1248,20 +1248,21 @@
         </section>
 
         <section id="diag" aria-labelledby="diag-title" hidden>
-          <h3 id="diag-title">Diagnostics</h3>
-          <p class="hint">
-            Records what the last 15 runs did (each step, errors, Scout mode actions, coupon attempts), plus any
-            unexpected errors and your setup, on this device only, so you can paste it into a bug report. Also in the + menu.
-            Never includes page text, API keys, or form values.
-          </p>
-          <label><input id="diag-question" type="checkbox" /> Also record the question I type</label>
+          <h3 id="diag-title">Send Debug Logs to support@rarecreatures.app</h3>
+          <label class="field">
+            <span>What went wrong?</span>
+            <textarea id="diag-problem" rows="3" aria-describedby="diag-help"></textarea>
+          </label>
           <!-- debug:start (scripts/build.mjs strips this block from release builds) -->
           <label><input id="diag-mock" type="checkbox" /> Answer from the local mock server (scripts/mock-scout-server.mjs, Anthropic only)</label>
           <!-- debug:end -->
           <div class="row">
-            <button id="diag-copy" class="btn" type="button">Copy debug log</button>
-            <button id="diag-clear" class="btn" type="button">Clear diagnostics</button>
+            <button id="diag-send" class="btn primary" type="button" disabled>Send Debug Logs</button>
           </div>
+          <p id="diag-help" class="hint">
+            Opens your email app with what you wrote and Scout's debug log filled in: what the last 15 runs did, any
+            unexpected errors, and your setup. Never page text, API keys, or form values. Nothing is sent until you press Send.
+          </p>
           <p id="diag-status" class="hint" role="status" aria-live="polite"></p>
         </section>
 
