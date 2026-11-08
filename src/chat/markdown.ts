@@ -11,6 +11,7 @@
 // cell that cites them (src/chat/sources.ts).
 import { texToMathML } from "./math";
 import { siteName, type Source } from "./sources";
+import { parseTime, videoUrl, youtubeVideoId } from "../context/youtube";
 
 export type Inline =
   | { type: "text"; text: string }
@@ -21,7 +22,9 @@ export type Inline =
   | { type: "strong"; children: Inline[] }
   | { type: "em"; children: Inline[] }
   | { type: "del"; children: Inline[] }
-  | { type: "link"; href: string; children: Inline[] };
+  | { type: "link"; href: string; children: Inline[] }
+  /** A video time like [4:05] (YouTube key points): a link that jumps the video there. */
+  | { type: "time"; seconds: number; label: string };
 
 export interface ListItem {
   children: Inline[];
@@ -61,6 +64,7 @@ const INLINE = new RegExp(
     "~~([^~\\s](?:[^~]*[^~\\s])?)~~", // 11 strike
     "\\*([^*\\s](?:[^*]*[^*\\s])?)\\*", // 12 italic
     "(^|[^\\w])_([^_\\s](?:[^_]*[^_\\s])?)_(?![\\w])", // 13,14 italic (underscores, not inside words)
+    "\\[((?:\\d{1,2}:)?\\d{1,2}:\\d{2})\\](?!\\()", // 15 video time [4:05] or [1:02:03]
   ].join("|"),
   "g",
 );
@@ -91,6 +95,11 @@ export function parseInline(src: string): Inline[] {
     else if (m[14] !== undefined) {
       pushText(m[13] ?? "");
       out.push({ type: "em", children: parseInline(m[14]) });
+    }
+    else if (m[15] !== undefined) {
+      const seconds = parseTime(m[15]);
+      if (Number.isFinite(seconds)) out.push({ type: "time", seconds, label: m[15] });
+      else pushText(m[0]);
     }
     last = m.index + m[0].length;
   }
@@ -238,6 +247,18 @@ export function parseMarkdown(src: string): Block[] {
 export interface RenderOptions {
   /** Sources the answer may cite as [n]: the shared pages, then web citations. */
   sources?: Source[];
+  /** The YouTube video that [4:05] times point into; by default the first source that is a video. */
+  video?: string;
+}
+
+/** The video an answer's times point into. */
+function videoOf(opts: RenderOptions): string | null {
+  if (opts.video !== undefined) return youtubeVideoId(opts.video) ?? (/^[A-Za-z0-9_-]{11}$/.test(opts.video) ? opts.video : null);
+  for (const s of opts.sources ?? []) {
+    const id = youtubeVideoId(s.url);
+    if (id) return id;
+  }
+  return null;
 }
 
 /** The source behind each citation chip, for the panel's hover card. */
@@ -258,6 +279,23 @@ function mountInline(doc: Document, parent: Node, nodes: Inline[], opts: RenderO
       if (before?.nodeType === 3 && (!next || next.type === "cite" || (next.type === "text" && /^[\s.,;:!?)]/.test(next.text)))) {
         before.textContent = (before.textContent ?? "").replace(/\s+$/, "");
       }
+    } else if (n.type === "time") {
+      // A link to the video at that time; the panel jumps the open video there instead (popup.ts).
+      const id = videoOf(opts);
+      if (!id) {
+        parent.appendChild(doc.createTextNode(n.label));
+        continue;
+      }
+      const el = doc.createElement("a");
+      el.className = "ts";
+      el.setAttribute("href", videoUrl(id, n.seconds));
+      el.setAttribute("target", "_blank");
+      el.setAttribute("rel", "noopener noreferrer");
+      el.setAttribute("aria-label", "Play from " + n.label);
+      el.dataset.t = String(n.seconds);
+      el.dataset.video = id;
+      el.textContent = n.label;
+      parent.appendChild(el);
     } else if (n.type === "code") {
       const el = doc.createElement("code");
       el.textContent = n.text;

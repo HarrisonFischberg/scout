@@ -392,6 +392,14 @@
         font: 12px/20px ui-monospace, SFMono-Regular, Menlo, monospace; text-decoration: none; vertical-align: 1px; white-space: nowrap;
       }
       .msg a.cite:hover, .msg a.cite[aria-describedby] { background: var(--selected); color: var(--text-primary); }
+      /* YouTube key points: [4:05] jumps the open video there (src/chat/markdown.ts). */
+      .msg a.ts {
+        display: inline-block; padding: 0 6px; border-radius: 6px; background: var(--bg-subtle); color: var(--accent-text);
+        font: 600 12px/20px ui-monospace, SFMono-Regular, Menlo, monospace; text-decoration: none; vertical-align: 1px; white-space: nowrap;
+      }
+      .msg a.ts::before { content: "\25B6\FE0E"; font-size: 8px; margin-right: 4px; vertical-align: 1px; }
+      .msg a.ts:hover { background: var(--selected); }
+      .msg a.ts:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
       .site-icon {
         display: inline-grid; place-items: center; width: 16px; height: 16px; flex: none; border-radius: 50%;
         background: hsl(var(--site-hue, 210) 55% 30%); color: #fff; font: 600 9px/1 -apple-system, system-ui, sans-serif;

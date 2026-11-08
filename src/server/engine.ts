@@ -16,7 +16,8 @@ import { APPLE_CHAT_WEB_RULE, APPLE_NO_PAGE_PROMPT, APPLE_WEB_RULE, appSystemPro
 import { CHAT_MAX_TOKENS } from "../chat/session";
 import type { Provider } from "../keychain";
 import { ProviderError } from "../providers/errors";
-import { APPLE_MODEL, AppleModelError, appleCouldNotAnswer, appleRepeats, needsFreshFacts, stripSourceMarkers } from "../providers/apple";
+import { isVideoText } from "../context/youtube";
+import { APPLE_MODEL, APPLE_PROMPT_CHARS, AppleModelError, appleCouldNotAnswer, appleRepeats, needsFreshFacts, stripSourceMarkers } from "../providers/apple";
 import { textOf, type ChatMessage, type ContentPart, type Effort, type ProviderClient, type ToolSpec, type Usage } from "../providers/types";
 import type { ToolStatus } from "../tools/registry";
 import type { NumberedEvent, ServerEvent } from "./protocol";
@@ -259,7 +260,9 @@ export class ScoutServer {
       // Apple first: its answer stands unless it can't answer; then the key's model runs as usual.
       // Apple's on-device model can't see images: those go straight to the key's model.
       const hasImages = (req.images?.length ?? 0) > 0;
-      const tryApple = req.model === APPLE_MODEL && !!req.fallback && !hasImages && !needsFreshFacts(req.question, req.pages.length > 0);
+      // A video transcript longer than Apple's model can read would be answered from its first and last minutes only.
+      const longVideo = req.pages.some((p) => isVideoText(p.text) && p.text.length > APPLE_PROMPT_CHARS);
+      const tryApple = req.model === APPLE_MODEL && !!req.fallback && !hasImages && !longVideo && !needsFreshFacts(req.question, req.pages.length > 0);
       const apple = tryApple ? await this.askApple(req, signal) : null;
       if (apple !== null) {
         full = apple;

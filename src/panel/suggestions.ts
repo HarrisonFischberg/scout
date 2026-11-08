@@ -2,6 +2,7 @@
 // site the composer lists shopping actions, each marked with the store's own
 // icon; on any other page the general chips in popup.html stay. Pure functions
 // only, so they are unit-tested without a browser.
+import { youtubeVideoId } from "../context/youtube";
 
 export interface ShoppingSite {
   /** Shown to assistive tech and as the tile's tooltip. */
@@ -81,8 +82,52 @@ export const SHOPPING_SUGGESTIONS: readonly Suggestion[] = [
   },
 ];
 
-/** The suggestions for a page, with the store they belong to; null means keep the general chips. */
+export const YOUTUBE_SITE: ShoppingSite = { name: "YouTube", color: "#cc0000" };
+
+/**
+ * On a YouTube video (owner request 2026-11-08), read from its captions
+ * (src/context/youtube.ts). Formats from the sources the owner gave: the
+ * digest's TL;DR, takeaways and timeline (youtube-digest-skill), its
+ * watch-or-skip triage, and a short post (Youtube-Tweet). Times written as
+ * [4:05] become links that jump the video there.
+ */
+export const VIDEO_SUGGESTIONS: readonly Suggestion[] = [
+  {
+    label: "Key points with timestamps",
+    prompt:
+      "Give the key points of this video. Start with a one-sentence TL;DR. Then a heading \"Key points\" with 3 to 7 bullet points, " +
+      "each one standalone insight in one short sentence, ending with the time it is discussed, like [4:05]. " +
+      "If the video is longer than 10 minutes, add a heading \"Timeline\" with one short line per main topic, each starting with its time. " +
+      "Use only what the video says. No introduction and no closing line.",
+  },
+  {
+    label: "Summarize the video",
+    prompt:
+      "Summarize this video: one or two sentences on what it is about and what it concludes, " +
+      "then 3 to 5 bullet points with the most important facts, each ending with the time it is discussed, like [4:05].",
+  },
+  {
+    label: "Is it worth watching?",
+    prompt:
+      "Is this video worth watching? Give a one-line verdict (watch, skim or skip) and why, say who it is for, " +
+      "and list the parts most worth watching with their times, like [4:05]. Say so if the title promises something the video does not deliver.",
+  },
+  {
+    label: "Write a post about it",
+    prompt:
+      "Write a short social media post about this video, under 280 characters, in plain words, on what is most useful or interesting in it. " +
+      "At most two hashtags. Put the video's address on its own line after the post.",
+  },
+];
+
+/** The short label a video starter shows in the chat; null for any other message. */
+export function videoStarterLabel(question: string): string | null {
+  return VIDEO_SUGGESTIONS.find((s) => s.prompt === question)?.label ?? null;
+}
+
+/** The suggestions for a page, with the site they belong to; null means keep the general chips. */
 export function suggestionsFor(url: string | undefined): { site: ShoppingSite; items: readonly Suggestion[] } | null {
+  if (youtubeVideoId(url)) return { site: YOUTUBE_SITE, items: VIDEO_SUGGESTIONS };
   const site = shoppingSite(url);
   return site ? { site, items: SHOPPING_SUGGESTIONS } : null;
 }

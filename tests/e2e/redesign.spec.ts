@@ -18,9 +18,12 @@ function sse(text: string): string {
   return ev.map((e) => "event: " + e.type + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
 }
 
-async function openPopup(page: Page, opts: { keys?: Record<string, string>; data?: Record<string, unknown>; pageData?: typeof PAGE & { favIconUrl?: string }; path?: string } = {}): Promise<void> {
+async function openPopup(
+  page: Page,
+  opts: { keys?: Record<string, string>; data?: Record<string, unknown>; pageData?: typeof PAGE & { favIconUrl?: string }; path?: string; tabFetch?: Record<string, { status: number; text: string }> } = {},
+): Promise<void> {
   await page.addInitScript(
-    ({ keys, data, pageData }) => {
+    ({ keys, data, pageData, tabFetch }) => {
       const g = globalThis as unknown as Record<string, unknown>;
       // Survive reloads inside one test (simulates reopening the popup).
       const store = (g.sessionStorage as Storage).getItem("__fake");
@@ -47,7 +50,23 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
           },
         },
         permissions: { request: async () => true, getAll: async () => ({ origins: [] }), remove: async () => true },
-        scripting: { executeScript: async () => { g.__reads = ((g.__reads as number | undefined) ?? 0) + 1; return [{ result: pageData }]; } },
+        scripting: {
+          executeScript: async (inj: { args?: unknown[] }) => {
+            const a = inj.args ?? [];
+            // The YouTube reader's in-tab fetch (src/context/youtube.ts pageFetch): synthetic captions.
+            if (typeof a[0] === "string" && a[0].startsWith("/")) {
+              const hit = Object.keys(tabFetch ?? {}).find((k) => (a[0] as string).startsWith(k));
+              return [{ result: hit ? tabFetch![hit] : { status: 404, text: "" } }];
+            }
+            // seekVideo(id, seconds): this fake tab has no video player.
+            if (a.length === 2 && typeof a[1] === "number") {
+              g.__seeks = [...((g.__seeks as unknown[] | undefined) ?? []), a];
+              return [{ result: false }];
+            }
+            g.__reads = ((g.__reads as number | undefined) ?? 0) + 1;
+            return [{ result: pageData }];
+          },
+        },
         storage: {
           local: {
             get: async (k: string | string[]) => {
@@ -61,7 +80,7 @@ async function openPopup(page: Page, opts: { keys?: Record<string, string>; data
       };
     },
     // Sharing with the providers already allowed (consent.spec.ts covers asking).
-    { keys: opts.keys ?? {}, data: { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } }, ...(opts.data ?? {}) }, pageData: opts.pageData ?? PAGE },
+    { keys: opts.keys ?? {}, data: { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } }, ...(opts.data ?? {}) }, pageData: opts.pageData ?? PAGE, tabFetch: opts.tabFetch ?? {} },
   );
   await page.route("**/popup.html*", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.html", contentType: "text/html" }));
   await page.route("**/popup.js", (r) => r.fulfill({ path: "apple/Extension/Resources/popup.js", contentType: "text/javascript" }));
@@ -183,6 +202,47 @@ test("the store's own icon shows when it loads", async ({ page }) => {
   await expect(list.locator("img.site-icon")).toHaveCount(3);
   await expect(list.locator("img.site-icon").first()).toHaveAttribute("src", "https://icons.test/target.png");
   await expect(list.locator(".site-icon.tile")).toHaveCount(0);
+});
+
+test("on a YouTube video Scout reads the captions, offers video starters, and [m:ss] times jump the video", async ({ page }) => {
+  const ID = "aaaaaaaaaaa";
+  const player = {
+    videoDetails: { title: "Synthetic talk", author: "Test Channel", lengthSeconds: "754", shortDescription: "A synthetic talk." },
+    captions: { playerCaptionsTracklistRenderer: { captionTracks: [{ baseUrl: "https://www.youtube.com/api/timedtext?v=" + ID + "&lang=en", languageCode: "en", name: { simpleText: "English" } }] } },
+  };
+  const json3 = JSON.stringify({ events: [{ tStartMs: 0, segs: [{ utf8: "Welcome to the synthetic talk." }] }, { tStartMs: 245000, segs: [{ utf8: "Setup takes two steps." }] }] });
+  let sent = "";
+  await openPopup(page, {
+    keys: { anthropic: GOOD_KEY },
+    pageData: { url: "https://www.youtube.com/watch?v=" + ID, title: "Synthetic talk - YouTube", text: "Comments and recommended videos." },
+    tabFetch: {
+      "/watch": { status: 200, text: "<script>var ytInitialPlayerResponse = " + JSON.stringify(player) + ";</script>" },
+      "/api/timedtext": { status: 200, text: json3 },
+    },
+  });
+  await page.route("https://api.anthropic.com/v1/messages", (r) => {
+    sent = r.request().postData() ?? "";
+    return r.fulfill({ status: 200, contentType: "text/event-stream", body: sse("Setup is quick [4:05].\n\n- It opens with a welcome [0:00]") });
+  });
+  const list = page.getByRole("list", { name: "Suggestions for YouTube" });
+  await expect(list.getByRole("button")).toHaveText(["Key points with timestamps", "Summarize the video", "Is it worth watching?", "Write a post about it"]);
+  await expect(page.getByRole("button", { name: "Explain the key points" })).toBeHidden();
+
+  await list.getByRole("button", { name: "Key points with timestamps" }).click();
+  const log = page.getByRole("log");
+  await expect(log.locator(".msg.user")).toHaveText("Key points with timestamps");
+  const time = log.getByRole("link", { name: "Play from 4:05" });
+  await expect(time).toHaveAttribute("href", "https://www.youtube.com/watch?v=" + ID + "&t=245s");
+  await expect(log.locator("a.ts")).toHaveText(["4:05", "0:00"]);
+  // The model read the captions, with their times, not the page's comments.
+  expect(sent).toContain("[4:05] Setup takes two steps.");
+  expect(sent).toContain("Channel: Test Channel");
+  expect(sent).not.toContain("recommended videos");
+
+  // This fake tab has no player, so the time opens the video there instead.
+  await time.click();
+  await expect.poll(() => page.evaluate(() => (globalThis as unknown as { __created?: string[] }).__created ?? [])).toEqual(["https://www.youtube.com/watch?v=" + ID + "&t=245s"]);
+  expect(await page.evaluate(() => (globalThis as unknown as { __seeks?: unknown[] }).__seeks)).toEqual([[ID, 245]]);
 });
 
 test("a page that is not a known store keeps the starters", async ({ page }) => {
