@@ -245,6 +245,57 @@ test("on a YouTube video Scout reads the captions, offers video starters, and [m
   expect(await page.evaluate(() => (globalThis as unknown as { __seeks?: unknown[] }).__seeks)).toEqual([[ID, 245]]);
 });
 
+test("Summarize on a YouTube video gives takeaways with headings, and time ranges jump the video to their start", async ({ page }) => {
+  const ID = "bbbbbbbbbbb";
+  const player = {
+    videoDetails: { title: "Synthetic lecture", author: "Test Channel", lengthSeconds: "900", shortDescription: "A synthetic lecture." },
+    captions: { playerCaptionsTracklistRenderer: { captionTracks: [{ baseUrl: "https://www.youtube.com/api/timedtext?v=" + ID + "&lang=en", languageCode: "en", name: { simpleText: "English" } }] } },
+  };
+  const json3 = JSON.stringify({ events: [{ tStartMs: 91000, segs: [{ utf8: "The idea starts with practice." }] }, { tStartMs: 287000, segs: [{ utf8: "Two words matter." }] }] });
+  const answer = [
+    "The video's central takeaway: ideas grow out of practice. It builds the case step by step.",
+    "",
+    "### Key takeaways",
+    "",
+    "1. **The idea grew out of practice.**",
+    "   The video argues people acted first and explained later. [1:31–3:22]",
+    "",
+    "2. **Two words carry the argument.**",
+    "   It defines each word, then returns to them near the end. [4:47–6:16; 8:15–10:00]",
+    "",
+    "### Why it matters",
+    "",
+    "The closing argument ties the idea to everyday life. [12:53–14:51]",
+  ].join("\n");
+  let sent = "";
+  await openPopup(page, {
+    keys: { anthropic: GOOD_KEY },
+    pageData: { url: "https://www.youtube.com/watch?v=" + ID, title: "Synthetic lecture - YouTube", text: "Comments." },
+    tabFetch: {
+      "/watch": { status: 200, text: "<script>var ytInitialPlayerResponse = " + JSON.stringify(player) + ";</script>" },
+      "/api/timedtext": { status: 200, text: json3 },
+    },
+  });
+  await page.route("https://api.anthropic.com/v1/messages", (r) => {
+    sent = r.request().postData() ?? "";
+    return r.fulfill({ status: 200, contentType: "text/event-stream", body: sse(answer) });
+  });
+  await page.getByRole("list", { name: "Suggestions for YouTube" }).getByRole("button", { name: "Summarize the video" }).click();
+  const log = page.getByRole("log");
+  await expect(log.locator(".msg.user")).toHaveText("Summarize the video");
+  expect(sent).toContain("Key takeaways");
+  // One numbered list, each heading on its own line above its explanation.
+  // The answer types out, so wait for its last chip first.
+  await expect(log.locator("a.ts")).toHaveText(["1:31–3:22", "4:47–6:16", "8:15–10:00", "12:53–14:51"], { timeout: 20_000 });
+  await expect(log.locator(".msg > ol > li")).toHaveCount(2);
+  await expect(log.locator(".msg > ol > li").first().locator("strong + br")).toHaveCount(1);
+  await expect(log.getByRole("heading", { name: "Why it matters" })).toBeVisible();
+  const range = log.locator("a.ts").nth(1);
+  await expect(range).toHaveAttribute("href", "https://www.youtube.com/watch?v=" + ID + "&t=287s");
+  await range.click();
+  expect(await page.evaluate(() => (globalThis as unknown as { __seeks?: unknown[] }).__seeks)).toEqual([[ID, 287]]);
+});
+
 test("a page that is not a known store keeps the starters", async ({ page }) => {
   await openPopup(page, { keys: { anthropic: GOOD_KEY } });
   await expect(page.getByRole("button", { name: "Explain the key points" })).toBeVisible();

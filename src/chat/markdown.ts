@@ -23,8 +23,10 @@ export type Inline =
   | { type: "em"; children: Inline[] }
   | { type: "del"; children: Inline[] }
   | { type: "link"; href: string; children: Inline[] }
-  /** A video time like [4:05] (YouTube key points): a link that jumps the video there. */
-  | { type: "time"; seconds: number; label: string };
+  /** A video time like [4:05] or range like [1:31–3:22] (YouTube key points): a link that jumps the video to its start. */
+  | { type: "time"; seconds: number; label: string; end?: number }
+  /** A line break: a list item's bold heading, then its explanation on the next line. */
+  | { type: "br" };
 
 export interface ListItem {
   children: Inline[];
@@ -44,6 +46,9 @@ export type Block =
 const SAFE_URL = /^https?:\/\//i;
 
 const CITE_ITEM = "\\d{1,3}(?:-\\d{1,3})?";
+// A video time, a range of two ("1:31–3:22", any dash), and several of those separated by ";" or ",".
+const TIME = "(?:\\d{1,2}:)?\\d{1,2}:\\d{2}";
+const TIME_SPAN = TIME + "(?:\\s*[-–—]\\s*" + TIME + ")?";
 
 // Order matters: code first (its content is literal), then math (also
 // literal), links, citations, then the longest emphasis markers. No
@@ -64,7 +69,7 @@ const INLINE = new RegExp(
     "~~([^~\\s](?:[^~]*[^~\\s])?)~~", // 11 strike
     "\\*([^*\\s](?:[^*]*[^*\\s])?)\\*", // 12 italic
     "(^|[^\\w])_([^_\\s](?:[^_]*[^_\\s])?)_(?![\\w])", // 13,14 italic (underscores, not inside words)
-    "\\[((?:\\d{1,2}:)?\\d{1,2}:\\d{2})\\](?!\\()", // 15 video time [4:05] or [1:02:03]
+    "\\[(" + TIME_SPAN + "(?:\\s*[;,]\\s*" + TIME_SPAN + ")*)\\](?!\\()", // 15 video time [4:05], [1:02:03], [1:31–3:22] or [4:47–6:16; 8:15–10:00]
   ].join("|"),
   "g",
 );
@@ -97,9 +102,18 @@ export function parseInline(src: string): Inline[] {
       out.push({ type: "em", children: parseInline(m[14]) });
     }
     else if (m[15] !== undefined) {
-      const seconds = parseTime(m[15]);
-      if (Number.isFinite(seconds)) out.push({ type: "time", seconds, label: m[15] });
-      else pushText(m[0]);
+      const spans = m[15].split(/\s*[;,]\s*/).map((part) => {
+        const [a = "", b] = part.split(/\s*[-–—]\s*/);
+        const seconds = parseTime(a);
+        const end = b === undefined ? undefined : parseTime(b);
+        return { a, b, seconds, end };
+      });
+      if (spans.every((t) => Number.isFinite(t.seconds) && (t.end === undefined || (Number.isFinite(t.end) && t.end >= t.seconds)))) {
+        for (const [k, t] of spans.entries()) {
+          if (k > 0) pushText(" ");
+          out.push(t.end === undefined ? { type: "time", seconds: t.seconds, label: t.a } : { type: "time", seconds: t.seconds, label: t.a + "–" + t.b, end: t.end });
+        }
+      } else pushText(m[0]);
     }
     last = m.index + m[0].length;
   }
@@ -116,6 +130,12 @@ const splitRow = (line: string): string[] =>
     .map((c) => c.trim());
 
 const isTableRule = (line: string): boolean => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(line);
+
+/** The list's last item is only a bold heading, so the next plain line is its explanation. */
+const headingOnlyItem = (list: { items: ListItem[] }): boolean => {
+  const last = list.items[list.items.length - 1];
+  return last !== undefined && !last.sub && last.children.length === 1 && last.children[0]?.type === "strong";
+};
 
 export function parseMarkdown(src: string): Block[] {
   const blocks: Block[] = [];
@@ -228,12 +248,32 @@ export function parseMarkdown(src: string): Block[] {
       flushList();
       quote.push((quoted[1] ?? "").trim());
     } else if (line.trim() === "") {
+      // A blank line between two items of the same list keeps one list, so numbering runs on (1, 2, 3, not 1, 1, 1).
+      let j = i + 1;
+      while (j < lines.length && (lines[j] ?? "").trim() === "") j++;
+      const after = lines[j] ?? "";
+      const sameList = list !== null && (list.ordered ? /^\s*\d+[.)]\s+/.test(after) : /^\s*[-*+•]\s+/.test(after) || /^\s{2,}\S/.test(after));
+      if (list && list.ordered && /^\s{2,}\S/.test(after)) {
+        // An indented line after a blank one continues the last numbered item.
+        flushPara();
+        flushQuote();
+        continue;
+      }
+      if (sameList) {
+        flushPara();
+        flushQuote();
+        continue;
+      }
       flushAll();
-    } else if (list && /^\s{2,}\S/.test(line)) {
+    } else if (list && (/^\s{2,}\S/.test(line) || headingOnlyItem(list))) {
       // Continuation line of the last list item.
       const items = (list as { items: ListItem[] }).items;
       const lastItem = items[items.length - 1];
-      if (lastItem) lastItem.children.push({ type: "text", text: " " }, ...parseInline(line.trim()));
+      if (lastItem) {
+        // A bold heading alone on the item's first line keeps a line of its own (video summary takeaways).
+        const headingOnly = lastItem.children.length === 1 && lastItem.children[0]?.type === "strong";
+        lastItem.children.push(headingOnly ? { type: "br" } : { type: "text", text: " " }, ...parseInline(line.trim()));
+      }
     } else {
       flushList();
       flushQuote();
@@ -291,11 +331,13 @@ function mountInline(doc: Document, parent: Node, nodes: Inline[], opts: RenderO
       el.setAttribute("href", videoUrl(id, n.seconds));
       el.setAttribute("target", "_blank");
       el.setAttribute("rel", "noopener noreferrer");
-      el.setAttribute("aria-label", "Play from " + n.label);
+      el.setAttribute("aria-label", n.end === undefined ? "Play from " + n.label : "Play from " + n.label.replace("–", ", section until "));
       el.dataset.t = String(n.seconds);
       el.dataset.video = id;
       el.textContent = n.label;
       parent.appendChild(el);
+    } else if (n.type === "br") {
+      parent.appendChild(doc.createElement("br"));
     } else if (n.type === "code") {
       const el = doc.createElement("code");
       el.textContent = n.text;

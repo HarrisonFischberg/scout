@@ -38,8 +38,8 @@ import { createProvider, textOf, type ChatMessage, type Effort, type ProviderCli
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { isKeyProblem } from "./providers/errors";
 import { APPLE_MODEL, APPLE_MODEL_LABEL, APPLE_UNAVAILABLE_TEXT, appleGenerate, appleStatus, createApple, type AppleStatus } from "./providers/apple";
-import { siteIconUrl, suggestionsFor, videoStarterLabel } from "./panel/suggestions";
-import { seekVideo } from "./context/youtube";
+import { siteIconUrl, suggestionsFor, VIDEO_SUMMARY_PROMPT, videoStarterLabel } from "./panel/suggestions";
+import { seekVideo, youtubeVideoId } from "./context/youtube";
 import { joinDictation, Listener, micBlocked, micBlockedHere, micErrorText, recognitionCtor, rememberMic } from "./panel/voice";
 import { PageListener } from "./panel/page-listen";
 import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
@@ -2212,7 +2212,7 @@ async function main(): Promise<void> {
       const origins = [...new Set(extra.map((t) => new URL(t.url).origin + "/*"))];
       granted = await browser.permissions.request({ origins }).catch(() => false);
     }
-    const isSummary = trimmed === SUMMARIZE_QUESTION;
+    const isSummary = trimmed === SUMMARIZE_QUESTION || trimmed === VIDEO_SUMMARY_PROMPT;
     // A general question goes without the page (src/chat/intent.ts); the page
     // stays shared with the answer, so read_page can still fetch it.
     // The full-window page is a plain chat with no page or browser (owner, 2026-11-02).
@@ -3418,7 +3418,8 @@ async function main(): Promise<void> {
   for (const chip of empty.querySelectorAll<HTMLButtonElement>("button[data-prompt]")) {
     chip.addEventListener("click", () => {
       const p = chip.dataset.prompt ?? "";
-      if (p === "summarize") void ask(SUMMARIZE_QUESTION);
+      // On a YouTube video, Summarize gives the video summary (VIDEO_SUMMARY_PROMPT).
+      if (p === "summarize") void ask(youtubeVideoId(tab.url) ? VIDEO_SUMMARY_PROMPT : SUMMARIZE_QUESTION);
       else if (p === "explain") void ask(EXPLAIN_QUESTION);
       else if (p === "coupons") void runCoupons();
       else void ask(p);
