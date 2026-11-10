@@ -49,11 +49,11 @@ export const SENSITIVE_KINDS: readonly SensitiveKind[] = ["payment", "login", "s
  */
 export const ASK_EVERY_TIME: readonly SensitiveKind[] = ["payment", "login", "account", "destructive"];
 
-/** Host of an http(s) URL, lowercased; null for anything else. */
+/** Host of an http(s) URL, lowercased, without the trailing dot ("bank.com." is bank.com); null for anything else. */
 export function hostOf(url: string): string | null {
   try {
     const u = new URL(url);
-    return u.protocol === "http:" || u.protocol === "https:" ? u.hostname.toLowerCase() : null;
+    return u.protocol === "http:" || u.protocol === "https:" ? u.hostname.toLowerCase().replace(/\.$/, "") : null;
   } catch {
     return null;
   }

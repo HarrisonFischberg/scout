@@ -52,6 +52,9 @@ describe("blockedBy", () => {
     expect(blockedBy("https://bank.test/login", access, [])).toBe("user");
     expect(blockedBy("https://online.bank.test/", access, [])).toBe("user");
     expect(blockedBy("https://notbank.test/", access, [])).toBeNull();
+    // A trailing dot is the same site to a browser (audit 2026-11-10).
+    expect(blockedBy("https://bank.test./login", access, [])).toBe("user");
+    expect(blockedBy("https://hr.corp.test./", access, ["corp.test"])).toBe("admin");
   });
 
   it("reports the organization list first", () => {

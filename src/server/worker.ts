@@ -280,7 +280,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
       const by = blockedBy(url, await access(), await admin());
       return by === "admin" ? "Your organization blocks " + host + "." : by === "user" ? host + " is blocked in Settings, so Scout cannot act on it." : null;
     },
-    tabs: () => quietBrowser(),
+    tabs: () => quietBrowser(async (u) => blockedBy(u, await access(), await admin()) !== null),
     allowBrowser: allowBrowserPages,
     ...(storage ? { storage } : {}),
     ...((options.progress ?? storage) ? { progress: (options.progress ?? storage)! } : {}),

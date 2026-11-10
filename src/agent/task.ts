@@ -501,7 +501,7 @@ export async function runTask(deps: TaskDeps): Promise<TaskOutcome> {
       // a goal the chat model wrote may come from a page's hidden instructions.
       const userGoal = deps.source === "panel" ? deps.goal : "";
       // A link to another site leaves it just as navigate does.
-      const leaving = action.type === "navigate" ? action.url : CLICK_TYPES.has(action.type) ? probe?.href : undefined;
+      const leaving = action.type === "navigate" ? action.url : CLICK_TYPES.has(action.type) || (action.type === "key" && (action.key === "Enter" || action.key === " ")) ? probe?.href : undefined;
       let cls: Classification = action.type === "navigate" ? { sensitive: false } : classifyTaskAction(resolved.action, probe);
       // A blocked site is refused by navigate itself, with no question first.
       if (!cls.sensitive && leaving && !(action.type === "navigate" && blockedBy(leaving, access, admin))) {

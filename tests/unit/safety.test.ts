@@ -97,6 +97,12 @@ describe("task action classifier", () => {
     expect(classifyTaskAction({ type: "key", key: "Enter", modifiers: [] }, field)).toMatchObject({ sensitive: true, kind: "personal_data" });
     expect(classifyTaskAction({ type: "key", key: "Enter", modifiers: [] }, { name: "Notes", tag: "textarea", inForm: true }).sensitive).toBe(false);
     expect(classifyTaskAction({ type: "key", key: "Tab", modifiers: [] }, field).sensitive).toBe(false);
+    // Enter or Space on a button or link is a click and is checked like one (audit 2026-11-10).
+    expect(classifyTaskAction({ type: "key", key: "Enter", modifiers: [] }, { name: "Place order", role: "button", tag: "button" })).toMatchObject({ sensitive: true, kind: "payment" });
+    expect(classifyTaskAction({ type: "key", key: " ", modifiers: [] }, { name: "Go", role: "button", tag: "button", type: "submit", inForm: true })).toMatchObject({ sensitive: true, kind: "personal_data" });
+    expect(classifyTaskAction({ type: "key", key: " ", modifiers: [] }, { name: "Delete", role: "button", tag: "div" })).toMatchObject({ sensitive: true, kind: "destructive" });
+    expect(classifyTaskAction({ type: "key", key: "Enter", modifiers: [] }, { name: "Show more", role: "button", tag: "button" }).sensitive).toBe(false);
+    expect(classifyTaskAction({ type: "key", key: "a", modifiers: [] }, { name: "Place order", role: "button", tag: "button" }).sensitive).toBe(false);
   });
 
   it("asks for a coordinate click on something the structure cannot name, but not for a named one", () => {

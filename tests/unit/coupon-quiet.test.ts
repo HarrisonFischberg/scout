@@ -70,6 +70,21 @@ describe("quiet page browser", () => {
     expect(r.pages[0]!.outcome).toBe("no_access");
   });
 
+  it("never downloads a blocked site, and drops a page that redirects to one", async () => {
+    const f = fakeFetch({ [target.url]: { html: page("SYNTH15") } });
+    const r = await browserRead([target], quietPages({ fetch: f.fetch, hasAccess: async () => true, blocked: async (u) => u.includes("coupons.test") }), { now: () => 0 });
+    expect(f.calls).toHaveLength(0);
+    expect(r.codes).toEqual([]);
+    const redirected = async (): Promise<Response> => {
+      const res = new Response(page("SYNTH15"), { headers: { "content-type": "text/html" } });
+      Object.defineProperty(res, "url", { value: "https://blocked.test/deals" });
+      return res;
+    };
+    const r2 = await browserRead([target], quietPages({ fetch: redirected, hasAccess: async () => true, blocked: async (u) => u.includes("blocked.test") }), { now: () => 0 });
+    expect(r2.pages[0]!.outcome).toBe("error");
+    expect(r2.codes).toEqual([]);
+  });
+
   it("reports a refused download at once instead of waiting", async () => {
     const f = fakeFetch({ [target.url]: { status: 403, html: "Forbidden" } });
     let waited = 0;

@@ -74,7 +74,8 @@ function describe(el: Element): ProbeResult {
     // :disabled also covers controls inside a disabled <fieldset> (QA 2026-10-29).
     ...(el.matches(":disabled") || el.getAttribute("aria-disabled") === "true" ? { disabled: true } : {}),
     ...((el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) && el.readOnly ? { readonly: true } : {}),
-    ...(el.closest("form") ? { inForm: true } : {}),
+    // .form also covers a control tied to a form elsewhere by its form= attribute.
+    ...((el as HTMLInputElement).form || el.closest("form") ? { inForm: true } : {}),
   };
 }
 

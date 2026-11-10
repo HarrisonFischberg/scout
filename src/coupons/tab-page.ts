@@ -129,8 +129,9 @@ const originOf = (url: string): string | null => {
  * src/coupons/quiet-read.ts). Background tabs of the user's window were used
  * before; they flashed in the tab bar and iPhone could not read them.
  */
-export function quietBrowser(): PageBrowser {
+export function quietBrowser(blocked?: (url: string) => Promise<boolean>): PageBrowser {
   return quietPages({
+    ...(blocked ? { blocked } : {}),
     fetch: (u, init) => fetch(u, init),
     hasAccess: async (origin) => !browser.permissions.contains || (await browser.permissions.contains({ origins: [origin] })),
   });

@@ -87,6 +87,8 @@ export function detectCaptcha(snap: Snapshot): boolean {
 
 const ACTIVATES = new Set(["click", "double_click", "right_click"]);
 const INPUTS = new Set(["type", "fill_field"]);
+/** Tag, role or input type of something a key press activates like a click. */
+const PRESSABLE = /\b(button|a|link|checkbox|submit|image)\b/;
 
 /** Activating this element (click, Enter) does something sensitive? */
 export function classifyActivation(el: TargetInfo): Classification {
@@ -136,7 +138,7 @@ export function classifyAction(action: Action, snap: Snapshot): Classification {
  * opening an address is checked by `classifyNavigation` (blocked sites are
  * refused before navigate runs).
  * Typing into a password, card, or similar field does; so does Enter inside a
- * form, which submits it. A missing target acts on nothing, so it needs no
+ * form, which submits it, and Enter or Space on a button or link, which clicks it. A missing target acts on nothing, so it needs no
  * confirmation either (the executor reports no_target).
  */
 export function classifyTaskAction(action: TaskAction, target: TargetInfo | null): Classification {
@@ -155,6 +157,12 @@ export function classifyTaskAction(action: TaskAction, target: TargetInfo | null
   if (INPUTS.has(action.type)) {
     if (target?.redacted) return { sensitive: true, kind: "login", reason: "This field holds a password, card number, or similar secret." };
     return { sensitive: false };
+  }
+  // Enter or Space on a button or link is a click (task-dom's key action calls
+  // el.click()), so it gets the click's check (audit 2026-11-10).
+  if (action.type === "key" && (action.key === "Enter" || action.key === " ") && target && PRESSABLE.test((target.tag ?? "") + " " + (target.role ?? "") + " " + (target.type ?? ""))) {
+    const c = classifyActivation(target);
+    if (c.sensitive) return c;
   }
   if (action.type === "key" && action.key === "Enter" && target?.inForm && !/^(textarea)$/i.test(target.tag ?? "")) {
     return { sensitive: true, kind: "personal_data", reason: "Pressing Enter here submits the form." };
