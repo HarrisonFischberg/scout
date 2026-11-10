@@ -36,16 +36,16 @@ describe("Diagnostics", () => {
     const store = memStore();
     const d = new Diagnostics(store, () => t);
     await d.load();
-    const run = d.start("agent", { provider: "anthropic", model: "claude-sonnet-5-5", question: "Fill the form" });
+    const run = d.start("agent", { provider: "anthropic", model: "claude-sonnet-5-5" });
     run.page("https://shop.test/checkout?session=secret");
     t = 1250;
     run.stage("snapshot:start 1");
     run.error("Could not read the page.");
     run.finish("error", "Could not read the page.", { inputTokens: 10, outputTokens: 2 });
+    await d.flush();
 
     const saved = (store.data[DIAG_KEY] as { runs: Array<Record<string, unknown>> }).runs[0]!;
     expect(saved.pageHost).toBe("shop.test");
-    expect(saved.question).toBeUndefined(); // not opted in
     expect(saved.events).toEqual([{ t: 250, stage: "snapshot:start 1" }]);
     expect(saved.outcome).toEqual({ status: "error", message: "Could not read the page." });
 
@@ -54,13 +54,61 @@ describe("Diagnostics", () => {
     expect(again.runs).toHaveLength(1);
   });
 
-  it("records the question only after opt-in, and forgets it on opt-out", async () => {
-    const d = new Diagnostics(memStore());
-    await d.setIncludeQuestion(true);
-    d.start("ask", { question: "What is the total? my email is ada@example.test" });
-    expect(d.runs[0]!.question).toBe("What is the total? my email is [email]");
-    await d.setIncludeQuestion(false);
-    expect(d.runs[0]!.question).toBeUndefined();
+  // Audits 2026-10-27 and 2026-11-10: each panel used to write back its whole copy.
+  it("two panels keep each other's runs and never share a run number", async () => {
+    const store = memStore();
+    const a = new Diagnostics(store, () => 1);
+    const b = new Diagnostics(store, () => 2);
+    await Promise.all([a.load(), b.load()]);
+    a.start("ask").finish("done", "from a");
+    b.start("coupons").finish("done", "from b");
+    await a.flush();
+    await b.flush();
+    await a.flush();
+    const saved = (store.data[DIAG_KEY] as { runs: Array<{ id: number; kind: string }> }).runs;
+    expect(saved.map((r) => r.kind)).toEqual(["ask", "coupons"]);
+    expect(new Set(saved.map((r) => r.id)).size).toBe(2);
+    expect(a.runs).toHaveLength(2);
+  });
+
+  it("does not write its old runs back after another panel wiped the log", async () => {
+    const store = memStore();
+    const a = new Diagnostics(store);
+    const b = new Diagnostics(store);
+    const run = a.start("ask");
+    await a.flush();
+    await b.load();
+    await store.clear(); // Delete all data in the other panel
+    b.forget();
+    run.stage("late step");
+    await a.flush();
+    expect((store.data[DIAG_KEY] as { runs: unknown[] }).runs).toEqual([]);
+  });
+
+  it("saves a run's stages in one write, not one write per stage", async () => {
+    const store = memStore();
+    let writes = 0;
+    const set = store.set;
+    store.set = async (items) => (writes++, set(items));
+    const d = new Diagnostics(store);
+    const run = d.start("coupons");
+    await d.flush();
+    writes = 0;
+    for (let i = 0; i < 250; i++) run.stage("coupons:attempt " + i);
+    await d.flush();
+    expect(writes).toBe(1);
+    expect((store.data[DIAG_KEY] as { runs: Array<{ events: unknown[] }> }).runs[0]!.events).toHaveLength(250);
+  });
+
+  it("drops questions an older build recorded", async () => {
+    const store = memStore();
+    store.data[DIAG_KEY] = { includeQuestion: true, nextId: 2, runs: [{ id: 1, kind: "ask", startedAt: 1, question: "private", events: [], errors: [] }] };
+    const d = new Diagnostics(store);
+    await d.load();
+    expect(JSON.stringify(d.runs)).not.toContain("private");
+    d.start("ask");
+    await d.flush();
+    expect(JSON.stringify(store.data[DIAG_KEY])).not.toContain("private");
   });
 
   it(`keeps only the last ${MAX_RUNS} runs`, () => {

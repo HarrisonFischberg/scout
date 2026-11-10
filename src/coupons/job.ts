@@ -90,6 +90,17 @@ export interface CouponJobDeps {
 }
 
 export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponEvent, { kind: "done" }>> {
+  // The memory saves run beside the search; the run is over only when they are,
+  // so Delete all data (which waits for the run) cannot be undone by a late one (audit 2026-11-10).
+  const saves: Promise<unknown>[] = [];
+  try {
+    return await runJob(deps, saves);
+  } finally {
+    await Promise.all(saves);
+  }
+}
+
+async function runJob(deps: CouponJobDeps, saves: Promise<unknown>[]): Promise<Extract<CouponEvent, { kind: "done" }>> {
   const { page, provider: client, model, control: run, emit } = deps;
   const trace = (stage: string): void => emit({ kind: "trace", stage });
   const say = (text: string): void => emit({ kind: "say", text });
@@ -303,10 +314,10 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         readerHosts = countFetch(readerHosts, url, ok, Date.now());
         // Counted on what is saved now: a run in another tab may have counted too.
         if (storage) {
-          void withLock(READER_HOSTS_KEY, async () => {
+          saves.push(withLock(READER_HOSTS_KEY, async () => {
             const saved = parseReaderHosts((await storage.get(READER_HOSTS_KEY))[READER_HOSTS_KEY]);
             await storage.set({ [READER_HOSTS_KEY]: countFetch(saved, url, ok, Date.now()) });
-          }).catch(() => undefined);
+          }).catch(() => undefined));
         }
       },
     };
@@ -456,14 +467,14 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         if (a.kind) kinds.push(a.kind);
         // Saved as each code is tested: a run Safari closes in the background still counts (owner's sproos log 2026-10-29).
         if (storage && !a.combo) {
-          void withLock(REFUSED_KEY, async () => {
+          saves.push(withLock(REFUSED_KEY, async () => {
             const all = parseRefused((await storage.get(REFUSED_KEY))[REFUSED_KEY]);
             await storage.set({ [REFUSED_KEY]: noteRefused(all, merchant.domain, [a]) });
-          }).catch(() => undefined);
-          void withLock(SITE_STATS_KEY, async () => {
+          }).catch(() => undefined));
+          saves.push(withLock(SITE_STATS_KEY, async () => {
             const all = parseSiteStats((await storage.get(SITE_STATS_KEY))[SITE_STATS_KEY]);
             await storage.set({ [SITE_STATS_KEY]: countSites(all, [a]) });
-          }).catch(() => undefined);
+          }).catch(() => undefined));
         }
         // Stage words only: the group of the store's reply (never its words) and where the code came from.
         trace("coupons:attempt " + index + (a.combo ? " combo" : "") + (a.accepted === false ? " rejected" : a.saving && a.saving > 0 ? " saving" : " none") + (a.kind ? " " + a.kind : "") + " from " + sourceLabel(a));
@@ -490,11 +501,11 @@ export async function runCouponJob(deps: CouponJobDeps): Promise<Extract<CouponE
         refused: outcome.attempts.filter((a) => !a.combo && a.origin === "remembered" && (a.accepted === false || !a.saving)).map((a) => a.code),
       };
       // Updated on what is saved now, not what this run read at its start: another tab's run may have saved since.
-      void withLock(WORKED_KEY, async () => {
+      saves.push(withLock(WORKED_KEY, async () => {
         const saved = parseWorked((await storage.get(WORKED_KEY))[WORKED_KEY]);
         const next = updateWorked(saved, merchant.domain, seen);
         if (JSON.stringify(next) !== JSON.stringify(saved)) await storage.set({ [WORKED_KEY]: next });
-      }).catch(() => undefined);
+      }).catch(() => undefined));
     }
     trace("coupons:status " + outcome.status + (outcome.best ? " best" : " none") + (outcome.applied ? " applied" : "") + (outcome.reapplied ? " reapply=" + outcome.reapplied : ""));
     if (outcome.status === "no_codes") {

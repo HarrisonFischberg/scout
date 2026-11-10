@@ -5,9 +5,10 @@
 // In every build since 2026-10-24 (owner decision: he tests TestFlight
 // builds); the native console log and the mock server switch stay debug only.
 //
-// Never recorded: API keys, page text, form values, typed agent input. The
-// user's question is recorded only when they opt in.
+// Never recorded: API keys, page text, form values, typed agent input, the
+// user's question.
 
+import { withLock } from "./settings/lock";
 import type { StorageArea } from "./settings/settings";
 
 export type RunKind = "startup" | "ask" | "summarize" | "agent" | "coupons" | "settings";
@@ -20,6 +21,8 @@ export interface DiagEvent {
 
 export interface DiagRun {
   id: number;
+  /** Tells runs apart across panels; `id` is only the number shown. */
+  uid: string;
   kind: RunKind;
   startedAt: number;
   provider?: string;
@@ -28,7 +31,6 @@ export interface DiagRun {
   mock?: boolean;
   /** Hostname only, never the full URL. */
   pageHost?: string;
-  question?: string;
   events: DiagEvent[];
   errors: string[];
   outcome?: { status: string; message: string };
@@ -36,7 +38,7 @@ export interface DiagRun {
 }
 
 interface Stored {
-  includeQuestion: boolean;
+  epoch: string;
   nextId: number;
   runs: DiagRun[];
 }
@@ -93,8 +95,26 @@ export interface RunHandle {
 
 const NOOP: RunHandle = { stage() {}, error() {}, page() {}, finish() {} };
 
+/** Stages are saved at most this often; a run's start and finish are saved at once. */
+export const SAVE_EVERY_MS = 500;
+
+/**
+ * One panel's view of the shared log. Each panel writes back only its own
+ * runs, merged into what is stored, one writer at a time; it used to write its
+ * whole copy, so two open panels erased each other's runs and a log wiped by
+ * Delete all data came back (audits 2026-10-27 and 2026-11-10).
+ */
 export class Diagnostics {
-  private data: Stored = { includeQuestion: false, nextId: 1, runs: [] };
+  /** Stored runs as last seen, with this panel's own. */
+  private all: DiagRun[] = [];
+  /** Runs this panel started: the only ones it writes. */
+  private mine: DiagRun[] = [];
+  /** The stored log's mark. Another one in storage means the log was wiped since: this panel's old runs go too. */
+  private epoch: string | undefined;
+  private timer: ReturnType<typeof setTimeout> | undefined;
+  private nextId = 1;
+  /** Own runs not saved yet: their number is checked against the stored log at the first save. */
+  private fresh = new Set<DiagRun>();
 
   constructor(
     private readonly store: StorageArea | undefined,
@@ -104,63 +124,63 @@ export class Diagnostics {
   async load(): Promise<void> {
     if (!this.store) return;
     try {
-      const got = (await this.store.get(DIAG_KEY))[DIAG_KEY] as Partial<Stored> | undefined;
-      if (got && Array.isArray(got.runs)) {
-        this.data = {
-          includeQuestion: got.includeQuestion === true,
-          nextId: typeof got.nextId === "number" ? got.nextId : got.runs.length + 1,
-          runs: got.runs.slice(-MAX_RUNS),
-        };
-      }
+      const got = parseStored((await this.store.get(DIAG_KEY))[DIAG_KEY]);
+      this.epoch = got.epoch;
+      this.all = got.runs;
+      this.nextId = got.nextId;
     } catch {
       // Diagnostics must never break the popup.
     }
   }
 
-  get includeQuestion(): boolean {
-    return this.data.includeQuestion;
-  }
-
-  async setIncludeQuestion(on: boolean): Promise<void> {
-    this.data.includeQuestion = on;
-    if (!on) for (const r of this.data.runs) delete r.question;
-    await this.persist();
-  }
-
   async clear(): Promise<void> {
-    this.data.runs = [];
-    await this.persist();
+    this.forget();
+    if (!this.store) return;
+    try {
+      await withLock(DIAG_KEY, () => this.store!.set({ [DIAG_KEY]: { epoch: mark(), nextId: 1, runs: [] } satisfies Stored }));
+    } catch {
+      // Best effort.
+    }
   }
 
   /** Drops everything in memory without writing (storage was just cleared). */
   forget(): void {
-    this.data = { includeQuestion: false, nextId: 1, runs: [] };
+    clearTimeout(this.timer);
+    this.timer = undefined;
+    this.all = [];
+    this.mine = [];
+    this.fresh.clear();
+    this.nextId = 1;
+    this.epoch = undefined;
   }
 
   get runs(): readonly DiagRun[] {
-    return this.data.runs;
+    return this.all;
   }
 
-  start(kind: RunKind, meta: { provider?: string; model?: string; question?: string; mock?: boolean } = {}): RunHandle {
+  start(kind: RunKind, meta: { provider?: string; model?: string; mock?: boolean } = {}): RunHandle {
     const startedAt = this.now();
-    const run: DiagRun = { id: this.data.nextId++, kind, startedAt, events: [], errors: [] };
+    // The number is checked under the lock at the first save, so two panels never share one.
+    const run: DiagRun = { id: this.nextId++, uid: mark(), kind, startedAt, events: [], errors: [] };
+    this.fresh.add(run);
     if (meta.provider) run.provider = meta.provider;
     if (meta.model) run.model = meta.model;
     if (meta.mock) run.mock = true;
-    if (meta.question && this.data.includeQuestion) run.question = scrub(meta.question);
-    this.data.runs.push(run);
-    if (this.data.runs.length > MAX_RUNS) this.data.runs.splice(0, this.data.runs.length - MAX_RUNS);
+    this.mine.push(run);
+    this.all = [...this.all, run].slice(-MAX_RUNS);
     void this.persist();
-    const save = (): void => void this.persist();
+    const soon = (): void => {
+      this.timer ??= setTimeout(() => void this.persist(), SAVE_EVERY_MS);
+    };
     return {
       stage: (name) => {
         if (run.events.length >= MAX_EVENTS) return;
         run.events.push({ t: this.now() - startedAt, stage: scrub(name) });
-        save();
+        soon();
       },
       error: (text) => {
         run.errors.push(scrub(text));
-        save();
+        soon();
       },
       page: (url) => {
         const h = hostOf(url);
@@ -169,25 +189,69 @@ export class Diagnostics {
       finish: (status, message, usage) => {
         run.outcome = { status: scrub(status), message: scrub(message) };
         if (usage) run.usage = { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens };
-        save();
+        void this.persist();
       },
     };
   }
 
+  /** Saves now what is waiting to be saved (tests, and before the report is built). */
+  async flush(): Promise<void> {
+    await this.persist();
+  }
+
   private async persist(): Promise<void> {
+    clearTimeout(this.timer);
+    this.timer = undefined;
     if (!this.store) return;
+    const store = this.store;
     try {
-      await this.store.set({ [DIAG_KEY]: this.data });
+      await withLock(DIAG_KEY, async () => {
+        const got = parseStored((await store.get(DIAG_KEY))[DIAG_KEY]);
+        if (this.epoch !== undefined && got.epoch !== this.epoch) {
+          this.mine = [];
+          this.fresh.clear();
+        }
+        this.epoch = got.epoch ?? mark();
+        let nextId = got.nextId;
+        for (const r of this.mine) {
+          if (!this.fresh.delete(r)) continue;
+          r.id = Math.max(r.id, nextId);
+          nextId = r.id + 1;
+        }
+        this.nextId = Math.max(this.nextId, nextId);
+        nextId = this.nextId;
+        const own = new Set(this.mine.map((r) => r.uid));
+        this.mine = this.mine.slice(-MAX_RUNS);
+        this.all = [...got.runs.filter((r) => !own.has(r.uid)), ...this.mine].sort((a, b) => a.startedAt - b.startedAt).slice(-MAX_RUNS);
+        await store.set({ [DIAG_KEY]: { epoch: this.epoch, nextId, runs: this.all } satisfies Stored });
+      });
     } catch {
       // Ignore: diagnostics are best effort.
     }
   }
 }
 
+const mark = (): string => Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+
+/** The stored log, checked for shape. Questions older builds recorded on request are dropped (the switch left Settings 2026-11-08). */
+function parseStored(raw: unknown): { epoch: string | undefined; nextId: number; runs: DiagRun[] } {
+  const got = raw as Partial<Stored> | undefined;
+  if (!got || !Array.isArray(got.runs)) return { epoch: undefined, nextId: 1, runs: [] };
+  const runs = got.runs.slice(-MAX_RUNS).map((r) => {
+    const { question: _old, ...rest } = r as DiagRun & { question?: string };
+    return { ...rest, uid: rest.uid ?? "old-" + rest.id };
+  });
+  return {
+    epoch: typeof got.epoch === "string" ? got.epoch : undefined,
+    nextId: typeof got.nextId === "number" ? got.nextId : got.runs.length + 1,
+    runs,
+  };
+}
+
 // ---------- Page button failures ----------
 // The page button (src/edge.ts) asks the worker to open the panel. When Safari
 // refuses, no panel opens, so no run is recorded; the worker keeps the reason
-// here instead (debug builds only) and the next report lists it.
+// here instead and the next report lists it.
 
 export const BUTTON_KEY = "diagnosticsButton";
 export const MAX_BUTTON_FAILURES = 5;
@@ -412,11 +476,8 @@ export function buildReport(runs: readonly DiagRun[], env: ReportEnv, buttonFail
   );
   if (last.errors.length) lines.push(`- Errors shown: ${last.errors.map((e) => `"${e}"`).join("; ")}`);
   if (last.usage) lines.push(`- Tokens: ${last.usage.inputTokens} in, ${last.usage.outputTokens} out`);
-  lines.push(
-    `- Question: ${last.question !== undefined ? `"${last.question}"` : "not recorded"}`,
-    "",
-    "### Timeline",
-  );
+  // Kept so reports read the same as before; the question is never recorded now.
+  lines.push("- Question: not recorded", "", "### Timeline");
   timeline(lines, last.events);
   const earlier = runs.filter((r) => r !== last).reverse();
   if (earlier.length) {
@@ -434,6 +495,6 @@ export function buildReport(runs: readonly DiagRun[], env: ReportEnv, buttonFail
     }
   }
   tail();
-  lines.push("", "_Recorded locally by a debug build. No page text, keys, or form values are included._");
+  lines.push("", "_Recorded locally on this device. No page text, keys, or form values are included._");
   return lines.join("\n");
 }

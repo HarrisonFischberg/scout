@@ -187,7 +187,7 @@ async function activeTab(): Promise<ActiveTab> {
 }
 
 
-// Debug builds only: local run recorder (src/diagnostics.ts). `current` is the
+// Every build: local run recorder (src/diagnostics.ts). `current` is the
 // run in progress; every stage also goes to the native log. Stage names only,
 // never content.
 let diag: Diagnostics | null = null;
@@ -206,7 +206,7 @@ const setupOrEmpty = (): string[] => {
   }
 };
 
-function startRun(kind: RunKind, meta: { provider?: string; model?: string; question?: string; mock?: boolean } = {}): RunHandle {
+function startRun(kind: RunKind, meta: { provider?: string; model?: string; mock?: boolean } = {}): RunHandle {
   current = diag ? diag.start(kind, meta) : disabledRun;
   return current;
 }
@@ -547,8 +547,6 @@ async function main(): Promise<void> {
   {
     const diagBox = el("diag");
     const diagStatus = el("diag-status");
-    // The "record the question" opt-in left Settings with the note field; stop and forget for anyone who had it on.
-    if (diag?.includeQuestion) void diag.setIncludeQuestion(false);
     // Send Debug Logs: a draft to support in the user's email app; Scout sends nothing itself.
     const problem = el<HTMLTextAreaElement>("diag-problem");
     const send = el<HTMLButtonElement>("diag-send");
@@ -2258,7 +2256,7 @@ async function main(): Promise<void> {
             : classifyQuestion({ question: trimmed, pageTitle: pageWords(tab.title, tab.url), attachedTabs: extra.length, ...(lastScope ? { previous: lastScope } : {}) });
     lastScope = scope;
     trace("scope:" + scope);
-    startRun(isSummary ? "summarize" : "ask", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model, question: cont ? cont.question : trimmed });
+    startRun(isSummary ? "summarize" : "ask", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model });
     if (!port) {
       addMessage("error", "Scout's background worker is not running. Close Scout and open it again.");
       current.finish("error", "No worker port.");
@@ -2717,7 +2715,7 @@ async function main(): Promise<void> {
     if (s.apple) return needsKey("Scout mode");
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     // No per-task question (owner decision 2026-10-17): sending the task starts it.
-    startRun("agent", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model, question: trimmed });
+    startRun("agent", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model });
     addMessage("user", trimmed, { mode: "Scout mode" });
     question.value = "";
     autosize();
