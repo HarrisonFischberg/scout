@@ -98,7 +98,7 @@ export function toPageContext(raw: unknown, maxChars?: number): { page: PageCont
   let body = str(r.text);
   let partial = r.truncated === true;
   // A video's transcript is already fitted to its own, larger budget (src/context/youtube.ts).
-  const max = maxChars ?? (isVideoText(body) ? VIDEO_PAGE_CHARS : 60_000);
+  const max = maxChars ?? (isVideoText(body, url) ? VIDEO_PAGE_CHARS : 60_000);
   if (body.length > max) {
     body = body.slice(0, max);
     partial = true;

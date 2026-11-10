@@ -25,7 +25,7 @@ async function stub(page: Page, pageButton: unknown): Promise<void> {
       const g = globalThis as unknown as Record<string, unknown>;
       const top = (window.top ?? window) as unknown as Record<string, unknown>;
       if (!top.__fake) {
-        top.__fake = { data: { aiConsent: { anthropic: { at: 1, version: 2 } }, pageButton }, panelOpens: 0, warms: 0, permissionRequests: [], injected: [] };
+        top.__fake = { data: { aiConsent: { anthropic: { at: 1, version: 3 } }, pageButton }, panelOpens: 0, warms: 0, permissionRequests: [], injected: [] };
         top.__listeners = [];
       }
       const fake = top.__fake as Fake;

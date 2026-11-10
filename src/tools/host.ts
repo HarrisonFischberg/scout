@@ -7,6 +7,7 @@ import { checkSchema } from "../bridge/messages";
 import { fencePage, unfence } from "../chat/prompt";
 import { cleanUrl } from "../context/clean";
 import type { TabRead, TabRef } from "../context/gather";
+import { isVideoText, VIDEO_PAGE_CHARS } from "../context/youtube";
 import { blockedBy, hostOf, screenshotDecision, type PageAccess, type ScreenshotChoice } from "../permissions/gate";
 import type { ToolLog } from "./log";
 import { isToolName, TOOL_NAMES, TOOLS, type ToolStatus } from "./registry";
@@ -101,7 +102,7 @@ async function run(req: ToolRequest, deps: ToolHostDeps): Promise<ToolResult> {
       if (read.shared.status === "blocked") return result("blocked-by-user", "The user does not allow Scout to read this site.", site);
       if (read.shared.status === "timeout") return result("timeout", "The page did not answer in time.", site);
       if (!read.page) return result("error", "Could not read that tab.", site);
-      return result("ok", fencePage(read.page), site, { shared: { title: read.shared.title, host: site } });
+      return result("ok", fencePage(read.page, isVideoText(read.page.text, read.page.url) ? VIDEO_PAGE_CHARS : undefined), site, { shared: { title: read.shared.title, host: site } });
     }
 
     case "search_tabs": {

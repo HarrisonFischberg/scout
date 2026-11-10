@@ -587,8 +587,12 @@ export function videoPageText(v: Video, budget = VIDEO_TRANSCRIPT_BUDGET): strin
   return parts.join("\n\n");
 }
 
-/** Is this page text a video read by videoPageText? */
-export function isVideoText(text: string): boolean {
+/**
+ * Is this page text a video read by videoPageText? The address must be a
+ * YouTube video too: any page can carry the header line (audit 2026-11-10).
+ */
+export function isVideoText(text: string, url: string): boolean {
+  if (youtubeVideoId(url) === null) return false;
   return text.startsWith(VIDEO_HEADER + "\n") || text.includes("\n\n" + VIDEO_HEADER + "\n");
 }
 

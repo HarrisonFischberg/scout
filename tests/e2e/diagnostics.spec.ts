@@ -13,7 +13,7 @@ async function openPopup(page: Page): Promise<void> {
     ({ key, pageData }) => {
       // Sharing with the provider already allowed (consent.spec.ts covers asking).
       const listeners: Array<(c: Record<string, { newValue?: unknown }>, area: string) => void> = [];
-      const data: Record<string, unknown> = { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } } };
+      const data: Record<string, unknown> = { aiConsent: { anthropic: { at: 1, version: 3 }, openai: { at: 1, version: 3 } } };
       (globalThis as unknown as { browser: unknown }).browser = {
         runtime: {
           sendMessage: async () => ({ ok: true }),

@@ -95,6 +95,20 @@ describe("read_page", () => {
   });
 });
 
+describe("read_page on a video", () => {
+  // A one-hour transcript is about 55,000 characters: the tool gives all of it, as the first read does (audit 2026-11-10).
+  const long = "YouTube video\nChannel: Synthetic\n\n" + "[0:00] words ".repeat(4500) + "THE END";
+  const read = (url: string) =>
+    host({}, { readTab: async (id): Promise<TabRead> => ({ shared: { tab_id: id, title: "Talk", host: new URL(url).hostname, status: "read" }, page: { url, title: "Talk", text: long } }) }).run({ name: "read_page", input: {} });
+
+  it("keeps a long transcript whole, and still cuts another site's page that only looks like one", async () => {
+    expect((await read("https://www.youtube.com/watch?v=dQw4w9WgXcQ")).text).toContain("THE END");
+    const other = (await read("https://blog.test/post")).text;
+    expect(other).not.toContain("THE END");
+    expect(other).toContain("[page text truncated]");
+  });
+});
+
 describe("search_tabs", () => {
   it("does nothing until the user turns it on", async () => {
     let listed = false;

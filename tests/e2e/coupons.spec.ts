@@ -78,7 +78,7 @@ async function openPopup(
         onMessage: { addListener() {} },
       },
       // Sharing with the provider already allowed (consent.spec.ts covers asking).
-      storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } } } : {}), set: async () => undefined, clear: async () => undefined } },
+      storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 3 }, openai: { at: 1, version: 3 } } } : {}), set: async () => undefined, clear: async () => undefined } },
       tabs: {
         // A web page: Find coupons refuses tabs that are not http(s) (audit PR #93).
         query: async () => [{ id: 1, url: "https://shop.test/cart", title: "Cart" }],

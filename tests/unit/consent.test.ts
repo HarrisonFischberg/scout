@@ -241,6 +241,7 @@ describe("consent text", () => {
       expect(all).toMatch(/message/i);
       expect(all).toMatch(/page/i);
       expect(all).toMatch(/API key/);
+      expect(all).toMatch(/Instagram.*photos/);
       expect(t.policyUrl).toBe(PRIVACY_POLICY[p]);
       expect(t.policyLabel).toContain(name);
       // The privacy policies exclude API content; the API terms govern it.

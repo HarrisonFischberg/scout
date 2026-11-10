@@ -41,7 +41,7 @@ async function openPopup(page: Page, opts: { backgroundReadFails?: boolean } = {
           onMessage: { addListener() {} },
         },
         // Sharing with the provider already allowed (consent.spec.ts covers asking).
-        storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } } } : {}), set: async () => undefined, clear: async () => undefined } },
+        storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 3 }, openai: { at: 1, version: 3 } } } : {}), set: async () => undefined, clear: async () => undefined } },
         tabs: {
           query: async (info: { active?: boolean }) => (info.active ? tabs.filter((t) => t.active) : tabs),
         },

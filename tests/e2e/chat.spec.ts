@@ -39,7 +39,7 @@ async function openPopup(page: Page, opts: { key: string | null; apple?: boolean
           onMessage: { addListener() {} },
         },
         // Sharing with the provider already allowed (consent.spec.ts covers asking).
-        storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } } } : {}), set: async () => undefined, clear: async () => undefined } },
+        storage: { local: { get: async (k: string | string[]) => (([] as string[]).concat(k).includes("aiConsent") ? { aiConsent: { anthropic: { at: 1, version: 3 }, openai: { at: 1, version: 3 } } } : {}), set: async () => undefined, clear: async () => undefined } },
         tabs: { query: async () => [{ id: 1, url: pageData.url, title: pageData.title, active: true }] },
         scripting: {
           executeScript: async (injection: { func?: unknown }) => {
@@ -335,7 +335,7 @@ test("a provider fallback is announced in the conversation", async ({ page }) =>
       scripting: { executeScript: async () => [{ result: null }] },
       storage: {
         local: {
-          get: async () => ({ settings: { provider: "openai", model: "gpt-5", retention: "7" }, aiConsent: { anthropic: { at: 1, version: 2 } } }),
+          get: async () => ({ settings: { provider: "openai", model: "gpt-5", retention: "7" }, aiConsent: { anthropic: { at: 1, version: 3 } } }),
           set: async () => undefined,
           clear: async () => undefined,
         },

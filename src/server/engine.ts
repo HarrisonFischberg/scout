@@ -266,7 +266,7 @@ export class ScoutServer {
       // answers from the page text alone (Instagram's own descriptions, the caption).
       const pagePics = req.pages.flatMap((p) => p.images ?? []).slice(0, MAX_PAGE_IMAGES);
       // A video transcript longer than Apple's model can read would be answered from its first and last minutes only.
-      const longVideo = req.pages.some((p) => isVideoText(p.text) && p.text.length > APPLE_PROMPT_CHARS);
+      const longVideo = req.pages.some((p) => isVideoText(p.text, p.url) && p.text.length > APPLE_PROMPT_CHARS);
       const tryApple = req.model === APPLE_MODEL && !!req.fallback && !hasImages && !pagePics.length && !longVideo && !needsFreshFacts(req.question, req.pages.length > 0);
       const apple = tryApple ? await this.askApple(req, signal) : null;
       if (apple !== null) {

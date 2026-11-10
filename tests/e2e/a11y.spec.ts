@@ -11,7 +11,7 @@ async function openPopup(page: Page): Promise<void> {
       settings: { provider: "anthropic", model: "claude-sonnet-5-5", retention: "7" },
       modelMigration: "haiku-5-5-high",
       // OpenAI allowed, Anthropic not: Settings shows a Withdraw button and the first chat request asks.
-      aiConsent: { openai: { at: 1, version: 2 } },
+      aiConsent: { openai: { at: 1, version: 3 } },
     };
     (globalThis as unknown as { browser: unknown }).browser = {
       runtime: {

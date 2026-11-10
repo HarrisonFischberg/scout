@@ -64,7 +64,7 @@ async function openPopup(page: Page, script: string[], opts: { data?: Record<str
   await page.addInitScript(
     ({ tab, privateTab, data }) => {
       const g = globalThis as unknown as Record<string, unknown>;
-      const store: Record<string, unknown> = { aiConsent: { anthropic: { at: 1, version: 2 } }, ...data };
+      const store: Record<string, unknown> = { aiConsent: { anthropic: { at: 1, version: 3 } }, ...data };
       const t0 = performance.now();
       const fake: Fake = { rec: [], icons: [], store, t0 };
       g.__fake = fake;

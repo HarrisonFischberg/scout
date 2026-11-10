@@ -12,7 +12,7 @@ async function openPopup(page: Page, data: Record<string, unknown> = {}): Promis
     const kept = sessionStorage.getItem("__fake");
     const store: Record<string, unknown> = kept ? JSON.parse(kept) : {
       settings: { provider: "anthropic", model: "claude-haiku-5-5", retention: "7" },
-      aiConsent: { anthropic: { at: 1, version: 2 } },
+      aiConsent: { anthropic: { at: 1, version: 3 } },
       ...seed,
     };
     const save = () => sessionStorage.setItem("__fake", JSON.stringify(store));
