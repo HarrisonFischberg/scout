@@ -17,6 +17,8 @@ One command for every store Scout ships to:
   Firefox add-on), so `android` just says so.
 - Apple targets run only on the Mac (Xcode). Chrome and Firefox run anywhere with Node 22.
 
+Chrome and Firefox with `--live` stop when `src`, `scripts` or the package files have uncommitted changes (the Firefox source zip is made from the last commit), and run `npm test` first.
+
 Examples: `./release.sh all` (check everything), `./release.sh ios --beta --live` (TestFlight),
 `./release.sh all --live` (submit everywhere).
 
