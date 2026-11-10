@@ -10,6 +10,8 @@
 // A code the model lists with a page the search never returned is dropped,
 // because nothing but the model's memory stands behind it.
 
+import { bareHost } from "../permissions/gate";
+
 export type CandidateOrigin = "remembered" | "store" | "verified" | "reported" | "guess";
 
 export interface CouponCandidate {
@@ -125,7 +127,7 @@ export function rankCandidates(cands: CouponCandidate[], m?: MerchantNames): Cou
 export function originLabel(c: { origin: CandidateOrigin; sourceUrl?: string; combo?: string[] }): string {
   // A pair of codes has no page of its own; each code's row names its page.
   if (c.combo) return "both codes, applied together";
-  const host = c.sourceUrl ? safeHost(c.sourceUrl) : "";
+  const host = c.sourceUrl ? bareHost(c.sourceUrl) : "";
   switch (c.origin) {
     case "store":
       return host ? "the store's own site (" + host + ")" : "the store's own site";
@@ -140,10 +142,3 @@ export function originLabel(c: { origin: CandidateOrigin; sourceUrl?: string; co
   }
 }
 
-export function safeHost(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return "";
-  }
-}

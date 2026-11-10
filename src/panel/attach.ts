@@ -1,16 +1,9 @@
 // Panel helpers for Part 2: the @ tab picker, the "Shared:" line under each
 // message. Pure, so they are unit-tested.
 import { MAX_EXTRA_TABS, type TabInfo } from "../chat/tabs";
+import { hostOf } from "../permissions/gate";
 
 export const MAX_SUGGESTIONS = 8;
-
-function host(url: string): string {
-  try {
-    return new URL(url).hostname.toLowerCase();
-  } catch {
-    return "";
-  }
-}
 
 /** The "@word" being typed just before the caret, if any. */
 export function mentionAt(text: string, caret: number): { start: number; query: string } | null {
@@ -25,7 +18,7 @@ export function suggestTabs(query: string, tabs: TabInfo[], attached: ReadonlySe
   const q = query.toLowerCase();
   return tabs
     .filter((t) => !t.active && !attached.has(t.id))
-    .filter((t) => !q || host(t.url).includes(q) || t.title.toLowerCase().split(/\s+/).some((w) => w.startsWith(q)))
+    .filter((t) => !q || (hostOf(t.url) ?? "").includes(q) || t.title.toLowerCase().split(/\s+/).some((w) => w.startsWith(q)))
     .slice(0, MAX_SUGGESTIONS);
 }
 

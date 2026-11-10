@@ -51,6 +51,8 @@ describe("guessed codes", () => {
 
   it("builds store-name codes, shaped first by the percentage coupon sites hint at (BEEFY15, GETBEEFY)", () => {
     expect(brandTokens(beefy)).toEqual(["BEEFY", "GETBEEFY"]);
+    // The guesser strips the same words as the merchant finder (audit 2026-11-10).
+    expect(brandTokens({ domain: "hellobello.com", brand: "" })).toEqual(["BELLO", "HELLOBELLO"]);
     const pct = hintedPercents(["Beefy Promo Codes - 15% Off (7 Verified) Oct 2026", "MASKED | https://x.test | 15% off sitewide, code hidden"]);
     expect(pct[0]).toBe(15);
     const codes = guessCodes({ merchant: beefy, percents: pct, now: new Date(2026, 9, 19) }).map((c) => c.code);

@@ -59,6 +59,11 @@ export function hostOf(url: string): string | null {
   }
 }
 
+/** The host without "www.", for display and loose matching; "" when the URL has none. The one place this lives (audit 2026-11-10). */
+export function bareHost(url: string): string {
+  return (hostOf(url) ?? "").replace(/^www\./, "");
+}
+
 /**
  * Turns what a user typed ("https://www.Example.com/a", "*.example.com",
  * "example.com") into a site rule ("www.example.com", "example.com"). A rule

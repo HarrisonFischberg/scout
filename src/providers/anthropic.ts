@@ -1,15 +1,7 @@
 import { ProviderError, errorDetail, errorFromStatus } from "./errors";
 import { readSse } from "./sse";
 import type { ChatMessage, ChatRequest, ProviderClient, ProviderConfig, StreamEvent } from "./types";
-
-/** The site of a page the model fetches, for the step line ("Opening nytimes.com"). */
-function siteOf(url: string): string | null {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "") || null;
-  } catch {
-    return null;
-  }
-}
+import { bareHost } from "../permissions/gate";
 
 const DEFAULT_URL = "https://api.anthropic.com/v1/messages";
 
@@ -246,7 +238,7 @@ export function createAnthropic(cfg: ProviderConfig): ProviderClient {
               if (kept?.type === "server_tool_use" && kept.name === "web_fetch") {
                 const url = (kept.input as { url?: unknown } | undefined)?.url;
                 if (typeof url === "string" && url) asked.set(String(kept.id ?? ""), url);
-                yield { type: "progress", step: { step: "fetch", ...(typeof url === "string" && siteOf(url) ? { detail: siteOf(url)! } : {}) } };
+                yield { type: "progress", step: { step: "fetch", ...(typeof url === "string" && bareHost(url) ? { detail: bareHost(url) } : {}) } };
               }
               if (kept?.type === "server_tool_use" && kept.name === "web_search") {
                 const query = (kept.input as { query?: unknown } | undefined)?.query;

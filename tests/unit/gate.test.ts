@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import {
   alwaysAllowed,
+  bareHost,
   blockedBy,
   DEFAULT_PAGE_ACCESS,
   normalizeSite,
@@ -42,6 +43,14 @@ describe("normalizeSite", () => {
     expect(normalizeSite("not a host")).toBeNull();
     expect(normalizeSite("intranet")).toBeNull();
     expect(normalizeSite("ftp://files.example.com")).toBeNull();
+  });
+});
+
+describe("bareHost", () => {
+  it("gives the host without www., lowercased, and nothing for a non-web address", () => {
+    expect(bareHost("https://WWW.Shop.test./cart?x=1")).toBe("shop.test");
+    expect(bareHost("file:///etc/passwd")).toBe("");
+    expect(bareHost("not a url")).toBe("");
   });
 });
 

@@ -8,6 +8,7 @@
 // Never recorded: API keys, page text, form values, typed agent input, the
 // user's question.
 
+import { hostOf } from "./permissions/gate";
 import { withLock } from "./settings/lock";
 import type { StorageArea } from "./settings/settings";
 
@@ -75,15 +76,6 @@ export function scrub(text: string): string {
     .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "[email]")
     .replace(/https?:\/\/([^/\s?#]+)[^\s]*/g, "$1")
     .slice(0, MAX_TEXT);
-}
-
-export function hostOf(url: string | undefined): string | undefined {
-  if (!url) return undefined;
-  try {
-    return new URL(url).hostname || undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 export interface RunHandle {
@@ -183,7 +175,7 @@ export class Diagnostics {
         soon();
       },
       page: (url) => {
-        const h = hostOf(url);
+        const h = hostOf(url ?? "");
         if (h) run.pageHost = h;
       },
       finish: (status, message, usage) => {

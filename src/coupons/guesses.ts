@@ -6,15 +6,12 @@
 // (WELCOME10, SAVE15, ...) worked in those logs, so smart guesses go first.
 // Every guess is labeled as one; the cart decides.
 import { normalizeCode, type CouponCandidate } from "./candidates";
-import type { Merchant } from "./merchant";
+import { LABEL_PREFIXES, LABEL_SUFFIXES, type Merchant } from "./merchant";
 
 /** Most guesses one run tests: smart ones first, then common ones. */
 export const MAX_GUESSES = 40;
 const MAX_SMART = 20;
 
-// Words in a domain or brand that are not the brand itself ("getbeefy", "drinkolipop", "eatbirdcall").
-const PREFIXES = ["get", "shop", "try", "drink", "eat", "buy", "the", "my", "go", "hey", "meet", "wear", "use", "join"];
-const SUFFIXES = ["shop", "store", "hq", "co", "usa", "official", "brand", "brands", "online"];
 const PERCENTS = [10, 15, 20];
 
 /** Short names a store's codes are often built from: GETBEEFY -> GETBEEFY, BEEFY. */
@@ -28,8 +25,9 @@ export function brandTokens(m: Pick<Merchant, "domain" | "brand">): string[] {
   const brand = m.brand.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9 ]/g, "").trim();
   const words = brand.split(/\s+/).filter((w) => w.length >= 3 && w !== "the" && w !== "and" && w !== "store");
   add(brand.replace(/\s+/g, ""));
-  for (const p of PREFIXES) if (label.startsWith(p) && label.length - p.length >= 3) add(label.slice(p.length));
-  for (const s of SUFFIXES) if (label.endsWith(s) && label.length - s.length >= 3) add(label.slice(0, -s.length));
+  // Words in a domain that are not the brand itself ("getbeefy", "drinkolipop", "eatbirdcall").
+  for (const p of LABEL_PREFIXES) if (label.startsWith(p) && label.length - p.length >= 3) add(label.slice(p.length));
+  for (const s of LABEL_SUFFIXES) if (label.endsWith(s) && label.length - s.length >= 3) add(label.slice(0, -s.length));
   add(label);
   if (words.length > 1) add(words[0] ?? "");
   return out.slice(0, 3);
