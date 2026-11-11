@@ -468,7 +468,7 @@
         color: var(--text-muted); font-size: 14px; border-radius: 6px;
       }
       .trace-head:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-      .trace-head .chev { width: 14px; height: 14px; transition: transform 150ms ease; }
+      .trace-head .chev { width: 14px; height: 14px; }
       .trace-head[aria-expanded="false"] .chev { transform: rotate(-90deg); }
       .trace-body { display: flex; flex-direction: column; gap: 10px; margin: 8px 0 0; padding-left: 12px; border-left: 2px solid var(--hairline); }
       .trace-body[hidden] { display: none; }
@@ -744,6 +744,9 @@
         --car-body: #5b9441; --car-glass: #a8d4dd;
         --r-action: 999px; --r-box: 16px; --r-sign: 20px; --r-field: 12px;
         --press: 100ms; --shadow: 0 0 0 0 transparent; /* not `none`: some rules list it after a focus ring */
+        /* Motion (docs/interaction-matrix.md): press 100ms, local changes 180ms; exits are instant. */
+        --press-scale: 0.97; --press-scale-icon: 0.9; --dur-local: 180ms;
+        --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
       }
       @media (prefers-color-scheme: dark) {
         :root { --outline: var(--border-control); --sign: #3a2e00; --sign-ink: #fff1bf; --sign-edge: #ffd34d; }
@@ -864,10 +867,50 @@
       .look-list label:has(input:checked) { border-color: var(--outline); background: var(--selected); box-shadow: none; }
       .look-list label:has(input:checked)::after { color: var(--text-primary); }
 
+      /* Pressed, disabled and Undo states that do not move, so they also show under Reduce Motion.
+         On touch there is no hover: the press tint is the only answer to a tap. */
+      .icon-btn:active, .chats-new:active, #chats-list .chat-open:active, .sheet-list button:active, #plus-menu button:active,
+      #site-suggestions button:active:not(:disabled), #model-pill:active:not(:disabled), .sources-toggle:active, .ask-key:active,
+      .source-list a:active, .msg .code-copy:active { background: var(--bg-subtle); color: var(--text-primary); }
+      #chats-list .chat-open { border-radius: 10px; }
+      .look-list label:active { background: var(--selected); }
+      .btn:disabled, .round:disabled, #starters button:disabled, #site-suggestions button:disabled { opacity: 0.5; cursor: default; }
+      .segmented label:has(input:disabled) { opacity: 0.5; cursor: default; }
+      .undo { display: flex; align-items: center; gap: 8px; margin: 0 8px 8px; padding: 4px 4px 4px 12px; border: var(--outline-w) solid var(--outline); border-radius: var(--r-box); background: var(--bg-surface); font-size: 13px; font-weight: 700; }
+      .undo span { flex: 1; }
+      .undo span:empty { display: none; }
+      #history-undo { align-self: flex-start; margin: 0; padding: 0; border: 0; background: none; }
+      /* Touch: small round and icon buttons answer a 44px-tall tap without growing (docs/interaction-matrix.md). */
+      @media (pointer: coarse) {
+        .icon-btn, .round, .sources-toggle, .ask-key, .msg .code-copy { position: relative; }
+        .icon-btn::after, .round::after, .img-remove::after, .sources-toggle::after, .ask-key::after, .msg .code-copy::after { content: ""; position: absolute; inset: min(0px, calc(50% - 22px)) 0; }
+        header .icon-btn, .chats-head .icon-btn { min-width: 44px; }
+        .answer-actions .icon-btn { min-width: 40px; }
+        /* Beside the question box: wider, not taller, so it never covers the box. */
+        #mode-chip .icon-btn::after { inset: 0 -10px; }
+        .msg.error .diag-copy, .undo .btn { min-height: 44px; }
+      }
+      /* A tap leaves :hover stuck on touch screens; the tint is for the press only. */
+      @media (hover: none) { .icon-btn:hover:not(:active) { background: transparent; } }
+
       /* Press feedback: a small squeeze, transform only; none under Reduce Motion. */
       @media (prefers-reduced-motion: no-preference) {
-        .btn, .round, .chip, #starters button { transition: transform var(--press) ease-out, background-color 150ms, color 150ms, border-color 150ms; }
-        .btn:active:not(:disabled), .round:active:not(:disabled), .chip:active, #starters button:active:not(:disabled) { transform: scale(0.97); }
+        .btn, .round, .chip, #starters button, #model-pill, .sources-toggle { transition: transform var(--press) ease-out, background-color 150ms, color 150ms, border-color 150ms; }
+        .icon-btn { transition: transform var(--press) ease-out, background-color 150ms, color 150ms; }
+        .btn:active:not(:disabled), .round:active:not(:disabled), .chip:active, #starters button:active:not(:disabled), #model-pill:active:not(:disabled), .sources-toggle:active { transform: scale(var(--press-scale)); }
+        .icon-btn:active { transform: scale(var(--press-scale-icon)); }
+        .trace-head .chev { transition: transform 150ms ease; }
+        /* Entrances: quick, ease-out, from where they were opened. Closing is instant: nothing waits on an exit. */
+        #plus-menu:not([hidden]) { transform-origin: bottom left; animation: pop-in var(--dur-local) var(--ease-out); }
+        #confirm:not([hidden]), #tool-ask:not([hidden]) { transform-origin: bottom center; animation: pop-in var(--dur-local) var(--ease-out); }
+        /* The Models sheet covers the whole panel, so it fades rather than travels. */
+        #model-menu:not([hidden]), #chats-backdrop:not([hidden]), #source-card:not([hidden]) { animation: fade-in 160ms ease-out; }
+        #log > .msg.user.new, .undo:not([hidden]) { animation: rise-in var(--dur-local) var(--ease-out); }
+        /* Send becomes Stop: the new icon grows in, in place. */
+        #stop:not([hidden]) { animation: pop-in var(--dur-local) var(--ease-out); }
+        @keyframes pop-in { from { opacity: 0; transform: scale(0.95); } }
+        @keyframes fade-in { from { opacity: 0; } }
+        @keyframes rise-in { from { opacity: 0; transform: translateY(6px); } }
         /* While Scout works the car rolls a few pixels along the road. */
         #chat-view:has(#stop:not([hidden])) > header .car { animation: car-roll 1.6s ease-in-out infinite alternate; }
         @keyframes car-roll { from { transform: translateX(0); } to { transform: translateX(4px); } }
@@ -916,6 +959,8 @@
         </button>
         <ul id="chats-list"></ul>
         <p id="chats-empty" class="hint" hidden></p>
+        <!-- Undo for a deleted chat (offerUndo in popup.ts). -->
+        <div id="chats-undo" class="undo" role="status" hidden></div>
       </aside>
 
       <div id="thread">
@@ -1156,6 +1201,7 @@
           <p id="history-count" class="hint" role="status"></p>
           <div class="row"><button id="history-clear" class="btn" type="button">Clear chat history</button></div>
           <p id="settings-saved" class="hint" role="status"></p>
+          <div id="history-undo" class="undo" hidden></div>
         </section>
 
         <section aria-labelledby="sites-title">

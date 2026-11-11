@@ -200,3 +200,55 @@ for (const scheme of ["light", "dark"] as const) {
     }
   });
 }
+
+// Interaction pass 2026-11-11 (docs/interaction-matrix.md): motion sits behind
+// prefers-reduced-motion in every color scheme, and small buttons take a 44px tap on touch.
+const animated = (page: Page, sel: string) => page.evaluate((s) => getComputedStyle(document.querySelector(s)!).animationName, sel);
+test("the + menu and the Models sheet animate in", async ({ page }) => {
+  await openPopup(page, { look: "cinema" });
+  await page.getByRole("button", { name: "More actions" }).click();
+  expect(await animated(page, "#plus-menu")).toBe("pop-in");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Change model" }).click();
+  expect(await animated(page, "#model-menu")).toBe("fade-in");
+});
+
+test.describe("Reduce Motion", () => {
+  test.use({ contextOptions: { reducedMotion: "reduce" } });
+  for (const id of ["bumper", "nightops"]) {
+    test(`${id}: nothing animates, moves or squeezes`, async ({ page }) => {
+      await openPopup(page, { look: id });
+      await page.getByRole("button", { name: "More actions" }).click();
+      expect(await animated(page, "#plus-menu")).toBe("none");
+      await page.keyboard.press("Escape");
+      await page.getByRole("button", { name: "Change model" }).click();
+      expect(await animated(page, "#model-menu")).toBe("none");
+      await page.getByRole("button", { name: "Close" }).click();
+      await page.getByRole("button", { name: "Chats", exact: true }).click();
+      expect(await animated(page, "#chats")).toBe("none");
+      const moving = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>("body *")].filter((e) => {
+          const cs = getComputedStyle(e);
+          return cs.animationName !== "none" || (/transform|all/.test(cs.transitionProperty) && !/^(0s(, )?)+$/.test(cs.transitionDuration));
+        }).map((e) => e.id || e.className),
+      );
+      expect(moving).toEqual([]);
+    });
+  }
+});
+
+test.describe("iPhone touch targets", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 393, height: 740 } });
+  test("header and composer buttons take a tap 44px tall", async ({ page }) => {
+    await openPopup(page);
+    for (const sel of ["#chats-open", "#new-chat", "#settings-open", "#plus", "#send"]) {
+      const hit = await page.evaluate((s) => {
+        const b = document.querySelector<HTMLElement>(s)!;
+        const r = b.getBoundingClientRect();
+        const at = (y: number): boolean => document.elementFromPoint(r.left + r.width / 2, y) === b;
+        return at(r.top + r.height / 2 - 21) && at(r.top + r.height / 2 + 21);
+      }, sel);
+      expect(hit, sel).toBe(true);
+    }
+  });
+});
