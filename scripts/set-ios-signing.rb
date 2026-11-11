@@ -6,9 +6,9 @@ require 'xcodeproj'
 TEAM = 'KTV2G3Z883'
 PREFIX = 'com.harrisonfischberg'
 ids = {
-  'Scout for Safari (iOS)' => "#{PREFIX}.SafariScout",
-  'Scout for Safari Extension (iOS)' => "#{PREFIX}.SafariScout.Extension",
-  'SafariScoutUITests' => "#{PREFIX}.SafariScoutUITests",
+  'Scout for Safari (iOS)' => "#{PREFIX}.Scoutai",
+  'Scout for Safari Extension (iOS)' => "#{PREFIX}.Scoutai.Extension",
+  'SafariScoutUITests' => "#{PREFIX}.ScoutaiUITests",
 }
 path = File.expand_path('../apple/SafariScout.xcodeproj', __dir__)
 project = Xcodeproj::Project.open(path)
