@@ -124,11 +124,10 @@ async function open(page: Page, o: Opts = {}): Promise<void> {
   const theme = THEME ? await readFile(THEME, "utf8") : "";
   await page.route("**/popup.html*", async (r) => {
     let html = await readFile(join(RES, "popup.html"), "utf8");
-    // Linux has no SF Pro: Inter stands in for the system font in these captures.
     // Stand-ins for the Apple fonts the looks name: SF Pro Rounded, New York, SF Mono.
-    const faces = [400, 600, 700, 800, 900].map((w) => `@font-face{font-family:"SF Pro Rounded";font-weight:${w};src:url(/rf/nunito-latin-${w}-normal.woff2)}`).join("")
+    const faces = [400, 500, 600, 700, 800, 900].map((w) => `@font-face{font-family:"SF Pro Rounded";font-weight:${w};src:url(/rf/nunito-latin-${w === 500 ? 600 : w}-normal.woff2)}`).join("")
       + `@font-face{font-family:"New York";src:local("Bitstream Charter")}@font-face{font-family:"SF Mono";font-weight:400;src:url(/rf/jetbrains-mono-latin-400-normal.woff2)}@font-face{font-family:"SF Mono";font-weight:600 700;src:url(/rf/jetbrains-mono-latin-600-normal.woff2)}`;
-    const font = `<style id="review-font">${faces}body{font-family:Inter,"SF Pro Text",-apple-system,system-ui,sans-serif!important}</style>`;
+    const font = `<style id="review-font">${faces}</style>`;
     html = html.replace("</head>", font + (theme ? `<style id="review-theme">${theme}</style>` : "") + "</head>");
     await r.fulfill({ body: html, contentType: "text/html" });
   });

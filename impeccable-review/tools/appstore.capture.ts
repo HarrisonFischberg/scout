@@ -53,9 +53,9 @@ function sse(text: string): string {
 }
 
 const DEVS = {
-  mac: { look: "glasshouse", ctx: { viewport: { width: 400, height: 640 }, deviceScaleFactor: 3 } },
-  ipad: { look: "glasshouse", ctx: { viewport: { width: 400, height: 640 }, deviceScaleFactor: 3, hasTouch: true } },
-  iphone: { look: "glasshouse", ctx: { viewport: { width: 393, height: 720 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true } },
+  mac: { look: "bumper", ctx: { viewport: { width: 400, height: 640 }, deviceScaleFactor: 3 } },
+  ipad: { look: "bumper", ctx: { viewport: { width: 400, height: 640 }, deviceScaleFactor: 3, hasTouch: true } },
+  iphone: { look: "bumper", ctx: { viewport: { width: 393, height: 720 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true } },
 } as const;
 
 async function open(page: Page, look: string, answer: string, pageData: { url: string; title: string }): Promise<void> {
@@ -96,9 +96,9 @@ async function open(page: Page, look: string, answer: string, pageData: { url: s
   );
   await page.route("**/popup.html*", async (r) => {
     let html = await readFile(join(RES, "popup.html"), "utf8");
-    const faces = [400, 600, 700, 800, 900].map((w) => `@font-face{font-family:"SF Pro Rounded";font-weight:${w};src:url(/rf/nunito-latin-${w}-normal.woff2)}`).join("")
+    const faces = [400, 500, 600, 700, 800, 900].map((w) => `@font-face{font-family:"SF Pro Rounded";font-weight:${w};src:url(/rf/nunito-latin-${w === 500 ? 600 : w}-normal.woff2)}`).join("")
       + `@font-face{font-family:"New York";src:local("Bitstream Charter")}@font-face{font-family:"SF Mono";font-weight:400;src:url(/rf/jetbrains-mono-latin-400-normal.woff2)}`;
-    html = html.replace("</head>", `<style>${faces}body{font-family:Inter,"SF Pro Text",-apple-system,system-ui,sans-serif!important}</style></head>`);
+    html = html.replace("</head>", `<style>${faces}</style></head>`);
     await r.fulfill({ body: html, contentType: "text/html" });
   });
   await page.route("**/popup.js", (r) => r.fulfill({ path: join(RES, "popup.js"), contentType: "text/javascript" }));
