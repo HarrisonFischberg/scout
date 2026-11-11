@@ -524,14 +524,14 @@ async function refreshSettings(): Promise<void> {
 }
 
 // ---------- Look (Settings > Look, owner request 2026-11-02) ----------
-// The same six looks as Scout in Safari (src/panel/look.ts), and the same
+// The same seven looks as Scout in Safari (src/panel/look.ts), and the same
 // choice: it is shared with the extension through the Keychain group, so a
 // pick on either side shows on the other the next time it opens.
 const lookCache = pageCache();
 
 function showLook(id: LookId): void {
   document.documentElement.dataset.look = id;
-  $("empty-title").textContent = lookById(id).greeting.title || "Ask Scout anything";
+  $("empty-title").textContent = lookById(id).greeting.title || "Where to next?";
   cacheLook(lookCache, id);
   for (const i of document.querySelectorAll<HTMLInputElement>('input[name="look"]')) i.checked = i.value === id;
 }

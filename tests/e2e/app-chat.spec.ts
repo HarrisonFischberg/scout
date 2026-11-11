@@ -87,7 +87,7 @@ test.describe("Scout app chat", () => {
 
   test("asks Claude after consent, shows the answer with a source chip and sources list, and saves the chat", async ({ page }) => {
     const { bodies } = await openApp(page, { key: KEY });
-    await expect(page.getByRole("heading", { name: "Ask Scout anything" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Where to next?" })).toBeVisible();
     await page.getByLabel("Message").fill("What's the weather in Paris?");
     await page.getByRole("button", { name: "Send" }).click();
 
@@ -125,7 +125,7 @@ test.describe("Scout app chat", () => {
 
     // New chat clears the screen; the old one is under Chats and opens again.
     await page.getByRole("button", { name: "New chat" }).first().click();
-    await expect(page.getByRole("heading", { name: "Ask Scout anything" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Where to next?" })).toBeVisible();
     await page.getByRole("button", { name: "Chats" }).click();
     const list = page.getByRole("dialog", { name: "Chats" });
     await expect(list.getByRole("button", { name: /^What.s the weather in Paris\?/ })).toBeVisible();
@@ -184,13 +184,13 @@ test.describe("Scout app chat", () => {
     expect(bodies[0]!.model).toBe("claude-sonnet-5-5");
     expect(bodies[0]!.output_config).toBeUndefined();
   });
-  test("Settings: the look picker offers the six Safari looks and saves the pick to the shared Keychain", async ({ page }) => {
+  test("Settings: the look picker offers the seven Safari looks and saves the pick to the shared Keychain", async ({ page }) => {
     await openApp(page, { key: KEY });
-    await expect(page.locator("html")).toHaveAttribute("data-look", "glasshouse");
+    await expect(page.locator("html")).toHaveAttribute("data-look", "bumper");
     await page.getByRole("button", { name: "Settings" }).click();
     const looks = page.getByRole("dialog", { name: "Settings" }).getByRole("radio");
-    await expect(looks).toHaveCount(6);
-    await expect(page.getByRole("radio", { name: /Glasshouse/ })).toBeChecked();
+    await expect(looks).toHaveCount(7);
+    await expect(page.getByRole("radio", { name: /Bumper/ })).toBeChecked();
     await page.getByRole("radio", { name: /Night Ops/ }).check();
     await expect(page.locator("html")).toHaveAttribute("data-look", "nightops");
     await expect.poll(() => page.evaluate(() => (window as unknown as { __keychain: Record<string, string> }).__keychain.look)).toBe("nightops");
@@ -206,10 +206,10 @@ test.describe("Scout app chat", () => {
     await expect(page.getByRole("heading", { name: "What's the plan?" })).toBeVisible();
   });
 
-  test("an unknown shared look keeps Glasshouse", async ({ page }) => {
+  test("an unknown shared look keeps Bumper", async ({ page }) => {
     await openApp(page, { key: KEY, look: "aurora" });
-    await expect(page.getByRole("heading", { name: "Ask Scout anything" })).toBeVisible();
-    await expect(page.locator("html")).toHaveAttribute("data-look", "glasshouse");
+    await expect(page.getByRole("heading", { name: "Where to next?" })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("data-look", "bumper");
   });
 });
 

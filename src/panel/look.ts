@@ -1,10 +1,11 @@
-// Looks (owner choices 2026-10-19 and 2026-10-26): Glasshouse is the default on
-// every device; the other five are in Settings > Look. Trailhead, Deal Hunter,
+// Looks are color schemes (owner 2026-11-10): Bumper is the design every panel
+// has, and its green is the default scheme; the six earlier looks stay in
+// Settings > Look and now only supply their colors. Trailhead, Deal Hunter,
 // Ink & Paper, Aurora and Classic were removed (owner 2026-10-26): a saved one
-// reads as unknown, so that panel opens in Glasshouse. A look is CSS on
+// reads as unknown, so that panel opens in the default. A scheme is a token set on
 // html[data-look] (src/popup.html) plus the new-chat greeting set here.
 
-export type LookId = "glasshouse" | "apple" | "bento" | "pebble" | "cinema" | "nightops";
+export type LookId = "bumper" | "glasshouse" | "apple" | "bento" | "pebble" | "cinema" | "nightops";
 
 export interface Look {
   id: LookId;
@@ -18,18 +19,18 @@ export interface Look {
 }
 
 export const LOOKS: readonly Look[] = [
-  // Glasshouse, Bento, Pebble and Cinema: owner choice 2026-10-26, from the Liquid Glass, SwiftUI Expert and UI/UX Pro Max skills.
-  { id: "glasshouse", swatch: ["#eef3f6", "#00727f", "#ffffff"], name: "Glasshouse", blurb: "Cool sky and teal, calm", greeting: { title: "Ask Scout anything", sub: "" } },
-  { id: "apple", swatch: ["#f2f2f7", "#0a6cff", "#34c759"], name: "Pure Apple", blurb: "Like Safari's own apps", greeting: { title: "Ask Scout", sub: "" } },
-  { id: "bento", swatch: ["#f2f2f5", "#2747d6", "#ffffff"], name: "Bento", blurb: "Bold tiles, easy to scan", greeting: { title: "Pick a start", sub: "" } },
-  { id: "pebble", swatch: ["#e9edf3", "#3c5fa8", "#f4f6fa"], name: "Pebble", blurb: "Soft and tactile", greeting: { title: "Hi, I'm Scout", sub: "" } },
-  { id: "cinema", swatch: ["#050506", "#5e6ad2", "#ededef"], name: "Cinema", blurb: "Deep dark with an indigo glow", greeting: { title: "What's the plan?", sub: "" } },
-  { id: "nightops", swatch: ["#0b0d0c", "#b8f35a", "#e8f0ea"], name: "Night Ops", blurb: "Dark console, signal lime", greeting: { title: "What should Scout do?", sub: "" } },
+  { id: "bumper", swatch: ["#f3f7ef", "#3b7a2e", "#ffdf80"], name: "Bumper", blurb: "Scout green", greeting: { title: "Where to next?", sub: "" } },
+  { id: "glasshouse", swatch: ["#eef3f6", "#00727f", "#ffffff"], name: "Glasshouse", blurb: "Cool sky and teal", greeting: { title: "Ask Scout anything", sub: "" } },
+  { id: "apple", swatch: ["#f2f2f7", "#0a6cff", "#34c759"], name: "Pure Apple", blurb: "System grey and blue", greeting: { title: "Ask Scout", sub: "" } },
+  { id: "bento", swatch: ["#f2f2f5", "#2747d6", "#ffffff"], name: "Bento", blurb: "Neutral grey and cobalt", greeting: { title: "Pick a start", sub: "" } },
+  { id: "pebble", swatch: ["#e9edf3", "#3c5fa8", "#f4f6fa"], name: "Pebble", blurb: "Soft blue-grey", greeting: { title: "Hi, I'm Scout", sub: "" } },
+  { id: "cinema", swatch: ["#050506", "#5e6ad2", "#ededef"], name: "Cinema", blurb: "Near-black and indigo", greeting: { title: "What's the plan?", sub: "" } },
+  { id: "nightops", swatch: ["#0b0d0c", "#b8f35a", "#e8f0ea"], name: "Night Ops", blurb: "Black and signal lime", greeting: { title: "What should Scout do?", sub: "" } },
 ];
 
-export const DEFAULT_LOOK: LookId = "glasshouse";
+export const DEFAULT_LOOK: LookId = "bumper";
 
-/** The look a panel opens in before the user picks one: Glasshouse on every device (owner 2026-10-26; was Pure Apple on iPhone, Trailhead on Mac). */
+/** The look a panel opens in before the user picks one: Bumper on every device (owner 2026-11-10; was Glasshouse). */
 export function defaultLook(_touch: boolean): LookId {
   return DEFAULT_LOOK;
 }

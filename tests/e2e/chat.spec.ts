@@ -316,7 +316,7 @@ test.describe("touch device", () => {
 
 test("on Mac the chat header keeps the icon and the name", async ({ page }) => {
   await openPopup(page, { key: "sk-test-synthetic" });
-  await expect(page.locator("#chat-view > header img")).toBeVisible();
+  await expect(page.locator("#chat-view > header .car")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Scout AI Assistant", level: 1 })).toBeVisible();
 });
 

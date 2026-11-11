@@ -1,30 +1,28 @@
 <!doctype html>
-<html lang="en" data-look="glasshouse">
+<html lang="en" data-look="bumper">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src https://api.anthropic.com" />
     <title>Scout</title>
     <style>
-      /* The Scout app's own chat (src/app/chat.ts). Glasshouse tokens here; the other five looks are at the end, with the same tokens as src/popup.html. */
+      /* The Scout app's own chat (src/app/chat.ts). Bumper green tokens here; the six other color schemes are at the end, with the same tokens as src/popup.html. */
       :root {
         color-scheme: light dark;
-        --bg-canvas: #eef3f6; --bg-surface: #ffffff; --bg-subtle: #e2eaee;
-        --text-primary: #0f1a20; --text-secondary: #334047; --text-muted: #52606a;
-        --accent: #00727f; --accent-on: #ffffff; --accent-text: #006570;
-        --selected: #dbeced; --bubble-user: #00727f; --bubble-user-text: #ffffff;
-        --danger: #b42318; --focus-ring: #00727f; --border-control: #7f9097; --hairline: #d5e0e5;
-        --shadow: inset 0 1px 0 rgb(255 255 255 / 90%), 0 1px 2px rgb(15 40 50 / 6%), 0 8px 24px rgb(15 40 50 / 8%);
+        --bg-canvas: #f3f7ef; --bg-surface: #ffffff; --bg-subtle: #e2ebda;
+        --text-primary: #16261b; --text-secondary: #2f3f33; --text-muted: #4f5d53;
+        --accent: #3b7a2e; --accent-on: #ffffff; --accent-text: #2e6823;
+        --selected: #d3e7c5; --bubble-user: #3b7a2e; --bubble-user-text: #ffffff;
+        --danger: #b42318; --focus-ring: #2e6823; --border-control: #6f7d72; --hairline: #c9d6c2;
         --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px);
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg-canvas: #0c1316; --bg-surface: #162126; --bg-subtle: #1f2c32;
-          --text-primary: #eaf3f5; --text-secondary: #c5d3d7; --text-muted: #9fb1b7;
-          --accent: #5fd0dc; --accent-on: #04282d; --accent-text: #6fd7e2;
-          --selected: #173a40; --bubble-user: #1d4d55; --bubble-user-text: #eaf3f5;
-          --danger: #ff8a80; --focus-ring: #6fd7e2; --border-control: #7d9198; --hairline: #24343a;
-          --shadow: inset 0 1px 0 rgb(255 255 255 / 6%), 0 1px 2px rgb(0 0 0 / 40%), 0 8px 24px rgb(0 0 0 / 35%);
+          --bg-canvas: #0f1611; --bg-surface: #18221a; --bg-subtle: #222e24;
+          --text-primary: #e9f2e6; --text-secondary: #c6d3c4; --text-muted: #9fb09e;
+          --accent: #7cc465; --accent-on: #0c1a0d; --accent-text: #8fd179;
+          --selected: #25402a; --bubble-user: #2c5a2a; --bubble-user-text: #f1f8ee;
+          --danger: #ff8a80; --focus-ring: #8fd179; --border-control: #7c8f7d; --hairline: #2a382c;
         }
       }
       * { box-sizing: border-box; }
@@ -212,17 +210,31 @@
       .look-list label:has(input:checked)::after { content: "✓"; position: absolute; top: 8px; right: 10px; color: var(--accent-text); font-weight: 700; }
       .look-list label:has(input:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
-      /* ---------- Looks (owner request 2026-11-02): the extension's six, keyed on html[data-look] ----------
-         Tokens copied from src/popup.html so both read the same; a few app parts restyled per look. */
-      :root { --font-mono: "SF Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+      /* ---------- Color schemes (owner request 2026-11-02, 2026-11-10): the extension's, keyed on html[data-look] ----------
+         Tokens copied from src/popup.html so both read the same. A scheme only sets tokens. */
 
-      /* ===== Pure Apple: grouped lists, blue question bubbles, true black dark ===== */
+      :root[data-look="glasshouse"] {
+        --bg-canvas: #eef3f6; --bg-surface: #ffffff; --bg-subtle: #e2eaee;
+        --text-primary: #0f1a20; --text-secondary: #334047; --text-muted: #52606a;
+        --accent: #00727f; --accent-on: #ffffff; --accent-text: #006570;
+        --selected: #dbeced; --bubble-user: #00727f; --bubble-user-text: #ffffff;
+        --danger: #b42318; --focus-ring: #00727f; --border-control: #7f9097; --hairline: #d5e0e5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root[data-look="glasshouse"] {
+          --bg-canvas: #0c1316; --bg-surface: #162126; --bg-subtle: #1f2c32;
+          --text-primary: #eaf3f5; --text-secondary: #c5d3d7; --text-muted: #9fb1b7;
+          --accent: #5fd0dc; --accent-on: #04282d; --accent-text: #6fd7e2;
+          --selected: #173a40; --bubble-user: #1d4d55; --bubble-user-text: #eaf3f5;
+          --danger: #ff8a80; --focus-ring: #6fd7e2; --border-control: #7d9198; --hairline: #24343a;
+        }
+      }
       :root[data-look="apple"] {
         --bg-canvas: #f2f2f7; --bg-surface: #ffffff; --bg-subtle: #e5e5ea;
         --text-primary: #000000; --text-secondary: #3c3c43; --text-muted: #5f5f64;
         --accent: #0a6cff; --accent-on: #ffffff; --accent-text: #005bd1;
         --selected: #e5e5ea; --bubble-user: #0a6cff; --bubble-user-text: #ffffff;
-        --danger: #d70015; --focus-ring: #0a6cff; --border-control: #8e8e93; --hairline: #d1d1d6; --shadow: none;
+        --danger: #d70015; --focus-ring: #0a6cff; --border-control: #8e8e93; --hairline: #d1d1d6;
       }
       @media (prefers-color-scheme: dark) {
         :root[data-look="apple"] {
@@ -233,29 +245,12 @@
           --danger: #ff6961; --focus-ring: #3d9bff; --border-control: #8e8e93; --hairline: #38383a;
         }
       }
-      :root[data-look="apple"] .icon-btn { background: transparent; color: var(--accent-text); }
-      :root[data-look="apple"] .msg.user { border-radius: 18px; padding: 7px 13px; }
-      :root[data-look="apple"] #empty .mark { background: transparent; }
-      :root[data-look="apple"] #starters { display: block; background: var(--bg-surface); border-radius: 12px; overflow: hidden; }
-      :root[data-look="apple"] #starters li + li button { border-top: 0.5px solid var(--hairline); }
-      :root[data-look="apple"] #starters button { min-height: 44px; padding: 8px 14px; border: 0; border-radius: 0; box-shadow: none; color: var(--accent-text); font-weight: 400; }
-      :root[data-look="apple"] .card, :root[data-look="apple"] .msg .table-wrap { border: 0; border-radius: 12px; }
-      :root[data-look="apple"] .card h3 { font-size: 13px; font-weight: 400; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.02em; }
-      :root[data-look="apple"] .composer { border: 0.5px solid var(--hairline); border-radius: 20px; }
-      :root[data-look="apple"] .btn { border: 0; background: var(--bg-subtle); color: var(--accent-text); }
-      :root[data-look="apple"] .btn.primary { background: var(--accent); color: #ffffff; }
-      :root[data-look="apple"] .btn.danger { color: var(--danger); }
-      :root[data-look="apple"] .field input, :root[data-look="apple"] .field select { border: 0; background: var(--bg-subtle); border-radius: 10px; }
-      :root[data-look="apple"] .look-list label { border: 0; background: var(--bg-subtle); }
-
-      /* ===== Bento: tiles of different weight; the first starter stands out ===== */
       :root[data-look="bento"] {
         --bg-canvas: #f2f2f5; --bg-surface: #ffffff; --bg-subtle: #e8e8ee;
         --text-primary: #111318; --text-secondary: #363a45; --text-muted: #565b68;
         --accent: #2747d6; --accent-on: #ffffff; --accent-text: #2340c4;
         --selected: #e6eafc; --bubble-user: #111318; --bubble-user-text: #ffffff;
         --danger: #b42318; --focus-ring: #2747d6; --border-control: #858a96; --hairline: #e2e2e8;
-        --shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 4px 6px rgb(0 0 0 / 5%);
       }
       @media (prefers-color-scheme: dark) {
         :root[data-look="bento"] {
@@ -263,23 +258,15 @@
           --text-primary: #f2f3f7; --text-secondary: #cfd2dc; --text-muted: #a2a7b5;
           --accent: #8ea2ff; --accent-on: #0b1030; --accent-text: #9fb0ff;
           --selected: #232a4d; --bubble-user: #2a2e3a; --bubble-user-text: #f2f3f7;
-          --danger: #ff8a80; --focus-ring: #9fb0ff; --border-control: #7d8292; --hairline: #262934; --shadow: none;
+          --danger: #ff8a80; --focus-ring: #9fb0ff; --border-control: #7d8292; --hairline: #262934;
         }
       }
-      :root[data-look="bento"] #starters button, :root[data-look="bento"] .card, :root[data-look="bento"] .look-list label { border-color: transparent; border-radius: 22px; }
-      :root[data-look="bento"] #starters li:first-child button { background: var(--accent); color: var(--accent-on); }
-      :root[data-look="bento"] .composer, :root[data-look="bento"] .msg .table-wrap { border-color: transparent; border-radius: 24px; }
-      :root[data-look="bento"] .look-list label:has(input:checked) { border-color: var(--accent); }
-
-      /* ===== Pebble: soft raised cards and pressed-in controls, every edge still visible ===== */
       :root[data-look="pebble"] {
         --bg-canvas: #e9edf3; --bg-surface: #f4f6fa; --bg-subtle: #dfe5ee;
         --text-primary: #1e2633; --text-secondary: #3a4454; --text-muted: #4f5a6b;
         --accent: #3c5fa8; --accent-on: #ffffff; --accent-text: #34549a;
         --selected: #dbe3f1; --bubble-user: #3c5fa8; --bubble-user-text: #ffffff;
         --danger: #b42318; --focus-ring: #3c5fa8; --border-control: #7e8899; --hairline: #d3dae5;
-        --shadow: 6px 6px 14px rgb(163 177 198 / 55%), -6px -6px 14px rgb(255 255 255 / 90%);
-        --press: inset 2px 2px 5px rgb(163 177 198 / 50%), inset -2px -2px 5px rgb(255 255 255 / 80%);
       }
       @media (prefers-color-scheme: dark) {
         :root[data-look="pebble"] {
@@ -288,23 +275,14 @@
           --accent: #9db8ee; --accent-on: #14213d; --accent-text: #a9c2f2;
           --selected: #2c3a55; --bubble-user: #33456b; --bubble-user-text: #e8edf5;
           --danger: #ff8a80; --focus-ring: #a9c2f2; --border-control: #7c879a; --hairline: #2e3644;
-          --shadow: 6px 6px 14px rgb(0 0 0 / 45%), -4px -4px 12px rgb(255 255 255 / 4%);
-          --press: inset 2px 2px 5px rgb(0 0 0 / 45%), inset -2px -2px 5px rgb(255 255 255 / 3%);
         }
       }
-      :root[data-look="pebble"] #starters button, :root[data-look="pebble"] .composer, :root[data-look="pebble"] .card { border-radius: 18px; }
-      :root[data-look="pebble"] .field input, :root[data-look="pebble"] .field select { border-color: transparent; background: var(--bg-canvas); box-shadow: var(--press); }
-      :root[data-look="pebble"] .msg.user, :root[data-look="pebble"] #send { box-shadow: var(--shadow); }
-      :root[data-look="pebble"] .btn:not(.primary) { border-color: transparent; background: var(--bg-canvas); box-shadow: var(--press); }
-
-      /* ===== Cinema: near-black with an indigo glow in the corner; a light version keeps the same accent ===== */
       :root[data-look="cinema"] {
         --bg-canvas: #f7f7fb; --bg-surface: #ffffff; --bg-subtle: #ececf3;
         --text-primary: #0d0d12; --text-secondary: #30323c; --text-muted: #555866;
         --accent: #4f5bd5; --accent-on: #ffffff; --accent-text: #4450c4;
         --selected: #ecedfb; --bubble-user: #ecedfb; --bubble-user-text: #1b1e4a;
         --danger: #b42318; --focus-ring: #4f5bd5; --border-control: #868896; --hairline: #e3e4ec;
-        --shadow: 0 0 0 1px var(--hairline); --glow: rgb(94 106 210 / 18%);
       }
       @media (prefers-color-scheme: dark) {
         :root[data-look="cinema"] {
@@ -313,25 +291,14 @@
           --accent: #5e6ad2; --accent-on: #ffffff; --accent-text: #a3abff;
           --selected: #1a1b2e; --bubble-user: #1a1b2e; --bubble-user-text: #ededef;
           --danger: #ff8a80; --focus-ring: #a3abff; --border-control: #6c6f7a; --hairline: #1d1d24;
-          --shadow: 0 0 0 1px rgb(255 255 255 / 6%); --glow: rgb(94 106 210 / 32%);
         }
       }
-      :root[data-look="cinema"] body {
-        background: radial-gradient(420px 260px at 85% -40px, var(--glow), transparent 70%), var(--bg-canvas);
-        background-repeat: no-repeat;
-      }
-      :root[data-look="cinema"] #send { box-shadow: 0 0 18px rgb(94 106 210 / 55%); }
-      :root[data-look="cinema"] .composer { box-shadow: 0 0 0 1px var(--hairline), 0 12px 30px rgb(0 0 0 / 12%); }
-      :root[data-look="cinema"] #empty h2 { font-weight: 600; letter-spacing: -0.03em; }
-      :root[data-look="cinema"] .msg th { font-weight: 500; color: var(--text-muted); }
-
-      /* ===== Night Ops: dark console, signal lime, mono for machine facts ===== */
       :root[data-look="nightops"] {
         --bg-canvas: #f3f5f2; --bg-surface: #ffffff; --bg-subtle: #e6eae4;
         --text-primary: #0e1210; --text-secondary: #39433d; --text-muted: #5c6860;
         --accent: #0e1210; --accent-on: #c6f77a; --accent-text: #2d6a10;
         --selected: #e6eae4; --bubble-user: #0e1210; --bubble-user-text: #f3f5f2;
-        --danger: #b3261e; --focus-ring: #2d6a10; --border-control: #7b867f; --hairline: #d9dfd8; --shadow: none; --signal: #2d6a10;
+        --danger: #b3261e; --focus-ring: #2d6a10; --border-control: #7b867f; --hairline: #d9dfd8;
       }
       @media (prefers-color-scheme: dark) {
         :root[data-look="nightops"] {
@@ -339,26 +306,47 @@
           --text-primary: #e8f0ea; --text-secondary: #b3c2b8; --text-muted: #85958b;
           --accent: #b8f35a; --accent-on: #0b0d0c; --accent-text: #c6f77a;
           --selected: #232a26; --bubble-user: #1b201d; --bubble-user-text: #e8f0ea;
-          --danger: #ff8a7a; --focus-ring: #c6f77a; --border-control: #5d6a62; --hairline: #232a26; --signal: #b8f35a;
+          --danger: #ff8a7a; --focus-ring: #c6f77a; --border-control: #5d6a62; --hairline: #232a26;
         }
       }
-      :root[data-look="nightops"] header h1, :root[data-look="nightops"] .sheet-head h2 { font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
-      :root[data-look="nightops"] .icon-btn { border-radius: 8px; border: 1px solid var(--hairline); }
-      :root[data-look="nightops"] #empty .mark { background: transparent; border: 1px solid var(--hairline); border-radius: 10px; color: var(--signal); }
-      :root[data-look="nightops"] #empty h2 { font-weight: 600; }
-      :root[data-look="nightops"] #starters button, :root[data-look="nightops"] .look-list label { border-radius: 8px; font-weight: 500; }
-      :root[data-look="nightops"] .composer { border: 1px solid var(--hairline); border-radius: 10px; }
-      :root[data-look="nightops"] #question::placeholder { font-family: var(--font-mono); font-size: 14px; }
-      :root[data-look="nightops"] #send { border-radius: 7px; }
-      :root[data-look="nightops"] .msg.user { border-radius: 10px 10px 2px 10px; font-weight: 500; }
-      :root[data-look="nightops"] .msg.assistant strong { color: inherit; background: color-mix(in srgb, var(--signal) 18%, transparent); padding: 0 3px; border-radius: 3px; }
-      :root[data-look="nightops"] .msg th { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
-      :root[data-look="nightops"] .msg td { font-variant-numeric: tabular-nums; }
-      :root[data-look="nightops"] .card, :root[data-look="nightops"] .msg .table-wrap { border-radius: 8px; }
-      :root[data-look="nightops"] .card h3 { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--signal); }
-      :root[data-look="nightops"] .btn { border-radius: 6px; font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
-      :root[data-look="nightops"] .field input, :root[data-look="nightops"] .field select { border-radius: 6px; background: var(--bg-canvas); font-family: var(--font-mono); font-size: 15px; }
-      :root[data-look="nightops"] #chat-list .when { font-family: var(--font-mono); font-size: 12px; }
+      /* ---------- Bumper (owner choice 2026-11-10), as in src/popup.html: thick outlines, flat fills,
+         rounded type, the car, no shadows. The same in every color scheme. ---------- */
+      :root { --outline: var(--text-primary); --outline-w: 2px; --road-w: 3px; --car-body: #5b9441; --car-glass: #a8d4dd; --shadow: 0 0 0 0 transparent; }
+      @media (prefers-color-scheme: dark) { :root { --outline: var(--border-control); } }
+      body { font-family: "SF Pro Rounded", ui-rounded, -apple-system, system-ui, sans-serif; font-weight: 500; }
+      b, strong, .msg strong { font-weight: 800; }
+      .car { color: var(--outline); }
+      .car .body { fill: var(--car-body); stroke: currentColor; stroke-width: 4; stroke-linejoin: round; }
+      .car .glass { fill: var(--car-glass); stroke: currentColor; stroke-width: 2.5; stroke-linejoin: round; }
+      .car .wheel { fill: currentColor; }
+      .car .hub { fill: var(--bg-canvas); }
+      header { border-bottom: var(--road-w) solid var(--outline); }
+      header h1, .sheet-head h2, #empty h2, .card h3 { font-weight: 800; }
+      .icon-btn { background: transparent; color: var(--text-primary); }
+      .icon-btn svg.i { stroke-width: 2.2; }
+      .msg.user { border: var(--outline-w) solid var(--outline); font-weight: 700; }
+      .msg.assistant strong { color: inherit; }
+      .msg li::marker { color: var(--accent-text); }
+      .msg .table-wrap { padding: 0; border: var(--outline-w) solid var(--outline); }
+      .msg th { background: var(--selected); color: var(--text-primary); font-weight: 800; }
+      .msg th, .msg td { padding: 8px 14px; }
+      #empty .mark { width: 80px; height: 70px; border-radius: 0; background: transparent; }
+      #empty .mark svg { width: 80px; height: 70px; }
+      #starters button, .card, .composer, dialog.center { border: var(--outline-w) solid var(--outline); }
+      #starters button { font-weight: 700; }
+      .field input, .field select { border: var(--outline-w) solid var(--outline); }
+      .btn, .btn.primary { border: var(--outline-w) solid var(--outline); font-weight: 700; }
+      .btn.danger { border-color: var(--danger); }
+      .composer:focus-within { border-color: var(--accent); }
+      #send { border: var(--outline-w) solid var(--outline); }
+      dialog { border-top: var(--road-w) solid var(--outline); }
+      .look-list label { border: var(--outline-w) solid var(--hairline); font-weight: 700; }
+      .look-list label:has(input:checked) { border-color: var(--outline); background: var(--selected); box-shadow: none; }
+      .look-list label:has(input:checked)::after { color: var(--text-primary); }
+      @media (prefers-reduced-motion: no-preference) {
+        .btn, #send, #starters button { transition: transform 100ms ease-out; }
+        .btn:active:not(:disabled), #send:active:not(:disabled), #starters button:active { transform: scale(0.97); }
+      }
     </style>
   </head>
   <body>
@@ -378,9 +366,9 @@
     <main id="scroller">
       <section id="empty" aria-labelledby="empty-title">
         <div class="mark" aria-hidden="true">
-          <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <svg class="car" viewBox="0 0 64 56"><polygon class="body" points="13,26 16.5,11 36,11 40.5,26"/><polygon class="glass" points="21,16 32.5,16 34.5,23 21,23"/><rect class="body" x="5" y="26" width="54" height="17" rx="4"/><circle class="wheel" cx="18" cy="44" r="9"/><circle class="wheel" cx="46" cy="44" r="9"/><circle class="hub" cx="18" cy="44" r="3.5"/><circle class="hub" cx="46" cy="44" r="3.5"/></svg>
         </div>
-        <h2 id="empty-title">Ask Scout anything</h2>
+        <h2 id="empty-title">Where to next?</h2>
         <p id="empty-note">Claude answers, and searches the web when it helps.</p>
         <div id="key-card" class="card" hidden>
           <h3>Add your Anthropic API key</h3>

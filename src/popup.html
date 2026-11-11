@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-look="glasshouse">
+<html lang="en" data-look="bumper">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -565,7 +565,6 @@
         #chats-list .chat-meta { font-size: 13px; }
         /* No hover on touch: delete stays visible. */
         #chats-list .chat-delete { opacity: 1; min-width: 44px; height: 44px; }
-        #chat-view > header picture { display: none; }
         /* Scout as its own page is for Mac Safari only (owner 2026-10-18). */
         #open-page { display: none; }
         #chat-view > header h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -610,173 +609,34 @@
       .look-list label:has(input:focus-visible) { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
       @media (pointer: coarse) { .look-list label { min-height: 72px; } }
 
-      /* ===== Pure Apple: grouped lists, blue question bubbles, true black dark ===== */
-      :root[data-look="apple"] {
-        --bg-canvas: #f2f2f7; --bg-surface: #ffffff; --bg-subtle: #e5e5ea;
-        --text-primary: #000000; --text-secondary: #3c3c43; --text-muted: #5f5f64;
-        --accent: #0a6cff; --accent-on: #ffffff; --accent-text: #005bd1;
-        --selected: #e5e5ea; --bubble-user: #0a6cff; --bubble-user-text: #ffffff;
-        --danger: #d70015; --focus-ring: #0a6cff; --border-control: #8e8e93; --hairline: #d1d1d6; --shadow: none; --ok: #248a3d;
+      /* ---------- Color schemes ----------
+         Bumper green is the default; the six earlier looks stay in Settings > Look as color schemes.
+         A scheme only sets tokens. Structure, type, outlines, the car and the road-sign confirm card
+         are the same in every scheme (the Bumper rules below). Every text/background pair is AA. */
+      /* Bumper: the app icon's green on a pale leaf white */
+      :root[data-look="bumper"] {
+        --bg-canvas: #f3f7ef; --bg-surface: #ffffff; --bg-subtle: #e2ebda;
+        --text-primary: #16261b; --text-secondary: #2f3f33; --text-muted: #4f5d53;
+        --accent: #3b7a2e; --accent-on: #ffffff; --accent-text: #2e6823;
+        --selected: #d3e7c5; --bubble-user: #3b7a2e; --bubble-user-text: #ffffff;
+        --danger: #b42318; --focus-ring: #2e6823; --border-control: #6f7d72; --hairline: #c9d6c2;
       }
       @media (prefers-color-scheme: dark) {
-        :root[data-look="apple"] {
-          --bg-canvas: #000000; --bg-surface: #1c1c1e; --bg-subtle: #2c2c2e;
-          --text-primary: #ffffff; --text-secondary: #ebebf5; --text-muted: #98989f;
-          --accent: #0a6cff; --accent-on: #ffffff; --accent-text: #3d9bff;
-          --selected: #2c2c2e; --bubble-user: #0a6cff; --bubble-user-text: #ffffff;
-          --danger: #ff6961; --focus-ring: #3d9bff; --border-control: #8e8e93; --hairline: #38383a; --ok: #30d158;
+        :root[data-look="bumper"] {
+          --bg-canvas: #0f1611; --bg-surface: #18221a; --bg-subtle: #222e24;
+          --text-primary: #e9f2e6; --text-secondary: #c6d3c4; --text-muted: #9fb09e;
+          --accent: #7cc465; --accent-on: #0c1a0d; --accent-text: #8fd179;
+          --selected: #25402a; --bubble-user: #2c5a2a; --bubble-user-text: #f1f8ee;
+          --danger: #ff8a80; --focus-ring: #8fd179; --border-control: #7c8f7d; --hairline: #2a382c;
         }
       }
-      :root[data-look="apple"] #chat-view > header, :root[data-look="apple"] #settings-view > header { position: relative; border-bottom: 0; }
-      :root[data-look="apple"] #chat-view > header h1, :root[data-look="apple"] #settings-view > header h2 { position: absolute; left: 0; right: 0; text-align: center; pointer-events: none; font-size: 17px; font-weight: 600; }
-      :root[data-look="apple"] #chat-view > header picture { display: none; }
-      :root[data-look="apple"] header .icon-btn { position: relative; z-index: 1; color: var(--accent-text); }
-      :root[data-look="apple"] #chats-open { margin-right: auto; }
-      :root[data-look="apple"] #empty .scout-mark { display: none; }
-      :root[data-look="apple"] .greeting { margin: auto 4px 14px; text-align: left; }
-      :root[data-look="apple"] .greeting b { font-size: 28px; }
-      :root[data-look="apple"] .greeting span { font-size: 15px; }
-      :root[data-look="apple"] #starters { background: var(--bg-surface); border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
-      :root[data-look="apple"] #starters li + li button { border-top: 0.5px solid var(--hairline); }
-      :root[data-look="apple"] #starters button { min-height: 40px; padding: 6px 14px; border-radius: 0; color: var(--text-primary); font-size: 15px; }
-      :root[data-look="apple"] #starters button svg.i { width: 16px; height: 16px; stroke-width: 2.2; }
-      :root[data-look="apple"] .composer-box { border-radius: 20px; border-width: 0.5px; box-shadow: none; }
-      :root[data-look="apple"] .round { border: 0; color: var(--accent-text); }
-      :root[data-look="apple"] .round.mic { background: transparent; color: var(--accent-text); }
-            :root[data-look="apple"] fieldset.segmented { border: 0; background: var(--bg-subtle); }
-      :root[data-look="apple"] .segmented label.on { background: var(--bg-surface); box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
-      :root[data-look="apple"] #model-pill { background: transparent; color: var(--accent-text); font-weight: 500; }
-      :root[data-look="apple"] .msg.user { border-radius: 18px; padding: 7px 13px; }
-      :root[data-look="apple"] .msg .table-wrap { background: var(--bg-surface); border-radius: 10px; padding: 2px 12px; }
-      :root[data-look="apple"] .msg tr:last-child td { border-bottom: 0; }
-      :root[data-look="apple"] .answer-actions .icon-btn { color: var(--accent-text); }
-      :root[data-look="apple"] #status { text-align: center; font-size: 12px; }
-      :root[data-look="apple"] .coupon-step .done-mark { color: var(--ok); }
-      :root[data-look="apple"] .trace-body { border-left: 0; padding-left: 0; gap: 0; background: var(--bg-surface); border-radius: 12px; overflow: hidden; }
-      :root[data-look="apple"] .trace .attempt { padding: 10px 14px; border-top: 0.5px solid var(--hairline); }
-      :root[data-look="apple"] .trace .attempt:first-child { border-top: 0; }
-      :root[data-look="apple"] .trace .attempt .code { font-family: inherit; }
-      :root[data-look="apple"] .trace .attempt.good .code { color: var(--ok); }
-      :root[data-look="apple"] .btn { border: 0; border-radius: 999px; background: var(--bg-subtle); color: var(--accent-text); font-weight: 600; padding: 4px 14px; }
-      :root[data-look="apple"] .btn.primary { background: var(--accent); color: #ffffff; }
-      :root[data-look="apple"] .btn.danger { color: var(--danger); background: var(--bg-surface); }
-      :root[data-look="apple"] #settings-view section { border-bottom: 0; margin-top: 6px; }
-      :root[data-look="apple"] #settings-view section > h3 { padding: 0 4px; font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--text-muted); }
-      :root[data-look="apple"] #settings-view input[type="text"], :root[data-look="apple"] #settings-view input[type="password"], :root[data-look="apple"] #settings-view select, :root[data-look="apple"] #settings-view textarea { border: 0; background: var(--bg-surface); border-radius: 10px; padding: 9px 12px; }
-      :root[data-look="apple"] .look-list label { border: 0; }
-
-      /* ===== Night Ops: dark console, signal lime, mono for machine facts ===== */
-      :root[data-look="nightops"] {
-        --bg-canvas: #f3f5f2; --bg-surface: #ffffff; --bg-subtle: #e6eae4;
-        --text-primary: #0e1210; --text-secondary: #39433d; --text-muted: #5c6860;
-        --accent: #0e1210; --accent-on: #c6f77a; --accent-text: #2d6a10;
-        --selected: #e6eae4; --bubble-user: #0e1210; --bubble-user-text: #f3f5f2;
-        --danger: #b3261e; --focus-ring: #2d6a10; --border-control: #7b867f; --hairline: #d9dfd8; --shadow: none; --signal: #2d6a10;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root[data-look="nightops"] {
-          --bg-canvas: #0b0d0c; --bg-surface: #121614; --bg-subtle: #1b201d;
-          --text-primary: #e8f0ea; --text-secondary: #b3c2b8; --text-muted: #85958b;
-          --accent: #b8f35a; --accent-on: #0b0d0c; --accent-text: #c6f77a;
-          --selected: #232a26; --bubble-user: #1b201d; --bubble-user-text: #e8f0ea;
-          --danger: #ff8a7a; --focus-ring: #c6f77a; --border-control: #5d6a62; --hairline: #232a26; --signal: #b8f35a;
-        }
-      }
-      :root[data-look="nightops"] #chat-view > header picture { display: none; }
-      :root[data-look="nightops"] header h1, :root[data-look="nightops"] #settings-view header h2 { font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
-      :root[data-look="nightops"] .icon-btn { border-radius: 6px; }
-      :root[data-look="nightops"] #empty { justify-content: flex-end; }
-      :root[data-look="nightops"] #empty .scout-mark { width: 40px; height: 40px; margin: 0 0 8px; fill: none; stroke: var(--signal); stroke-width: 3; }
-      :root[data-look="nightops"] #empty .scout-mark .hub { fill: var(--signal); }
-      :root[data-look="nightops"] .greeting { margin: 0 0 12px; text-align: left; }
-      :root[data-look="nightops"] .greeting b { font-weight: 600; }
-      :root[data-look="nightops"] .greeting span { font-family: var(--font-mono); font-size: 12px; }
-      :root[data-look="nightops"] #starters { border: 1px solid var(--hairline); border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
-      :root[data-look="nightops"] #starters li + li { border-top: 1px solid var(--hairline); }
-      :root[data-look="nightops"] #starters button { min-height: 36px; padding: 4px 12px; border-radius: 0; color: var(--text-primary); font-size: 13px; font-weight: 500; }
-      :root[data-look="nightops"] #starters button svg.i { color: var(--signal); width: 16px; height: 16px; }
-      :root[data-look="nightops"] .composer-box { border-radius: 10px; box-shadow: none; }
-      :root[data-look="nightops"] #question::placeholder { font-family: var(--font-mono); font-size: 13px; }
-      :root[data-look="nightops"] .round, :root[data-look="nightops"] .round.mic, :root[data-look="nightops"] .round.send { border-radius: 7px; }
-      :root[data-look="nightops"] fieldset.segmented { border-radius: 7px; }
-      :root[data-look="nightops"] .segmented label { border-radius: 5px; }
-      :root[data-look="nightops"] .segmented label.on { background: var(--selected); color: var(--accent-text); }
-      :root[data-look="nightops"] #model-pill { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 6px; }
-      :root[data-look="nightops"] #status { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; }
-      :root[data-look="nightops"] .msg.user { border-radius: 10px 10px 2px 10px; font-weight: 500; }
-      :root[data-look="nightops"] .msg.assistant strong { background: color-mix(in srgb, var(--signal) 18%, transparent); padding: 0 3px; border-radius: 3px; }
-      :root[data-look="nightops"] .msg th { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
-      :root[data-look="nightops"] .msg td { font-variant-numeric: tabular-nums; }
-      :root[data-look="nightops"] .msg .table-wrap { border: 1px solid var(--hairline); border-radius: 8px; padding: 2px 10px; }
-      :root[data-look="nightops"] .msg tr:last-child td { border-bottom: 0; }
-      :root[data-look="nightops"] .coupon-step { font-family: var(--font-mono); font-size: 12.5px; }
-      :root[data-look="nightops"] .coupon-step.busy, :root[data-look="nightops"] .coupon-step .done-mark { color: var(--signal); }
-      :root[data-look="nightops"] .trace-head { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
-      :root[data-look="nightops"] .trace-body { border-left: 1px solid var(--signal); gap: 6px; }
-      :root[data-look="nightops"] .trace .attempt { font-family: var(--font-mono); font-size: 12px; padding: 6px 8px; background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 6px; }
-      :root[data-look="nightops"] .trace .attempt .code { font-family: var(--font-mono); }
-      :root[data-look="nightops"] .trace .attempt.good { border-color: var(--signal); }
-      :root[data-look="nightops"] .trace .attempt.good .code { color: var(--signal); }
-      :root[data-look="nightops"] .btn { border-radius: 6px; font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
-      :root[data-look="nightops"] #settings-view h3 { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; color: var(--signal); }
-      :root[data-look="nightops"] #settings-view input[type="text"], :root[data-look="nightops"] #settings-view input[type="password"], :root[data-look="nightops"] #settings-view select, :root[data-look="nightops"] #settings-view textarea { border-radius: 6px; background: var(--bg-canvas); font-family: var(--font-mono); font-size: 12px; padding: 8px; }
-      :root[data-look="nightops"] .look-list label { border-radius: 8px; }
-
-      /* Send and Stop keep the text-on-accent color in every look (the per-look .round color must not reach them). */
-      :root[data-look] .round.send { color: var(--accent-on); }
-      /* The little Scout car above the greeting in every look (owner 2026-10-19, from Night Ops):
-         small, outlined, in the look's accent, on every sheet size. No subtitle under the title. */
-      :root[data-look] #empty .scout-mark {
-        display: block; width: 40px; height: 40px; padding: 0; margin: auto auto 8px; border-radius: 0;
-        background: none; box-shadow: none; transform: none; fill: none; stroke: var(--accent-text); stroke-width: 3;
-      }
-      :root[data-look] #empty .scout-mark .hub { fill: var(--accent-text); }
-      :root[data-look="nightops"] #empty .scout-mark { margin: auto 0 8px; stroke: var(--signal); }
-      :root[data-look="nightops"] #empty .scout-mark .hub { fill: var(--signal); }
-      :root[data-look="apple"] #empty .scout-mark { margin: auto 0 8px 4px; }
-      :root[data-look="apple"] .greeting { margin-top: 0; }
-      :root[data-look="nightops"] .greeting { margin-top: 0; }
-      .greeting span:empty { display: none; }
-      /* Car and title together at the bottom left, just above the starters, in every look (owner 2026-10-19). */
-      :root[data-look] #empty .scout-mark { margin: auto 0 8px 4px; }
-      :root[data-look] .greeting { margin: 0 4px 12px; text-align: left; }
-      /* A short sheet (iPhone at its middle stop, a small Mac window): a smaller title, so nothing is cut off. */
-      @media (max-height: 620px) {
-        .greeting b { font-size: 19px; }
-      }
-
-      /* ---------- Looks, round two (owner choice 2026-10-26, from the Liquid Glass, SwiftUI Expert and
-         UI/UX Pro Max skills): Glasshouse, Bento, Pebble, Cinema (Aurora removed 2026-10-26). The panel stays solid in every one:
-         glass is only drawn natively in the setup app, and nothing here is fixed over the page or blurred. ---------- */
-
-      /* Shared by the round-two looks: starters as one-line cards, the car in a small tinted tile (still at
-         the bottom left, owner 2026-10-19), cards for tables and coupon codes, a 3 px focus ring. */
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #chat-view > header, :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #settings-view > header { border-bottom: 0; }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #empty .scout-mark { width: 40px; height: 40px; padding: 8px; border-radius: 12px; background: var(--selected); fill: var(--selected); stroke: var(--accent-text); stroke-width: 3.6; }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #empty .scout-mark .hub { fill: var(--accent-text); }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #starters { display: grid; gap: 8px; padding-bottom: 8px; }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]):not([data-look="bento"]) #starters { grid-template-columns: 1fr 1fr; }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #starters li { display: flex; min-width: 0; }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #starters button { gap: 5px; min-width: 0; min-height: 40px; padding: 4px 7px; white-space: nowrap; background: var(--bg-surface); color: var(--text-primary); font-weight: 600; font-size: 13px; line-height: 1.2; box-shadow: var(--shadow); }
-      :root:is([data-look="glasshouse"], [data-look="cinema"]) #starters button { border: 1px solid var(--hairline); border-radius: 16px; }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #starters button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) #starters button svg.i { order: -1; flex: none; width: 20px; height: 20px; padding: 2px; border-radius: 6px; background: var(--selected); color: var(--accent-text); }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) .msg .table-wrap { background: var(--bg-surface); border: 1px solid var(--hairline); border-radius: 16px; padding: 4px 12px; box-shadow: var(--shadow); }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) .msg tr:last-child td { border-bottom: 0; }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) .trace .attempt { padding: 7px 10px; border-radius: 12px; background: var(--bg-surface); border: 1px solid var(--hairline); }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) .trace .attempt.good { border-color: var(--accent); }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) .btn { border-radius: 999px; font-weight: 600; padding: 4px 14px; }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) .msg.user { border-radius: 18px 18px 6px 18px; }
-      :root:is([data-look="glasshouse"], [data-look="bento"], [data-look="pebble"], [data-look="cinema"]) :focus-visible { outline-width: 3px; }
-
-      /* ===== Glasshouse: cool sky, teal, solid cards; round header buttons and a floating composer ===== */
+      /* Glasshouse: cool sky and teal */
       :root[data-look="glasshouse"] {
         --bg-canvas: #eef3f6; --bg-surface: #ffffff; --bg-subtle: #e2eaee;
         --text-primary: #0f1a20; --text-secondary: #334047; --text-muted: #52606a;
         --accent: #00727f; --accent-on: #ffffff; --accent-text: #006570;
         --selected: #dbeced; --bubble-user: #00727f; --bubble-user-text: #ffffff;
         --danger: #b42318; --focus-ring: #00727f; --border-control: #7f9097; --hairline: #d5e0e5;
-        --shadow: inset 0 1px 0 rgb(255 255 255 / 90%), 0 1px 2px rgb(15 40 50 / 6%), 0 8px 24px rgb(15 40 50 / 8%);
       }
       @media (prefers-color-scheme: dark) {
         :root[data-look="glasshouse"] {
@@ -785,24 +645,32 @@
           --accent: #5fd0dc; --accent-on: #04282d; --accent-text: #6fd7e2;
           --selected: #173a40; --bubble-user: #1d4d55; --bubble-user-text: #eaf3f5;
           --danger: #ff8a80; --focus-ring: #6fd7e2; --border-control: #7d9198; --hairline: #24343a;
-          --shadow: inset 0 1px 0 rgb(255 255 255 / 6%), 0 1px 2px rgb(0 0 0 / 40%), 0 8px 24px rgb(0 0 0 / 35%);
         }
       }
-      :root[data-look="glasshouse"] header .icon-btn { border-radius: 999px; background: var(--bg-surface); box-shadow: var(--shadow); margin-left: 4px; }
-      :root[data-look="glasshouse"] .composer-box { border-radius: 26px; border-color: transparent; box-shadow: var(--shadow); }
-      :root[data-look="glasshouse"] .round:not(.send), :root[data-look="glasshouse"] fieldset.segmented { border-color: transparent; background: var(--bg-subtle); }
-      :root[data-look="glasshouse"] .segmented label.on { background: var(--bg-surface); color: var(--accent-text); box-shadow: var(--shadow); }
-      :root[data-look="glasshouse"] #model-pill { background: transparent; color: var(--text-muted); }
-      :root[data-look="glasshouse"] .msg.assistant strong { color: var(--accent-text); }
-
-      /* ===== Bento: tiles of different weight; the first starter and the winning code stand out ===== */
+      /* Pure Apple: system greys and blue, true black in the dark */
+      :root[data-look="apple"] {
+        --bg-canvas: #f2f2f7; --bg-surface: #ffffff; --bg-subtle: #e5e5ea;
+        --text-primary: #000000; --text-secondary: #3c3c43; --text-muted: #5f5f64;
+        --accent: #0a6cff; --accent-on: #ffffff; --accent-text: #005bd1;
+        --selected: #e5e5ea; --bubble-user: #0a6cff; --bubble-user-text: #ffffff;
+        --danger: #d70015; --focus-ring: #0a6cff; --border-control: #8e8e93; --hairline: #d1d1d6;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root[data-look="apple"] {
+          --bg-canvas: #000000; --bg-surface: #1c1c1e; --bg-subtle: #2c2c2e;
+          --text-primary: #ffffff; --text-secondary: #ebebf5; --text-muted: #98989f;
+          --accent: #0a6cff; --accent-on: #ffffff; --accent-text: #3d9bff;
+          --selected: #2c2c2e; --bubble-user: #0a6cff; --bubble-user-text: #ffffff;
+          --danger: #ff6961; --focus-ring: #3d9bff; --border-control: #8e8e93; --hairline: #38383a;
+        }
+      }
+      /* Bento: neutral greys, cobalt blue */
       :root[data-look="bento"] {
         --bg-canvas: #f2f2f5; --bg-surface: #ffffff; --bg-subtle: #e8e8ee;
         --text-primary: #111318; --text-secondary: #363a45; --text-muted: #565b68;
         --accent: #2747d6; --accent-on: #ffffff; --accent-text: #2340c4;
         --selected: #e6eafc; --bubble-user: #111318; --bubble-user-text: #ffffff;
         --danger: #b42318; --focus-ring: #2747d6; --border-control: #858a96; --hairline: #e2e2e8;
-        --shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 4px 6px rgb(0 0 0 / 5%);
       }
       @media (prefers-color-scheme: dark) {
         :root[data-look="bento"] {
@@ -810,30 +678,16 @@
           --text-primary: #f2f3f7; --text-secondary: #cfd2dc; --text-muted: #a2a7b5;
           --accent: #8ea2ff; --accent-on: #0b1030; --accent-text: #9fb0ff;
           --selected: #232a4d; --bubble-user: #2a2e3a; --bubble-user-text: #f2f3f7;
-          --danger: #ff8a80; --focus-ring: #9fb0ff; --border-control: #7d8292; --hairline: #262934; --shadow: none;
+          --danger: #ff8a80; --focus-ring: #9fb0ff; --border-control: #7d8292; --hairline: #262934;
         }
       }
-      :root[data-look="bento"] #starters { grid-template-columns: 1fr 1fr; }
-      :root[data-look="bento"] #starters button { border: 0; border-radius: 18px; }
-      :root[data-look="bento"] #starters li:first-child button { background: var(--accent); color: var(--accent-on); }
-      :root[data-look="bento"] #starters li:first-child button svg.i { background: color-mix(in srgb, var(--accent-on) 18%, transparent); color: var(--accent-on); }
-      :root[data-look="bento"] .composer-box, :root[data-look="bento"] .msg .table-wrap { border-color: transparent; border-radius: 24px; }
-      :root[data-look="bento"] .coupon-step { background: var(--bg-surface); border-radius: 16px; padding: 8px 12px; }
-      :root[data-look="bento"] .trace-body { display: grid; grid-template-columns: 1fr 1fr; border-left: 0; padding-left: 0; }
-      :root[data-look="bento"] .trace .attempt { flex-direction: column; gap: 2px; border: 0; border-radius: 18px; padding: 10px 12px; min-width: 0; }
-      :root[data-look="bento"] .trace .attempt.good { grid-column: 1 / -1; background: var(--selected); }
-      :root[data-look="bento"] .trace .attempt .code { font-family: inherit; font-size: 15px; font-weight: 700; }
-      :root[data-look="bento"] .trace-body > :not(.attempt) { grid-column: 1 / -1; }
-
-      /* ===== Pebble: soft raised cards and pressed-in controls, every edge still visible ===== */
+      /* Pebble: soft blue-grey */
       :root[data-look="pebble"] {
         --bg-canvas: #e9edf3; --bg-surface: #f4f6fa; --bg-subtle: #dfe5ee;
         --text-primary: #1e2633; --text-secondary: #3a4454; --text-muted: #4f5a6b;
         --accent: #3c5fa8; --accent-on: #ffffff; --accent-text: #34549a;
         --selected: #dbe3f1; --bubble-user: #3c5fa8; --bubble-user-text: #ffffff;
         --danger: #b42318; --focus-ring: #3c5fa8; --border-control: #7e8899; --hairline: #d3dae5;
-        --shadow: 6px 6px 14px rgb(163 177 198 / 55%), -6px -6px 14px rgb(255 255 255 / 90%);
-        --press: inset 2px 2px 5px rgb(163 177 198 / 50%), inset -2px -2px 5px rgb(255 255 255 / 80%);
       }
       @media (prefers-color-scheme: dark) {
         :root[data-look="pebble"] {
@@ -842,25 +696,15 @@
           --accent: #9db8ee; --accent-on: #14213d; --accent-text: #a9c2f2;
           --selected: #2c3a55; --bubble-user: #33456b; --bubble-user-text: #e8edf5;
           --danger: #ff8a80; --focus-ring: #a9c2f2; --border-control: #7c879a; --hairline: #2e3644;
-          --shadow: 6px 6px 14px rgb(0 0 0 / 45%), -4px -4px 12px rgb(255 255 255 / 4%);
-          --press: inset 2px 2px 5px rgb(0 0 0 / 45%), inset -2px -2px 5px rgb(255 255 255 / 3%);
         }
       }
-      :root[data-look="pebble"] #starters button, :root[data-look="pebble"] .composer-box { border-radius: 18px; }
-      :root[data-look="pebble"] .round:not(.send), :root[data-look="pebble"] fieldset.segmented { border-color: transparent; background: var(--bg-canvas); box-shadow: var(--press); }
-      :root[data-look="pebble"] .round.send { box-shadow: var(--shadow); }
-      :root[data-look="pebble"] .segmented label.on { background: var(--bg-surface); color: var(--accent-text); box-shadow: var(--shadow); }
-      :root[data-look="pebble"] #model-pill { background: transparent; }
-      :root[data-look="pebble"] .msg.user { box-shadow: var(--shadow); }
-
-      /* ===== Cinema: near-black with an indigo glow in the corner; a light version keeps the same accent ===== */
+      /* Cinema: near-black with indigo */
       :root[data-look="cinema"] {
         --bg-canvas: #f7f7fb; --bg-surface: #ffffff; --bg-subtle: #ececf3;
         --text-primary: #0d0d12; --text-secondary: #30323c; --text-muted: #555866;
         --accent: #4f5bd5; --accent-on: #ffffff; --accent-text: #4450c4;
         --selected: #ecedfb; --bubble-user: #ecedfb; --bubble-user-text: #1b1e4a;
         --danger: #b42318; --focus-ring: #4f5bd5; --border-control: #868896; --hairline: #e3e4ec;
-        --glow: rgb(94 106 210 / 18%);
       }
       @media (prefers-color-scheme: dark) {
         :root[data-look="cinema"] {
@@ -869,19 +713,163 @@
           --accent: #5e6ad2; --accent-on: #ffffff; --accent-text: #a3abff;
           --selected: #1a1b2e; --bubble-user: #1a1b2e; --bubble-user-text: #ededef;
           --danger: #ff8a80; --focus-ring: #a3abff; --border-control: #6c6f7a; --hairline: #1d1d24;
-          --shadow: 0 0 0 1px rgb(255 255 255 / 6%); --glow: rgb(94 106 210 / 32%);
         }
       }
-      :root[data-look="cinema"] body {
-        background: radial-gradient(420px 260px at 85% -40px, var(--glow), transparent 70%), var(--bg-canvas);
-        background-repeat: no-repeat;
+      /* Night Ops: black and signal lime */
+      :root[data-look="nightops"] {
+        --bg-canvas: #f3f5f2; --bg-surface: #ffffff; --bg-subtle: #e6eae4;
+        --text-primary: #0e1210; --text-secondary: #39433d; --text-muted: #5c6860;
+        --accent: #0e1210; --accent-on: #c6f77a; --accent-text: #2d6a10;
+        --selected: #e6eae4; --bubble-user: #0e1210; --bubble-user-text: #f3f5f2;
+        --danger: #b3261e; --focus-ring: #2d6a10; --border-control: #7b867f; --hairline: #d9dfd8;
       }
-      :root[data-look="cinema"] .round.send { box-shadow: 0 0 18px rgb(94 106 210 / 55%); }
-      :root[data-look="cinema"] .composer-box { box-shadow: 0 0 0 1px var(--hairline), 0 12px 30px rgb(0 0 0 / 12%); }
-      :root[data-look="cinema"] .greeting b { font-weight: 600; letter-spacing: -0.03em; }
-      :root[data-look="cinema"] .msg th { font-weight: 500; color: var(--text-muted); }
-      :root[data-look="cinema"] .trace .attempt .code { font-family: var(--font-mono); }
+      @media (prefers-color-scheme: dark) {
+        :root[data-look="nightops"] {
+          --bg-canvas: #0b0d0c; --bg-surface: #121614; --bg-subtle: #1b201d;
+          --text-primary: #e8f0ea; --text-secondary: #b3c2b8; --text-muted: #85958b;
+          --accent: #b8f35a; --accent-on: #0b0d0c; --accent-text: #c6f77a;
+          --selected: #232a26; --bubble-user: #1b201d; --bubble-user-text: #e8f0ea;
+          --danger: #ff8a7a; --focus-ring: #c6f77a; --border-control: #5d6a62; --hairline: #232a26;
+        }
+      }
 
+      /* ---------- Bumper (owner choice 2026-11-10): the panel drawn the way the app icon is drawn ----------
+         Thick outlines, flat fills, rounded type, the car on a road line in the header, and a yellow road
+         sign when Scout must ask. Shape lock: actions are pills, boxes 16, the sign 20, fields 12.
+         Outline, sign and car tokens are shared by every color scheme, so the confirm card looks the
+         same whatever scheme is chosen. No shadows: an outline is the edge. */
+      :root {
+        --outline: var(--text-primary); --outline-w: 2px; --road-w: 3px;
+        --sign: #ffdf80; --sign-ink: #16261b; --sign-edge: #16261b;
+        --car-body: #5b9441; --car-glass: #a8d4dd;
+        --r-action: 999px; --r-box: 16px; --r-sign: 20px; --r-field: 12px;
+        --press: 100ms; --shadow: 0 0 0 0 transparent; /* not `none`: some rules list it after a focus ring */
+      }
+      @media (prefers-color-scheme: dark) {
+        :root { --outline: var(--border-control); --sign: #3a2e00; --sign-ink: #fff1bf; --sign-edge: #ffd34d; }
+      }
+      body { font-family: var(--font-round); font-weight: 500; }
+      b, strong, .msg strong { font-weight: 800; }
+
+      /* The car: green in every scheme, outlined in the scheme's ink. */
+      .car { flex: none; color: var(--outline); }
+      .car .body { fill: var(--car-body); stroke: currentColor; stroke-width: 4; stroke-linejoin: round; }
+      .car .glass { fill: var(--car-glass); stroke: currentColor; stroke-width: 2.5; stroke-linejoin: round; }
+      .car .wheel { fill: currentColor; stroke: none; }
+      .car .hub, :root[data-look] #empty .scout-mark .hub { fill: var(--bg-canvas); stroke: none; }
+
+      /* Header: a road line; in the chat the car drives on it. */
+      #chat-view > header, #settings-view > header { border-bottom: var(--road-w) solid var(--outline); }
+      #chat-view > header { align-items: flex-end; gap: 4px; padding: 8px 12px 0; }
+      #chat-view > header .icon-btn { margin-bottom: 4px; }
+      header .icon-btn { color: var(--text-primary); }
+      header .icon-btn svg.i { stroke-width: 2.2; }
+      header .car { width: 50px; height: 44px; margin: 0 4px -1px; }
+      header h1 { margin-left: 4px; padding-bottom: 6px; font-size: 21px; font-weight: 800; letter-spacing: -0.01em; }
+      #settings-view > header h2 { font-size: 17px; font-weight: 800; }
+      @media (pointer: coarse) {
+        /* iPhone: Safari's bar already shows the name; the car and the road stay. */
+        #chat-view > header { justify-content: flex-start; padding: 4px 12px 0; border-bottom: var(--road-w) solid var(--outline); }
+        #chat-view > header .car { width: 44px; height: 39px; margin-right: auto; }
+        #chats-open { margin-right: 0; }
+      }
+
+      /* New chat: the car and the greeting bottom left, starters as outlined pills. */
+      :root[data-look] #empty .scout-mark { display: block; width: 46px; height: 40px; padding: 0; margin: auto 0 8px 4px; fill: none; stroke: none; stroke-width: 0; }
+      :root[data-look] .greeting { margin: 0 4px 12px; text-align: left; }
+      .greeting b { font-weight: 800; }
+      .greeting span:empty { display: none; }
+      @media (max-height: 620px) { .greeting b { font-size: 19px; } }
+      #starters { display: grid; gap: 8px; padding-bottom: 8px; }
+      #starters li { display: flex; min-width: 0; }
+      #starters button, #site-suggestions button { font-weight: 700; color: var(--text-primary); }
+      #starters button { min-height: 40px; padding: 4px 14px; border: var(--outline-w) solid var(--outline); border-radius: var(--r-action); background: var(--bg-surface); }
+      #starters button svg.i { color: var(--accent-text); stroke-width: 2.2; }
+      @media (pointer: coarse) { #starters button { min-height: 44px; padding: 4px 14px; } }
+      .key-works { border: var(--outline-w) solid var(--outline); border-radius: var(--r-box); background: var(--selected); }
+      .center h2 { font-weight: 800; }
+
+      /* Conversation */
+      .msg.user { padding: 6px 14px; border: var(--outline-w) solid var(--outline); border-radius: 18px 18px 6px 18px; font-weight: 700; }
+      .msg li::marker { color: var(--accent-text); }
+      .msg h3, .msg h4, .msg h5 { font-weight: 800; }
+      .msg .table-wrap { background: var(--bg-surface); border: var(--outline-w) solid var(--outline); border-radius: var(--r-box); }
+      .msg table { border-collapse: collapse; }
+      .msg th { background: var(--selected); color: var(--text-primary); font-weight: 800; }
+      .msg th, .msg td { padding: 8px 14px; }
+      .msg tr:last-child td { border-bottom: 0; }
+      .msg pre, .msg .code-block { border-radius: var(--r-field); }
+      .msg.error { border: var(--outline-w) solid var(--danger); border-radius: var(--r-box); font-weight: 600; }
+      #status { font-size: 12px; font-weight: 700; }
+
+      /* Working trace: a pill for the head, the road down the side. */
+      .trace-head { padding: 2px 12px 2px 8px; border: var(--outline-w) solid var(--outline); border-radius: var(--r-action); background: var(--bg-surface); color: var(--text-primary); font-size: 13px; font-weight: 800; }
+      .trace-body { margin: 8px 0 0 14px; padding-left: 14px; border-left: var(--road-w) solid var(--outline); }
+      .trace .step, .trace .steps, .coupon-step { font-weight: 700; }
+      .trace .attempt { display: block; padding: 6px 12px; border: var(--outline-w) solid var(--hairline); border-radius: var(--r-field); background: var(--bg-surface); }
+      .trace .attempt.good { border-color: var(--outline); background: var(--selected); font-weight: 700; }
+      .trace .attempt .code { margin-right: 2px; }
+      .trace .controls { display: flex; flex-wrap: wrap; gap: 8px; }
+      .more { border-radius: var(--r-field); }
+
+      /* Buttons, chips and cards */
+      .btn { padding: 4px 14px; border: var(--outline-w) solid var(--outline); border-radius: var(--r-action); font-weight: 700; }
+      .btn.primary { border-color: var(--outline); font-weight: 800; }
+      .btn.danger { border-color: var(--danger); }
+      .btn:disabled { border-color: var(--hairline); }
+      .chip { border: var(--outline-w) solid var(--outline); font-weight: 700; }
+      .card { border: var(--outline-w) solid var(--outline); border-radius: var(--r-box); padding: 12px 14px; }
+      .card h2 { font-size: 15px; font-weight: 800; }
+
+      /* Road sign (spec 8.4): the only yellow in the panel. Deny comes first and is the same size as
+         Allow once; "Always allow on this site" is the quietest choice. */
+      #confirm { padding: 10px 16px 6px; background: var(--sign); color: var(--sign-ink); border: var(--road-w) solid var(--sign-edge); border-radius: var(--r-sign); }
+      #confirm h2 { display: flex; align-items: center; gap: 6px; margin: 0 0 2px; font-size: 14px; }
+      #confirm h2 svg.i { stroke-width: 2.2; }
+      #confirm-what { margin: 0 0 4px; font-size: 18px; line-height: 1.3; font-weight: 800; }
+      #confirm-reason { color: var(--sign-ink); font-weight: 600; }
+      #confirm .row { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; margin-top: 8px; }
+      #confirm .btn { min-height: 44px; border-color: var(--sign-edge); background: var(--bg-surface); color: var(--text-primary); font-size: 16px; font-weight: 800; }
+      #confirm #confirm-once { background: var(--accent); color: var(--accent-on); }
+      #confirm #confirm-always { grid-column: 1 / -1; min-height: 32px; border-color: transparent; background: transparent; color: var(--sign-ink); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+      #confirm :focus-visible { outline-color: var(--sign-ink); }
+      @media (pointer: coarse) { #confirm #confirm-always { min-height: 44px; } }
+
+      /* Composer */
+      .composer-box { border: var(--outline-w) solid var(--outline); border-radius: 24px; }
+      .composer-box:focus-within { border-color: var(--outline); }
+      .round:not(.send), fieldset.segmented { border-color: transparent; background: var(--bg-subtle); }
+      .round.send { border: var(--outline-w) solid var(--outline); }
+      :root[data-look] .round.send { color: var(--accent-on); }
+      .segmented label.on { background: var(--bg-surface); color: var(--text-primary); box-shadow: inset 0 0 0 var(--outline-w) var(--outline); }
+      #model-pill { background: transparent; color: var(--text-muted); font-weight: 700; }
+
+      /* Things that float over the chat: an outline instead of a shadow. */
+      #plus-menu, #mention-list, #consent { border: var(--outline-w) solid var(--outline); border-radius: var(--r-box); }
+      #chats { border-right: var(--road-w) solid var(--outline); }
+      .chats-head h2, .sheet-head h2, #consent h2 { font-weight: 800; }
+      .chats-new { font-weight: 700; }
+      .sheet-head { border-bottom: var(--road-w) solid var(--outline); margin-bottom: 12px; }
+      .sheet-list { border: var(--outline-w) solid var(--outline); border-radius: var(--r-box); }
+      .sheet-list button[aria-checked="true"] { font-weight: 800; }
+      .sheet-label { font-weight: 800; color: var(--text-primary); }
+
+      /* Settings: sentence-case headings, outlined fields and scheme tiles. */
+      #settings-view h3 { font-size: 15px; font-weight: 800; color: var(--text-primary); text-transform: none; letter-spacing: 0; }
+      #settings-view h4 { font-weight: 700; }
+      #settings-view input[type="text"], #settings-view input[type="password"], #settings-view select, #settings-view textarea { border: var(--outline-w) solid var(--outline); border-radius: var(--r-field); }
+      .look-list label { border: var(--outline-w) solid var(--hairline); border-radius: var(--r-box); font-weight: 700; }
+      .look-list label:has(input:checked) { border-color: var(--outline); background: var(--selected); box-shadow: none; }
+      .look-list label:has(input:checked)::after { color: var(--text-primary); }
+
+      /* Press feedback: a small squeeze, transform only; none under Reduce Motion. */
+      @media (prefers-reduced-motion: no-preference) {
+        .btn, .round, .chip, #starters button { transition: transform var(--press) ease-out, background-color 150ms, color 150ms, border-color 150ms; }
+        .btn:active:not(:disabled), .round:active:not(:disabled), .chip:active, #starters button:active:not(:disabled) { transform: scale(0.97); }
+        /* While Scout works the car rolls a few pixels along the road. */
+        #chat-view:has(#stop:not([hidden])) > header .car { animation: car-roll 1.6s ease-in-out infinite alternate; }
+        @keyframes car-roll { from { transform: translateX(0); } to { transform: translateX(4px); } }
+      }
     </style>
     <script src="popup.js" defer></script>
   </head>
@@ -892,10 +880,13 @@
         <button id="chats-open" class="icon-btn" type="button" aria-label="Chats" title="Chats" aria-expanded="false" aria-controls="chats">
           <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
-        <picture>
-          <source srcset="icons/toolbar-dark-64.png" media="(prefers-color-scheme: dark)" />
-          <img src="icons/toolbar-64.png" alt="" />
-        </picture>
+        <!-- The mascot (Bumper, 2026-11-10): the app icon's car, drawn inline so it takes the scheme's outline color. -->
+        <svg class="car" viewBox="0 0 64 56" aria-hidden="true">
+          <polygon class="body" points="13,26 16.5,11 36,11 40.5,26"/><polygon class="glass" points="21,16 32.5,16 34.5,23 21,23"/>
+          <rect class="body" x="5" y="26" width="54" height="17" rx="4"/>
+          <circle class="wheel" cx="18" cy="44" r="9"/><circle class="wheel" cx="46" cy="44" r="9"/>
+          <circle class="hub" cx="18" cy="44" r="3.5"/><circle class="hub" cx="46" cy="44" r="3.5"/>
+        </svg>
         <h1>Scout<span class="name-rest"> AI Assistant</span></h1>
         <button id="open-page" class="icon-btn" type="button" aria-label="Open Scout in a new tab" title="Open Scout in a new tab">
           <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg>
@@ -942,11 +933,11 @@
         <!-- Owner design 2026-10-17: only the outline Scout truck, with the starters as
              plain lines just above the composer. -->
         <section id="empty" aria-label="New chat" hidden>
-          <svg class="scout-mark" viewBox="0 0 64 64" aria-hidden="true">
-            <polygon points="13,26 16.5,11 36,11 40.5,26"/><polygon points="21,16 32.5,16 34.5,23 21,23"/>
-            <rect x="5" y="26" width="54" height="17" rx="4"/>
-            <circle cx="18" cy="44" r="9"/><circle cx="46" cy="44" r="9"/>
-            <circle class="hub" cx="18" cy="44" r="2.5"/><circle class="hub" cx="46" cy="44" r="2.5"/>
+          <svg class="scout-mark car" viewBox="0 0 64 56" aria-hidden="true">
+            <polygon class="body" points="13,26 16.5,11 36,11 40.5,26"/><polygon class="glass" points="21,16 32.5,16 34.5,23 21,23"/>
+            <rect class="body" x="5" y="26" width="54" height="17" rx="4"/>
+            <circle class="wheel" cx="18" cy="44" r="9"/><circle class="wheel" cx="46" cy="44" r="9"/>
+            <circle class="hub" cx="18" cy="44" r="3.5"/><circle class="hub" cx="46" cy="44" r="3.5"/>
           </svg>
           <!-- Greeting per look (src/panel/look.ts). -->
           <p id="greeting" class="greeting"><b id="greeting-title">Where to next?</b><span id="greeting-sub">Ask about this page, or send Scout to do it.</span></p>
@@ -967,13 +958,13 @@
         <!-- Part 3, Scout mode: the task's trace is built inline in the conversation (#task). -->
         <!-- Part 3, spec 8.4: sensitive-action confirmation, asked on the device every time. Deny has focus. -->
         <section id="confirm" class="card" role="alertdialog" aria-labelledby="confirm-title" aria-describedby="confirm-what confirm-reason" hidden>
-          <h2 id="confirm-title">Scout wants to:</h2>
+          <h2 id="confirm-title"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2v.1"/></svg>Scout wants to:</h2>
           <p id="confirm-what"></p>
           <p id="confirm-reason" class="hint"></p>
           <div class="row">
+            <button id="confirm-deny" class="btn" type="button">Deny</button>
             <button id="confirm-once" class="btn primary" type="button">Allow once</button>
             <button id="confirm-always" class="btn" type="button">Always allow on this site</button>
-            <button id="confirm-deny" class="btn" type="button">Deny</button>
           </div>
         </section>
 
