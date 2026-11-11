@@ -63,6 +63,7 @@ import {
   DEFAULT_MODEL,
   deleteAllData,
   deleteConversation,
+  historySnapshot,
   deleteReportText,
   HISTORY_KEY,
   loadConversation,
@@ -71,6 +72,7 @@ import {
   loadSettings,
   parseSettings,
   ratingKey,
+  restoreHistory,
   saveRating,
   saveSettings,
   siteOf,
@@ -327,6 +329,8 @@ function syncSegmented(inputs: HTMLInputElement[]): void {
 const CONTEXT_TURNS = 10;
 /** Clear chat history gives up and says so when storage has not answered by then. */
 const CLEAR_TIMEOUT_MS = 5_000;
+// How long Undo stays after a delete (owner convention: 5 to 8 s).
+const UNDO_MS = 7_000;
 
 /** The moving "processing" indicator: coupon milestones, a Working card's head, and an answer before its first words. */
 const PULSE = '<span class="pulse" aria-hidden="true"><i></i><i></i><i></i></span>';
@@ -3355,6 +3359,35 @@ async function main(): Promise<void> {
       settings.retention === "off" ? "Chat history is off. Turn it on in Settings to see earlier chats here." : "No earlier chats yet.";
   }
 
+  // A delete happens at once and can be taken back for a few seconds (owner
+  // convention: Undo, not "Are you sure?"). One offer at a time; it stays
+  // while the pointer or keyboard focus is on it.
+  let undoBar: HTMLElement | undefined;
+  let undoTimer: ReturnType<typeof setTimeout> | undefined;
+  function offerUndo(bar: HTMLElement, text: string, restore: () => Promise<void>): void {
+    clearTimeout(undoTimer);
+    if (undoBar) undoBar.hidden = true;
+    const say = document.createElement("span");
+    say.textContent = text;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn";
+    b.textContent = "Undo";
+    b.addEventListener("click", () => {
+      clearTimeout(undoTimer);
+      bar.hidden = true;
+      void restore();
+    });
+    bar.replaceChildren(say, b);
+    bar.hidden = false;
+    undoBar = bar;
+    const tick = (): void => {
+      if (bar.matches(":focus-within, :hover")) undoTimer = setTimeout(tick, 1_000);
+      else bar.hidden = true;
+    };
+    undoTimer = setTimeout(tick, UNDO_MS);
+  }
+
   function showChats(on: boolean): void {
     chatsPanel.hidden = chatsBackdrop.hidden = !on;
     chatsOpen.setAttribute("aria-expanded", String(on));
@@ -3378,7 +3411,8 @@ async function main(): Promise<void> {
 
   async function removeChat(target: string): Promise<void> {
     if (!storage) return;
-    await deleteConversation(storage, target).catch(() => undefined);
+    const store = storage;
+    const removed = await deleteConversation(store, target).catch(() => []);
     trace("chats:delete");
     // The chat on screen: this tab starts a new one.
     if (target === conv && !activeChat && !task && !couponRun) {
@@ -3387,6 +3421,13 @@ async function main(): Promise<void> {
     }
     await renderChats();
     (chatsList.querySelector<HTMLElement>(".chat-open") ?? el("chats-new")).focus();
+    if (removed.length)
+      offerUndo(el("chats-undo"), "Chat deleted.", async () => {
+        trace("chats:undo");
+        await restoreHistory(store, removed).catch(() => undefined);
+        await renderChats();
+        (chatsList.querySelector<HTMLElement>(".chat-open") ?? el("chats-new")).focus();
+      });
   }
 
   chatsOpen.addEventListener("click", () => showChats(chatsPanel.hidden !== false));
@@ -3400,6 +3441,16 @@ async function main(): Promise<void> {
     if (e.key === "Escape") {
       e.stopPropagation();
       showChats(false);
+    } else if (e.key === "z" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      el("chats-undo").querySelector("button")?.click();
+    } else if (e.key === "Tab") {
+      // The drawer covers the chat: Tab stays inside it, like the Models sheet.
+      const stops = [...chatsPanel.querySelectorAll<HTMLElement>("button")].filter((b) => b.getClientRects().length);
+      const edge = e.shiftKey ? stops[0] : stops[stops.length - 1];
+      if (document.activeElement === edge) {
+        e.preventDefault();
+        (e.shiftKey ? stops[stops.length - 1] : stops[0])?.focus();
+      }
     }
   });
 
@@ -4102,11 +4153,24 @@ async function main(): Promise<void> {
     savedMsg.textContent = "";
     trace("history:clear");
     const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), CLEAR_TIMEOUT_MS));
-    void (storage ? Promise.race([clearHistory(storage), timeout]) : Promise.reject(new Error("no storage")))
+    const store = storage;
+    const before = store ? historySnapshot(store).catch(() => ({ entries: [], ratings: undefined })) : undefined;
+    void (store && before ? Promise.race([before.then(() => clearHistory(store)), timeout]) : Promise.reject(new Error("no storage")))
       .then(
         async () => {
           trace("history:cleared");
           savedMsg.textContent = "Chat history cleared.";
+          const kept = await before;
+          if (store && kept?.entries.length)
+            offerUndo(el("history-undo"), "", async () => {
+              trace("history:undo");
+              await restoreHistory(store, kept.entries, kept.ratings).then(
+                () => (savedMsg.textContent = "Chat history restored."),
+                () => (savedMsg.textContent = "Could not restore chat history."),
+              );
+              await refreshSettings().catch(() => undefined);
+              el("history-clear").focus();
+            });
           try {
             clearThread();
           } catch {

@@ -193,6 +193,16 @@ test("the chats menu lists earlier chats, opens one, deletes one, and keeps priv
   await chats.getByRole("button", { name: "Delete chat: Which sector led?" }).click();
   await expect(rows).toHaveCount(1);
   await expect(rows.nth(0)).toContainText("What moved the market today?");
+  // Interaction pass 2026-11-11: a delete can be taken back, and Tab stays inside the drawer.
+  await expect(chats.getByRole("status")).toContainText("Chat deleted.");
+  await chats.getByRole("button", { name: "Undo" }).click();
+  await expect(rows).toHaveCount(2);
+  await expect(chats.getByRole("button", { name: "Undo" })).toBeHidden();
+  await chats.getByRole("button", { name: "Close chats" }).focus();
+  await page.keyboard.press("Shift+Tab");
+  expect(await page.evaluate(() => !!document.activeElement?.closest("#chats"))).toBe(true);
+  await chats.getByRole("button", { name: "Delete chat: Which sector led?" }).click();
+  await expect(rows).toHaveCount(1);
   await page.keyboard.press("Escape");
   await expect(chats).toBeHidden();
 
@@ -371,6 +381,27 @@ test("Clear chat history empties the thread, now and after the panel reopens", a
   await expect(page.getByRole("list", { name: "Suggestions" })).toBeVisible();
   await expect(log.getByText("What moved the market today?")).toHaveCount(0);
   await expect(page.getByLabel("Ask about this page")).toBeVisible();
+});
+
+// Interaction pass 2026-11-11 (owner convention: Undo, not "Are you sure?").
+test("Clear chat history offers Undo, which brings the saved chats back", async ({ page }) => {
+  await page.route("https://api.anthropic.com/v1/messages", (r) =>
+    r.fulfill({ status: 200, contentType: "text/event-stream", body: sse("Answer to keep.") }),
+  );
+  await openPanel(page, { id: 9 });
+  await page.getByLabel("Ask about this page").fill("What moved the market today?");
+  await page.getByLabel("Ask about this page").press("Enter");
+  await expect(page.getByRole("log").getByText("Answer to keep.")).toBeVisible();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Clear chat history" }).click();
+  await expect(page.locator("#history-count")).toHaveText("0 saved exchanges.");
+  await page.locator("#history-undo").getByRole("button", { name: "Undo" }).click();
+  await expect(page.locator("#settings-saved")).toHaveText("Chat history restored.");
+  await expect(page.locator("#history-count")).toHaveText("1 saved exchange.");
+  await expect(page.locator("#history-undo")).toBeHidden();
+  await page.locator("#settings-back").click();
+  await page.getByRole("button", { name: "Chats", exact: true }).click();
+  await expect(page.locator("#chats-list li")).toContainText(["What moved the market today?"]);
 });
 
 for (const failure of ["rejects", "never answers"] as const) {
