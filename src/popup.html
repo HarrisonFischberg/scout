@@ -804,7 +804,9 @@
 
       /* Working trace: a pill for the head, the road down the side. */
       .trace-head { padding: 2px 12px 2px 8px; border: var(--outline-w) solid var(--outline); border-radius: var(--r-action); background: var(--bg-surface); color: var(--text-primary); font-size: 13px; font-weight: 800; }
-      .trace-body { margin: 8px 0 0 14px; padding-left: 14px; border-left: var(--road-w) solid var(--outline); }
+      .trace-body { gap: 4px; margin: 8px 0 0 14px; padding-left: 14px; border-left: var(--road-w) solid var(--outline); }
+      #thread { gap: 10px; }
+      #log:empty { margin-top: -10px; }
       .trace .step, .trace .steps, .coupon-step { font-weight: 700; }
       .trace .attempt { display: block; padding: 6px 12px; border: var(--outline-w) solid var(--hairline); border-radius: var(--r-field); background: var(--bg-surface); }
       .trace .attempt.good { border-color: var(--outline); background: var(--selected); font-weight: 700; }
