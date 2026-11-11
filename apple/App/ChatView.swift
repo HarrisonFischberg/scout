@@ -82,6 +82,17 @@ struct ChatWebView: UIViewRepresentable {
                 replyHandler(["ok": true], nil)
                 return
             }
+            // Feedback for the few events that earn it (src/app/chat.ts): key saved, a failed request, a look picked.
+            if type == "haptic" {
+                switch fields?["kind"] as? String {
+                case "success": UINotificationFeedbackGenerator().notificationOccurred(.success)
+                case "error": UINotificationFeedbackGenerator().notificationOccurred(.error)
+                case "selection": UISelectionFeedbackGenerator().selectionChanged()
+                default: break
+                }
+                replyHandler(["ok": true], nil)
+                return
+            }
             if AppleModelBridge.handles(body) {
                 Task { @MainActor in
                     replyHandler(await AppleModelBridge.handle(body), nil)
@@ -111,7 +122,7 @@ struct ChatWebView: UIViewRepresentable {
             return nil
         }
 
-        // confirm() for "Remove key" and "Delete all chats".
+        // confirm() for "Remove key".
         func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
                      initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
             guard let presenter = webView.window?.rootViewController?.topmostPresented else { return completionHandler(false) }

@@ -343,9 +343,33 @@
       .look-list label { border: var(--outline-w) solid var(--hairline); font-weight: 700; }
       .look-list label:has(input:checked) { border-color: var(--outline); background: var(--selected); box-shadow: none; }
       .look-list label:has(input:checked)::after { color: var(--text-primary); }
+      /* Interaction pass (docs/interaction-matrix.md), as in src/popup.html. Pressed, disabled and Undo
+         states do not move, so they also show under Reduce Motion. */
+      .attach:active, #chat-list .open:active, #chat-list .delete:active, .msg .code-copy:active { background: var(--bg-subtle); }
+      #chat-list .open { border-radius: 10px; }
+      .look-list label:active { background: var(--selected); }
+      .btn:disabled { opacity: 0.5; cursor: default; }
+      /* 44px taps without growing the composer. */
+      .attach, #send, .msg .code-copy { position: relative; }
+      .attach::after, #send::after, .img-remove::after, .msg .code-copy::after { content: ""; position: absolute; inset: min(0px, calc(50% - 22px)); }
+      :root { --press: 100ms; --press-scale: 0.97; --press-scale-icon: 0.9; --dur-local: 180ms; --dur-large: 260ms; --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1); }
+      .undo { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 14px; border: var(--outline-w) solid var(--outline); border-radius: 16px; background: var(--bg-surface); font-size: 15px; font-weight: 700; }
+      .undo span { flex: 1; }
+      .card .undo { margin-top: 10px; }
       @media (prefers-reduced-motion: no-preference) {
-        .btn, #send, #starters button { transition: transform 100ms ease-out; }
-        .btn:active:not(:disabled), #send:active:not(:disabled), #starters button:active { transform: scale(0.97); }
+        .btn, #send, #starters button { transition: transform var(--press) ease-out; }
+        .btn:active:not(:disabled), #send:active:not(:disabled), #starters button:active { transform: scale(var(--press-scale)); }
+        .icon-btn, .attach { transition: transform var(--press) ease-out, background-color 150ms; }
+        .icon-btn:active, .attach:active { transform: scale(var(--press-scale-icon)); }
+        /* Sheets rise from the bottom edge they are attached to; the consent card and a sent question settle in place. Closing is instant. */
+        dialog[open] { animation: sheet-in var(--dur-large) var(--ease-out); }
+        dialog.center[open] { animation: pop-in var(--dur-local) var(--ease-out); }
+        dialog[open]::backdrop { animation: fade-in var(--dur-local) ease-out; }
+        .msg.user.new, .undo:not([hidden]) { animation: rise-in var(--dur-local) var(--ease-out); }
+        @keyframes sheet-in { from { transform: translateY(100%); } }
+        @keyframes pop-in { from { opacity: 0; transform: scale(0.95); } }
+        @keyframes fade-in { from { opacity: 0; } }
+        @keyframes rise-in { from { opacity: 0; transform: translateY(6px); } }
       }
     </style>
   </head>
@@ -416,6 +440,7 @@
       <div class="sheet-body">
         <ul id="chat-list"></ul>
         <p class="note" id="chats-empty">No saved chats yet. Chats stay on this iPhone.</p>
+        <div id="chats-undo" class="undo" role="status" hidden></div>
       </div>
     </dialog>
 
@@ -468,6 +493,8 @@
             <button class="btn danger" type="button" id="delete-chats">Delete all chats</button>
             <a href="https://rarecreatures.app/apps/scout/privacy/" target="_blank" rel="noopener noreferrer">Privacy policy</a>
           </div>
+          <p class="note" id="delete-chats-note" role="status"></p>
+          <div id="delete-chats-undo" class="undo" role="status" hidden></div>
         </div>
       </div>
     </dialog>
