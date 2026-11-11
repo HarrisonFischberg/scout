@@ -23,6 +23,7 @@ import {
   type TaskAction,
 } from "../actions/vocabulary";
 import { fencePage } from "../chat/prompt";
+import { cleanUrl, redactSecrets } from "../context/clean";
 import { alwaysAllowed, blockedBy, hostOf, screenshotDecision, type PageAccess } from "../permissions/gate";
 import { ProviderError } from "../providers/errors";
 import type { ChatMessage, ContentPart, Effort, ProviderClient, ToolSpec, Usage } from "../providers/types";
@@ -222,7 +223,8 @@ function observation(snap: Snapshot, shot: TaskScreenshot | null): string {
     .join("\n");
   const size = snap.viewport ? "Viewport: " + snap.viewport.width + " x " + snap.viewport.height + " CSS px. " : "";
   const img = shot ? "Screenshot: " + shot.width + " x " + shot.height + " px (coordinates refer to it)." : "No screenshot for this site.";
-  return size + img + "\n" + fencePage({ url: snap.url, title: snap.title, text: snap.text + "\n\nElements:\n" + els });
+  // Keys, tokens and secret address parameters are removed before the page leaves the device, as the consent screen says.
+  return size + img + "\n" + fencePage({ url: cleanUrl(snap.url), title: redactSecrets(snap.title), text: redactSecrets(snap.text + "\n\nElements:\n" + els) });
 }
 
 export async function runTask(deps: TaskDeps): Promise<TaskOutcome> {
