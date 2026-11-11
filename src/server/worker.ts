@@ -355,6 +355,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     "chat.stop": (p: { message_id: string }) => ({ stopped: server.stop(p.message_id) }),
     "jobs.stop_all": async () => {
       await Promise.all([server.stopAll(), taskHost.stopAll(), couponHost.stopAll()]);
+      toolLog.forget();
       return { ok: true };
     },
     "chat.tool_result": (p: {
