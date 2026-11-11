@@ -1,0 +1,110 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- App Store art for Scout AI Browser Assistant. Query: layout=mac|phone|pad, s=scene, w/h (CSS px), zoom,
+     h1, p, img (panel capture). render.mjs drives it; the words are in shots.json. -->
+<style>
+@font-face{font-family:Fraunces;src:url(fraunces-latin-600-normal.woff2);font-weight:600}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:var(--w);height:var(--h);overflow:hidden;font-family:Inter,system-ui,sans-serif}
+.stage{position:relative;width:var(--w);height:var(--h);overflow:hidden;background:linear-gradient(180deg,var(--s0),var(--s1) 55%,var(--s2))}
+svg.land{position:absolute;inset:0;width:100%;height:100%}
+.copy{position:absolute;color:#fbf4e6}
+.brand{display:inline-flex;align-items:center;gap:10px;padding:7px 16px 7px 7px;border-radius:99px;background:rgba(251,244,230,.12);border:1px solid rgba(251,244,230,.22);font-weight:600;font-size:15px;letter-spacing:.06em;text-transform:uppercase}
+.brand img{width:30px;height:30px;border-radius:8px}
+h1{font-family:Fraunces,serif;font-weight:600;text-wrap:balance;line-height:1.04;letter-spacing:-.015em;text-shadow:0 2px 24px rgba(0,0,0,.25)}
+h1 em{font-style:normal;color:var(--acc)}
+p{line-height:1.42;color:rgba(251,244,230,.88)}
+.panel{position:absolute;border-radius:22px;overflow:hidden;background:#f4efe3;
+  box-shadow:0 40px 80px -20px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.35),0 0 90px rgba(var(--glow),.35)}
+.panel img{display:block;width:100%}
+.tip{position:absolute;width:46px;height:46px;border-radius:13px;background:rgba(251,244,230,.95);display:grid;place-items:center;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.tip img{width:30px;height:30px}
+.copy .tip:after{display:none}.tip:after{content:"";position:absolute;bottom:-9px;left:16px;border:7px solid transparent;border-top-color:rgba(251,244,230,.95)}
+/* Phone and tablet: a plain device outline, Safari's sheet holding the panel. */
+.device{position:absolute;background:#0c0f0d;box-shadow:0 50px 90px -20px rgba(0,0,0,.6),0 0 0 2px rgba(255,255,255,.18),0 0 110px rgba(var(--glow),.3)}
+.screen{position:absolute;overflow:hidden;background:#d9d6cf}
+.site{position:absolute;inset:0;background:linear-gradient(180deg,#e9e4da,#cfc8bb)}
+.site i{display:block;margin:0 22px 12px;height:12px;border-radius:6px;background:rgba(0,0,0,.08)}
+.status{position:absolute;left:0;right:0;top:0;height:50px;display:flex;align-items:center;justify-content:space-between;padding:0 34px;font-weight:600;font-size:16px;color:#111}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#000}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:26px 26px 0 0;overflow:hidden;box-shadow:0 -10px 40px rgba(0,0,0,.25)}
+.sheet .grab{height:16px;display:grid;place-items:center}
+.sheet .grab:before{content:"";width:40px;height:5px;border-radius:3px;background:#c7c7cc}
+.sheet img{display:block;width:100%}
+.pop{position:absolute;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 20px 60px rgba(0,0,0,.35),0 0 0 1px rgba(0,0,0,.08)}
+.pop img{display:block;width:100%}
+.bar{position:absolute;left:0;right:0;top:0;height:64px;background:rgba(246,246,246,.96);border-bottom:1px solid rgba(0,0,0,.08);display:flex;align-items:center;justify-content:center}
+.bar span{width:46%;height:36px;border-radius:12px;background:#e4e4e8;display:flex;align-items:center;justify-content:center;font-size:15px;color:#555}
+</style></head>
+<body><div class="stage" id="st"></div>
+<script>
+const q=new URLSearchParams(location.search);
+const S={
+ dawn:{s0:'#173a2c',s1:'#4f6e4f',s2:'#f0b27a',sun:'#ffd9a0',sunY:.70,acc:'#ffd08a',glow:'255,200,140',m:['#3d5f47','#2a4a37','#1b3628','#10251b'],stars:0},
+ teal:{s0:'#0d2b33',s1:'#1d5257',s2:'#8cc0a8',sun:'#e9fff1',sunY:.62,acc:'#b8f0c8',glow:'170,240,210',m:['#2b5a52','#1e463f','#14352f','#0b241f'],stars:.4},
+ sunset:{s0:'#2a1d3a',s1:'#9a4b3f',s2:'#f6b25d',sun:'#ffe2a1',sunY:.72,acc:'#ffd27a',glow:'255,190,110',m:['#6b3b3a','#4a2a30','#2f1d24','#1b1218'],stars:.2},
+ night:{s0:'#07140f',s1:'#11291f',s2:'#2d5a42',sun:'#f6f1dc',sunY:.20,acc:'#c9f29b',glow:'190,240,160',m:['#1d3b2c','#142c21','#0d2018','#07150f'],stars:1,moon:1},
+ lake:{s0:'#101c33',s1:'#2e4a6e',s2:'#c8b393',sun:'#fff0cf',sunY:.66,acc:'#ffd99a',glow:'200,210,255',m:['#33506a','#253d55','#182b3e','#0e1c2a'],stars:.6},
+};
+const L=q.get('layout')||'mac';
+const sc=S[q.get('s')||'night'];const W=+q.get('w'),H=+q.get('h');
+const r=document.documentElement.style;
+if(q.get('zoom'))r.zoom=q.get('zoom');
+r.setProperty('--w',W+'px');r.setProperty('--h',H+'px');
+for(const k of ['s0','s1','s2','acc'])r.setProperty('--'+k,sc[k]);r.setProperty('--glow',sc.glow);
+let rnd=+(q.get('seed')||7);const R=()=>(rnd=(rnd*16807)%2147483647)/2147483647;
+function ridge(y0,amp,step,jag){let d=`M0 ${H} L0 ${y0}`;let x=0;while(x<=W+step){const y=y0-amp*(.5+.5*Math.sin(x/(W*.23)+y0))-R()*jag;d+=` L${x} ${y}`;x+=step}return d+` L${W} ${H} Z`}
+const pk=Math.max(W,H)/1280;
+function pines(y,n,hmin,hmax,col){let s='';for(let i=0;i<n;i++){const x=R()*W,h=hmin+R()*(hmax-hmin),w=h*.34;
+ s+=`<path d="M${x} ${y-h} L${x+w} ${y} L${x-w} ${y} Z" fill="${col}"/>`}return s}
+let stars='';for(let i=0;i<160*sc.stars*(W*H)/(1280*800);i++){stars+=`<circle cx="${R()*W}" cy="${R()*H*.55}" r="${R()*1.3+.3}" fill="#fff" opacity="${.3+R()*.6}"/>`}
+const portrait=H>W;
+const sunX=W*(+q.get('sx')||(sc.moon?.44:.42)),sunY=H*(portrait?sc.sunY*.62+.3:sc.sunY);
+const sunR=Math.min(W,H)*.088;
+const body=sc.moon?`<mask id="mm"><rect width="${W}" height="${H}" fill="#fff"/><circle cx="${sunX+sunR*.42}" cy="${sunY-sunR*.25}" r="${sunR*.88}" fill="#000"/></mask><circle cx="${sunX}" cy="${sunY}" r="${sunR}" fill="${sc.sun}" mask="url(#mm)"/>`:`<circle cx="${sunX}" cy="${sunY}" r="${sunR*2}" fill="${sc.sun}" opacity=".95"/>`;
+let flies='';if(sc.stars){for(let i=0;i<26*W/1280;i++)flies+=`<circle cx="${R()*W}" cy="${H*.72+R()*H*.25}" r="${1.5+R()*2}" fill="#f8ffb0" opacity="${.4+R()*.5}" filter="url(#bl)"/>`}
+const g0=portrait?.70:.62, g1=portrait?.78:.72, g2=portrait?.85:.82;
+const land=`<svg class="land" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+<defs><radialGradient id="g"><stop offset="0" stop-color="${sc.sun}" stop-opacity=".55"/><stop offset="1" stop-color="${sc.sun}" stop-opacity="0"/></radialGradient>
+<filter id="bl"><feGaussianBlur stdDeviation="1.2"/></filter></defs>
+${stars}<circle cx="${sunX}" cy="${sunY}" r="${Math.min(W,H)*.6}" fill="url(#g)"/>${body}
+<path d="${ridge(H*g0,H*.12,40*pk,H*.04)}" fill="${sc.m[0]}" opacity=".9"/>
+<path d="${ridge(H*g1,H*.09,26*pk,H*.03)}" fill="${sc.m[1]}"/>
+${pines(H*(g2-.02),38*W/1280+10,H*.05,H*.10,sc.m[2])}
+<path d="${ridge(H*g2,H*.04,30*pk,H*.015)}" fill="${sc.m[2]}"/>
+${pines(H*1.02,22*W/1280+8,H*.13,H*.24,sc.m[3])}
+<rect x="0" y="${H*.94}" width="${W}" height="${H*.06}" fill="${sc.m[3]}"/>${flies}
+</svg>`;
+const brand=`<div class="brand"><img src="icon.png">Scout AI Browser Assistant</div>`;
+const h1=q.get('h1')||'',p=q.get('p')||'',img=q.get('img');
+let html=land;
+if(L==='mac'){
+  html+=`<div class="copy" style="left:80px;top:170px;width:560px">${brand}<h1 style="font-size:64px;margin-top:26px">${h1}</h1><p style="margin-top:20px;font-size:21px;max-width:440px">${p}</p></div>
+  <div class="tip" style="left:1110px;top:58px"><img src="icon.png"></div>
+  <div class="panel" style="left:760px;top:116px;width:420px;height:632px"><img src="${img}"></div>`;
+}else if(L==='phone'){
+  // 402 x 874 canvas; device 300 wide, bottom bleeds off the canvas.
+  const dw=292,dh=640,dx=(W-dw)/2,dy=262;
+  html+=`<div class="copy" style="left:28px;right:28px;top:44px;text-align:center"><h1 style="font-size:38px">${h1}</h1><p style="margin:12px auto 0;font-size:16px;max-width:340px">${p}</p></div>
+  <div class="device" style="left:${dx}px;top:${dy}px;width:${dw}px;height:${dh}px;border-radius:50px">
+   <div class="screen" style="inset:9px;border-radius:42px"><div class="site"><div style="height:64px"></div><i style="width:60%;height:18px"></i><i></i><i></i><i style="width:70%"></i></div>
+   <div class="status" style="height:44px;padding:0 26px;font-size:13px"><span>9:41</span><span>●●●</span></div><div class="island" style="width:90px;height:26px;top:9px"></div>
+   <div class="sheet" style="top:52px"><div class="grab"></div><img src="${img}"></div></div></div>`;
+}else if(L==='pad'){
+  // 1032 x 1376 canvas; tablet with Safari, Scout's popover under the toolbar.
+  const dw=820,dh=1000,dx=(W-dw)/2,dy=420;
+  html+=`<div class="copy" style="left:60px;right:60px;top:80px;text-align:center"><h1 style="font-size:64px">${h1}</h1><p style="margin:20px auto 0;font-size:24px;max-width:640px">${p}</p></div>
+  <div class="device" style="left:${dx}px;top:${dy}px;width:${dw}px;height:${dh}px;border-radius:44px">
+   <div class="screen" style="inset:14px;border-radius:32px"><div class="site"><div style="height:110px"></div><i style="width:50%;height:26px;margin-left:40px"></i>${'<i style="margin-left:40px;width:40%"></i>'.repeat(9)}</div>
+   <div class="bar"><span>trailco.test</span></div>
+   <div class="pop" style="right:24px;top:76px;width:420px"><img src="${img}"></div></div></div>`;
+}else if(L==='header'){
+  // Art only, no text or icon: the App Store draws the app's icon, name and Get button over the header.
+}else if(L==='search'){
+  // 3:2 search result asset; words and icon stay inside Apple's centered safe area (2168 x 1030 of 3840 x 2560).
+  html+=`<div class="copy" style="left:${(W-1084)/2}px;width:1084px;top:${(H-515)/2}px;height:515px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+   <img src="icon.png" style="width:132px;height:132px;border-radius:30px;box-shadow:0 14px 40px rgba(0,0,0,.4)">
+   <h1 style="font-size:92px;margin-top:34px;text-shadow:0 2px 30px rgba(0,0,0,.45)">${h1}</h1><p style="margin-top:20px;font-size:34px">${p}</p></div>`;
+}
+document.getElementById('st').innerHTML=html;
+</script></body></html>
