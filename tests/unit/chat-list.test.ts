@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { summarizeChats, whenText } from "../../src/chat/list";
-import { deleteConversation, loadHistory, siteOf, type HistoryEntry, type StorageArea } from "../../src/settings/settings";
+import { clearHistory, deleteConversation, historySnapshot, loadHistory, restoreHistory, siteOf, type HistoryEntry, type StorageArea } from "../../src/settings/settings";
 
 const titles = { label: (q: string) => (q === "SUMMARIZE" ? "Summarize page" : q), coupons: "Find coupons", agent: "Scout mode" };
 
@@ -59,6 +59,33 @@ describe("chats menu (owner request 2026-10-19)", () => {
     });
     await deleteConversation(s, "a");
     expect((await loadHistory(s, "7", Date.now())).map((e) => e.question)).toEqual(["q2"]);
+  });
+
+  it("Undo puts a deleted chat back in time order, beside what was saved since", async () => {
+    const now = Date.now();
+    const s = fakeStorage({
+      history: [
+        { at: now - 3, conv: "a", question: "q1", answer: "x" },
+        { at: now - 2, conv: "b", question: "q2", answer: "x" },
+        { at: now - 1, conv: "a", question: "q3", answer: "x" },
+      ],
+    });
+    const removed = await deleteConversation(s, "a");
+    expect(removed).toHaveLength(2);
+    s.data.history = [...(s.data.history as unknown[]), { at: now, conv: "c", question: "q4", answer: "x" }];
+    await restoreHistory(s, removed);
+    expect((await loadHistory(s, "7", now)).map((e) => e.question)).toEqual(["q1", "q2", "q3", "q4"]);
+  });
+
+  it("Undo after Clear chat history brings back the chats and the ratings", async () => {
+    const now = Date.now();
+    const s = fakeStorage({ history: [{ at: now, conv: "a", question: "q1", answer: "x" }], ratings: { k: "up" } });
+    const before = await historySnapshot(s);
+    await clearHistory(s);
+    expect(await loadHistory(s, "7", now)).toEqual([]);
+    await restoreHistory(s, before.entries, before.ratings);
+    expect((await loadHistory(s, "7", now)).map((e) => e.question)).toEqual(["q1"]);
+    expect(s.data.ratings).toEqual({ k: "up" });
   });
 
   it("keeps only the host of a page as the chat's site", async () => {
