@@ -12,7 +12,7 @@ Safari.)
 
 ## Screenshots
 
-Scout opens in the Glasshouse look. These follow your system's light
+Scout opens in the Bumper look (Scout green). These follow your system's light
 or dark setting, so GitHub shows the one that matches yours.
 
 | Ask about the page | Scout mode | Settings > Look |
@@ -117,10 +117,11 @@ Settings, and ask away.
 ## Dark mode
 
 Scout follows your system's light or dark appearance, the same way Safari does.
-There is no separate switch: every look (Glasshouse, Pure Apple, Bento, Pebble,
-Cinema and Night Ops) has a light and a dark version, and the panel
+There is no separate switch: every look (Bumper, Glasshouse, Pure Apple, Bento,
+Pebble, Cinema and Night Ops) has a light and a dark version, and the panel
 changes the moment your system does. The toolbar button swaps to a matching
-light or dark icon too. Pick a look in Settings > Look. Glasshouse is the
+light or dark icon too. Pick a look in Settings > Look: a look changes the
+colors, the layout stays the same. Bumper is the
 default everywhere (Mac, iPhone, iPad, Chrome and Firefox).
 
 ## Build and test
