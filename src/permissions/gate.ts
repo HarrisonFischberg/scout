@@ -175,3 +175,18 @@ export function parsePolicy(reply: unknown): string[] {
   if (r.ok !== true || !Array.isArray(r.blocked)) return [];
   return [...new Set(r.blocked.flatMap((b) => (typeof b === "string" ? (normalizeSite(b) ?? []) : [])))].slice(0, MAX_BLOCKED);
 }
+
+/**
+ * Reads the organization blocklist through `send` and keeps it for `ttlMs`. A read that fails is never kept: the last
+ * list stands and the next call asks again, so a host app that is slow to start cannot unblock sites for the whole time.
+ */
+export function policyReader(send: (message: unknown) => Promise<unknown>, now: () => number, ttlMs: number): () => Promise<string[]> {
+  let policy: { at: number; list: string[] } | null = null;
+  return async () => {
+    if (policy && now() - policy.at < ttlMs) return policy.list;
+    const reply = (await send({ type: "policy.get" }).catch(() => null)) as { ok?: unknown } | null;
+    if (reply?.ok !== true) return policy?.list ?? [];
+    policy = { at: now(), list: parsePolicy(reply) };
+    return policy.list;
+  };
+}

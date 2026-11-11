@@ -7,6 +7,7 @@ import {
   normalizeSite,
   parsePageAccess,
   parsePolicy,
+  policyReader,
   screenshotDecision,
   taskDecision,
   withAlwaysAllow,
@@ -80,6 +81,20 @@ describe("parsePolicy", () => {
     expect(parsePolicy({ ok: true, blocked: ["Corp.test", "bad host", 3] })).toEqual(["corp.test"]);
     expect(parsePolicy({ ok: false, error: "unknown_type" })).toEqual([]);
     expect(parsePolicy(null)).toEqual([]);
+  });
+
+  it("does not keep a failed read: the next call asks the host app again, and a known list stands", async () => {
+    const replies: unknown[] = [null, { ok: true, blocked: ["corp.test"] }, { ok: false }];
+    let asked = 0;
+    let now = 0;
+    const admin = policyReader(async () => replies[asked++], () => now, 1000);
+    expect(await admin()).toEqual([]);
+    expect(await admin()).toEqual(["corp.test"]);
+    expect(await admin()).toEqual(["corp.test"]);
+    expect(asked).toBe(2);
+    now = 2000;
+    expect(await admin()).toEqual(["corp.test"]);
+    expect(asked).toBe(3);
   });
 });
 

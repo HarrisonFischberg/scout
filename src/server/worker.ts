@@ -13,7 +13,7 @@ import { loadVideo, pageFetch, videoPageText, youtubeVideoId, type FetchInit, ty
 import { cleanInstagramRead, instagramKind, instagramPageText, MAX_PAGE_IMAGES, PAGE_IMAGE_EDGE, readInstagram, readsInstagramPost } from "../context/instagram";
 import { readTabs, readTab, type GatherDeps, type TabRef } from "../context/gather";
 import { createKeychain, nativeSend, type Provider } from "../keychain";
-import { blockedBy, hostOf, loadPageAccess, parsePolicy, savePageAccess, type ScreenshotChoice } from "../permissions/gate";
+import { blockedBy, hostOf, loadPageAccess, policyReader, savePageAccess, type ScreenshotChoice } from "../permissions/gate";
 import { createProvider, ProviderError, type Effort } from "../providers";
 import { APPLE_MODEL, createApple } from "../providers/apple";
 import { effortForId, loadModelList } from "../providers/models";
@@ -83,15 +83,9 @@ export interface WorkerOptions {
 
 export function createScoutWorker(storage: StorageArea | undefined, options: WorkerOptions = {}) {
   const keychain = createKeychain(nativeSend);
-  let policy: { at: number; list: string[] } | null = null;
 
   // Organization blocklist (managed setting in the host app). Cached briefly.
-  const admin = async (): Promise<string[]> => {
-    if (policy && Date.now() - policy.at < POLICY_TTL_MS) return policy.list;
-    const list = parsePolicy(await nativeSend({ type: "policy.get" }).catch(() => null));
-    policy = { at: Date.now(), list };
-    return list;
-  };
+  const admin = policyReader(nativeSend, () => Date.now(), POLICY_TTL_MS);
   const access = () => loadPageAccess(storage);
 
   const tab = async (id: number): Promise<TabRef | null> => {
