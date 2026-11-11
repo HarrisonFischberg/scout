@@ -237,7 +237,8 @@ test.describe("iPhone touch targets", () => {
         const b = document.querySelector<HTMLElement>(s)!;
         const r = b.getBoundingClientRect();
         const at = (y: number): boolean => document.elementFromPoint(r.left + r.width / 2, y) === b;
-        return at(r.top + r.height / 2 - 21) && at(r.top + r.height / 2 + 21);
+        // Main's header sits at the very top of the sheet: the upper probe stays on screen.
+        return at(Math.max(1, r.top + r.height / 2 - 21)) && at(r.top + r.height / 2 + 21);
       }, sel);
       expect(hit, sel).toBe(true);
     }

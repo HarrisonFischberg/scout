@@ -50,3 +50,7 @@ web-form sections) · consent dialog · page button · page glow + toast.
 
 150 ms color transitions, chats drawer slide 160 ms, pulse dots while working,
 mic pulse; all behind `prefers-reduced-motion: no-preference`.
+
+Interaction fixes (2026-11-11, `docs/interaction-matrix.md`) add states, not looks:
+pressed is an opacity dip, disabled is half opacity, and deleting a chat or
+clearing history offers Undo for 7 seconds in the look's own card and button.
