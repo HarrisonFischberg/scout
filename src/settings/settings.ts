@@ -330,12 +330,35 @@ export async function saveRating(storage: StorageArea, key: string, rating: Rati
 }
 
 /** Deletes one conversation's saved entries (the chats menu). */
-export async function deleteConversation(storage: StorageArea, conv: string): Promise<void> {
-  await withLock(HISTORY_KEY, async () => {
+/** Returns the entries it removed, so the delete can be undone (restoreHistory). */
+export async function deleteConversation(storage: StorageArea, conv: string): Promise<unknown[]> {
+  return withLock(HISTORY_KEY, async () => {
     const got = await storage.get(HISTORY_KEY);
     const raw = got[HISTORY_KEY];
-    if (!Array.isArray(raw)) return;
-    await storage.set({ [HISTORY_KEY]: raw.filter((e: unknown) => (e as { conv?: unknown } | null)?.conv !== conv) });
+    if (!Array.isArray(raw)) return [];
+    const mine = (e: unknown): boolean => (e as { conv?: unknown } | null)?.conv === conv;
+    await storage.set({ [HISTORY_KEY]: raw.filter((e: unknown) => !mine(e)) });
+    return raw.filter(mine);
+  });
+}
+
+/** What Undo needs after a delete or a clear: the saved entries and the answer ratings, as stored. */
+export async function historySnapshot(storage: StorageArea): Promise<{ entries: unknown[]; ratings: unknown }> {
+  const got = await storage.get([HISTORY_KEY, RATINGS_KEY]);
+  const raw = got[HISTORY_KEY];
+  return { entries: Array.isArray(raw) ? raw : [], ratings: got[RATINGS_KEY] };
+}
+
+/** Undo: puts removed entries back in time order, beside anything saved since. Ratings return only where none were saved since. */
+export async function restoreHistory(storage: StorageArea, entries: unknown[], ratings?: unknown): Promise<void> {
+  await withLock(HISTORY_KEY, async () => {
+    const got = await storage.get([HISTORY_KEY, RATINGS_KEY]);
+    const now = Array.isArray(got[HISTORY_KEY]) ? (got[HISTORY_KEY] as unknown[]) : [];
+    const at = (e: unknown): number => Number((e as { at?: unknown } | null)?.at) || 0;
+    await storage.set({
+      [HISTORY_KEY]: [...entries, ...now].sort((a, b) => at(a) - at(b)),
+      ...(ratings !== undefined && !Object.keys((got[RATINGS_KEY] as object | undefined) ?? {}).length ? { [RATINGS_KEY]: ratings } : {}),
+    });
   });
 }
 
