@@ -105,6 +105,15 @@ section headings.
 working. All of it sits behind `prefers-reduced-motion: no-preference`; with
 Reduce Motion nothing moves and every state is still shown in text.
 
+Interaction pass (2026-11-11, `docs/interaction-matrix.md`): tokens `--press`
+(100ms), `--press-scale` (0.97; `--press-scale-icon` 0.9 for 32px icon buttons),
+`--dur-local` (180ms), `--ease-out` (the app's chat adds `--dur-large`, 260ms,
+for its bottom sheets). The + menu and the confirm sign grow from 0.95 at their
+anchor, the Models sheet fades in, a
+question just sent rises 6px, Send grows into Stop. Closing is instant. Pressed
+(a tint), disabled (half opacity) and Undo are plain states and show under Reduce
+Motion too. Deleting a chat or clearing history offers Undo for 7 seconds.
+
 ## Shape and spacing
 
 4px grid. Thread padding 12/14, header 8/12, composer margin 10. Touch targets
