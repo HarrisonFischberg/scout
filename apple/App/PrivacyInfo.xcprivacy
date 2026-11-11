@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Scout for Safari has no server and no tracking. Requests go from the
+	<!-- Scout AI Assistant has no server and no tracking. Requests go from the
 	     user's browser to the AI provider they chose, with their own key. -->
 	<key>NSPrivacyTracking</key>
 	<false/>

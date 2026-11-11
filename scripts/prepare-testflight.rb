@@ -9,8 +9,8 @@ require 'xcodeproj'
 TEAM = 'KTV2G3Z883'
 PREFIX = 'com.harrisonfischberg'
 ids = {
-  'Scout for Safari (macOS)' => "#{PREFIX}.SafariScout",
-  'Scout for Safari Extension (macOS)' => "#{PREFIX}.SafariScout.Extension",
+  'Scout for Safari (macOS)' => "#{PREFIX}.Scoutai",
+  'Scout for Safari Extension (macOS)' => "#{PREFIX}.Scoutai.Extension",
 }
 manifests = {
   'App' => ['Scout for Safari (macOS)', 'Scout for Safari (iOS)'],

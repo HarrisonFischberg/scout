@@ -462,4 +462,20 @@ describe("Scout mode runner", () => {
     expect((await runTask(boom.deps)).status).toBe("error");
     expect(boom.icons).toEqual([true, false]);
   });
+
+  it("removes keys, tokens and secret address parameters from the page before it is sent", async () => {
+    const provider = scripted([[finish("Done."), usage(1, 1)]]);
+    const h = harness(provider);
+    h.deps.page.snapshot = async () => ({
+      ...SNAP,
+      url: "https://shop.test/reset?token=tok-synthetic-123&step=2",
+      text: "Your API key: sk-synthetic-0123456789abcdef",
+      elements: [{ ref: "e1", tag: "input", role: "textbox", name: "Key", value: "ghp_synthetic0123456789abcdefghij" }],
+    });
+    await runTask(h.deps);
+    const text = textOf(provider.seen[0]!.messages[0]!.content);
+    expect(text).toContain("step=2");
+    expect(text).toContain("[REDACTED]");
+    expect(text).not.toMatch(/tok-synthetic-123|sk-synthetic|ghp_synthetic/);
+  });
 });

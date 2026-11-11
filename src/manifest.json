@@ -9,8 +9,7 @@
     "tabs",
     "storage",
     "scripting",
-    "nativeMessaging",
-    "contextMenus"
+    "nativeMessaging"
   ],
   "optional_host_permissions": [
     "http://*/*",

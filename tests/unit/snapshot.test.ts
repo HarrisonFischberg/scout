@@ -129,6 +129,11 @@ describe("snapshot", () => {
     expect(isSensitiveField(n("input", { type: "text", placeholder: "Gift card PIN", name: "coupon_pin" }))).toBe(true);
   });
 
+  it("redacts a PIN field whatever joins the words of its name, and leaves words that only contain pin", () => {
+    for (const name of ["pin", "pin_code", "user_pin", "pin-code", "card pin2"]) expect(isSensitiveField(n("input", { type: "text", name }))).toBe(true);
+    for (const name of ["shipping_name", "spinner", "opinion"]) expect(isSensitiveField(n("input", { type: "text", name }))).toBe(false);
+  });
+
   it("reports refs through onRef for the executor", () => {
     const seen: string[] = [];
     const btn = n("button", {}, [t("Go")]);

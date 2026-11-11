@@ -16,8 +16,7 @@ export function manifestFor(target, source) {
   const m = structuredClone(source);
   if (target === "safari") return m;
   // The Keychain bridge (native messaging) exists only inside the Safari app.
-  // No code uses contextMenus, and both stores reject unused permissions.
-  m.permissions = m.permissions.filter((p) => p !== "nativeMessaging" && p !== "contextMenus");
+  m.permissions = m.permissions.filter((p) => p !== "nativeMessaging");
   if (target === "chrome") {
     m.background = { service_worker: m.background.scripts[0] };
     m.minimum_chrome_version = "120";

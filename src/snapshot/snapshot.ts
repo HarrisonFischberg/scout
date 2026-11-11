@@ -60,7 +60,7 @@ const BLOCK_TAGS = new Set([
   "br", "label", "fieldset", "blockquote", "pre",
 ]);
 const SENSITIVE_HINT =
-  /card|cc[-_ ]?(num|number|exp|csc)|cvv|cvc|csc|security[-_ ]?code|ssn|social[-_ ]?security|passw|passcode|\bpin\b|otp|one[-_ ]?time/i;
+  /card|cc[-_ ]?(num|number|exp|csc)|cvv|cvc|csc|security[-_ ]?code|ssn|social[-_ ]?security|passw|passcode|(?:^|[^a-z])pin(?:[^a-z]|$)|otp|one[-_ ]?time/i;
 const SENSITIVE_AUTOCOMPLETE = /cc-|current-password|new-password|one-time-code/i;
 // "Discount code or gift card" is a coupon box, not a card field. A field that
 // only says "gift card" (number, PIN) stays redacted.
