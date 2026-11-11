@@ -15,7 +15,7 @@ while IFS= read -r -d '' f; do
 done < <(git ls-files -z -co --exclude-standard)
 hits=$(
   {
-    grep -nIH -E "AssistAnt|Assist[ _-]?Ant|[Aa]ssist[-_]ant|ASSIST_?ANT" "${files[@]}"
+    grep -nIH -E "AssistAnt|Assist[ _-]?Ant|[Aa]ssist[-_]ant|ASSIST_ANT" "${files[@]}"
     grep -nIH -iwE "ant" "${files[@]}" | grep -v "sk-ant"
     grep -nIH -iE "\bant[-.](png|svg|icns|toolbar|icon|appicon)" "${files[@]}"
   } | sort -u
@@ -30,8 +30,7 @@ fi
 # Info.plist names and the legal drafts. Internal names keep it on purpose
 # (Xcode targets, schemes, PRODUCT_NAME, bundle IDs): changing those loses
 # saved keys and breaks the Mac and iPhone build scripts.
-shown=$(git ls-files -co --exclude-standard -- src apple/App apple/Extension/Info.plist apple/UITests docs/legal/privacy-policy.md docs/legal/terms.md |
-  xargs -d '\n' grep -nIH "Scout for Safari" 2>/dev/null)
+shown=$(git grep -nI --untracked "Scout for Safari" -- src apple/App apple/Extension/Info.plist apple/UITests docs/legal/privacy-policy.md docs/legal/terms.md)
 if [ -n "$shown" ]; then
   echo "$shown"
   echo "rename check: \"Scout for Safari\" still shown to people"
