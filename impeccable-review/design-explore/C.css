@@ -1,0 +1,65 @@
+/* Direction C, "Dispatch": a compact dispatcher's log. System type, neutral greys, a transcript gutter instead of
+   bubbles, full-bleed composer, and the confirm card docked above the composer so it cannot scroll away.
+   Signature: the car is parked beside the name and drives along the header line while Scout works.
+   Radius scale: 6 (controls), 8 (containers). One elevated surface: the dock. */
+:root {
+  --car: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 56'%3E%3Cg stroke='%2316261b' stroke-linejoin='round'%3E%3Cpolygon points='13,26 16.5,11 36,11 40.5,26' fill='%235b9441' stroke-width='4'/%3E%3Cpolygon points='21,16 32.5,16 34.5,23 21,23' fill='%23a8d4dd' stroke-width='2.5'/%3E%3Crect x='5' y='26' width='54' height='17' rx='4' fill='%235b9441' stroke-width='4'/%3E%3C/g%3E%3Ccircle cx='18' cy='44' r='9' fill='%2316261b'/%3E%3Ccircle cx='46' cy='44' r='9' fill='%2316261b'/%3E%3Ccircle cx='18' cy='44' r='3.5' fill='%23e9f3f6'/%3E%3Ccircle cx='46' cy='44' r='3.5' fill='%23e9f3f6'/%3E%3C/svg%3E"); --warn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237a4b00' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5 21.5 20h-19Z'/%3E%3Cpath d='M12 10v4.5M12 17.2v.1'/%3E%3C/svg%3E");
+  --bg-canvas: #f7f8f6; --bg-surface: #ffffff; --bg-subtle: #eceeea;
+  --text-primary: #151a17; --text-secondary: #39413c; --text-muted: #59625c;
+  --accent: #1e6b3a; --accent-on: #ffffff; --accent-text: #1a6034;
+  --selected: #dcecdf; --bubble-user: transparent; --bubble-user-text: #151a17;
+  --focus-ring: #1e6b3a; --border-control: #88918a; --hairline: #dde0da; --shadow: none;
+}
+body { font-size: 14px !important; line-height: 1.45 !important; }
+#chat-view > header { position: relative; padding: 6px 8px; gap: 2px; border-bottom: 1px solid var(--hairline) !important; }
+header .icon-btn { width: 28px; height: 28px; background: transparent !important; box-shadow: none !important; border-radius: 6px !important; margin: 0 !important; }
+header .icon-btn svg.i { width: 16px; height: 16px; }
+header h1 { flex: none; order: 1; margin-left: 6px; font-size: 14px; font-weight: 600; }
+header picture { order: 2; width: 28px; height: 24px; margin: 0 auto -7px 8px; background: var(--car) center bottom / contain no-repeat; }
+header picture img { opacity: 0; }
+#open-page, #new-chat, #settings-open { order: 3; }
+/* Working: the car is out on the line, with the distance covered drawn behind it. */
+#chat-view:has(#stop:not([hidden])) header picture { transform: translateX(96px); }
+#chat-view:has(#stop:not([hidden])) > header::after { content: ""; position: absolute; left: 0; bottom: -1px; width: 176px; height: 2px; background: var(--accent); }
+
+#thread { padding: 0 0 0; gap: 0; }
+#log { gap: 0; }
+.msg, .trace { position: relative; padding: 10px 14px 10px 62px !important; border-bottom: 1px solid var(--hairline); max-width: none !important; align-self: stretch !important; border-radius: 0 !important; }
+.msg::before, .trace::before { position: absolute; left: 14px; top: 11px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.msg.user::before { content: "You"; }
+.msg.assistant::before, .trace::before { content: "Scout"; color: var(--accent-text); }
+.msg.user { font-weight: 600; }
+.msg.user .mode { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 4px; background: var(--selected); color: var(--accent-text); font-size: 11px; font-weight: 600; line-height: 18px; vertical-align: 1px; }
+.msg.assistant strong { color: inherit !important; font-weight: 600; }
+.msg p, .msg ul, .msg .table-wrap { margin-bottom: 8px; }
+.msg ul { padding-left: 16px; }
+.msg li { margin: 4px 0; }
+.msg .table-wrap { background: var(--bg-surface) !important; border: 1px solid var(--hairline) !important; border-radius: 8px !important; box-shadow: none !important; padding: 0 !important; overflow: hidden; }
+.msg table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.msg th { background: var(--bg-subtle); font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.msg th, .msg td { padding: 6px 10px !important; }
+#status:empty { display: none; }
+#status { font-size: 12px; font-variant-numeric: tabular-nums; padding: 4px 14px 4px 62px !important; }
+
+.trace-head { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+.trace-body { margin: 6px 0 0; padding-left: 0; border-left: 0; gap: 6px; }
+.trace .step, .trace .steps { font-size: 13px; }
+
+/* The dock: sticks to the bottom of the conversation, directly on the composer. */
+#confirm { position: sticky; bottom: 0; margin-top: auto; background: var(--bg-surface); border: 0; border-top: 2px solid var(--text-primary); border-radius: 0; padding: 12px 14px; box-shadow: 0 -10px 24px rgb(21 26 23 / 12%); }
+#confirm h2 { margin: 0 0 2px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+#confirm-what { margin: 0 0 6px; font-size: 16px; line-height: 1.35; font-weight: 600; }
+#confirm-reason { padding-left: 20px; background: var(--warn) 0 2px / 14px no-repeat; color: #6b4300; font-size: 12.5px; }
+#confirm .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+#confirm .btn { min-height: 36px; border-radius: 6px !important; font-size: 14px; font-weight: 600; padding: 4px 8px; }
+#confirm-deny { order: 1; border-color: var(--text-primary); }
+#confirm-once { order: 2; }
+#confirm-always { order: 3; grid-column: 1 / -1; justify-self: start; min-height: 24px !important; padding: 0 !important; border: 0 !important; background: transparent !important; color: var(--accent-text); font-size: 12.5px !important; font-weight: 500 !important; text-decoration: underline; text-underline-offset: 3px; }
+
+#composer { margin: 0 !important; }
+.composer-box { border-radius: 0 !important; border: 0 !important; border-top: 1px solid var(--hairline) !important; box-shadow: none !important; padding: 8px 10px 8px 14px; }
+.composer-box:has(#question:focus-visible) { border-top-color: var(--accent) !important; box-shadow: inset 0 1px 0 var(--accent) !important; }
+#question { font-size: 14px; }
+.round { width: 28px; height: 28px; border-radius: 6px !important; }
+fieldset.segmented, .segmented label { border-radius: 6px !important; }
+.segmented label.on { box-shadow: none !important; }

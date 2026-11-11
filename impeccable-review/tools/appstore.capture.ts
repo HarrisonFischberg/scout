@@ -53,7 +53,7 @@ function sse(text: string): string {
 }
 
 const DEVS = {
-  mac: { look: "glasshouse", ctx: { viewport: { width: 400, height: 640 }, deviceScaleFactor: 3 } },
+  mac: { look: "glasshouse", ctx: { viewport: { width: 400, height: Number(process.env.VH ?? 640) }, deviceScaleFactor: 3 } },
   ipad: { look: "glasshouse", ctx: { viewport: { width: 400, height: 640 }, deviceScaleFactor: 3, hasTouch: true } },
   iphone: { look: "glasshouse", ctx: { viewport: { width: 393, height: 720 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true } },
 } as const;
@@ -98,7 +98,10 @@ async function open(page: Page, look: string, answer: string, pageData: { url: s
     let html = await readFile(join(RES, "popup.html"), "utf8");
     const faces = [400, 600, 700, 800, 900].map((w) => `@font-face{font-family:"SF Pro Rounded";font-weight:${w};src:url(/rf/nunito-latin-${w}-normal.woff2)}`).join("")
       + `@font-face{font-family:"New York";src:local("Bitstream Charter")}@font-face{font-family:"SF Mono";font-weight:400;src:url(/rf/jetbrains-mono-latin-400-normal.woff2)}`;
-    html = html.replace("</head>", `<style>${faces}body{font-family:Inter,"SF Pro Text",-apple-system,system-ui,sans-serif!important}</style></head>`);
+    html = html.replace("</head>", `<style>${faces}${process.env.SYSFONT ? "" : 'body{font-family:Inter,"SF Pro Text",-apple-system,system-ui,sans-serif!important}'}</style></head>`);
+    // Design exploration (design/explore): THEME is a stylesheet layered over the shipped look. The shipped CSS goes
+    // into a cascade layer so the unlayered direction CSS wins without specificity fights. Capture-only.
+    if (process.env.THEME) html = html.replace("<style>", "<style>@layer shipped{").replace("</style>", "}</style>").replace("</head>", `<style>${await readFile(resolve(process.env.THEME), "utf8")}</style></head>`).replace("<html ", `<html data-design="${process.env.DESIGN ?? ""}" `);
     await r.fulfill({ body: html, contentType: "text/html" });
   });
   await page.route("**/popup.js", (r) => r.fulfill({ path: join(RES, "popup.js"), contentType: "text/javascript" }));
@@ -138,7 +141,7 @@ async function stage(page: Page, html: string): Promise<void> {
   }, html);
 }
 
-for (const [dev, d] of Object.entries(DEVS)) {
+for (const [dev, d] of Object.entries(DEVS).filter(([k]) => !process.env.DEV || k === process.env.DEV)) {
   test.describe(dev, () => {
     test.use({ ...d.ctx, colorScheme: "light" });
     const shot = (page: Page, n: string) => page.waitForTimeout(400).then(() => page.screenshot({ path: join(OUT, `${dev}-${n}.png`) }));
@@ -167,6 +170,8 @@ for (const [dev, d] of Object.entries(DEVS)) {
         document.getElementById("confirm-what")!.textContent = "Click “Reserve and pay” on campsites.test ($64.00)";
         document.getElementById("confirm-reason")!.textContent = "This looks like it places an order or makes a payment.";
       });
+      // The app scrolls a new confirm card into view; the staged one needs the same.
+      await page.evaluate(() => document.getElementById("thread")!.scrollTo(0, 1e6));
       await shot(page, "3-scout-mode");
     });
     test("coupons", async ({ page }) => {

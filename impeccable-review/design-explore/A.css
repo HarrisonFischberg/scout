@@ -1,0 +1,56 @@
+/* Direction A, "Field Notes": a ranger's notebook. Paper, green ink, serif reading type, flat rules,
+   and the task trace drawn as a dashed trail with the scout car at the current waypoint.
+   Radius scale: 4 (controls), 8 (containers). No shadows. Light tokens only in this exploration. */
+:root {
+  --car: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 56'%3E%3Cg stroke='%2316261b' stroke-linejoin='round'%3E%3Cpolygon points='13,26 16.5,11 36,11 40.5,26' fill='%235b9441' stroke-width='4'/%3E%3Cpolygon points='21,16 32.5,16 34.5,23 21,23' fill='%23a8d4dd' stroke-width='2.5'/%3E%3Crect x='5' y='26' width='54' height='17' rx='4' fill='%235b9441' stroke-width='4'/%3E%3C/g%3E%3Ccircle cx='18' cy='44' r='9' fill='%2316261b'/%3E%3Ccircle cx='46' cy='44' r='9' fill='%2316261b'/%3E%3Ccircle cx='18' cy='44' r='3.5' fill='%23e9f3f6'/%3E%3Ccircle cx='46' cy='44' r='3.5' fill='%23e9f3f6'/%3E%3C/svg%3E"); --warn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237a4b00' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5 21.5 20h-19Z'/%3E%3Cpath d='M12 10v4.5M12 17.2v.1'/%3E%3C/svg%3E");
+  --bg-canvas: #f5eedb; --bg-surface: #fdf9ee; --bg-subtle: #e9e0c6;
+  --text-primary: #1b2a1e; --text-secondary: #37463a; --text-muted: #566049;
+  --accent: #2d6a2e; --accent-on: #fdf9ee; --accent-text: #285f29;
+  --selected: #dde6c6; --bubble-user: transparent; --bubble-user-text: #1b2a1e;
+  --focus-ring: #2d6a2e; --border-control: #6f7860; --hairline: #d6cbaa; --shadow: none;
+  --serif: Charter, "New York", ui-serif, Georgia, serif;
+}
+#chat-view > header { padding: 8px 12px 8px; gap: 4px; border-bottom: 2px dashed #a9a383 !important; }
+header .icon-btn { background: transparent !important; box-shadow: none !important; border-radius: 4px !important; margin-left: 0 !important; }
+header picture { width: 34px; height: 30px; margin: 0 4px 0 4px; background: var(--car) center / contain no-repeat; }
+header picture img { opacity: 0; }
+header h1 { font: 700 18px/1.2 var(--serif); letter-spacing: -0.01em; }
+
+#thread { padding: 16px 20px 6px; gap: 12px; }
+#log { gap: 16px; }
+.msg.user { align-self: stretch; max-width: none; padding: 0 0 8px; border-radius: 0 !important; border-bottom: 1px solid var(--text-primary); font: 700 19px/1.3 var(--serif); letter-spacing: -0.01em; }
+.msg.user .mode { font: 600 12px/1.4 -apple-system, system-ui, sans-serif; color: var(--accent-text); margin-bottom: 2px; letter-spacing: 0; }
+.msg.assistant { font: 16px/1.55 var(--serif); }
+.msg.assistant strong { color: inherit !important; font-weight: 700; }
+.msg ul { padding-left: 18px; }
+.msg li { margin: 6px 0; }
+.msg li::marker { color: var(--accent); }
+.msg .table-wrap { background: none !important; border: 0 !important; border-top: 2px solid var(--text-primary) !important; border-bottom: 2px solid var(--text-primary) !important; border-radius: 0 !important; box-shadow: none !important; padding: 0 !important; margin-top: 16px; }
+.msg table { width: 100%; font-size: 15px; }
+.msg th { font: 600 12px/1.4 -apple-system, system-ui, sans-serif; color: var(--text-muted); }
+#status { font-size: 12px; text-align: right; padding-right: 20px !important; }
+
+/* The trail: steps are waypoints on a dashed line, the car is parked where Scout is now. */
+.trace-head { font-size: 13px; font-weight: 600; color: var(--accent-text); }
+.trace-body { position: relative; margin: 8px 0 0 12px; padding: 2px 0 28px 24px; gap: 8px; border-left: 2px dashed var(--accent); }
+.trace .step, .trace .steps { position: relative; font-size: 13px; }
+.trace .step::before, .trace .say::before { content: ""; position: absolute; left: -31px; top: 50%; width: 8px; height: 8px; margin-top: -6px; border-radius: 50%; background: var(--bg-canvas); border: 2px solid var(--accent); }
+.trace .say { position: relative; font: 16px/1.5 var(--serif); }
+.trace .say::before { top: 12px; background: var(--accent); }
+.trace-body::after { content: ""; position: absolute; left: -19px; bottom: 0; width: 36px; height: 32px; background: var(--car) center / contain no-repeat; }
+.trace-body::before { content: ""; position: absolute; left: -6px; bottom: 0; width: 10px; height: 30px; background: var(--bg-canvas); }
+
+/* Checkpoint ticket: ink border, perforation above the choices, three full-width choices. */
+#confirm { background: var(--bg-surface); border: 2px solid var(--text-primary); border-radius: 8px; padding: 10px 16px 12px; box-shadow: none; }
+#confirm h2 { margin: 0 0 4px; font: 600 12px/1.4 -apple-system, system-ui, sans-serif; color: var(--text-muted); }
+#confirm-what { margin: 0 0 6px; font: 700 18px/1.3 var(--serif); letter-spacing: -0.01em; }
+#confirm-reason { padding-left: 20px; background: var(--warn) 0 1px / 16px no-repeat; color: #6b4300; font-size: 12.5px; background-position: 0 0; }
+#confirm .row { flex-direction: column; align-items: stretch; gap: 6px; margin-top: 8px; padding-top: 10px; border-top: 2px dashed var(--hairline); }
+#confirm .btn { min-height: 32px; border-radius: 4px !important; border: 1.5px solid var(--text-primary); background: transparent; font-weight: 600; font-size: 14px; }
+#confirm .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+
+#composer { margin: 0 12px 12px; }
+.composer-box { border-radius: 8px !important; border: 1.5px solid var(--border-control) !important; box-shadow: none !important; }
+.composer-box:has(#question:focus-visible) { border-color: var(--accent) !important; box-shadow: 0 0 0 1px var(--accent) !important; }
+.round, fieldset.segmented, .segmented label { border-radius: 4px !important; }
+.segmented label.on { box-shadow: none !important; background: var(--selected) !important; }
