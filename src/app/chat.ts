@@ -74,6 +74,11 @@ function nativeBridge(): NativeSend {
 }
 const send = nativeBridge();
 
+/** Native feedback for the few events that earn it (apple/App/ChatView.swift); a no-op outside the app. */
+function haptic(kind: "success" | "error" | "selection"): void {
+  void send({ type: "haptic", kind }).catch(() => undefined);
+}
+
 async function getKey(): Promise<string | null> {
   try {
     const r = (await send({ type: "keychain.get", account: "anthropic" })) as { ok?: boolean; value?: string } | undefined;
@@ -109,6 +114,9 @@ function effortFor(model: string): Effort | undefined {
   const e = DEFAULT_EFFORT.anthropic;
   return model === DEFAULT_MODEL.anthropic && e !== "default" ? e : undefined;
 }
+
+/** True while a question is on its way to being sent (key read, consent), before state.running is set. */
+let starting = false;
 
 const state = {
   settings: loadSettings(),
@@ -329,16 +337,23 @@ async function addImages(files: File[]): Promise<void> {
 async function submit(text: string): Promise<void> {
   const typed = text.trim();
   const q = questionFor(typed, pending.length);
-  if (!q || state.running) return;
-  const key = await getKey();
-  state.hasKey = !!key;
-  const useApple = state.appleReady && (!key || state.settings.appleFirst);
-  if (!key && !state.appleReady) return updateEmpty();
-  if (pending.length && !key) {
-    thread.appendChild(assistantBubble({ role: "assistant", text: IMAGES_NEED_KEY, error: true }));
-    return scrollToEnd();
+  // A second tap while the first is still reading the key or asking consent would send the question twice.
+  if (!q || state.running || starting) return;
+  starting = true;
+  let key: string | null;
+  try {
+    key = await getKey();
+    state.hasKey = !!key;
+    if (!key && !state.appleReady) return updateEmpty();
+    if (pending.length && !key) {
+      thread.appendChild(assistantBubble({ role: "assistant", text: IMAGES_NEED_KEY, error: true }));
+      return scrollToEnd();
+    }
+    if (key && !(await askConsent())) return;
+  } finally {
+    starting = false;
   }
-  if (key && !(await askConsent())) return;
+  const useApple = state.appleReady && (!key || state.settings.appleFirst);
 
   question.value = "";
   autosize();
@@ -386,14 +401,16 @@ async function submit(text: string): Promise<void> {
     },
   });
   cancelAnimationFrame(frame);
-  state.running = null;
+  // A chat left mid-answer (New chat, another chat, Delete) may already have a newer request running: leave that one alone.
+  if (state.running === controller) state.running = null;
 
   const turn: AppTurn = result.error
     ? { role: "assistant", text: result.text.trim() ? result.text + "\n\n" + result.error : result.error, error: true }
     : { role: "assistant", text: result.text || (result.stopped ? "Stopped." : ""), ...(result.sources.length ? { sources: result.sources } : {}), model: result.model };
   chat.turns.push(turn);
   chat.at = Date.now();
-  upsertChat(storage, chat);
+  if (!deleted.has(chat.id)) upsertChat(storage, chat);
+  if (result.error) haptic("error");
   const cost = result.usage && result.model !== "apple" ? formatCostLine(result.model, result.usage) : undefined;
   live.replaceWith(assistantBubble(turn, cost));
   updateEmpty();
@@ -422,8 +439,14 @@ function renderStarters(): void {
   );
 }
 
-function newChat(): void {
+/** Stops the answer on screen; the next question does not have to wait for it to wind down. */
+function leaveAnswer(): void {
   state.running?.abort();
+  state.running = null;
+}
+
+function newChat(): void {
+  leaveAnswer();
   state.chat = null;
   renderStarters();
   renderThread();
@@ -459,7 +482,7 @@ function renderChatList(): void {
     when.textContent = relativeDay(c.at);
     open.append(title, when);
     open.addEventListener("click", () => {
-      state.running?.abort();
+      leaveAnswer();
       state.chat = c;
       $<HTMLDialogElement>("chats").close();
       renderThread();
@@ -470,13 +493,49 @@ function renderChatList(): void {
     del.setAttribute("aria-label", "Delete chat: " + c.title);
     del.appendChild(svgIcon("M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"));
     del.addEventListener("click", () => {
+      const before = loadChats(storage);
+      deleted.add(c.id);
       deleteChat(storage, c.id);
       if (state.chat?.id === c.id) newChat();
       renderChatList();
+      offerUndo($("chats-undo"), "Chat deleted.", before);
     });
     li.append(open, del);
     list.appendChild(li);
   }
+}
+
+// A delete happens at once and can be taken back for a few seconds (owner
+// convention: Undo, not "Are you sure?"). One offer at a time.
+const UNDO_MS = 7_000;
+/** Chats deleted this session: an answer still winding down must not save one back. */
+const deleted = new Set<string>();
+let undoTimer: ReturnType<typeof setTimeout> | undefined;
+function offerUndo(bar: HTMLElement, text: string, before: AppChat[]): void {
+  clearTimeout(undoTimer);
+  for (const other of document.querySelectorAll<HTMLElement>(".undo")) other.hidden = true;
+  const say = document.createElement("span");
+  say.textContent = text;
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "btn";
+  b.textContent = "Undo";
+  b.addEventListener("click", () => {
+    clearTimeout(undoTimer);
+    bar.hidden = true;
+    // Chats saved since the delete stay; the deleted ones come back beside them.
+    const now = loadChats(storage);
+    saveChats(storage, [...now, ...before.filter((c) => !now.some((n) => n.id === c.id))]);
+    for (const c of before) deleted.delete(c.id);
+    renderChatList();
+  });
+  bar.replaceChildren(say, b);
+  bar.hidden = false;
+  const tick = (): void => {
+    if (bar.matches(":focus-within")) undoTimer = setTimeout(tick, 1_000);
+    else bar.hidden = true;
+  };
+  undoTimer = setTimeout(tick, UNDO_MS);
 }
 
 async function saveKey(input: HTMLInputElement, note: HTMLElement): Promise<boolean> {
@@ -492,6 +551,7 @@ async function saveKey(input: HTMLInputElement, note: HTMLElement): Promise<bool
   if (check !== "valid") {
     note.textContent = check === "invalid" ? "Anthropic rejected this key. Check it and try again." : "Couldn't reach Anthropic. Check your connection.";
     note.classList.add("bad");
+    haptic("error");
     return false;
   }
   try {
@@ -504,6 +564,7 @@ async function saveKey(input: HTMLInputElement, note: HTMLElement): Promise<bool
   }
   input.value = "";
   note.textContent = "Key saved in your Keychain.";
+  haptic("success");
   state.hasKey = true;
   updateEmpty();
   void refreshSettings();
@@ -567,6 +628,7 @@ function buildLookPicker(): void {
       if (!input.checked) return;
       const id = parseLook(input.value);
       showLook(id);
+      haptic("selection");
       void writeSharedLook(send, id);
     });
     list.appendChild(label);
@@ -654,9 +716,13 @@ function wire(): void {
     void refreshSettings();
   });
   $("delete-chats").addEventListener("click", () => {
-    if (!confirm("Delete all saved chats on this iPhone?")) return;
+    const before = loadChats(storage);
+    if (!before.length) return void ($("delete-chats-note").textContent = "No saved chats to delete.");
+    for (const c of before) deleted.add(c.id);
     saveChats(storage, []);
     newChat();
+    $("delete-chats-note").textContent = "";
+    offerUndo($("delete-chats-undo"), before.length === 1 ? "1 chat deleted." : before.length + " chats deleted.", before);
   });
   $("open-setup").addEventListener("click", () => void send({ type: "app.setup" }).catch(() => undefined));
 

@@ -158,6 +158,15 @@
         background: var(--accent); color: var(--accent-on);
       }
       #send:disabled { opacity: 0.4; cursor: default; }
+      /* Interaction fixes (2026-11-11, docs/interaction-matrix.md): nothing here shows at rest. */
+      .attach:active, #chat-list .open:active, #chat-list .delete:active, .msg .code-copy:active { background: var(--bg-subtle); }
+      .btn:active:not(:disabled), #send:active:not(:disabled), #starters button:active { opacity: 0.6; }
+      .btn:disabled { opacity: 0.5; cursor: default; }
+      /* 44px taps without growing the composer. */
+      .attach, #send, .msg .code-copy { position: relative; }
+      .attach::after, #send::after, .img-remove::after, .msg .code-copy::after { content: ""; position: absolute; inset: min(0px, calc(50% - 22px)); }
+      /* Undo after a delete: a row with the usual button. */
+      .undo span { flex: 1; font-size: 15px; color: var(--text-secondary); }
       .composer { padding-left: 6px; }
       .attach {
         display: inline-grid; place-items: center; width: 40px; height: 40px; flex: none; border: 0; border-radius: 50%;
@@ -428,6 +437,7 @@
       <div class="sheet-body">
         <ul id="chat-list"></ul>
         <p class="note" id="chats-empty">No saved chats yet. Chats stay on this iPhone.</p>
+        <div id="chats-undo" class="row undo" role="status" hidden></div>
       </div>
     </dialog>
 
@@ -480,6 +490,8 @@
             <button class="btn danger" type="button" id="delete-chats">Delete all chats</button>
             <a href="https://rarecreatures.app/apps/scout/privacy/" target="_blank" rel="noopener noreferrer">Privacy policy</a>
           </div>
+          <p class="note" id="delete-chats-note" role="status"></p>
+          <div id="delete-chats-undo" class="row undo" role="status" hidden></div>
         </div>
       </div>
     </dialog>

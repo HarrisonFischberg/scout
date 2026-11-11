@@ -143,6 +143,34 @@ test.describe("Scout app chat", () => {
     await expect(page.getByRole("dialog", { name: "Share with Anthropic?" })).toBeHidden();
   });
 
+  // Interaction pass 2026-11-11: delete with Undo instead of a confirm, and one send per question.
+  test("a deleted chat can be undone, Delete all chats too, and a double tap sends once", async ({ page }) => {
+    const { bodies } = await openApp(page, { key: KEY });
+    await page.evaluate(() => localStorage.setItem("scout.app.consent", JSON.stringify({ version: 1, at: 1 })));
+    await page.reload();
+    const starter = page.locator("#starters button").first();
+    await starter.dblclick();
+    await expect(page.locator(".msg.assistant .answer-actions")).toHaveCount(1);
+    expect(bodies).toHaveLength(1);
+    await expect(page.locator(".msg.user")).toHaveCount(1);
+
+    await page.getByRole("button", { name: "Chats" }).click();
+    const list = page.getByRole("dialog", { name: "Chats" });
+    await list.getByRole("button", { name: /^Delete chat/ }).click();
+    await expect(list.locator(".open")).toHaveCount(0);
+    await list.getByRole("button", { name: "Undo" }).click();
+    await expect(list.locator(".open")).toHaveCount(1);
+    await list.getByRole("button", { name: "Close" }).click();
+
+    await page.getByRole("button", { name: "Settings" }).click();
+    const settings = page.getByRole("dialog", { name: "Settings" });
+    await settings.getByRole("button", { name: "Delete all chats" }).click();
+    await expect(settings.getByText("1 chat deleted.")).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem("scout.app.chats"))).toBe("[]");
+    await settings.getByRole("button", { name: "Undo" }).click();
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("scout.app.chats") ?? "[]").length)).toBe(1);
+  });
+
   test("without a key, asks for one, checks it, and saves it to the Keychain", async ({ page }) => {
     await openApp(page, { key: null });
     await expect(page.getByRole("heading", { name: "Add your Anthropic API key" })).toBeVisible();
