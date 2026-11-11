@@ -1,0 +1,32 @@
+[
+ {
+  "name": "1-summary",
+  "s": "dawn",
+  "h1": "The short version of <em>a long page</em>",
+  "p": "Open Scout in Safari and it sums up the article or recipe you're reading."
+ },
+ {
+  "name": "2-ask",
+  "s": "teal",
+  "h1": "Ask about <em>what you're reading</em>",
+  "p": "Scout answers from the page you're on, like whether a price is fair."
+ },
+ {
+  "name": "3-scout-mode",
+  "s": "night",
+  "h1": "Scout does <em>the clicking</em>",
+  "p": "Scout mode fills out forms for you and asks before it buys anything."
+ },
+ {
+  "name": "4-coupons",
+  "s": "sunset",
+  "h1": "Finds coupons <em>and tries them</em>",
+  "p": "At checkout, Scout tries codes in your cart and keeps the one that saves the most."
+ },
+ {
+  "name": "5-settings",
+  "s": "lake",
+  "h1": "Your key stays <em>in your Keychain</em>",
+  "p": "There's no Scout account, and no ads or tracking. Scout asks before it sends anything to your AI provider."
+ }
+]

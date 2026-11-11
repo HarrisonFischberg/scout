@@ -31,8 +31,9 @@ Examples: `./release.sh all` (check everything), `./release.sh ios --beta --live
 | `store/chrome/listing.md`, `store/chrome/screenshots/` | Chrome text, privacy answers, screenshots, promo tiles | no: the Chrome API takes only the package, paste once by hand |
 | `store/firefox/amo-metadata.json` | Firefox summary, description, category, license, reviewer notes | yes |
 
-The screenshots are rendered from `app-store/art-source/` in the project files. Check a new set
-with `npm run check:screenshots` (it accepts both iPhone sizes).
+The screenshots are rendered from `store/apple/art-source/`: the headlines are in `shots.json`,
+and the three commands are at the top of `render.mjs`. Check a new set with
+`npm run check:screenshots` (it accepts both iPhone sizes).
 
 For a version after 1.0, add `store/apple/metadata/en-US/release_notes.txt` and change
 `app_version` in `fastlane/Fastfile`. Chrome and Firefox need a higher `version` in

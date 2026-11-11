@@ -13,12 +13,12 @@ const now = Date.now();
 const H = 3600_000;
 
 const SUMMARY = [
-  "**Yosemite in autumn: the short version**",
+  "Yosemite is quieter in autumn, and most of the park is still open.",
   "",
-  "- **Fewer crowds:** after Labor Day the valley is quieter, and weekday parking is easy.",
-  "- **Tioga Road** usually stays open until the first big snow, often in November.",
-  "- **Campsites** in the valley still need a reservation, even in October.",
-  "- **Waterfalls run low** by fall, so go for the color: black oaks and dogwoods turn gold and red.",
+  "- After Labor Day the valley has fewer visitors, and weekday parking is easy.",
+  "- Tioga Road usually stays open until the first big snow, often in November.",
+  "- Campsites in the valley still need a reservation, even in October.",
+  "- The waterfalls run low by fall, but the black oaks and dogwoods turn gold and red.",
   "",
   "| Best for | Where |",
   "|---|---|",
@@ -28,11 +28,11 @@ const SUMMARY = [
 ].join("\n");
 
 const ANSWER = [
-  "Yes, it's a fair price. This is a **merino wool hiking sock** 3-pack for **$42.00**, about $14 a pair.",
+  "Yes, it's a fair price. This 3-pack of merino wool hiking socks is **$42.00**, about $14 a pair.",
   "",
-  "- Cushioned sole, 71% merino",
-  "- Free shipping over $50; 60-day returns",
-  "- 4.7 stars from 1,284 reviews; most mention warmth and fit",
+  "- The socks are 71% merino and have a cushioned sole.",
+  "- Shipping is free over $50, and you have 60 days to return them.",
+  "- They have 4.7 stars from 1,284 reviews, and most reviews mention warmth and fit.",
   "",
   "| Store | Price |",
   "|---|---:|",
@@ -165,7 +165,7 @@ for (const [dev, d] of Object.entries(DEVS)) {
         const c = document.getElementById("confirm")!;
         c.hidden = false;
         document.getElementById("confirm-what")!.textContent = "Click “Reserve and pay” on campsites.test ($64.00)";
-        document.getElementById("confirm-reason")!.textContent = "This makes a payment. Scout always asks before buying.";
+        document.getElementById("confirm-reason")!.textContent = "This looks like it places an order or makes a payment.";
       });
       await shot(page, "3-scout-mode");
     });
