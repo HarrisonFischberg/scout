@@ -3,13 +3,14 @@
 One command for every store Scout ships to:
 
 ```sh
-./release.sh [ios|mac|chrome|firefox|all] [--beta] [--live]
+./release.sh [ios|mac|chrome|firefox|all] [--beta] [--live] [--version X.Y]
 ```
 
 - **Dry run by default.** It builds, archives and checks everything and uploads nothing. Add
   `--live` to publish.
 - `ios` is iPhone and iPad, `mac` is the Mac app (both one App Store Connect record,
-  `com.harrisonfischberg.Scoutai`). By default they go to App Review as version 1.0;
+  `com.harrisonfischberg.Scoutai`). By default they go to App Review as version 1.0
+  (`--version X.Y` for later versions) and release automatically once approved;
   `--beta` sends them to TestFlight with the next 0.N version instead.
 - `chrome` uploads and publishes the Chrome Web Store package; `firefox` submits the listed
   Firefox add-on with its source code.
@@ -37,8 +38,8 @@ The screenshots are rendered from `store/apple/art-source/`: the headlines are i
 and the three commands are at the top of `render.mjs`. Check a new set with
 `npm run check:screenshots` (it accepts both iPhone sizes).
 
-For a version after 1.0, add `store/apple/metadata/en-US/release_notes.txt` and change
-`app_version` in `fastlane/Fastfile`. Chrome and Firefox need a higher `version` in
+For a version after 1.0, add `store/apple/metadata/en-US/release_notes.txt` and pass
+`--version X.Y`. Chrome and Firefox need a higher `version` in
 `src/manifest.json` for every upload.
 
 ## Environment variables
@@ -92,5 +93,5 @@ the answer changes); the details and answers are in `docs/app-store-submission.m
   Chrome's trader declaration is in its developer dashboard settings.
 - **Price and availability** (free, all countries except China mainland), set once in App
   Store Connect.
-- **Pressing Release** after Apple approves (the listing is set to manual release), and
-  revoking the review test key.
+- **Revoking the review test key** after Apple approves (the version then releases
+  automatically).

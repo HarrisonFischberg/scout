@@ -313,7 +313,8 @@ at a time)
    paste it into the review notes, and plan to revoke it after review.
 9. Decide launch blockers 4 and 34 (or accept them as they are), then press
    **Add for Review** and **Submit**, once for iOS and once for macOS.
-10. When approved, press **Release** on each platform.
+10. When approved, each platform releases automatically (`./release.sh` sets
+    automatic release); revoke the review test key.
 
 ## Sources (read 2026-10-20)
 
