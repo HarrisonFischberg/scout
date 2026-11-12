@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import {
   alwaysAllowed,
+  bareHost,
   blockedBy,
   DEFAULT_PAGE_ACCESS,
   normalizeSite,
@@ -46,6 +47,14 @@ describe("normalizeSite", () => {
   });
 });
 
+describe("bareHost", () => {
+  it("gives the host without www., lowercased, and nothing for a non-web address", () => {
+    expect(bareHost("https://WWW.Shop.test./cart?x=1")).toBe("shop.test");
+    expect(bareHost("file:///etc/passwd")).toBe("");
+    expect(bareHost("not a url")).toBe("");
+  });
+});
+
 describe("blockedBy", () => {
   const access = parsePageAccess({ blocked: ["bank.test"] });
 
@@ -53,6 +62,9 @@ describe("blockedBy", () => {
     expect(blockedBy("https://bank.test/login", access, [])).toBe("user");
     expect(blockedBy("https://online.bank.test/", access, [])).toBe("user");
     expect(blockedBy("https://notbank.test/", access, [])).toBeNull();
+    // A trailing dot is the same site to a browser (audit 2026-11-10).
+    expect(blockedBy("https://bank.test./login", access, [])).toBe("user");
+    expect(blockedBy("https://hr.corp.test./", access, ["corp.test"])).toBe("admin");
   });
 
   it("reports the organization list first", () => {

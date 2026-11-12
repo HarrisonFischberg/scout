@@ -334,7 +334,20 @@ async function addImages(files: File[]): Promise<void> {
   showTray();
 }
 
+/** True from a send's first check until its answer is running: a second tap in between sends nothing (audit 2026-11-10). */
+let sending = false;
+
 async function submit(text: string): Promise<void> {
+  if (sending) return;
+  sending = true;
+  try {
+    await sendQuestion(text);
+  } finally {
+    sending = false;
+  }
+}
+
+async function sendQuestion(text: string): Promise<void> {
   const typed = text.trim();
   const q = questionFor(typed, pending.length);
   // A second tap while the first is still reading the key or asking consent would send the question twice.

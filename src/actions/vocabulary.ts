@@ -5,6 +5,8 @@
 // (src/snapshot/snapshot.ts); coordinates are a fallback, given in screenshot
 // pixels and scaled to the real viewport here on the device.
 
+import { bareHost } from "../permissions/gate";
+
 export const ACTION_TYPES = [
   "click",
   "double_click",
@@ -216,13 +218,6 @@ export function scaleToViewport(
   };
 }
 
-function shortHost(url: string): string | null {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "") || null;
-  } catch {
-    return null;
-  }
-}
 
 const quote = (s: string): string => '“' + s.replace(/\s+/g, " ").trim().slice(0, 60) + '”';
 
@@ -253,6 +248,6 @@ export function describeAction(action: TaskAction, targetName?: string): string 
     case "screenshot":
       return "take a screenshot";
     case "navigate":
-      return "go to " + (shortHost(action.url) ?? action.url.slice(0, 60));
+      return "go to " + (bareHost(action.url) || action.url.slice(0, 60));
   }
 }

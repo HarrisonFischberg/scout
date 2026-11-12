@@ -13,6 +13,7 @@ import { identifyMerchant, type Merchant } from "./merchant";
 import { codesWithContext } from "./store";
 import { brandTokens, hintedPercents } from "./guesses";
 import { BROWSER_MAX_PAGES, BROWSER_TABS, BROWSER_TIME_MS, browserRead, type BrowserPage, type BrowserReason, type BrowserTarget, type PageBrowser } from "./browser-read";
+import { bareHost, siteMatches } from "../permissions/gate";
 
 export const MAX_FOUND = 40;
 /** The web search's model when the panel's is Haiku (owner decision 2026-10-19, "Sonnet for search"). */
@@ -197,14 +198,6 @@ const SHORT_PAGE_CHARS = 1500;
  * the popup adds the sites that refused the reader on this device (`firstHosts`).
  */
 export const READER_BLOCKED_HOSTS = ["coupert.com", "hotdeals.com"];
-const hostOf = (url: string): string => {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
-  } catch {
-    return "";
-  }
-};
-const onHost = (host: string, site: string): boolean => host === site || host.endsWith("." + site);
 const BLOCKED_NOTE = "Do not open pages on these sites with web_fetch (they refuse it); Scout opens them in a browser itself. Still search for them:";
 const REFUSED_RE = /40[13]|429|forbidden|refus|blocked|robots|not[_ ]?accessible|not[_ ]?allowed|denied|disallowed/i;
 export const BROWSER_NOTE_TIME_MS = 60_000;
@@ -710,8 +703,8 @@ export async function suggestCodes(
   // Sites that refuse the reader: with a browser, their pages skip the reader.
   const blockedSites = opts.browser ? [...new Set([...READER_BLOCKED_HOSTS, ...(opts.browser.firstHosts ?? [])].map((h) => h.toLowerCase()))] : [];
   const browserFirst = (url: string): boolean => {
-    const h = hostOf(url);
-    return !!h && blockedSites.some((site) => onHost(h, site));
+    const h = bareHost(url);
+    return !!h && blockedSites.some((site) => siteMatches(h, site));
   };
   const readerListed = listed.filter((u) => !browserFirst(u));
   // Pages the model asked the fetch tool for, loaded or not.

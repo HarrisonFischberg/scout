@@ -4,6 +4,8 @@
 // No favicons are fetched: the chip's icon is a letter drawn locally, so
 // showing a source sends nothing to its site.
 
+import { bareHost } from "../permissions/gate";
+
 export interface Source {
   url: string;
   title?: string;
@@ -13,17 +15,9 @@ export interface Source {
   kind?: "page" | "web";
 }
 
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname.toLowerCase();
-  } catch {
-    return "";
-  }
-}
-
 /** The host without "www.", as shown on the hover card: "www.lepage.ca" -> "lepage.ca". */
 export function displayHost(url: string): string {
-  return hostOf(url).replace(/^www\./, "");
+  return bareHost(url);
 }
 
 /**

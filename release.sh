@@ -19,12 +19,28 @@ done
 need() { for v in "$@"; do [ -n "${!v:-}" ] || { echo "missing env var $v (release/README.md)" >&2; exit 1; }; done; }
 VERSION=$(node -p 'require("./src/manifest.json").version')
 
+# Chrome and Firefox packages are built from the files on disk, and the Firefox
+# source zip from the last commit: a live upload needs the two to be the same,
+# and the tests to pass (audit 2026-11-10).
+SHIPPED="src scripts package.json package-lock.json tsconfig.json README.md"
+web_ready() {
+  # shellcheck disable=SC2086
+  local dirty; dirty=$(git status --porcelain -- $SHIPPED)
+  if [ -n "$dirty" ]; then
+    echo "uncommitted changes in what ships:" >&2; echo "$dirty" >&2
+    if [ "$LIVE" = true ]; then echo "commit them first: the store package must match a commit" >&2; exit 1; fi
+    echo "dry run continues; --live would stop here" >&2
+  fi
+  if [ "$LIVE" = true ]; then npm test; fi
+}
+
 apple() { # $1 = ios or mac
   need ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_PATH
   fastlane "$1" "$LANE" live:"$LIVE"
 }
 
 chrome() {
+  web_ready
   npm run --silent build:chrome
   local zip="dist/scout-chrome-$VERSION.zip"
   if [ "$LIVE" = true ]; then
@@ -39,12 +55,14 @@ chrome() {
 }
 
 firefox() {
+  web_ready
   npm run --silent build:firefox
   npx --yes web-ext@10.8.0 lint --source-dir dist/firefox
   # AMO asks for source because the code is bundled; this zip rebuilds it.
   local src="dist/scout-firefox-$VERSION-source.zip"
   # Only what the build needs (the whole repo is ~165 MB of screenshots and evidence).
-  git archive --format=zip -o "$src" HEAD src scripts package.json package-lock.json tsconfig.json README.md
+  # shellcheck disable=SC2086
+  git archive --format=zip -o "$src" HEAD $SHIPPED
   if [ "$LIVE" = true ]; then
     need AMO_JWT_ISSUER AMO_JWT_SECRET
     # Key and secret go in through web-ext's own env vars, not the command

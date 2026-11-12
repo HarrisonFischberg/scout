@@ -12,8 +12,9 @@ export const CONSENT_KEY = "aiConsent";
  * Bump when what is shared changes materially, so everyone is asked again.
  * 2 (Part 2, 2026-10-16): screenshots, open-tab titles and addresses, and page
  * metadata can now be shared.
+ * 3 (2026-11-10): pictures taken from an Instagram post are shared (audit 2026-11-10).
  */
-export const CONSENT_VERSION = 2;
+export const CONSENT_VERSION = 3;
 
 export interface ConsentRecord {
   at: number;
@@ -182,6 +183,7 @@ export function consentText(p: Provider): ConsentText {
         "Scout mode and Find coupons also send the page's links, buttons, and form fields, with password and card fields hidden. Scout mode sends them again after each step it takes.",
       "Other tabs only when you attach them.",
       "A screenshot of the visible page, only when you allow it for that site. It shows everything on screen, including anything typed into the page.",
+      "On Instagram, when a request uses the page: the post's photos, or a few frames of its video (up to 5 pictures).",
       "Titles and addresses of your open tabs, only if you turn on tab search in Settings.",
       "Your API key, only to sign in to " + name + ". Scout never sends it anywhere else.",
     ],

@@ -12,7 +12,7 @@ async function openPopup(page: Page, os?: string): Promise<void> {
       modelMigration: "haiku-5-5-high",
       history: [{ at: Date.now(), question: "hi", answer: "hello" }],
       // Sharing with the providers already allowed (consent.spec.ts covers asking).
-      aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } },
+      aiConsent: { anthropic: { at: 1, version: 3 }, openai: { at: 1, version: 3 } },
     };
     const keys: Record<string, string> = { anthropic: "sk-test-synthetic" };
     let origins = ["https://shop.test/*", "https://api.anthropic.com/*"];

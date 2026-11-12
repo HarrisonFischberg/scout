@@ -9,7 +9,7 @@ import { withWorker } from "./worker";
 const PAGE = { url: "https://shop.test/a", title: "Test shop", text: "Widget costs $10. Free shipping." };
 const KEY = "sk-ant-test-synthetic-0123456789abcdef";
 const OPENAI_KEY = "sk-test-synthetic-0123456789abcdef";
-const ALLOWED = { at: Date.UTC(2026, 9, 16), version: 2 };
+const ALLOWED = { at: Date.UTC(2026, 9, 16), version: 3 };
 
 function sse(events: Array<Record<string, unknown>>): string {
   return events.map((e) => "event: " + String(e.type) + "\ndata: " + JSON.stringify(e) + "\n\n").join("");
@@ -121,7 +121,7 @@ test("the first request asks first, and nothing reaches Anthropic before Allow",
   await expect(dialog).toBeHidden();
   await expect(page.getByRole("log").getByText("The widget costs $10.")).toBeVisible();
   expect(calls.anthropic).toHaveLength(1);
-  expect(await stored(page)).toMatchObject({ anthropic: { version: 2 } });
+  expect(await stored(page)).toMatchObject({ anthropic: { version: 3 } });
   expect(await stored(page)).not.toHaveProperty("openai");
 
   // Asked once: reopening the popup and asking again sends without a prompt.
@@ -250,7 +250,7 @@ test("consent is per provider: switching to OpenAI asks again before any OpenAI 
   await expect.poll(() => calls.openai.length).toBe(1);
   expect(calls.openai[0]).toContain("api.openai.com/v1/responses");
   expect(calls.anthropic).toHaveLength(n);
-  expect(await stored(page)).toMatchObject({ anthropic: { version: 2 }, openai: { version: 2 } });
+  expect(await stored(page)).toMatchObject({ anthropic: { version: 3 }, openai: { version: 3 } });
 });
 
 test("withdrawing in Settings blocks every request until the user allows again", async ({ page }) => {

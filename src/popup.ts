@@ -10,7 +10,7 @@ import { EXPLAIN_QUESTION, SUMMARIZE_QUESTION, starterLabel, unfence, type PageC
 import { chipSources, renderMarkdown } from "./chat/markdown";
 import { answerText, fillSourceCard, linkHref, savedUrl, siteIcon, siteName, type Source } from "./chat/sources";
 import { ConversationStore, type StoredMessage } from "./chat/store";
-import { MAX_EXTRA_TABS, type TabInfo } from "./chat/tabs";
+import type { TabInfo } from "./chat/tabs";
 import { formatMoney } from "./coupons/money";
 import { originLabel } from "./coupons/candidates";
 import { couponStatusText, duration } from "./coupons/finder";
@@ -20,11 +20,10 @@ import { createKeychain, nativeSend, type Provider } from "./keychain";
 import { BridgeError, envelope, newRequestId, request, type Envelope } from "./bridge/messages";
 import { connectPanelPort, type PanelPort } from "./bridge/port";
 import type { ReadStatus, SharedTab } from "./context/gather";
-import { dropMention, mentionAt, sharedLabel, suggestTabs, toolLabel } from "./panel/attach";
-import { IMAGES_NEED_KEY, MAX_IMAGES, describeImages, historyText, imageFiles, messageThumbs, prepareImage, questionFor, renderTray, type PastedImage } from "./chat/images";
+import { toolLabel } from "./panel/attach";
+import { IMAGES_NEED_KEY, describeImages, historyText, messageThumbs, questionFor, type PastedImage } from "./chat/images";
 import { cutAt, nextShown } from "./panel/typing";
-import { hostOf, loadPageAccess, normalizeSite, parsePolicy, savePageAccess, screenshotDecision, withoutAlwaysAllow, type PageAccess } from "./permissions/gate";
-import { KIND_LABEL, type SensitiveKind } from "./safety/classifier";
+import { hostOf, loadPageAccess, screenshotDecision } from "./permissions/gate";
 import type { TaskView } from "./server/task-host";
 import { DEV_MOCK_KEY, DEV_MOCK_URL, mockServerUrl } from "./server/dev";
 import { fromWire } from "./server/protocol";
@@ -33,7 +32,7 @@ import { ALL_SITES, PAGE_BUTTON_KEY, pageButtonOffered, parsePageButton, platfor
 import { DraftSaver, loadDraft, saveDraft } from "./panel/draft";
 import { conversationForTab, parsePrivateConvs, PRIVATE_CONVS_KEY, reopenConversation, startNewConversation, tabKey } from "./panel/state";
 import { summarizeChats, whenText } from "./chat/list";
-import { Consent, consentText, ensureConsent, gatedFetch } from "./settings/consent";
+import { Consent, ensureConsent, gatedFetch } from "./settings/consent";
 import { createProvider, textOf, type ChatMessage, type Effort, type ProviderClient, type Usage } from "./providers";
 import { checkKey, looksLikeKey } from "./providers/keytest";
 import { isKeyProblem } from "./providers/errors";
@@ -43,8 +42,11 @@ import { readsInstagramPost } from "./context/instagram";
 import { seekVideo, youtubeVideoId } from "./context/youtube";
 import { readingStep, stepText, waitingStep } from "./chat/steps";
 import { createStepLine, type StepLine } from "./panel/step-line";
-import { joinDictation, Listener, micBlocked, micBlockedHere, micErrorText, recognitionCtor, rememberMic } from "./panel/voice";
-import { PageListener } from "./panel/page-listen";
+import { accessView } from "./panel/access-view";
+import { wireMic } from "./panel/mic";
+import { imageTray } from "./panel/image-tray";
+import { tabPicker } from "./panel/tab-picker";
+import { consentDialog } from "./panel/consent-dialog";
 import { editableFocused, fitAboveKeyboard } from "./panel/keyboard";
 import { probeDrag } from "./panel/drag-probe";
 import { COUPON_QUESTION } from "./server/coupon-host";
@@ -58,7 +60,6 @@ import { EFFORT_LABEL, effortForId, loadModelList, withModel, type ModelInfo } f
 import {
   appendHistory,
   clearHistory,
-  clearShared,
   DEFAULT_EFFORT,
   DEFAULT_MODEL,
   deleteAllData,
@@ -76,7 +77,6 @@ import {
   saveRating,
   saveSettings,
   siteOf,
-  summarizeShared,
   type EffortSetting,
   type HistoryEntry,
   type Rating,
@@ -189,7 +189,7 @@ async function activeTab(): Promise<ActiveTab> {
 }
 
 
-// Debug builds only: local run recorder (src/diagnostics.ts). `current` is the
+// Every build: local run recorder (src/diagnostics.ts). `current` is the
 // run in progress; every stage also goes to the native log. Stage names only,
 // never content.
 let diag: Diagnostics | null = null;
@@ -208,7 +208,7 @@ const setupOrEmpty = (): string[] => {
   }
 };
 
-function startRun(kind: RunKind, meta: { provider?: string; model?: string; question?: string; mock?: boolean } = {}): RunHandle {
+function startRun(kind: RunKind, meta: { provider?: string; model?: string; mock?: boolean } = {}): RunHandle {
   current = diag ? diag.start(kind, meta) : disabledRun;
   return current;
 }
@@ -542,7 +542,6 @@ async function main(): Promise<void> {
   let lastScope: QuestionScope | undefined;
   /** The answer streaming now (Part 2), if any. */
   let activeChat: string | null = null;
-  let others: TabInfo[] = [];
   /** Tabs the user attached. They go with every question until removed. */
   const attached = new Map<number, TabInfo>();
   const toWorker = (m: unknown): Promise<unknown> => browser.runtime.sendMessage(m);
@@ -551,8 +550,6 @@ async function main(): Promise<void> {
   {
     const diagBox = el("diag");
     const diagStatus = el("diag-status");
-    // The "record the question" opt-in left Settings with the note field; stop and forget for anyone who had it on.
-    if (diag?.includeQuestion) void diag.setIncludeQuestion(false);
     // Send Debug Logs: a draft to support in the user's email app; Scout sends nothing itself.
     const problem = el<HTMLTextAreaElement>("diag-problem");
     const send = el<HTMLButtonElement>("diag-send");
@@ -1217,77 +1214,15 @@ async function main(): Promise<void> {
   });
 
   // ---------- Mic (owner, 2026-10-17; src/panel/voice.ts) ----------
-  // Speech to text into the box, nothing more: the user sends it with Send.
-  const phone = matchMedia("(pointer: coarse)").matches;
-  const speechLang = navigator.language || "en-US";
-  const panelVoice = new Listener(recognitionCtor(window), speechLang);
-  // Safari on iPhone won't let the panel itself hear anything, so Scout falls
-  // back to listening from the web page (src/panel/page-listen.ts). Once the
-  // panel has refused, later taps go straight to the page (owner, 2026-10-20).
-  const pageTabId = !STANDALONE && tab.id !== undefined && /^https?:/.test(tab.url ?? "") ? tab.id : undefined;
-  const pageVoice =
-    pageTabId !== undefined
-      ? new PageListener(async (func, args) => {
-          const [res] = await browser.scripting.executeScript({ target: { tabId: pageTabId }, func: func as unknown as (...a: never[]) => unknown, args });
-          return res?.result as Awaited<ReturnType<typeof func>> | undefined;
-        }, speechLang)
-      : null;
-  let dictation: Listener | PageListener = panelVoice;
-  let dictating = false;
-  const micMemory = lookCache;
-  function setDictating(on: boolean): void {
-    dictating = on;
-    mic.setAttribute("aria-pressed", String(on));
-    mic.setAttribute("aria-label", on ? "Stop dictating" : "Dictate");
-    mic.title = on ? "Stop dictating" : "Dictate";
-  }
-  function stopDictation(): void {
-    if (dictating) dictation.stop();
-  }
-  function listen(via: Listener | PageListener, typed: string): void {
-    dictation = via;
-    trace(via === pageVoice ? "voice:page" : "voice:dictate");
-    const handlers = {
-      onText: (heard: string) => {
-        question.value = joinDictation(typed, heard);
-        autosize();
-      },
-      onEnd: (error?: string) => {
-        if (via === panelVoice) {
-          if (micBlocked(error)) rememberMic(micMemory, navigator.userAgent, true);
-          else if (question.value !== typed) rememberMic(micMemory, navigator.userAgent, false);
-          // The panel was refused before anything was heard: try the page, mic still on.
-          if (micBlocked(error) && pageVoice && question.value === typed) {
-            trace("voice:panel-refused " + error);
-            listen(pageVoice, typed);
-            return;
-          }
-        }
-        setDictating(false);
-        if (error && !(error === "no-speech" && question.value !== typed)) {
-          status.textContent = micErrorText(error, phone);
-          trace("voice:error " + error);
-        } else if (status.textContent === "Listening…") status.textContent = "";
-        question.focus();
-      },
-    };
-    if (via instanceof Listener) via.start(handlers, { continuous: true });
-    else via.start(handlers);
-  }
-  // iPhone and iPad (owner choice 2026-10-20): Safari gives extensions no
-  // microphone there and nothing can switch the keyboard's mic on, so Scout's
-  // mic is hidden; the keyboard's own mic works in the box.
-  mic.hidden = phone;
-  mic.addEventListener("click", () => {
-    if (dictating) {
-      dictation.stop();
-      return;
-    }
-    setDictating(true);
-    status.textContent = "Listening…";
-    listen(pageVoice && micBlockedHere(micMemory, navigator.userAgent) ? pageVoice : panelVoice, question.value);
+  const { stop: stopDictation } = wireMic({
+    mic,
+    question,
+    status,
+    pageTabId: !STANDALONE && tab.id !== undefined && /^https?:/.test(tab.url ?? "") ? tab.id : undefined,
+    memory: lookCache,
+    autosize,
+    trace,
   });
-
 
   function closePlus(focusButton = false): void {
     plusMenu.hidden = true;
@@ -1523,255 +1458,30 @@ async function main(): Promise<void> {
     else if (!matchMedia("(pointer: coarse)").matches) question.focus();
   }
 
+  // ---------- Pasted images (src/panel/image-tray.ts) ----------
+  const { pending, show: showTray } = imageTray({ question, composer, status, closePlus, trace });
+
   // ---------- Attached tabs (Part 2, spec 6): only tabs the user picks ----------
   // Picked by typing @, shown as chips above the field,
   // and sent with every question until removed. Nothing else is read.
-  // ---------- Pasted images (owner request 2026-11-02) ----------
-  // Paste into the ask box, drop onto it, or "Add image" in the + menu. Each
-  // is scaled and re-encoded first (src/chat/images.ts); thumbnails sit above
-  // the ask box until sent or removed. The debug log gets counts and sizes only.
-  const pending: PastedImage[] = [];
-  const imgTray = el("img-tray");
-  const imgPick = el<HTMLInputElement>("img-pick");
-  function showTray(): void {
-    renderTray(imgTray, pending, (i) => {
-      pending.splice(i, 1);
-      trace("images:removed");
-      showTray();
-      question.focus();
-    });
-  }
-  async function addImages(files: File[]): Promise<void> {
-    if (!files.length) return;
-    const room = MAX_IMAGES - pending.length;
-    if (room <= 0) {
-      status.textContent = "You can add up to " + MAX_IMAGES + " images. Remove one first.";
-      return;
-    }
-    if (files.length > room) status.textContent = "Only " + MAX_IMAGES + " images fit in one message.";
-    for (const f of files.slice(0, room)) {
-      try {
-        const img = await prepareImage(f);
-        if (pending.length >= MAX_IMAGES) break;
-        pending.push(img);
-        trace("images:added " + describeImages([img]));
-      } catch (err) {
-        status.textContent = err instanceof Error ? err.message : "Scout couldn't open that image.";
-        trace("images:failed");
-      }
-    }
-    showTray();
-  }
-  question.addEventListener("paste", (e) => {
-    const files = imageFiles(e.clipboardData?.items);
-    if (!files.length) return;
-    // An image copied from a web page also carries its address as text; keep the box clean.
-    e.preventDefault();
-    void addImages(files);
+  const { loadTabs, closeMentions, mentionKey } = tabPicker({
+    question,
+    status,
+    attached,
+    listTabs,
+    enabled: () => mode() === "chat" && !STANDALONE,
+    autosize,
+    trace,
   });
-  composer.addEventListener("dragover", (e) => {
-    if ([...(e.dataTransfer?.types ?? [])].includes("Files")) e.preventDefault();
-  });
-  composer.addEventListener("drop", (e) => {
-    const files = imageFiles(e.dataTransfer?.files);
-    if (!files.length) return;
-    e.preventDefault();
-    void addImages(files);
-  });
-  imgPick.addEventListener("change", () => {
-    const files = imageFiles(imgPick.files);
-    imgPick.value = "";
-    void addImages(files);
-  });
-  el("img-add").addEventListener("click", () => {
-    closePlus();
-    imgPick.click();
-  });
-
-  const attachedBox = el("attached");
-  const mentionList = el<HTMLUListElement>("mention-list");
-
-  function renderAttached(): void {
-    attachedBox.replaceChildren(
-      ...[...attached.values()].map((t) => {
-        const chip = document.createElement("span");
-        chip.className = "chip";
-        const name = document.createElement("span");
-        name.textContent = t.title;
-        const remove = document.createElement("button");
-        remove.type = "button";
-        remove.setAttribute("aria-label", "Remove " + t.title);
-        remove.insertAdjacentHTML("beforeend", '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>');
-        remove.addEventListener("click", () => {
-          detachTab(t.id);
-          question.focus();
-        });
-        chip.append(name, remove);
-        return chip;
-      }),
-    );
-    attachedBox.hidden = attached.size === 0;
-  }
-  function attachTab(t: TabInfo): void {
-    if (!attached.has(t.id) && attached.size >= MAX_EXTRA_TABS) {
-      status.textContent = "You can attach up to " + MAX_EXTRA_TABS + " tabs. Remove one first.";
-    } else {
-      attached.set(t.id, t);
-      trace("tabs:attached");
-    }
-    renderAttached();
-  }
-  function detachTab(id: number): void {
-    attached.delete(id);
-    renderAttached();
-  }
-
-  async function loadTabs(): Promise<void> {
-    others = (await listTabs()).filter((t) => !t.active);
-    for (const id of [...attached.keys()]) if (!others.some((t) => t.id === id)) attached.delete(id);
-    renderAttached();
-  }
-
-  // Typing @ suggests tabs; choosing one attaches it and removes the @word.
-  let mention: { start: number; items: TabInfo[]; index: number } | null = null;
-  function closeMentions(): void {
-    mention = null;
-    mentionList.hidden = true;
-    mentionList.replaceChildren();
-    question.removeAttribute("aria-activedescendant");
-  }
-  function markMention(): void {
-    if (!mention) return;
-    mentionList.querySelectorAll("li").forEach((li, i) => li.setAttribute("aria-selected", String(i === mention!.index)));
-    question.setAttribute("aria-activedescendant", "mention-" + mention.index);
-  }
-  function updateMentions(): void {
-    const at = mode() === "chat" && !STANDALONE ? mentionAt(question.value, question.selectionStart ?? question.value.length) : null;
-    const items = at ? suggestTabs(at.query, others, new Set(attached.keys())) : [];
-    if (!at || !items.length) return closeMentions();
-    mention = { start: at.start, items, index: 0 };
-    mentionList.replaceChildren(
-      ...items.map((t, i) => {
-        const li = document.createElement("li");
-        li.id = "mention-" + i;
-        li.setAttribute("role", "option");
-        li.append(t.title);
-        const h = hostOf(t.url);
-        if (h) {
-          const span = document.createElement("span");
-          span.className = "host";
-          span.textContent = h;
-          li.appendChild(span);
-        }
-        // mousedown, so the field keeps focus.
-        li.addEventListener("mousedown", (e) => {
-          e.preventDefault();
-          pickMention(i);
-        });
-        return li;
-      }),
-    );
-    mentionList.hidden = false;
-    markMention();
-  }
-  function pickMention(i: number): void {
-    const t = mention?.items[i];
-    if (!mention || !t) return;
-    attachTab(t);
-    const next = dropMention(question.value, mention.start, question.selectionStart ?? question.value.length);
-    question.value = next.text;
-    question.setSelectionRange(next.caret, next.caret);
-    closeMentions();
-    autosize();
-    question.focus();
-  }
-  /** Arrow keys, Enter, Tab and Escape while suggestions show. True when handled. */
-  function mentionKey(e: KeyboardEvent): boolean {
-    if (!mention) return false;
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      const n = mention.items.length;
-      mention.index = (mention.index + (e.key === "ArrowDown" ? 1 : n - 1)) % n;
-      markMention();
-      return true;
-    }
-    if ((e.key === "Enter" && !e.shiftKey) || e.key === "Tab") {
-      e.preventDefault();
-      pickMention(mention.index);
-      return true;
-    }
-    if (e.key === "Escape") {
-      e.preventDefault();
-      closeMentions();
-      return true;
-    }
-    return false;
-  }
-  question.addEventListener("input", updateMentions);
-  question.addEventListener("blur", () => setTimeout(closeMentions, 0));
 
   // ---------- Consent: asked once per provider before anything is sent ----------
   // App Store Review Guideline 5.1.2(i). A modal dialog: focus starts on its
   // heading so neither button is preselected; Escape is Not now; focus returns
   // to the control that opened it.
-  const consentDialog = el<HTMLDialogElement>("consent");
-  const consentTitle = el("consent-title");
-  const consentAllow = el<HTMLButtonElement>("consent-allow");
-  const consentDeny = el<HTMLButtonElement>("consent-deny");
-  let consentPending: Promise<boolean> | null = null;
-
-  function askConsent(p: Provider): Promise<boolean> {
-    if (consentPending) return consentPending;
-    const returnTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const t = consentText(p);
-    consentTitle.textContent = t.title;
-    el("consent-intro").textContent = t.intro;
-    el("consent-items").replaceChildren(
-      ...t.items.map((item) => {
-        const li = document.createElement("li");
-        li.textContent = item;
-        return li;
-      }),
-    );
-    const policy = el<HTMLAnchorElement>("consent-policy");
-    policy.href = t.policyUrl;
-    policy.textContent = t.policyLabel;
-    const terms = el<HTMLAnchorElement>("consent-terms");
-    terms.href = t.termsUrl;
-    terms.textContent = t.termsLabel;
-    el("consent-after").textContent = t.after;
-    consentDialog.showModal();
-    consentTitle.focus();
-    trace("consent:asked " + p);
-    consentPending = new Promise((resolve) => {
-      const done = (ok: boolean): void => {
-        if (!consentPending) return;
-        consentPending = null;
-        consentAllow.removeEventListener("click", onAllow);
-        consentDeny.removeEventListener("click", onDeny);
-        consentDialog.removeEventListener("cancel", onCancel);
-        consentDialog.removeEventListener("close", onClose);
-        if (consentDialog.open) consentDialog.close();
-        trace("consent:" + (ok ? "allowed " : "declined ") + p);
-        // The opener, unless it was hidden meanwhile (the + menu closes first).
-        const back = returnTo && returnTo.isConnected && returnTo.offsetParent !== null ? returnTo : null;
-        (back ?? (chatView.hidden ? keySave : matchMedia("(pointer: coarse)").matches ? send : question)).focus();
-        resolve(ok);
-      };
-      const onAllow = (): void => done(true);
-      const onDeny = (): void => done(false);
-      const onCancel = (e: Event): void => {
-        e.preventDefault();
-        done(false);
-      };
-      const onClose = (): void => done(false);
-      consentAllow.addEventListener("click", onAllow);
-      consentDeny.addEventListener("click", onDeny);
-      consentDialog.addEventListener("cancel", onCancel);
-      consentDialog.addEventListener("close", onClose);
-    });
-    return consentPending;
-  }
+  const askConsent = consentDialog({
+    trace,
+    fallbackFocus: () => (chatView.hidden ? keySave : matchMedia("(pointer: coarse)").matches ? send : question),
+  });
 
   /**
    * Asks for `p` and returns whether it may receive data. Callers check
@@ -2262,7 +1972,7 @@ async function main(): Promise<void> {
             : classifyQuestion({ question: trimmed, pageTitle: pageWords(tab.title, tab.url), attachedTabs: extra.length, ...(lastScope ? { previous: lastScope } : {}) });
     lastScope = scope;
     trace("scope:" + scope);
-    startRun(isSummary ? "summarize" : "ask", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model, question: cont ? cont.question : trimmed });
+    startRun(isSummary ? "summarize" : "ask", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model });
     if (!port) {
       addMessage("error", "Scout's background worker is not running. Close Scout and open it again.");
       current.finish("error", "No worker port.");
@@ -2721,7 +2431,7 @@ async function main(): Promise<void> {
     if (s.apple) return needsKey("Scout mode");
     if (!consent.has(s.settings.provider) && !(await allowSharing(s.settings.provider))) return;
     // No per-task question (owner decision 2026-10-17): sending the task starts it.
-    startRun("agent", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model, question: trimmed });
+    startRun("agent", { mock: s.mock === true, provider: s.settings.provider, model: s.settings.model });
     addMessage("user", trimmed, { mode: "Scout mode" });
     question.value = "";
     autosize();
@@ -3742,173 +3452,13 @@ async function main(): Promise<void> {
     await renderShared();
   }
 
-  // ---------- Page access (Part 2, spec 10a) ----------
-  const accessRead = el<HTMLInputElement>("access-read");
-  const accessSearch = el<HTMLInputElement>("access-search");
-  const accessScout = el<HTMLSelectElement>("access-scout");
-  const allowList = el("allow-list");
-  const sharedList = el("shared-list");
-  const sharedStatus = el("shared-status");
-  const shotList = el("shot-list");
-  const blockForm = el<HTMLFormElement>("block-form");
-  const blockInput = el<HTMLInputElement>("block-input");
-  const blockCurrent = el<HTMLButtonElement>("block-current");
-  const blockList = el("block-list");
-  const blockStatus = el("block-status");
-  const currentHost = hostOf(tab.url ?? "");
-
-  function listRow(text: string, button?: { label: string; aria: string; onClick: () => void }): HTMLLIElement {
-    const li = document.createElement("li");
-    li.append(text + (button ? " " : ""));
-    if (button) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "btn";
-      b.textContent = button.label;
-      b.setAttribute("aria-label", button.aria);
-      b.addEventListener("click", button.onClick);
-      li.appendChild(b);
-    }
-    return li;
-  }
-
-  async function updateAccess(change: (a: PageAccess) => PageAccess, message: string): Promise<void> {
-    try {
-      if (!storage) throw new Error("no storage");
-      await savePageAccess(storage, change(await loadPageAccess(storage)));
-      blockStatus.textContent = message;
-    } catch {
-      blockStatus.textContent = "Could not save the change. Try again.";
-    }
-    await renderAccess();
-  }
-
-  async function renderAccess(): Promise<void> {
-    const a = await loadPageAccess(storage);
-    accessRead.checked = a.readCurrent;
-    accessSearch.checked = a.searchTabs;
-    el("access-search-help").textContent =
-      "Off until you turn it on. On: when a question needs it, Scout can list the titles and addresses of your open tabs" +
-      (browser.history
-        ? " and search your history."
-        : TARGET === "safari"
-          ? ". Safari does not let extensions search history or recently closed tabs, so only open tabs are searched."
-          : ". Only open tabs are searched, not history or recently closed tabs.");
-    accessScout.value = a.scoutMode;
-    const allows = Object.entries(a.alwaysAllow);
-    allowList.replaceChildren(
-      ...(allows.length
-        ? allows.map(([host, kinds]) =>
-            listRow(host + ": " + kinds.map((k) => KIND_LABEL[k as SensitiveKind] ?? k).join(", "), {
-              label: "Revoke",
-              aria: "Ask again before sensitive actions on " + host,
-              onClick: () => void updateAccess((x) => withoutAlwaysAllow(x, host), "Scout will ask again on " + host + "."),
-            }),
-          )
-        : [listRow("No sites always allowed.")]),
-    );
-    const shots = Object.entries(a.screenshots);
-    shotList.replaceChildren(
-      ...(shots.length
-        ? shots.map(([host, choice]) =>
-            listRow(host + ": " + (choice === "always" ? "always allowed" : "never"), {
-              label: "Ask again",
-              aria: "Ask again before screenshots of " + host,
-              onClick: () => {
-                const next = { ...a.screenshots };
-                delete next[host];
-                void updateAccess((x) => ({ ...x, screenshots: next }), "Scout will ask before screenshots of " + host + ".");
-              },
-            }),
-          )
-        : [listRow("No sites chosen yet.")]),
-    );
-    blockList.replaceChildren(
-      ...(a.blocked.length
-        ? a.blocked.map((host) =>
-            listRow(host, {
-              label: "Unblock",
-              aria: "Unblock " + host,
-              onClick: () => void updateAccess((x) => ({ ...x, blocked: x.blocked.filter((b) => b !== host) }), "Unblocked " + host + "."),
-            }),
-          )
-        : [listRow("No sites blocked.")]),
-    );
-    blockCurrent.hidden = !currentHost || a.blocked.includes(currentHost);
-    if (currentHost) blockCurrent.textContent = "Block " + currentHost;
-    const org = parsePolicy(await nativeSend({ type: "policy.get" }).catch(() => null));
-    el("admin-box").hidden = org.length === 0;
-    el("admin-list").replaceChildren(...org.map((h) => listRow(h)));
-  }
-
-  function blockSite(raw: string): void {
-    const host = normalizeSite(raw);
-    if (!host) {
-      blockInput.setAttribute("aria-invalid", "true");
-      blockStatus.textContent = "Enter a site like example.com.";
-      blockInput.focus();
-      return;
-    }
-    blockInput.removeAttribute("aria-invalid");
-    blockInput.value = "";
-    void updateAccess(
-      (a) => ({ ...a, blocked: [...new Set([...a.blocked, host])] }),
-      "Blocked " + host + ". Scout will not read or screenshot it.",
-    );
-    trace("access:blocked");
-  }
-
-  accessRead.addEventListener("change", () => {
-    const on = accessRead.checked;
-    void updateAccess((a) => ({ ...a, readCurrent: on }), on ? "The current page is shared with each question." : "Only tabs you attach are shared.");
-  });
-  accessSearch.addEventListener("change", () => {
-    const on = accessSearch.checked;
-    void updateAccess((a) => ({ ...a, searchTabs: on }), on ? "Scout may search your open tabs." : "Tab and history search is off.");
-  });
-  accessScout.addEventListener("change", () => {
-    const choice = accessScout.value === "off" ? "off" : "on";
-    void updateAccess((a) => ({ ...a, scoutMode: choice }), choice === "off" ? "Scout mode is off." : "Scout mode starts as soon as you send a task.");
-    trace("access:scout " + choice);
-  });
-
-  // Spec 10: what each conversation shared, and clearing it.
-  async function renderShared(): Promise<void> {
-    const entries = storage ? await loadHistory(storage, settings.retention, Date.now()).catch(() => []) : [];
-    const groups = summarizeShared(entries);
-    sharedList.replaceChildren(
-      ...(groups.length
-        ? groups.map((g) => {
-            const when = new Date(g.at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-            const label = (g.conv === conv ? "This conversation" : "Conversation of " + when) + ": " + g.items.map(sharedLabel).join(" · ");
-            return listRow(label, {
-              label: "Clear",
-              aria: "Clear what the conversation of " + when + " shared",
-              onClick: () => {
-                if (!storage) return;
-                void clearShared(storage, g.conv).then(async () => {
-                  sharedStatus.textContent = "Cleared.";
-                  await renderShared();
-                });
-              },
-            });
-          })
-        : [listRow("Nothing shared in saved conversations.")]),
-    );
-  }
-  el("shared-clear-all").addEventListener("click", () => {
-    if (!storage) return;
-    void clearShared(storage).then(async () => {
-      sharedStatus.textContent = "Cleared every shared record.";
-      await renderShared();
-    });
-  });
-  blockForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    blockSite(blockInput.value);
-  });
-  blockCurrent.addEventListener("click", () => {
-    if (currentHost) blockSite(currentHost);
+  // ---------- Page access (Part 2, spec 10a; src/panel/access-view.ts) ----------
+  const { renderAccess, renderShared } = accessView({
+    storage,
+    currentHost: hostOf(tab.url ?? ""),
+    retention: () => settings.retention,
+    conv: () => conv,
+    trace,
   });
 
   // ---------- Button on webpages (src/edge.ts) ----------

@@ -222,9 +222,9 @@ export function buildMessages(
 ): ChatMessage[] {
   const pages = page ? [page, ...extraPages] : extraPages;
   // A YouTube video's transcript has its own room, about 2 to 3 hours of speech (src/context/youtube.ts); other pages share the usual budget.
-  const plain = shareBudget(pages.filter((p) => !isVideoText(p.text)).length, PAGE_CHAR_BUDGET);
+  const plain = shareBudget(pages.filter((p) => !isVideoText(p.text, p.url)).length, PAGE_CHAR_BUDGET);
   let next = 0;
-  const shares = pages.map((p) => (isVideoText(p.text) ? VIDEO_PAGE_CHARS : plain[next++]!));
+  const shares = pages.map((p) => (isVideoText(p.text, p.url) ? VIDEO_PAGE_CHARS : plain[next++]!));
   const fences = pages.map((p, i) => (pages.length > 1 ? "Source [" + (i + 1) + "]\n" : "") + fencePage(p, shares[i]));
   // Labelled "message", not "question about the page", so an off-topic
   // message is not read as a question about the page.

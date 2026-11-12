@@ -87,8 +87,9 @@ function brandFromTitle(title: string | undefined, label: string): string {
 const token = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 // Domain labels often wrap the brand: drinkolipop -> olipop, getkion -> kion, usehuron -> huron.
-const LABEL_PREFIXES = ["get", "shop", "try", "the", "my", "use", "buy", "go", "join", "drink", "eat", "wear", "hello", "meet", "its", "we", "live", "love"];
-const LABEL_SUFFIXES = ["shop", "store", "hq", "co", "official", "online", "usa", "us", "brand", "inc", "app"];
+// One list for the merchant finder and the code guesser (src/coupons/guesses.ts); two that disagreed before (audit 2026-11-10).
+export const LABEL_PREFIXES = ["get", "shop", "try", "the", "my", "use", "buy", "go", "join", "drink", "eat", "wear", "hello", "hey", "meet", "its", "we", "live", "love"];
+export const LABEL_SUFFIXES = ["shop", "store", "hq", "co", "official", "online", "usa", "us", "brands", "brand", "inc", "app"];
 
 /** The brand inside a domain label, when a known prefix or suffix wraps it ("drinkolipop" -> "olipop"). */
 export function coreLabel(label: string): string {

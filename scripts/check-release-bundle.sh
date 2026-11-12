@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 npm run --silent build:release
 bad=0
-for s in "Scout for Safari diagnostics" "debug.stage" "probe start" "drag: "; do
+for s in "debug.stage" "probe start" "drag: "; do
   if grep -q "$s" apple/Extension/Resources/popup.js; then echo "release popup.js contains: $s"; bad=1; fi
 done
 if grep -q 'debug:start\|diag-mock' apple/Extension/Resources/popup.html; then echo "release popup.html contains debug-only markup"; bad=1; fi

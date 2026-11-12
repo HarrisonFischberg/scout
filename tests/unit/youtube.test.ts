@@ -240,8 +240,11 @@ describe("transcript text for the model", () => {
     expect(text).toContain("Chapters:\n[0:00] Intro");
     expect(text).toContain("Transcript (YouTube's automatic captions, English; each line starts with its time in the video):\n[0:00] hi\n[0:40] more");
     expect(text).toContain("Description:\nAbout this.");
-    expect(isVideoText(text)).toBe(true);
-    expect(isVideoText("Some article\n\nYouTube video is great")).toBe(false);
+    const watch = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+    expect(isVideoText(text, watch)).toBe(true);
+    expect(isVideoText("Some article\n\nYouTube video is great", watch)).toBe(false);
+    // Another site's page that carries the header line is an ordinary page (audit 2026-11-10).
+    expect(isVideoText(text, "https://blog.test/post")).toBe(false);
   });
 
   it("says so when a video has no transcript", () => {

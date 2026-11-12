@@ -21,11 +21,12 @@ import type { Action, ActionResult } from "../actions/executor";
 import type { AgentControl } from "../agent/control";
 import { detectCaptcha } from "../safety/classifier";
 import type { SnapElement, Snapshot } from "../snapshot/snapshot";
-import { CODE_RE, safeHost, type CandidateOrigin, type CouponCandidate } from "./candidates";
+import { CODE_RE, type CandidateOrigin, type CouponCandidate } from "./candidates";
 import { findForm, isRejectLine, newLines, removeTarget, revealTargets, showsCode, storeReply, type FormHints, type StoreReply } from "./form";
 import { groupByKind, KIND_LABEL, rejectKind, storeMessage, type RejectKind } from "./reasons";
 import { formatMoney, readTotal } from "./money";
 import { browserName } from "../platform";
+import { bareHost } from "../permissions/gate";
 
 export type { CouponCandidate } from "./candidates";
 
@@ -974,7 +975,7 @@ export function whereFrom(attempts: CouponAttempt[]): string {
   const counts = new Map<string, number>();
   for (const a of attempts) {
     if (a.combo || a.origin === "guess" || a.origin === "remembered") continue;
-    const host = a.sourceUrl ? safeHost(a.sourceUrl) : "";
+    const host = a.sourceUrl ? bareHost(a.sourceUrl) : "";
     if (host) counts.set(host, (counts.get(host) ?? 0) + 1);
   }
   const sites = [...counts].sort((x, y) => y[1] - x[1]);

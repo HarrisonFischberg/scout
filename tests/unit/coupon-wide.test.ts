@@ -51,6 +51,8 @@ describe("guessed codes", () => {
 
   it("builds store-name codes, shaped first by the percentage coupon sites hint at (BEEFY15, GETBEEFY)", () => {
     expect(brandTokens(beefy)).toEqual(["BEEFY", "GETBEEFY"]);
+    // The guesser strips the same words as the merchant finder (audit 2026-11-10).
+    expect(brandTokens({ domain: "hellobello.com", brand: "" })).toEqual(["BELLO", "HELLOBELLO"]);
     const pct = hintedPercents(["Beefy Promo Codes - 15% Off (7 Verified) Oct 2026", "MASKED | https://x.test | 15% off sitewide, code hidden"]);
     expect(pct[0]).toBe(15);
     const codes = guessCodes({ merchant: beefy, percents: pct, now: new Date(2026, 9, 19) }).map((c) => c.code);
@@ -197,6 +199,7 @@ describe("a whole run on a store whose best codes are guesses (getbeefy.co, from
       yield { type: "text", delta: "MASKED | https://simplycodes.test/store/getbeefy.co | 15% off sitewide\nKETOSYNTH | https://linktr.test/ketosynth\n" };
     },
   };
+  let pendingSaves = 0;
   const run = async (stored: Record<string, unknown>) => {
     const events: CouponEvent[] = [];
     const done = await runCouponJob({
@@ -206,7 +209,16 @@ describe("a whole run on a store whose best codes are guesses (getbeefy.co, from
       control: new AgentControl(),
       tabs: { open: async () => null, read: async () => null, click: async () => false, close: async () => undefined, wait: async () => undefined },
       allowBrowser: async () => false,
-      storage: { get: async (k) => (k in stored ? { [k]: stored[k] } : {}), set: async (items) => void Object.assign(stored, items) },
+      storage: {
+        get: async (k) => (k in stored ? { [k]: stored[k] } : {}),
+        set: async (items) => {
+          // Slow storage: a save still in flight when the run returns would show here.
+          pendingSaves++;
+          await new Promise((r) => setTimeout(r, 5));
+          Object.assign(stored, items);
+          pendingSaves--;
+        },
+      },
       askMore: async () => false,
       emit: (e) => void events.push(e),
     });
@@ -217,6 +229,8 @@ describe("a whole run on a store whose best codes are guesses (getbeefy.co, from
   it("tests the code found online first, then guesses, applies BEEFY15, and tries it first next time", async () => {
     const stored: Record<string, unknown> = {};
     const first = await run(stored);
+    // Delete all data waits for the run, so the run must wait for its saves (audit 2026-11-10).
+    expect(pendingSaves).toBe(0);
     expect(first.tried[0]).toMatchObject({ code: "KETOSYNTH", origin: "verified" });
     expect(first.tried.slice(1).every((a) => a.origin === "guess")).toBe(true);
     expect(first.tried[1]?.code).toBe("BEEFY15");

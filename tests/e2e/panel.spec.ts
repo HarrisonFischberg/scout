@@ -27,7 +27,7 @@ async function openPanel(page: Page, tab: { id: number; incognito?: boolean }): 
     ({ key, pageData, firstTab }) => {
       const g = globalThis as unknown as Record<string, unknown>;
       const ss = g.sessionStorage as Storage;
-      const fake = JSON.parse(ss.getItem("__fake") ?? JSON.stringify({ data: { aiConsent: { anthropic: { at: 1, version: 2 }, openai: { at: 1, version: 2 } } } }));
+      const fake = JSON.parse(ss.getItem("__fake") ?? JSON.stringify({ data: { aiConsent: { anthropic: { at: 1, version: 3 }, openai: { at: 1, version: 3 } } } }));
       const save = () => ss.setItem("__fake", JSON.stringify(fake));
       const tab = JSON.parse(ss.getItem("__tab") ?? JSON.stringify(firstTab));
       g.__fake = fake;

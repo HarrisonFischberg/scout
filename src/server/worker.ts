@@ -11,7 +11,7 @@ import { callInjected } from "../content-call";
 import { extractPage, type RawPage } from "../context/extract";
 import { loadVideo, pageFetch, videoPageText, youtubeVideoId, type FetchInit, type FetchResult } from "../context/youtube";
 import { cleanInstagramRead, instagramKind, instagramPageText, MAX_PAGE_IMAGES, PAGE_IMAGE_EDGE, readInstagram, readsInstagramPost } from "../context/instagram";
-import { readTabs, readTab, type GatherDeps, type TabRef } from "../context/gather";
+import { PAGE_TIMEOUT_MS, readTabs, readTab, type GatherDeps, type TabRef } from "../context/gather";
 import { createKeychain, nativeSend, type Provider } from "../keychain";
 import { blockedBy, hostOf, loadPageAccess, policyReader, savePageAccess, type ScreenshotChoice } from "../permissions/gate";
 import { createProvider, ProviderError, type Effort } from "../providers";
@@ -97,6 +97,9 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     }
   };
   const extract = async (tabId: number): Promise<unknown> => {
+    const started = Date.now();
+    // What is left of the page read's 8 s for a special read, so the plain page, already read, still gets back in time (audit 2026-11-10).
+    const left = (cap: number): number => Math.max(0, Math.min(cap, PAGE_TIMEOUT_MS - (Date.now() - started) - 500));
     const [res] = await browser.scripting.executeScript({ target: { tabId }, func: extractPage });
     const raw = res?.result as RawPage | undefined;
     // An Instagram post, reel or story: the post on screen and its pictures (src/context/instagram.ts).
@@ -106,7 +109,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
           .executeScript({ target: { tabId }, func: readInstagram, args: [{ maxImages: MAX_PAGE_IMAGES, edge: PAGE_IMAGE_EDGE, frames: 3, budgetMs: INSTAGRAM_BUDGET_MS }] })
           .then(([r]) => cleanInstagramRead(r?.result))
           .catch(() => null),
-        new Promise<null>((r) => setTimeout(() => r(null), INSTAGRAM_TIMEOUT_MS)),
+        new Promise<null>((r) => setTimeout(() => r(null), left(INSTAGRAM_TIMEOUT_MS))),
       ]);
       if (!read) return raw;
       return {
@@ -126,7 +129,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
     };
     const video = await Promise.race([
       loadVideo(id, fetcher, navigator.language || "en").catch(() => null),
-      new Promise<null>((r) => setTimeout(() => r(null), VIDEO_TIMEOUT_MS)),
+      new Promise<null>((r) => setTimeout(() => r(null), left(VIDEO_TIMEOUT_MS))),
     ]);
     if (!video) return raw;
     return {
@@ -274,7 +277,7 @@ export function createScoutWorker(storage: StorageArea | undefined, options: Wor
       const by = blockedBy(url, await access(), await admin());
       return by === "admin" ? "Your organization blocks " + host + "." : by === "user" ? host + " is blocked in Settings, so Scout cannot act on it." : null;
     },
-    tabs: () => quietBrowser(),
+    tabs: () => quietBrowser(async (u) => blockedBy(u, await access(), await admin()) !== null),
     allowBrowser: allowBrowserPages,
     ...(storage ? { storage } : {}),
     ...((options.progress ?? storage) ? { progress: (options.progress ?? storage)! } : {}),

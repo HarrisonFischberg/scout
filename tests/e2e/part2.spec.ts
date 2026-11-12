@@ -31,7 +31,7 @@ async function openPopup(page: Page, opts: { data?: Record<string, unknown>; pol
     ({ tabs, pages, data, mock, policy }) => {
       const g = globalThis as unknown as Record<string, unknown>;
       const store: Record<string, unknown> = {
-        aiConsent: { anthropic: { at: 1, version: 2 } },
+        aiConsent: { anthropic: { at: 1, version: 3 } },
         devMockServer: mock,
         ...data,
       };

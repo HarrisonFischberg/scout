@@ -180,6 +180,8 @@ export interface QuietDeps {
   fetch: (url: string, init: RequestInit) => Promise<Response>;
   /** Whether Safari gives Scout access to the page's site. */
   hasAccess: (origin: string) => Promise<boolean>;
+  /** Whether the user's or the organization's blocked-sites list covers this address. */
+  blocked?: (url: string) => Promise<boolean>;
   timeoutMs?: number;
 }
 
@@ -201,6 +203,9 @@ export function quietPages(deps: QuietDeps): PageBrowser {
         return null;
       }
       if (!isPublicWebUrl(url)) return null;
+      // Blocked sites are never read, here or after a redirect (audit 2026-11-10). A failed check reads nothing.
+      const blocked = (u: string): Promise<boolean> => (deps.blocked ? deps.blocked(u).catch(() => true) : Promise.resolve(false));
+      if (await blocked(url)) return null;
       if (!(await deps.hasAccess(origin).catch(() => false))) return null;
       const ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), deps.timeoutMs ?? QUIET_FETCH_MS);
@@ -208,6 +213,7 @@ export function quietPages(deps: QuietDeps): PageBrowser {
         const res = await deps.fetch(url, { credentials: "omit", redirect: "follow", signal: ctl.signal, headers: { Accept: "text/html,application/xhtml+xml" } });
         // A public page may redirect to a private address; never read that.
         if (res.url && !isPublicWebUrl(res.url)) throw new Error("redirected off the public web");
+        if (res.url && res.url !== url && (await blocked(res.url))) throw new Error("redirected to a blocked site");
         if (!res.ok) throw new Error("http " + res.status);
         const type = res.headers.get("content-type") ?? "";
         if (type && !/html|xml/i.test(type)) throw new Error("not html");
