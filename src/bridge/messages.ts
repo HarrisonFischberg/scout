@@ -377,11 +377,13 @@ export const WORKER_EVENTS = {
       site: "string",
       reason: "string",
       preapproved: "boolean",
+      /** False for a kind asked every time (payments): no "Always allow" button. */
+      always: "boolean",
       summary: "string",
       input_tokens: "number",
       output_tokens: "number",
     },
-    optional: ["goal", "state", "text", "status", "prompt_id", "what", "site", "reason", "preapproved", "summary", "input_tokens", "output_tokens"],
+    optional: ["goal", "state", "text", "status", "prompt_id", "what", "site", "reason", "preapproved", "always", "summary", "input_tokens", "output_tokens"],
   },
 } as const satisfies Record<string, Schema>;
 
