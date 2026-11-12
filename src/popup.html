@@ -468,7 +468,7 @@
         color: var(--text-muted); font-size: 14px; border-radius: 6px;
       }
       .trace-head:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-      .trace-head .chev { width: 14px; height: 14px; transition: transform 150ms ease; }
+      .trace-head .chev { width: 14px; height: 14px; }
       .trace-head[aria-expanded="false"] .chev { transform: rotate(-90deg); }
       .trace-body { display: flex; flex-direction: column; gap: 10px; margin: 8px 0 0; padding-left: 12px; border-left: 2px solid var(--hairline); }
       .trace-body[hidden] { display: none; }
@@ -573,6 +573,28 @@
 
       @media (prefers-reduced-motion: no-preference) {
         .icon-btn, .chip, .segmented label, #plus-menu button, .sheet-list button { transition: background-color 150ms, color 150ms, border-color 150ms; }
+        .trace-head .chev { transition: transform 150ms ease; }
+      }
+
+      /* Interaction fixes (2026-11-11, docs/interaction-matrix.md). Nothing here shows at rest.
+         Pressed: a dip in opacity, the same in every look; on touch there is no hover, so it is the only answer to a tap. */
+      .icon-btn:active, .btn:active:not(:disabled), .round:active:not(:disabled), .chip:active, #model-pill:active:not(:disabled),
+      #starters button:active:not(:disabled), #site-suggestions button:active:not(:disabled), .chats-new:active, #chats-list .chat-open:active,
+      .sheet-list button:active, #plus-menu button:active, .sources-toggle:active, .ask-key:active, .msg .code-copy:active { opacity: 0.6; }
+      .btn:disabled, .round:disabled, #starters button:disabled, #site-suggestions button:disabled, .segmented label:has(input:disabled) { opacity: 0.5; cursor: default; }
+      /* A tap leaves :hover stuck on touch screens. */
+      @media (hover: none) { .icon-btn:hover { background: transparent; } }
+      /* Undo after a delete: the look's own card and button. */
+      .undo { display: flex; align-items: center; gap: 8px; }
+      .card.undo { margin: 0 8px 8px; font-size: 13px; }
+      .undo span { flex: 1; }
+      .undo span:empty { display: none; }
+      /* Touch: small buttons answer a 44px-tall tap without growing. */
+      @media (pointer: coarse) {
+        .icon-btn, .round, .sources-toggle, .ask-key, .msg .code-copy, .undo .btn { position: relative; }
+        .icon-btn::after, .round::after, .img-remove::after, .sources-toggle::after, .ask-key::after, .msg .code-copy::after, .undo .btn::after { content: ""; position: absolute; inset: min(0px, calc(50% - 22px)) 0; }
+        /* Beside the question box: wider, not taller, so it never covers the box. */
+        #mode-chip .icon-btn::after { inset: 0 -10px; }
       }
 
       /* ---------- Looks (owner choice 2026-10-19, impeccable-review/) ----------
@@ -923,6 +945,8 @@
         </button>
         <ul id="chats-list"></ul>
         <p id="chats-empty" class="hint" hidden></p>
+        <!-- Undo for a deleted chat (offerUndo in popup.ts). -->
+        <div id="chats-undo" class="card undo" role="status" hidden></div>
       </aside>
 
       <div id="thread">
@@ -1163,6 +1187,7 @@
           <p id="history-count" class="hint" role="status"></p>
           <div class="row"><button id="history-clear" class="btn" type="button">Clear chat history</button></div>
           <p id="settings-saved" class="hint" role="status"></p>
+          <div id="history-undo" class="row undo" hidden></div>
         </section>
 
         <section aria-labelledby="sites-title">
