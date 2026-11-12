@@ -3,7 +3,7 @@
 // ports, confirmations by prompt id, control from the panel and from the
 // overlay's own tab only, and the saved outcome. Fake browser, synthetic data.
 import { describe, expect, it } from "vitest";
-import { BridgeError } from "../../src/bridge/messages";
+import { BridgeError, checkSchema, WORKER_EVENTS } from "../../src/bridge/messages";
 import type { ContentRequest, OverlayRequest } from "../../src/content-api";
 import type { TabRef } from "../../src/context/gather";
 import { parsePageAccess, type PageAccess } from "../../src/permissions/gate";
@@ -154,6 +154,21 @@ describe("task host", () => {
     const out = await f.host.outcome(task_id);
     expect(out?.status).toBe("done");
     expect(f.content.filter((c) => c.type === "scout:task-act")).toHaveLength(1);
+  });
+
+  // Owner report 2026-11-11 (run #8): Scout mode showed "Waiting for you" and never asked.
+  // The confirm event carried a field the panel's schema did not allow, so the panel dropped it.
+  it("every event a watching panel gets, the confirmation included, passes the panel's schema", async () => {
+    const f = fake(scripted([[act([{ type: "click", target: { ref: "e1" } }])], [finish("ok")]]));
+    f.host.watch(f.port, 1);
+    const { task_id } = await f.host.start({ tab_id: 1, goal: "Buy it" });
+    await settle(60);
+    const prompt = f.host.status(1).task!.prompt!;
+    f.host.decide({ task_id, prompt_id: prompt.prompt_id, decision: "once" });
+    await f.host.outcome(task_id);
+    await settle();
+    expect(f.posted.map((p) => p.kind)).toContain("confirm");
+    for (const p of f.posted) expect(checkSchema(WORKER_EVENTS["task.event"], p), String(p.kind)).toBeNull();
   });
 
   it("a confirmation nobody answers counts as Deny after the timeout", async () => {
