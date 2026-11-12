@@ -4,8 +4,9 @@
 # Xcode signed in to the Apple ID of team KTV2G3Z883 (Xcode > Settings >
 # Accounts) and the App Store Connect record for com.harrisonfischberg.Scoutai
 # already created. Uploads go to Apple: owner's approval only.
-# Version: each upload gets the next short version (0.2, 0.3, ...) on both
-# platforms, so TestFlight reads "Version 0.N". The counter lives in
+# Version: each upload gets the next short version (1.1, 1.2, ...) on both
+# platforms, so TestFlight reads "Version 1.N". iPhone 1.0 is approved, so
+# Apple refuses anything lower (owner 2026-11-12; was 0.N up to 0.27). The counter lives in
 # ~/.scout-testflight-number (last uploaded N) and moves on only after every
 # platform uploaded; SCOUT_VERSION_NUMBER=N overrides it. The build number stays
 # a timestamp (SCOUT_BUILD_NUMBER overrides): Apple requires each Mac build
@@ -28,7 +29,7 @@ COUNTER="$HOME/.scout-testflight-number"
 LAST=$(cat "$COUNTER" 2>/dev/null || echo 1)
 N="${SCOUT_VERSION_NUMBER:-$((LAST + 1))}"
 case "$N" in ''|*[!0-9]*) echo "version number must be a whole number, got '$N'" >&2; exit 1 ;; esac
-VERSION="${SCOUT_VERSION:-0.$N}"
+VERSION="${SCOUT_VERSION:-1.$N}"
 AUTH=()
 if [ -n "${ASC_KEY_ID:-}" ]; then
   AUTH=(-authenticationKeyPath "${ASC_KEY_PATH/#\~/$HOME}" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
