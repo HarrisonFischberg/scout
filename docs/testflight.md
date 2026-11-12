@@ -46,7 +46,7 @@ The Safari extension ships inside the app, so it comes along automatically.
 4. `scripts/archive-testflight.sh`: runs `npm run check:release`, builds the release
    extension bundle, archives the Release build for each platform, and uploads with
    `scripts/ExportOptions-testflight.plist`. Each upload gets the next short version on
-   both platforms (0.2, 0.3, ...; TestFlight shows "Version 0.N"). The last uploaded N
+   both platforms (1.1, 1.2, ...; TestFlight shows "Version 1.N"; it was 0.N up to 0.27, until iPhone 1.0 was approved and Apple refused lower versions). The last uploaded N
    is kept in `~/.scout-testflight-number` on the Mac and moves on only after every
    platform uploaded; `SCOUT_VERSION_NUMBER=N` sets it by hand. The build number stays
    a timestamp (`20261017.2100`): Apple requires each Mac build number to be higher
