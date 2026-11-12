@@ -159,8 +159,10 @@ Answer the questionnaire as follows, then override.
 - **Notes** (paste, then replace the bracketed key line):
 
 > Scout AI Browser Assistant is a Safari web extension with a small host app. The
-> host app shows how to turn the extension on; everything else happens in
-> Safari.
+> host app shows how to turn the extension on. On iPhone it also has a chat
+> screen: once a key is saved and the user taps "Agree and send", it sends the
+> user's messages, images and chat so far to Anthropic with the user's key.
+> Everything else happens in Safari.
 >
 > To try it:
 > 1. Open the Scout app once. On iPhone/iPad turn Scout on in Settings > Apps

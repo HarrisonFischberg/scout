@@ -113,8 +113,16 @@ API). Apple (App Store distribution) once released.
 Key test (T006): removed 2026-10-21 with `apple/App/ProviderSetup.swift`
 (its key test, setup model and consent record). The setup screen stopped
 asking for the key on 2026-10-17 (the key is added in the extension's own
-Settings on iOS as on Mac), so the host app sends nothing to any provider and
+Settings on iOS as on Mac), so the setup screen sends nothing to any provider and
 no longer stores `aiConsent.anthropic` / `aiConsent.openai` in UserDefaults
 (a value left by an earlier build is never read). The Mac app sandbox no
-longer has `com.apple.security.network.client`: the host app makes no network
-requests; links open in the browser.
+longer has `com.apple.security.network.client`; links open in the browser.
+
+App chat (iOS host app, `src/app/chat.ts`, `src/app/ask.ts`): once the person
+has added an Anthropic key in Scout's Settings in Safari and agreed in the
+"Share with Anthropic?" sheet (`scout.app.consent`, asked before the first
+send), the chat sends their messages, any images they add, and the chat so far
+to api.anthropic.com with their key. Claude may search the web for them. It
+sends no page text or addresses, and nothing goes to OpenAI from the host app.
+Scout keeps none of it. This is declared as Other User Content in
+`apple/App/PrivacyInfo.xcprivacy`.
