@@ -198,6 +198,13 @@ test("the chats menu lists earlier chats, opens one, deletes one, and keeps priv
   await chats.getByRole("button", { name: "Undo" }).click();
   await expect(rows).toHaveCount(2);
   await expect(chats.getByRole("button", { name: "Undo" })).toBeHidden();
+  // Cmd/Ctrl+Z with no offer showing must not restore the chat a second time.
+  await chats.getByRole("button", { name: "Close chats" }).focus();
+  await page.keyboard.press("ControlOrMeta+z");
+  await rows.filter({ hasText: "Which sector led?" }).locator(".chat-open").click();
+  await expect(log.getByText("Answer 2.")).toHaveCount(1);
+  await page.getByRole("button", { name: "Chats", exact: true }).click();
+  await expect(rows).toHaveCount(2);
   await chats.getByRole("button", { name: "Close chats" }).focus();
   await page.keyboard.press("Shift+Tab");
   expect(await page.evaluate(() => !!document.activeElement?.closest("#chats"))).toBe(true);

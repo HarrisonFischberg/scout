@@ -3442,7 +3442,8 @@ async function main(): Promise<void> {
       e.stopPropagation();
       showChats(false);
     } else if (e.key === "z" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
-      el("chats-undo").querySelector("button")?.click();
+      // Only a visible offer: the button stays in the DOM after Undo or the timeout, and a second restore would add the chat twice.
+      if (!el("chats-undo").hidden) el("chats-undo").querySelector("button")?.click();
     } else if (e.key === "Tab") {
       // The drawer covers the chat: Tab stays inside it, like the Models sheet.
       const stops = [...chatsPanel.querySelectorAll<HTMLElement>("button")].filter((b) => b.getClientRects().length);
