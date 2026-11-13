@@ -144,7 +144,7 @@ describe("Scout mode gate", () => {
   });
 
   it("payments, logins, account changes and deletes are asked every time: never saved, honored, or kept from storage", () => {
-    const strict = ["payment", "login", "account", "destructive"] as const;
+    const strict = ["payment", "login", "account", "destructive", "leave_site"] as const;
     for (const kind of strict) expect(withAlwaysAllow(DEFAULT_PAGE_ACCESS, "shop.test", kind)).toEqual(DEFAULT_PAGE_ACCESS);
     const stored = parsePageAccess({ alwaysAllow: { "shop.test": [...strict, "send"], "pay.test": ["payment"] } });
     expect(stored.alwaysAllow).toEqual({ "shop.test": ["send"] });
