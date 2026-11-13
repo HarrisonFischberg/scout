@@ -176,6 +176,29 @@ export function htmlSnapshot(html: string, url: string): Snapshot {
   return buildSnapshot(root, { url, title, ...SNAPSHOT });
 }
 
+/** The body's first QUIET_MAX_BYTES bytes as text; the rest is never downloaded (audit 2026-11-12). */
+export async function readCapped(res: Response): Promise<string> {
+  if (!res.body) return (await res.text()).slice(0, QUIET_MAX_BYTES);
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  while (size < QUIET_MAX_BYTES) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    size += value.byteLength;
+  }
+  await reader.cancel().catch(() => undefined);
+  const bytes = new Uint8Array(Math.min(size, QUIET_MAX_BYTES));
+  let at = 0;
+  for (const c of chunks) {
+    const part = c.subarray(0, bytes.length - at);
+    bytes.set(part, at);
+    at += part.length;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 export interface QuietDeps {
   fetch: (url: string, init: RequestInit) => Promise<Response>;
   /** Whether Safari gives Scout access to the page's site. */
@@ -217,7 +240,7 @@ export function quietPages(deps: QuietDeps): PageBrowser {
         if (!res.ok) throw new Error("http " + res.status);
         const type = res.headers.get("content-type") ?? "";
         if (type && !/html|xml/i.test(type)) throw new Error("not html");
-        const html = (await res.text()).slice(0, QUIET_MAX_BYTES);
+        const html = await readCapped(res);
         const id = next++;
         pages.set(id, htmlSnapshot(html, res.url || url));
         return id;
