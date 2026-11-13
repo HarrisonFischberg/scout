@@ -45,9 +45,9 @@ export const MAX_BLOCKED = 200;
 export const SENSITIVE_KINDS: readonly SensitiveKind[] = ["payment", "login", "send", "personal_data", "destructive", "download", "account", "leave_site"];
 /**
  * Asked every time: never offered or honored for "Always allow", so a page's hidden text can never pay, sign in,
- * change the account or delete something unasked (owner decision 2026-10-24).
+ * change the account, delete something or send what it sees to another site unasked (owner decision 2026-10-24; leave_site added in the 2026-11-12 audit).
  */
-export const ASK_EVERY_TIME: readonly SensitiveKind[] = ["payment", "login", "account", "destructive"];
+export const ASK_EVERY_TIME: readonly SensitiveKind[] = ["payment", "login", "account", "destructive", "leave_site"];
 
 /** Host of an http(s) URL, lowercased, without the trailing dot ("bank.com." is bank.com); null for anything else. */
 export function hostOf(url: string): string | null {

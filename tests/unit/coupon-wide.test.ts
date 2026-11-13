@@ -226,6 +226,16 @@ describe("a whole run on a store whose best codes are guesses (getbeefy.co, from
     return { done, tried };
   };
 
+  // Audit 2026-11-12 (P1): Delete all data wipes storage right after the run; nothing may write back.
+  it("writes nothing to storage after the run has returned", async () => {
+    const stored: Record<string, unknown> = {};
+    await run(stored);
+    expect(Object.keys(stored).length).toBeGreaterThan(0);
+    for (const k of Object.keys(stored)) delete stored[k];
+    await new Promise((r) => setTimeout(r, 30));
+    expect(stored).toEqual({});
+  }, 60_000);
+
   it("tests the code found online first, then guesses, applies BEEFY15, and tries it first next time", async () => {
     const stored: Record<string, unknown> = {};
     const first = await run(stored);

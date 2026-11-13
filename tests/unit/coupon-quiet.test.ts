@@ -3,7 +3,7 @@
 // Synthetic pages and codes only; fetch is a fake.
 import { describe, expect, it } from "vitest";
 import { browserRead } from "../../src/coupons/browser-read";
-import { htmlSnapshot, isPublicWebUrl, jsonCodes, parseHtml, quietPages } from "../../src/coupons/quiet-read";
+import { htmlSnapshot, isPublicWebUrl, jsonCodes, parseHtml, QUIET_MAX_BYTES, quietPages } from "../../src/coupons/quiet-read";
 
 const FILLER = "<p>Synthetic Shop coupons and promo codes, updated today.</p>".repeat(6);
 
@@ -156,5 +156,23 @@ describe("quiet reads stay on the public web", () => {
     const r = await browserRead([{ url: "https://coupons.test/synth", reason: "blocked" as const }], quietPages({ fetch: fetchFn, hasAccess: async () => true }), { now: () => 0 });
     expect(r.pages[0]!.outcome).toBe("error");
     expect(r.codes).toHaveLength(0);
+  });
+
+  // Audit 2026-11-12 (B6): a page that never ends must not be loaded whole.
+  it("stops reading a huge page at the byte cap instead of loading all of it", async () => {
+    let pulled = 0;
+    const chunk = new TextEncoder().encode("x".repeat(64 * 1024));
+    const body = new ReadableStream<Uint8Array>({
+      pull(c) {
+        pulled += chunk.length;
+        c.enqueue(chunk);
+      },
+    });
+    const fetchFn = async (): Promise<Response> => new Response(body, { headers: { "content-type": "text/html" } });
+    const pages = quietPages({ fetch: fetchFn, hasAccess: async () => true });
+    const id = await pages.open("https://coupons.test/huge");
+    expect(id).not.toBeNull();
+    expect(pulled).toBeGreaterThanOrEqual(QUIET_MAX_BYTES);
+    expect(pulled).toBeLessThan(QUIET_MAX_BYTES + 1024 * 1024);
   });
 });
