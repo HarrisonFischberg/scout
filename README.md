@@ -6,9 +6,11 @@
 
 Your AI assistant in the browser: summarize pages, ask questions, compare tabs, fill forms and find coupons with your own AI key.
 
-Scout works in Safari on Mac, iPhone and iPad today. Chrome and Firefox
-versions are built from the same code and are coming soon. (Formerly Scout for
-Safari.)
+Scout is on the [App Store](https://apps.apple.com/app/id6826015732) for
+Safari on iPhone and iPad, and on
+[Firefox Add-ons](https://addons.mozilla.org/firefox/addon/scout-ai-assistant/).
+The Mac version is in App Review, and a Chrome version built from the same code
+is coming. (Formerly Scout for Safari.)
 
 ## Screenshots
 
@@ -64,8 +66,11 @@ Shortcut on Mac: Control-Shift-S opens and closes it.
 
 ## Install
 
-Scout isn't in the App Store, Chrome Web Store or Firefox Add-ons yet. Until
-then, build it from source. Every build starts with:
+Get Scout for iPhone and iPad from the
+[App Store](https://apps.apple.com/app/id6826015732), or for Firefox from
+[Firefox Add-ons](https://addons.mozilla.org/firefox/addon/scout-ai-assistant/).
+The Mac and Chrome versions aren't in their stores yet, so build those from
+source. Every build starts with:
 
 ```sh
 npm ci
@@ -98,9 +103,11 @@ more than one is connected). Then turn Scout on in Settings > Apps > Safari >
 Extensions. You can also open `apple/SafariScout.xcodeproj` and run the
 "Scout for Safari (iOS)" scheme.
 
-### Chrome and Firefox (coming soon)
+### Chrome and Firefox
 
-Store listings are on the way. To try a local build now:
+Firefox users can install Scout from
+[Firefox Add-ons](https://addons.mozilla.org/firefox/addon/scout-ai-assistant/).
+The Chrome Web Store listing is on the way. To try a local build now:
 
 - **Chrome** (120 or later): `npm run build:chrome`, then open
   `chrome://extensions`, turn on Developer mode, choose Load unpacked and pick
