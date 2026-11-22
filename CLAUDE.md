@@ -89,6 +89,10 @@ end without asking, except where a step below says stop:
    approves. Mention it if the UI changed since the screenshots in `store/apple/screenshots/`
    (they are rendered by hand from `app-store/art-source/`).
 
+## Status notes (vault)
+
+This app's status note is `Apps/Scout.md` in the Obsidian vault at `~/projects/vault` (private repo `HarrisonFischberg/vault`; cloud sessions can clone it). Read it, and the vault's `CLAUDE.md`, for current state, builds, open PRs and past decisions before starting work. After a release or TestFlight upload, an App Review change or a notable decision, update that note following the vault's `CLAUDE.md` and commit to the vault. This repo stays the source of truth for code.
+
 ## Model Routing and Sub-Agents
 
 The main session is the orchestrator. It plans, makes judgment calls, edits small things itself, and merges results. Sub-agents live in `.claude/agents/`.
