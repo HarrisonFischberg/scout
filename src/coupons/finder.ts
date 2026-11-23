@@ -168,8 +168,8 @@ export interface CouponTester {
   tryCode(code: string): Promise<TryResult>;
   /** Cart APIs: several codes at once ("A,B"); accepted only when the store takes all of them. */
   tryCombo?(codes: string[]): Promise<TryResult>;
-  /** Applies one code (or "" to clear) and returns the confirmed total. */
-  apply(code: string): Promise<number | null>;
+  /** Applies one code (or "" to clear) and returns the confirmed total. `want`: the total this code gave when it was tested. */
+  apply(code: string, want?: number): Promise<number | null>;
   /** Leaves the cart as the user expects: winner applied, or original codes back. */
   finish(winner: string | null): Promise<void>;
   /** Puts the original codes back and says whether the total is still the baseline; false when the cart changed during the run. */
@@ -407,18 +407,26 @@ async function pageTester(
   let kept: { code: string; total: number } | null = null;
   // Slowest time the store took to answer a code (message or new total), once seen.
   let answerMs: number | null = null;
+  // A remove press that showed no effect in time may still land.
+  let unsettled = false;
 
   // Clicks the control that removes `code` and waits for the total to go back.
+  // A press that missed (a control redrawn under the pointer, a slow phone)
+  // gets one more, on a fresh read of the page.
   const takeOff = async (snap: Snapshot, code: string): Promise<Snapshot | null | "none"> => {
-    const target = removeTarget(snap, code);
-    if (!target) return "none";
-    if (!(await act({ type: "click", ref: target.ref })).ok) return null;
-    for (let waited = 0; waited < Math.max(times.maxMs, POLL_MS); waited += POLL_MS) {
-      await pause(POLL_MS);
-      const next = await look();
-      if (!next) return null;
-      const t = totalOf(next)?.amount;
-      if (t !== undefined && Math.abs(t - baseline) <= EPS) return next;
+    let from = snap;
+    for (let press = 0; press < 2; press++) {
+      const target = removeTarget(from, code);
+      if (!target) return press === 0 ? "none" : null;
+      if (!(await act({ type: "click", ref: target.ref })).ok) return null;
+      for (let waited = 0; waited < Math.max(times.maxMs, POLL_MS); waited += POLL_MS) {
+        await pause(POLL_MS);
+        const next = await look();
+        if (!next) return null;
+        from = next;
+        const t = totalOf(next)?.amount;
+        if (t !== undefined && Math.abs(t - baseline) <= EPS) return next;
+      }
     }
     return null;
   };
@@ -432,7 +440,10 @@ async function pageTester(
     // tells whether this code replaced it (see below).
     if (kept) {
       const off = await takeOff(before, kept.code);
-      if (off === null) return { total: null, accepted: null, halt: true, note: REMOVE_FAILED_NOTE };
+      if (off === null) {
+        unsettled = true;
+        return { total: null, accepted: null, halt: true, note: REMOVE_FAILED_NOTE };
+      }
       if (off !== "none") {
         before = off;
         kept = null;
@@ -509,25 +520,103 @@ async function pageTester(
     if (reply === "rejected" && !lowered) return { total, accepted: false, note: "Not accepted by the store.", ...(message ? { message } : {}) };
     return { total, accepted: reply === "accepted" ? true : null };
   };
+
+  // Puts the winner on at the end of a run, whatever state testing left the
+  // order in (owner 2026-11-22, CARRY the FIRE: "it should always apply the
+  // coupon at the end"). Unlike `tryCode`, which stops rather than measure a
+  // code wrongly, nothing here gives up early: an earlier code that would not
+  // come off is pressed off again, and the winner is typed over whatever is
+  // left; if the total is still not the winner's, the page is reloaded (the
+  // store's own state, and fresh controls) and all of it is done once more.
+  const putOn = async (code: string, want?: number): Promise<number | null> => {
+    const wanted = (t: number): boolean => t < baseline - EPS && (want === undefined || t <= want + 0.005);
+    // The winner's total, when the order shows it: its own line, or it was the last code that took.
+    const onOrder = (snap: Snapshot): number | null => {
+      const t = totalOf(snap)?.amount;
+      return t !== undefined && wanted(t) && (kept?.code === code || showsCode(snap.text, code)) ? t : null;
+    };
+    let last: number | null = null;
+    // Let a late remove land first, so the winner is not read as on and then taken off.
+    if (unsettled) {
+      unsettled = false;
+      for (let waited = 0; waited < Math.max(times.maxMs, POLL_MS); waited += POLL_MS) {
+        await pause(POLL_MS);
+        const snap = await look();
+        const t = snap ? totalOf(snap)?.amount : undefined;
+        if (t !== undefined && Math.abs(t - baseline) <= EPS) break;
+      }
+    }
+    for (let round = 0; round < 2; round++) {
+      if (round === 1) {
+        if (!page.cart?.reload) break;
+        await page.cart.reload().catch(() => undefined);
+        await pause(Math.max(times.quietMs, 1000));
+      }
+      let snap = await look();
+      if (!snap) continue;
+      if (detectCaptcha(snap)) return null;
+      const now = onOrder(snap);
+      if (now !== null) {
+        kept = { code, total: now };
+        return now;
+      }
+      const t0 = totalOf(snap)?.amount;
+      last = t0 ?? last;
+      // Listed on the order at some other total (the cart changed): typing it again could take it off.
+      if (t0 !== undefined && t0 < baseline - EPS && showsCode(snap.text, code)) continue;
+      // An earlier code still on: press it off, and go on either way. Most stores swap it for the code typed next.
+      const other = kept && kept.code !== code ? kept.code : null;
+      const target = other ? removeTarget(snap, other) : null;
+      if (other && target && (await act({ type: "click", ref: target.ref })).ok) {
+        for (let waited = 0; waited < Math.max(times.maxMs, POLL_MS); waited += POLL_MS) {
+          await pause(POLL_MS);
+          const next = await look();
+          if (!next) break;
+          snap = next;
+          const t = totalOf(next)?.amount;
+          if ((t !== undefined && Math.abs(t - baseline) <= EPS) || !showsCode(next.text, other)) {
+            kept = null;
+            break;
+          }
+        }
+      }
+      const box = await open(snap);
+      if (!box) continue;
+      if (!(await act({ type: "type", ref: box.form.input.ref, text: code, clear: true })).ok) continue;
+      const ready = await look();
+      const form = ready ? findForm(ready, hints) : null;
+      if (!ready || !form?.apply || form.apply.disabled) continue;
+      if (!(await act({ type: "click", ref: form.apply.ref })).ok) continue;
+      // The winner's total, read twice running; a store that says no ends the wait.
+      let seen: number | null = null;
+      for (let waited = 0; waited < Math.max(times.maxMs, POLL_MS); waited += POLL_MS) {
+        await pause(POLL_MS);
+        const next = await look();
+        if (!next) break;
+        if (detectCaptcha(next)) return null;
+        const t = totalOf(next)?.amount;
+        last = t ?? last;
+        if (t !== undefined && wanted(t) && (want !== undefined || showsCode(next.text, code))) {
+          if (seen !== null && Math.abs(seen - t) <= EPS) {
+            kept = { code, total: t };
+            return t;
+          }
+          seen = t;
+          continue;
+        }
+        seen = null;
+        if (storeReply(newLines(ready.text, next.text)) === "rejected") break;
+      }
+    }
+    return last;
+  };
+
   return {
     method: "page",
     baseline,
     ...(base.currency ? { currency: base.currency } : {}),
     tryCode,
-    async apply(code) {
-      if (kept?.code === code) {
-        const snap = await look();
-        return snap ? (totalOf(snap)?.amount ?? null) : null;
-      }
-      // Already on the order (a slow store that applied it after the first try was judged): typing it again could take it off.
-      const now = await look();
-      const t = now ? totalOf(now)?.amount : undefined;
-      if (now && t !== undefined && t < baseline - EPS && showsCode(now.text, code)) {
-        kept = { code, total: t };
-        return t;
-      }
-      return (await tryCode(code)).total;
-    },
+    apply: putOn,
     async finish(winner) {
       // The page path cannot take a rejected code's text out of the box
       // reliably on every store; it clears the box when nothing won so the
@@ -878,7 +967,7 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
   // path first reads whether the code is already on the order.
   const winnerTotal = best.total;
   const reapply = async (): Promise<boolean> => {
-    const total = await tester.apply(best.code).catch(() => null);
+    const total = await tester.apply(best.code, winnerTotal).catch(() => null);
     return total !== null && total <= winnerTotal + 0.005;
   };
   let reapplied: CouponOutcome["reapplied"] = "first";
