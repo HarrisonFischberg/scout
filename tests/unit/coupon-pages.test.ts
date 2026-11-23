@@ -141,6 +141,14 @@ interface StoreOpts {
   removable?: boolean;
   /** The "Remove CODE" button does nothing. */
   brokenRemove?: boolean;
+  /** Only this many remove presses work; later ones do nothing (until a reload). */
+  removeWorks?: number;
+  /** Ticks before a remove press shows. */
+  removeLag?: number;
+  /** While a code is on, any other code typed is refused. */
+  locks?: boolean;
+  /** The page can be reloaded, which makes its remove buttons work again. */
+  reloads?: boolean;
   /** The coupon box disappears while a code is applied (a drawer that shows a pill instead). */
   boxGoneWhenApplied?: boolean;
   inputName?: string;
@@ -153,7 +161,7 @@ interface StoreOpts {
   labels?: { subtotal: string; total: string };
 }
 
-function store(o: StoreOpts): CouponPage & { applied: string[]; clicks: string[]; ordered: number } {
+function store(o: StoreOpts): CouponPage & { applied: string[]; clicks: string[]; ordered: number; reloaded: number } {
   const base = o.base ?? 100;
   const fmt = o.fmt ?? ((n: number) => "$" + n.toFixed(2));
   let open = !o.hidden;
@@ -162,11 +170,34 @@ function store(o: StoreOpts): CouponPage & { applied: string[]; clicks: string[]
   let shown = base;
   let pending: { total: number; at: number } | null = null;
   let tick = 0;
+  let removes = 0;
+  let removal: { index: number; at: number } | null = null;
   const s = {
     applied: [] as string[],
     clicks: [] as string[],
     ordered: 0,
+    reloaded: 0,
+    ...(o.reloads
+      ? {
+          cart: {
+            info: async () => null,
+            update: async () => null,
+            reload: async () => {
+              s.reloaded++;
+              removes = 0;
+              typed = "";
+              msg = "";
+            },
+          },
+        }
+      : {}),
     async snapshot(): Promise<Snapshot> {
+      if (removal && tick >= removal.at) {
+        s.applied.splice(removal.index, 1);
+        removal = null;
+        const off = s.applied.reduce((sum, c) => sum + (o.pct[c] ?? 0), 0);
+        shown = Math.round(base * (1 - off / 100) * 100) / 100;
+      }
       if (pending && tick >= pending.at) {
         shown = pending.total;
         pending = null;
@@ -177,7 +208,7 @@ function store(o: StoreOpts): CouponPage & { applied: string[]; clicks: string[]
         els.push(el("i1", "textbox", o.inputName ?? "Discount code"));
         if (!o.noApply && (!o.applyOnceTyped || typed)) els.push(el("a1", "button", o.applyName ?? "Apply"));
       }
-      if (o.removable || o.brokenRemove) s.applied.forEach((c, i) => els.push(el("r" + (i + 1), "button", "Remove " + c)));
+      if (o.removable || o.brokenRemove || o.removeWorks !== undefined) s.applied.forEach((c, i) => els.push(el("r" + (i + 1), "button", "Remove " + c)));
       els.push(el("p1", "button", "Place order"));
       // Like real stores, each applied code is listed in the order summary.
       const lines = s.applied.map((c) => "Discount (" + c + ")");
@@ -200,15 +231,19 @@ function store(o: StoreOpts): CouponPage & { applied: string[]; clicks: string[]
       if (a.ref === "t1") open = true;
       if (a.ref === "p1") s.ordered++;
       if (a.ref === "a1") {
-        if (o.pct[typed]) {
+        if (o.locks && s.applied.length && !s.applied.includes(typed)) msg = typed + " cannot be combined with the discount on this order.";
+        else if (o.pct[typed]) {
           s.applied = o.stack ? [...s.applied.filter((c) => c !== typed), typed] : [typed];
           msg = "";
         } else if (o.message) msg = "Sorry, " + typed + " isn't a valid code.";
         settle();
       }
-      if (a.ref.startsWith("r") && !o.brokenRemove) {
-        s.applied.splice(Number(a.ref.slice(1)) - 1, 1);
-        settle();
+      if (a.ref.startsWith("r") && !o.brokenRemove && (o.removeWorks === undefined || removes++ < o.removeWorks)) {
+        if (o.removeLag) removal ??= { index: Number(a.ref.slice(1)) - 1, at: tick + o.removeLag };
+        else {
+          s.applied.splice(Number(a.ref.slice(1)) - 1, 1);
+          settle();
+        }
       }
       return ok;
     },
@@ -284,6 +319,81 @@ describe("the page path on different kinds of checkout", () => {
     );
     expect(b.best?.code).toBe("SAVE10");
     expect(b.applied).toBe(true);
+  });
+
+  // Owner 2026-11-22, CARRY the FIRE: WELCOME20 was the best of 11 codes, a later
+  // code then stuck on the order, and the run ended with "I couldn't re-apply
+  // it". The winner goes on at the end whatever testing left behind.
+  describe("always applies the best code at the end", () => {
+    it("types the winner over a later code whose remove control stopped working", async () => {
+      const p = store({ pct: { WIN20: 20, SAVE10: 10 }, removeWorks: 1, message: true });
+      const out = await runCouponSearch({ page: p, codes: codes("WIN20", "SAVE10", "NOPE"), settleMs: 300, maxSettleMs: 300, reapplyRetryMs: 0 });
+      expect(out.attempts.map((a) => a.code)).toEqual(["WIN20", "SAVE10"]);
+      expect(out.note).toContain("I pressed its remove control");
+      expect(out.best?.code).toBe("WIN20");
+      expect(out.applied).toBe(true);
+      expect(p.applied).toEqual(["WIN20"]);
+      expect(couponSummary(out)).toContain("It's applied to your cart");
+    });
+
+    it("puts the winner back when a slow remove took it off after testing stopped", async () => {
+      const p = store({ pct: { WIN20: 20 }, removable: true, removeLag: 3, message: true });
+      const out = await runCouponSearch({ page: p, codes: codes("WIN20", "NOPE"), settleMs: 300, maxSettleMs: 300, reapplyRetryMs: 0 });
+      expect(out.attempts.map((a) => a.code)).toEqual(["WIN20"]);
+      expect(out.applied).toBe(true);
+      // Still on once every late remove has landed.
+      for (let i = 0; i < 5; i++) await p.act({ type: "wait", ms: 300 });
+      await p.snapshot();
+      expect(p.applied).toEqual(["WIN20"]);
+    });
+
+    it("reloads the page when the stuck code blocks the winner, then takes it off and applies", async () => {
+      const p = store({ pct: { WIN20: 20, SAVE10: 10 }, removeWorks: 1, locks: true, reloads: true, message: true });
+      const out = await runCouponSearch({ page: p, codes: codes("WIN20", "SAVE10", "NOPE"), settleMs: 300, maxSettleMs: 300, reapplyRetryMs: 0 });
+      expect(out.best?.code).toBe("WIN20");
+      expect(p.reloaded).toBe(1);
+      expect(out.applied).toBe(true);
+      expect(p.applied).toEqual(["WIN20"]);
+      expect(p.ordered).toBe(0);
+    });
+
+    it("reloads at most once, and never after Stop", async () => {
+      const stuck = store({ pct: { WIN20: 20, SAVE10: 10 }, removeWorks: 1, locks: true, reloads: true, message: true });
+      // The reload does not help here either: remove stays broken.
+      stuck.cart!.reload = async () => void stuck.reloaded++;
+      const a = await runCouponSearch({ page: stuck, codes: codes("WIN20", "SAVE10", "NOPE"), settleMs: 300, maxSettleMs: 300, reapplyRetryMs: 0 });
+      expect(a.applied).toBe(false);
+      expect(stuck.reloaded).toBe(1);
+      const p = store({ pct: { WIN20: 20, SAVE10: 10 }, removeWorks: 1, locks: true, reloads: true, message: true });
+      const control = { isStopped: false } as { isStopped: boolean };
+      const out = await runCouponSearch({
+        page: p,
+        codes: codes("WIN20", "SAVE10", "NOPE", "NOPE2"),
+        settleMs: 300,
+        maxSettleMs: 300,
+        reapplyRetryMs: 0,
+        control: control as never,
+        onAttempt: (x) => void (x.code === "SAVE10" && (control.isStopped = true)),
+      });
+      expect(out.best?.code).toBe("WIN20");
+      expect(p.reloaded).toBe(0);
+    });
+
+    it("never calls a stuck code's equal total the winner's", async () => {
+      const p = store({ pct: { WIN20: 20, SAME20: 20 }, removeWorks: 1, locks: true, message: true });
+      const out = await runCouponSearch({ page: p, codes: codes("WIN20", "SAME20", "NOPE"), settleMs: 300, maxSettleMs: 300, reapplyRetryMs: 0 });
+      expect(out.best?.code).toBe("WIN20");
+      expect(p.applied).toEqual(["SAME20"]);
+      expect(out.applied).toBe(false);
+    });
+
+    it("says so plainly when the store will not let the stuck code go", async () => {
+      const p = store({ pct: { WIN20: 20, SAVE10: 10 }, removeWorks: 1, locks: true, message: true });
+      const out = await runCouponSearch({ page: p, codes: codes("WIN20", "SAVE10", "NOPE"), settleMs: 300, maxSettleMs: 300, reapplyRetryMs: 0 });
+      expect(out.applied).toBe(false);
+      expect(p.applied).toEqual(["SAVE10"]);
+      expect(couponSummary(out)).toContain("I couldn't re-apply it");
+    });
   });
 
   // Live sweep 2026-10-17, Brumate: a drawer with no remove control that swaps
