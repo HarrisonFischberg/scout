@@ -24,7 +24,7 @@ import type { SnapElement, Snapshot } from "../snapshot/snapshot";
 import { CODE_RE, type CandidateOrigin, type CouponCandidate } from "./candidates";
 import { findForm, isRejectLine, newLines, removeTarget, revealTargets, showsCode, storeReply, type FormHints, type StoreReply } from "./form";
 import { groupByKind, KIND_LABEL, rejectKind, storeMessage, type RejectKind } from "./reasons";
-import { formatMoney, readTotal } from "./money";
+import { formatMoney, readDiscount, readTotal } from "./money";
 import { browserName } from "../platform";
 import { bareHost } from "../permissions/gate";
 
@@ -66,6 +66,8 @@ export interface CouponAttempt {
   total: number | null;
   /** Baseline total minus this total; 0 means no saving. */
   saving: number | null;
+  /** What the store's own discount line says the code takes off, when the page shows one. */
+  discount?: number;
   /** Cart API: whether the store accepted the code. Page path: unknown (null). */
   accepted: boolean | null;
   note: string;
@@ -158,6 +160,8 @@ export interface TryResult {
   halt?: boolean;
   /** The store's own words when it turned the code down. */
   message?: string;
+  /** The store's own discount line for the code, when the page shows one. */
+  discount?: number;
 }
 
 /** A way to test codes on the user's cart: the store's cart API or its coupon box. */
@@ -170,6 +174,8 @@ export interface CouponTester {
   tryCombo?(codes: string[]): Promise<TryResult>;
   /** Applies one code (or "" to clear) and returns the confirmed total. `want`: the total this code gave when it was tested. */
   apply(code: string, want?: number, quick?: boolean): Promise<number | null>;
+  /** The store's own discount line for `code` as the page shows it now, or null. */
+  discount?(code: string): Promise<number | null>;
   /** Leaves the cart as the user expects: winner applied, or original codes back. */
   finish(winner: string | null): Promise<void>;
   /** Puts the original codes back and says whether the total is still the baseline; false when the cart changed during the run. */
@@ -361,6 +367,11 @@ async function pageTester(
     (await page.act(a).catch(() => null)) ?? { ok: false, action: a.type, message: "The page did not answer." };
   let hints: FormHints | undefined;
   const totalOf = (snap: Snapshot) => readTotal(snap.text, hints?.totalLabel);
+  // The store's own discount line: part of the order, so never more than the order itself.
+  const discountOf = (snap: Snapshot, code: string): number | null => {
+    const d = readDiscount(snap.text, code, isRejectLine);
+    return d !== null && d < baseline ? d : null;
+  };
 
   // The box, after clicking what shows it when it is hidden ("Have a promo code?").
   const open = async (start: Snapshot): Promise<{ snap: Snapshot; form: NonNullable<ReturnType<typeof findForm>> } | null> => {
@@ -523,7 +534,8 @@ async function pageTester(
     const lowered = total < baseline - EPS;
     kept = lowered ? { code, total } : null;
     if (reply === "rejected" && !lowered) return { total, accepted: false, note: "Not accepted by the store.", ...(message ? { message } : {}) };
-    return { total, accepted: reply === "accepted" ? true : null };
+    const discount = lowered ? discountOf(after, code) : null;
+    return { total, accepted: reply === "accepted" ? true : null, ...(discount !== null ? { discount } : {}) };
   };
 
   // Puts the winner on at the end of a run, whatever state testing left the
@@ -634,6 +646,10 @@ async function pageTester(
     ...(base.currency ? { currency: base.currency } : {}),
     tryCode,
     apply: putOn,
+    async discount(code) {
+      const snap = await look();
+      return snap ? discountOf(snap, code) : null;
+    },
     async finish(winner) {
       // The page path cannot take a rejected code's text out of the box
       // reliably on every store; it clears the box when nothing won so the
@@ -755,7 +771,7 @@ export interface CouponInput extends TesterOptions {
   onAttempt?: (a: CouponAttempt, index: number, total: number, currency?: string) => void;
 }
 
-const attemptOf = (cand: CouponCandidate, r: { total: number | null; accepted: boolean | null; message?: string }, saving: number | null, note: string): CouponAttempt => ({
+const attemptOf = (cand: CouponCandidate, r: { total: number | null; accepted: boolean | null; message?: string; discount?: number }, saving: number | null, note: string): CouponAttempt => ({
   code: cand.code,
   origin: cand.origin,
   ...(cand.sourceUrl ? { sourceUrl: cand.sourceUrl } : {}),
@@ -763,6 +779,7 @@ const attemptOf = (cand: CouponCandidate, r: { total: number | null; accepted: b
   ...(cand.conditions ? { conditions: cand.conditions } : {}),
   total: r.total,
   saving,
+  ...(r.discount !== undefined && saving !== null && saving > 0 ? { discount: r.discount } : {}),
   accepted: r.accepted,
   note,
   ...(r.message ? { message: r.message, kind: rejectKind(r.message) } : {}),
@@ -994,6 +1011,11 @@ export async function runCouponSearch(input: CouponInput): Promise<CouponOutcome
     applied = await reapply();
     reapplied = applied ? "retry" : "failed";
   } else if (!applied) reapplied = "failed";
+  // The discount line as the order shows it now, with the winner on.
+  if (applied && !best.combo && tester.discount) {
+    const line = await tester.discount(best.code).catch(() => null);
+    if (line !== null) best.discount = line;
+  }
   await tester.finish(applied ? best.code : null).catch(() => undefined);
   const shown = best.combo ? best.combo.join(" + ") : best.code;
   return result(stoppedEarly ?? "done", applied ? "Best code " + shown + " applied." : "Best code " + shown + " could not be re-applied.", { applied, reapplied });
@@ -1006,6 +1028,18 @@ export const duration = (seconds: number): string => {
   const m = Math.floor(s / 60);
   const rest = s % 60;
   return rest ? m + " min " + rest + " s" : m + " minute" + (m === 1 ? "" : "s");
+};
+
+/**
+ * The store's own discount for an attempt, when the total fell by less than
+ * it: the store added another charge (shipping, tax) along with the code
+ * (owner 2026-11-22: "I save $34.79 which is 20% not 14%"). Else null: a
+ * line smaller than the drop, or far from it, is more likely misread than real.
+ */
+export const lineDiscount = (a: CouponAttempt, baseline: number): number | null => {
+  if (a.discount === undefined || a.total === null) return null;
+  const gap = a.discount - (baseline - a.total);
+  return gap >= 0.05 && gap <= Math.max(25, baseline * 0.25) ? a.discount : null;
 };
 
 /** "20% off" for the drop from `baseline` to `total`. */
@@ -1120,10 +1154,19 @@ export function couponSummary(o: CouponOutcome, discovery?: DiscoveryInfo): stri
   if (o.best && o.best.total !== null && o.baseline !== null) {
     const shown = o.best.combo ? "**" + o.best.combo.join("** + **") + "** together" : "**" + o.best.code + "**";
     if (o.status !== "captcha" && o.status !== "rate_limited") out.push("I tested " + tested + found + ".");
-    out.push(
-      shown + " is the best: your total drops from **" + money(o.baseline) + "** to **" + money(o.best.total) + "** (you save " +
-        money(o.baseline - o.best.total) + ", " + percentOff(o.baseline, o.best.total) + ").",
-    );
+    const line = o.best.combo ? null : lineDiscount(o.best, o.baseline);
+    if (line !== null) {
+      const gap = Math.round((o.best.total - (o.baseline - line)) * 100) / 100;
+      out.push(
+        shown + " is the best: the store takes **" + money(line) + "** off with it (" + percentOff(o.baseline, o.baseline - line) + "). The page's total goes from **" +
+          money(o.baseline) + "** to **" + money(o.best.total) + "**, " + money(gap) + " more than the discount alone gives, so the store added another charge with it, such as shipping or tax.",
+      );
+    } else {
+      out.push(
+        shown + " is the best: your total drops from **" + money(o.baseline) + "** to **" + money(o.best.total) + "** (you save " +
+          money(o.baseline - o.best.total) + ", " + percentOff(o.baseline, o.best.total) + ").",
+      );
+    }
     out.push(
       o.applied
         ? discovery?.atCheckout

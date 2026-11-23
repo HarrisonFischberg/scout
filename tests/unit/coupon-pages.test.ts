@@ -9,7 +9,7 @@ import type { Action, ActionResult } from "../../src/actions/executor";
 import { findForm, newLines, removeTarget, revealTargets, storeReply } from "../../src/coupons/form";
 import { couponSummary, runCouponSearch, type CouponPage } from "../../src/coupons/finder";
 import { locateView, parseLocate } from "../../src/coupons/locate";
-import { formatMoney, parseAmount, readTotal } from "../../src/coupons/money";
+import { formatMoney, parseAmount, readDiscount, readTotal } from "../../src/coupons/money";
 import type { SnapElement, Snapshot } from "../../src/snapshot/snapshot";
 
 const snap = (elements: SnapElement[], text = ""): Snapshot => ({ url: "https://shop.test/checkout", title: "Checkout", text, elements, truncated: false });
@@ -147,6 +147,8 @@ interface StoreOpts {
   removeLag?: number;
   /** While a code is on, any other code typed is refused. */
   locks?: boolean;
+  /** The order summary prints each code's amount under it, and adds this shipping fee once the discounted order falls under `below`. */
+  shipping?: { below: number; fee: number };
   /** The page can be reloaded, which makes its remove buttons work again. */
   reloads?: boolean;
   /** The coupon box disappears while a code is applied (a drawer that shows a pill instead). */
@@ -211,7 +213,7 @@ function store(o: StoreOpts): CouponPage & { applied: string[]; clicks: string[]
       if (o.removable || o.brokenRemove || o.removeWorks !== undefined) s.applied.forEach((c, i) => els.push(el("r" + (i + 1), "button", "Remove " + c)));
       els.push(el("p1", "button", "Place order"));
       // Like real stores, each applied code is listed in the order summary.
-      const lines = s.applied.map((c) => "Discount (" + c + ")");
+      const lines = s.applied.map((c) => (o.shipping ? "Discount\n" + c + "\n− " + fmt(Math.round(base * (o.pct[c] ?? 0)) / 100) : "Discount (" + c + ")"));
       const words = o.labels ?? { subtotal: "Subtotal", total: "Total" };
       return snap(els, [words.subtotal + " " + fmt(base), ...lines, msg, words.total + " " + fmt(shown)].filter(Boolean).join("\n"));
     },
@@ -226,7 +228,8 @@ function store(o: StoreOpts): CouponPage & { applied: string[]; clicks: string[]
       s.clicks.push(a.ref);
       const settle = (): void => {
         const off = s.applied.reduce((sum, c) => sum + (o.pct[c] ?? 0), 0);
-        pending = { total: Math.round(base * (1 - off / 100) * 100) / 100, at: tick + (o.lag ?? 0) };
+        const goods = Math.round(base * (1 - off / 100) * 100) / 100;
+        pending = { total: o.shipping && goods < o.shipping.below ? Math.round((goods + o.shipping.fee) * 100) / 100 : goods, at: tick + (o.lag ?? 0) };
       };
       if (a.ref === "t1") open = true;
       if (a.ref === "p1") s.ordered++;
@@ -394,6 +397,43 @@ describe("the page path on different kinds of checkout", () => {
       expect(p.applied).toEqual(["SAVE10"]);
       expect(couponSummary(out)).toContain("I couldn't re-apply it");
     });
+  });
+
+  // Owner 2026-11-22, CARRY the FIRE: "$173.96 to $149.50 (you save $24.46, 14% off)"
+  // next to the store's own line "− $34.79", which is the code's 20%. The total
+  // fell by less because the store added a charge with the code.
+  it("reports the store's own discount line when the total moved by another amount", async () => {
+    const p = store({ pct: { WELCOME20: 20, SAVE5: 5 }, base: 173.96, shipping: { below: 150, fee: 10.33 }, removable: true, message: true });
+    const out = await runCouponSearch({ page: p, codes: codes("SAVE5", "WELCOME20", "NOPE"), settleMs: 300 });
+    expect(out.best).toMatchObject({ code: "WELCOME20", total: 149.5, saving: 24.46, discount: 34.79 });
+    expect(out.applied).toBe(true);
+    const text = couponSummary(out);
+    expect(text).toContain("the store takes **$34.79** off with it (20% off)");
+    expect(text).toContain("from **$173.96** to **$149.50**, $10.33 more than the discount alone gives");
+    expect(text).not.toContain("14%");
+    // A code whose line matches the drop in the total reads as before.
+    const plain = store({ pct: { SAVE5: 5 }, base: 200, shipping: { below: 150, fee: 10 }, message: true });
+    expect(couponSummary(await runCouponSearch({ page: plain, codes: codes("SAVE5"), settleMs: 300 }))).toContain("your total drops from **$200.00** to **$190.00** (you save $10.00, 5% off)");
+  });
+
+  it("reads the store's discount line for a code, and nothing when unsure", () => {
+    expect(readDiscount("Subtotal $173.96\nDiscount\nWELCOME20\n− $34.79\nShipping $10.33\nTotal $149.50", "WELCOME20")).toBe(34.79);
+    expect(readDiscount("Subtotal $173.96\nWELCOME20 -$34.79\nTotal $139.17", "WELCOME20")).toBe(34.79);
+    expect(readDiscount("Discount (SAVE10) (€10,00)\nTotal €90,00", "SAVE10")).toBe(10);
+    expect(readDiscount("Rabatt SAVE10 -10,00 €\nGesamt 90,00 €", "SAVE10")).toBe(10);
+    // A cart that prints each item's share and the sum: the sum.
+    expect(readDiscount("Mug\nWELCOME20 (−$17.40)\nCap\nWELCOME20 (−$17.39)\nDiscount WELCOME20 −$34.79", "WELCOME20")).toBe(34.79);
+    expect(readDiscount("Subtotal $100\nTotal $90", "SAVE10")).toBeNull();
+    // Never another line's amount, a charge in brackets, or the code's own digits.
+    expect(readDiscount("Discount\nWELCOME20\nGift card\n−$25.00\nTotal $124.50", "WELCOME20")).toBeNull();
+    expect(readDiscount("WELCOME20 applied\nSubtotal $173.96\nShipping (USD 10.33)\nTotal $149.50", "WELCOME20")).toBeNull();
+    expect(readDiscount("Discount: XMAS-25", "XMAS-25")).toBeNull();
+    expect(readDiscount("Code VIP20 applied - VIP20", "VIP20")).toBeNull();
+    expect(readDiscount("SAVE10 — 10 OFF orders", "SAVE10")).toBeNull();
+    expect(readDiscount("Have a coupon?\nSale item\n−$10.00\nTotal $90", "SAVE10")).toBeNull();
+    expect(readDiscount("Order discount\n$-12.50\nTotal $90", "X1")).toBeNull();
+    expect(readDiscount("Sale discount −$5.00\nCoupon −$10.00\nTotal $90", "SAVE10")).toBeNull();
+    expect(readDiscount("SAVE10 isn't valid. −$5.00", "SAVE10", () => true)).toBeNull();
   });
 
   // Live sweep 2026-10-17, Brumate: a drawer with no remove control that swaps
