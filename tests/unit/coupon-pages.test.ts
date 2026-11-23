@@ -420,9 +420,18 @@ describe("the page path on different kinds of checkout", () => {
     expect(readDiscount("Subtotal $173.96\nDiscount\nWELCOME20\n− $34.79\nShipping $10.33\nTotal $149.50", "WELCOME20")).toBe(34.79);
     expect(readDiscount("Subtotal $173.96\nWELCOME20 -$34.79\nTotal $139.17", "WELCOME20")).toBe(34.79);
     expect(readDiscount("Discount (SAVE10) (€10,00)\nTotal €90,00", "SAVE10")).toBe(10);
-    expect(readDiscount("Order discount\n$-12.50\nTotal $90", "X1")).toBe(12.5);
+    expect(readDiscount("Rabatt SAVE10 -10,00 €\nGesamt 90,00 €", "SAVE10")).toBe(10);
+    // A cart that prints each item's share and the sum: the sum.
+    expect(readDiscount("Mug\nWELCOME20 (−$17.40)\nCap\nWELCOME20 (−$17.39)\nDiscount WELCOME20 −$34.79", "WELCOME20")).toBe(34.79);
     expect(readDiscount("Subtotal $100\nTotal $90", "SAVE10")).toBeNull();
-    // Two discount lines and none names the code: not guessed.
+    // Never another line's amount, a charge in brackets, or the code's own digits.
+    expect(readDiscount("Discount\nWELCOME20\nGift card\n−$25.00\nTotal $124.50", "WELCOME20")).toBeNull();
+    expect(readDiscount("WELCOME20 applied\nSubtotal $173.96\nShipping (USD 10.33)\nTotal $149.50", "WELCOME20")).toBeNull();
+    expect(readDiscount("Discount: XMAS-25", "XMAS-25")).toBeNull();
+    expect(readDiscount("Code VIP20 applied - VIP20", "VIP20")).toBeNull();
+    expect(readDiscount("SAVE10 — 10 OFF orders", "SAVE10")).toBeNull();
+    expect(readDiscount("Have a coupon?\nSale item\n−$10.00\nTotal $90", "SAVE10")).toBeNull();
+    expect(readDiscount("Order discount\n$-12.50\nTotal $90", "X1")).toBeNull();
     expect(readDiscount("Sale discount −$5.00\nCoupon −$10.00\nTotal $90", "SAVE10")).toBeNull();
     expect(readDiscount("SAVE10 isn't valid. −$5.00", "SAVE10", () => true)).toBeNull();
   });

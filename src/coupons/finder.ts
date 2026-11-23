@@ -1031,12 +1031,16 @@ export const duration = (seconds: number): string => {
 };
 
 /**
- * The store's own discount for an attempt, when it is not simply the drop in
- * the total: the store changed another charge (shipping, tax) along with the
- * code (owner 2026-11-22: "I save $34.79 which is 20% not 14%"). Else null.
+ * The store's own discount for an attempt, when the total fell by less than
+ * it: the store added another charge (shipping, tax) along with the code
+ * (owner 2026-11-22: "I save $34.79 which is 20% not 14%"). Else null: a
+ * line smaller than the drop, or far from it, is more likely misread than real.
  */
-export const lineDiscount = (a: CouponAttempt, baseline: number): number | null =>
-  a.discount !== undefined && a.total !== null && Math.abs(a.discount - (baseline - a.total)) >= 0.05 ? a.discount : null;
+export const lineDiscount = (a: CouponAttempt, baseline: number): number | null => {
+  if (a.discount === undefined || a.total === null) return null;
+  const gap = a.discount - (baseline - a.total);
+  return gap >= 0.05 && gap <= Math.max(25, baseline * 0.25) ? a.discount : null;
+};
 
 /** "20% off" for the drop from `baseline` to `total`. */
 export const percentOff = (baseline: number, total: number): string => {
@@ -1152,14 +1156,10 @@ export function couponSummary(o: CouponOutcome, discovery?: DiscoveryInfo): stri
     if (o.status !== "captcha" && o.status !== "rate_limited") out.push("I tested " + tested + found + ".");
     const line = o.best.combo ? null : lineDiscount(o.best, o.baseline);
     if (line !== null) {
-      // Positive: the total fell by less than the discount, so the store added a charge.
       const gap = Math.round((o.best.total - (o.baseline - line)) * 100) / 100;
       out.push(
         shown + " is the best: the store takes **" + money(line) + "** off with it (" + percentOff(o.baseline, o.baseline - line) + "). The page's total goes from **" +
-          money(o.baseline) + "** to **" + money(o.best.total) + "**, " +
-          (gap > 0
-            ? money(gap) + " more than the discount alone gives, so the store added another charge with it, such as shipping or tax."
-            : money(-gap) + " less than the discount alone gives, so another charge dropped with it."),
+          money(o.baseline) + "** to **" + money(o.best.total) + "**, " + money(gap) + " more than the discount alone gives, so the store added another charge with it, such as shipping or tax.",
       );
     } else {
       out.push(
