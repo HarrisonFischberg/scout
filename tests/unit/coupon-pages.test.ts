@@ -357,6 +357,36 @@ describe("the page path on different kinds of checkout", () => {
       expect(p.ordered).toBe(0);
     });
 
+    it("reloads at most once, and never after Stop", async () => {
+      const stuck = store({ pct: { WIN20: 20, SAVE10: 10 }, removeWorks: 1, locks: true, reloads: true, message: true });
+      // The reload does not help here either: remove stays broken.
+      stuck.cart!.reload = async () => void stuck.reloaded++;
+      const a = await runCouponSearch({ page: stuck, codes: codes("WIN20", "SAVE10", "NOPE"), settleMs: 300, maxSettleMs: 300, reapplyRetryMs: 0 });
+      expect(a.applied).toBe(false);
+      expect(stuck.reloaded).toBe(1);
+      const p = store({ pct: { WIN20: 20, SAVE10: 10 }, removeWorks: 1, locks: true, reloads: true, message: true });
+      const control = { isStopped: false } as { isStopped: boolean };
+      const out = await runCouponSearch({
+        page: p,
+        codes: codes("WIN20", "SAVE10", "NOPE", "NOPE2"),
+        settleMs: 300,
+        maxSettleMs: 300,
+        reapplyRetryMs: 0,
+        control: control as never,
+        onAttempt: (x) => void (x.code === "SAVE10" && (control.isStopped = true)),
+      });
+      expect(out.best?.code).toBe("WIN20");
+      expect(p.reloaded).toBe(0);
+    });
+
+    it("never calls a stuck code's equal total the winner's", async () => {
+      const p = store({ pct: { WIN20: 20, SAME20: 20 }, removeWorks: 1, locks: true, message: true });
+      const out = await runCouponSearch({ page: p, codes: codes("WIN20", "SAME20", "NOPE"), settleMs: 300, maxSettleMs: 300, reapplyRetryMs: 0 });
+      expect(out.best?.code).toBe("WIN20");
+      expect(p.applied).toEqual(["SAME20"]);
+      expect(out.applied).toBe(false);
+    });
+
     it("says so plainly when the store will not let the stuck code go", async () => {
       const p = store({ pct: { WIN20: 20, SAVE10: 10 }, removeWorks: 1, locks: true, message: true });
       const out = await runCouponSearch({ page: p, codes: codes("WIN20", "SAVE10", "NOPE"), settleMs: 300, maxSettleMs: 300, reapplyRetryMs: 0 });
