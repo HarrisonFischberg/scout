@@ -22,6 +22,7 @@ import {
   discoveryLine,
   goToCheckout,
   openCouponTester,
+  lineDiscount,
   percentOff,
   plural,
   runCouponSearch,
@@ -482,7 +483,9 @@ async function runJob(deps: CouponJobDeps, saves: Promise<unknown>[]): Promise<E
         // A new best: say so in the chat.
         if (a.accepted !== false && a.saving !== null && a.saving > 0 && a.total !== null && (best === null || a.saving > best)) {
           best = a.saving;
-          const off = formatMoney(a.saving, currency) + " (" + percentOff(found.baseline, a.total) + ")";
+          // The store's own discount line when the total moved by another amount (shipping added with the code).
+          const line = a.combo ? null : lineDiscount(a, found.baseline);
+          const off = line !== null ? formatMoney(line, currency) + " (" + percentOff(found.baseline, found.baseline - line) + ")" : formatMoney(a.saving, currency) + " (" + percentOff(found.baseline, a.total) + ")";
           steps.post(
             a.combo ? a.combo.join(" + ") + " together save " + off + "." : "Found code " + a.code + ", saves " + off + ". Continuing to apply for better savings.",
           );

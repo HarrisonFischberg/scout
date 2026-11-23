@@ -86,3 +86,46 @@ export function formatMoney(n: number, currency?: string | null): string {
   }
   return cur + n.toFixed(2);
 }
+
+const MINUS = "[-\\u2212\\u2013\\u2014]";
+const NEGATIVE_RE = new RegExp("(?:" + MINUS + "\\s?(?:" + MONEY + ")|\\(\\s?(?:" + MONEY + ")\\s?\\)|(" + CUR + ")\\s?" + MINUS + "(" + NUM + "))", "u");
+const DISCOUNT_LABEL = /\b(?:discounts?|coupons?|promo(?:tion)?(?:\s+code)?|vouchers?)\b/i;
+
+/**
+ * What the store's own discount line says a code takes off ("WELCOME20  − $34.79",
+ * or the amount on a line just under the code), or null. The line that names
+ * `code` wins; a "Discount" line counts only when it is the page's one such amount.
+ * Lines for which `skip` is true (the store's "code not valid" words) never count.
+ */
+export function readDiscount(text: string, code: string, skip?: (line: string) => boolean): number | null {
+  const lines = text.split("\n").map((l) => l.trim());
+  const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const names = new RegExp("(^|[^A-Z0-9])" + escaped + "([^A-Z0-9]|$)", "i");
+  const negative = (line: string): number | null => {
+    const m = NEGATIVE_RE.exec(line);
+    if (!m) return null;
+    const amount = parseAmount(m[2] ?? m[3] ?? m[6] ?? m[7] ?? m[10] ?? "");
+    return amount !== null && amount > 0 ? amount : null;
+  };
+  // The amount on the label's own line, or within the three lines under it.
+  const near = (at: number): number | null => {
+    for (let i = at; i < Math.min(at + 4, lines.length); i++) {
+      const n = negative(lines[i] ?? "");
+      if (n !== null) return n;
+    }
+    return null;
+  };
+  const found = (test: (line: string) => boolean): number[] => {
+    const out: number[] = [];
+    lines.forEach((line, i) => {
+      if (!line || skip?.(line) || !test(line)) return;
+      const n = near(i);
+      if (n !== null && !out.includes(n)) out.push(n);
+    });
+    return out;
+  };
+  const byCode = found((l) => names.test(l));
+  if (byCode.length) return byCode.length === 1 ? byCode[0]! : null;
+  const byLabel = found((l) => DISCOUNT_LABEL.test(l));
+  return byLabel.length === 1 ? byLabel[0]! : null;
+}
